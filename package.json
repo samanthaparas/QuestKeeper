@@ -1,0 +1,16 @@
+{
+  "name": "questkeeper",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "questkeeper-frontend",
+    "questkeeper-backend"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace questkeeper-frontend",
+    "dev:backend": "npm run dev --workspace questkeeper-backend",
+    "start:backend": "npm run start --workspace questkeeper-backend",
+    "build": "npm run build --workspace questkeeper-frontend",
+    "lint": "npm run lint --workspace questkeeper-frontend"
+  }
+}
