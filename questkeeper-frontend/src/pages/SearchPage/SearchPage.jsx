@@ -21,7 +21,7 @@ function SearchPage() {
 
   const [allResults, setAllResults] = useState([]);
   const [selectedResult, setSelectedResult] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(query);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState("");
 

@@ -13,9 +13,11 @@ function Home() {
   function handleSearchSubmit(e) {
     e.preventDefault();
 
-    if (!searchQuery.trim()) return;
+    const trimmedQuery = searchQuery.trim();
 
-    navigate(`/search?q=${searchQuery}`);
+    if (!trimmedQuery) return;
+
+    navigate(`/search?q=${encodeURIComponent(trimmedQuery)}`);
   }
 
   return (

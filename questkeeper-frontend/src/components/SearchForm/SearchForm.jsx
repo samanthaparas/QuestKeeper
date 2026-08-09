@@ -12,9 +12,22 @@ function SearchForm({ searchQuery, onSearchChange, onSearchSubmit }) {
         type="text"
         value={searchQuery}
         onChange={onSearchChange}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.form?.requestSubmit();
+          }
+        }}
         placeholder="Search everything..."
         required
       />
+      <button
+        className="search-form__button"
+        type="submit"
+        disabled={!searchQuery.trim()}
+      >
+        Search
+      </button>
     </form>
   );
 }
