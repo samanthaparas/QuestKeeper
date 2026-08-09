@@ -1,0 +1,15 @@
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.navigation__link {
+  color: #f1d28a;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.navigation__link:hover {
+  color: #ffffff;
+}

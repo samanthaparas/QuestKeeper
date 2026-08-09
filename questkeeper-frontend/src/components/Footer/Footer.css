@@ -1,0 +1,23 @@
+.footer {
+  margin-top: 80px;
+  padding: 40px 20px;
+  border-top: 1px solid rgba(217, 164, 65, 0.35);
+  text-align: center;
+}
+
+.footer__title {
+  color: #d9a441;
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.footer__tagline {
+  color: #f1d28a;
+  font-size: 16px;
+}
+
+.footer__copyright {
+  color: #8f8f8f;
+  font-size: 14px;
+  margin-top: 16px;
+}

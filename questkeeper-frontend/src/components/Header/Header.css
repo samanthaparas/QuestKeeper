@@ -1,0 +1,135 @@
+.header {
+  padding: 24px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #050505;
+  box-sizing: border-box;
+}
+
+.header__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.header__icon {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.header__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.header__title {
+  color: #d9a441;
+  font-family: var(--font-heading);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.header__tagline {
+  color: #f1d28a;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.header__profile {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 164, 65, 0.35);
+  background-color: rgba(255, 255, 255, 0.04);
+  color: #f1d28a;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+.header__menu {
+  display: none;
+  font-family: var(--font-body);
+}
+
+.header__menu:focus-visible,
+.header__profile:focus-visible {
+  outline: 2px solid #f1d28a;
+  outline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .header {
+    display: grid;
+    grid-template-columns: 64px 1fr 64px;
+    padding: 16px 20px;
+    align-items: center;
+    justify-items: center;
+    row-gap: 16px;
+  }
+
+  .header__menu {
+    display: block;
+    justify-self: start;
+    min-height: 36px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: #f1d28a;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .header__brand {
+    justify-self: center;
+  }
+
+  .header__icon,
+  .header__tagline {
+    display: none;
+  }
+
+  .header__title {
+    font-size: 18px;
+  }
+
+  .header__actions {
+    display: contents;
+  }
+
+  .header__profile {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .navigation {
+    display: none;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .header--menu-open .navigation {
+    display: flex;
+  }
+}

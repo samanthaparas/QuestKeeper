@@ -1,0 +1,54 @@
+/* ---------- Fonts ---------- */
+
+@font-face {
+  font-family: "Cinzel";
+  src: url("./assets/fonts/Cinzel-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src: url("./assets/fonts/Poppins-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* ---------- Global Variables ---------- */
+
+:root {
+  --font-heading: "Cinzel", Georgia, serif;
+  --font-body: "Poppins", Arial, sans-serif;
+}
+
+/* ---------- Global Reset ---------- */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #050505;
+}
+
+/* ---------- Global Typography ---------- */
+
+body {
+  font-family: var(--font-body);
+  color: #f5f1e8;
+}
+
+/* All headings use Cinzel */
+
+h1,
+h2,
+h3,
+.logo {
+  font-family: var(--font-heading);
+}
