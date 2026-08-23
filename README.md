@@ -1,12 +1,40 @@
 # QuestKeeper
 
-QuestKeeper is a full-stack reference and gameplay companion for the **2014 version of Dungeons & Dragons Fifth Edition**. Its goal is to help players find useful information quickly and to explain game concepts clearly enough for beginners to learn as they play.
+QuestKeeper is a full-stack reference companion for the **2014 version of Dungeons & Dragons Fifth Edition**. It gives players one searchable interface for classes, races, spells, and backgrounds instead of making them jump between reference pages.
 
-The project currently provides searchable information about classes, races, spells, and backgrounds. It is being developed incrementally toward accounts, saved content, character sheets, gameplay tracking, guided character progression, and eventually AI-assisted character guidance.
+[View the source on GitHub](https://github.com/samanthaparas/QuestKeeper) · Live demo link coming after deployment
 
-For the complete product direction, content policy, and development milestones, see [QuestKeeper Project Vision](docs/QUESTKEEPER_VISION.md).
+## Screenshots
 
-## Current status
+### Search and browse
+
+![QuestKeeper homepage with global search and category navigation](docs/screenshots/home.png)
+
+### API-driven result details
+
+![QuestKeeper search results showing details for the Fireball spell](docs/screenshots/search-fireball.png)
+
+## Features
+
+- Global search across classes, races, spells, and backgrounds.
+- Dedicated category browsing pages.
+- Selectable result cards with an in-page detail panel.
+- Loading, empty, and error feedback for API-driven views.
+- Responsive navigation and a mobile result-to-detail flow.
+- Reusable React components for search, cards, navigation, and details.
+
+## Tech stack
+
+| Area | Technology |
+| --- | --- |
+| Frontend | React 19, React Router, Vite, CSS |
+| Backend | Node.js, Express, REST routes |
+| Data | D&D 5e SRD API (2014 endpoints) |
+| Repository | npm workspaces monorepo |
+
+The project is being developed incrementally toward accounts, saved content, character sheets, gameplay tracking, and guided character progression. For the complete product direction, content policy, and development milestones, see [QuestKeeper Project Vision](docs/QUESTKEEPER_VISION.md).
+
+## Current implementation
 
 QuestKeeper currently includes:
 
@@ -41,6 +69,8 @@ QuestKeeper/
 ```
 
 The frontend and backend retain separate `package.json` files because they have different dependencies. The root `package.json` defines npm workspaces and convenient commands for both applications.
+
+The applications originally lived in separate repositories. They were combined into this monorepo when features began requiring coordinated frontend and backend changes.
 
 ## How the applications communicate
 
@@ -110,6 +140,23 @@ VITE_API_BASE_URL=http://localhost:3001/api
 
 Restart the Vite development server after changing an environment variable.
 
+## Deployment
+
+The repository includes a [`render.yaml`](render.yaml) Blueprint that defines both applications:
+
+- `questkeeper-api`: a Node/Express web service.
+- `questkeeper`: a Vite static site with a single-page app rewrite.
+
+To deploy it on Render:
+
+1. Push this repository to GitHub.
+2. In Render, choose **New > Blueprint** and connect the repository.
+3. When prompted for `VITE_API_BASE_URL`, use the deployed backend URL with `/api` appended, for example `https://questkeeper-api.onrender.com/api`.
+4. After both services deploy, open the frontend and test a search and a detail panel.
+5. Replace the pending live-demo text at the top of this README with the verified frontend URL.
+
+The backend reads the host-provided `PORT`. No API keys or secrets are required. The API currently allows cross-origin requests because it exposes only public SRD reference data; a future authenticated version should restrict allowed origins.
+
 ## Available commands
 
 Run these commands from the repository root:
@@ -165,7 +212,7 @@ Automated tests have not been added yet.
 - Upstream requests do not yet use application-level caching or explicit timeouts.
 - Accounts, favorites, character sheets, and gameplay tracking are not implemented.
 - Automated frontend and backend tests are not implemented.
-- Production backend hosting is not configured.
+- A public deployment has not yet been verified.
 
 ## Planned development
 
