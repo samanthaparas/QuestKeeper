@@ -12,7 +12,7 @@ services:
     name: questkeeper
     runtime: static
     rootDir: questkeeper-frontend
-    buildCommand: npm ci --workspaces=false && npm run build
+    buildCommand: npm install --workspaces=false && npm run build
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_BASE_URL
