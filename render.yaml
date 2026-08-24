@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     rootDir: questkeeper-backend
-    buildCommand: npm ci
+    buildCommand: npm ci --workspaces=false
     startCommand: npm start
     healthCheckPath: /
 
@@ -12,7 +12,7 @@ services:
     name: questkeeper
     runtime: static
     rootDir: questkeeper-frontend
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --workspaces=false && npm run build
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_BASE_URL
