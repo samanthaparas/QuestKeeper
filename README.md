@@ -46,7 +46,7 @@ QuestKeeper currently includes:
 - A backend connection to the D&D 5e SRD API's 2014 endpoints.
 - Root npm workspace commands for running both applications from the monorepo.
 
-This is an active learning project. Some features are intentionally simple while the architecture and data policies are developed step by step.
+QuestKeeper is actively developed, with features added incrementally so the architecture, data sources, and user experience can evolve deliberately.
 
 ## Project structure
 
@@ -171,7 +171,7 @@ Run these commands from the repository root:
 
 Automated tests have not been added yet.
 
-## Problems encountered and current solutions
+## Engineering decisions and challenges
 
 ### The frontend and backend began as separate repositories
 
@@ -244,28 +244,3 @@ When adding a source, document:
 - Whether QuestKeeper may reproduce the text, link to it, or store only private user notes.
 
 The detailed policy and proposed provenance fields are recorded in [docs/QUESTKEEPER_VISION.md](docs/QUESTKEEPER_VISION.md).
-
-## Git workflow
-
-Before staging anything, inspect the working tree:
-
-```powershell
-git status
-```
-
-Stage only the files that belong to the change when practical:
-
-```powershell
-git add README.md docs/QUESTKEEPER_VISION.md
-git status
-git commit -m "Document QuestKeeper vision and roadmap"
-git push
-```
-
-`git add .` stages every changed file below the current directory. Always review `git status` first so unrelated work is not included accidentally.
-
-## Repository history
-
-The frontend and backend originally lived in separate repositories. Their histories were imported into this monorepo, which is now maintained at:
-
-<https://github.com/samanthaparas/QuestKeeper>
