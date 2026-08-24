@@ -2,7 +2,7 @@
 
 QuestKeeper is a full-stack reference companion for the **2014 version of Dungeons & Dragons Fifth Edition**. It gives players one searchable interface for classes, races, spells, and backgrounds instead of making them jump between reference pages.
 
-[View the source on GitHub](https://github.com/samanthaparas/QuestKeeper) · Live demo link coming after deployment
+[Live Demo](https://questkeeper-it0i.onrender.com) · [Source Code](https://github.com/samanthaparas/QuestKeeper)
 
 ## Screenshots
 
@@ -142,20 +142,17 @@ Restart the Vite development server after changing an environment variable.
 
 ## Deployment
 
-The repository includes a [`render.yaml`](render.yaml) Blueprint that defines both applications:
+QuestKeeper is deployed on Render:
+
+- [Frontend demo](https://questkeeper-it0i.onrender.com)
+- [Backend API](https://questkeeper-api.onrender.com)
+
+The repository includes a [`render.yaml`](render.yaml) Blueprint that defines both services:
 
 - `questkeeper-api`: a Node/Express web service.
 - `questkeeper`: a Vite static site with a single-page app rewrite.
 
-To deploy it on Render:
-
-1. Push this repository to GitHub.
-2. In Render, choose **New > Blueprint** and connect the repository.
-3. When prompted for `VITE_API_BASE_URL`, use the deployed backend URL with `/api` appended, for example `https://questkeeper-api.onrender.com/api`.
-4. After both services deploy, open the frontend and test a search and a detail panel.
-5. Replace the pending live-demo text at the top of this README with the verified frontend URL.
-
-The backend reads the host-provided `PORT`. No API keys or secrets are required. The API currently allows cross-origin requests because it exposes only public SRD reference data; a future authenticated version should restrict allowed origins.
+The deployed frontend uses `VITE_API_BASE_URL=https://questkeeper-api.onrender.com/api`. The backend reads Render's host-provided `PORT`, and no API keys or secrets are required. The API currently allows cross-origin requests because it exposes only public SRD reference data; a future authenticated version should restrict allowed origins.
 
 ## Available commands
 
@@ -212,7 +209,7 @@ Automated tests have not been added yet.
 - Upstream requests do not yet use application-level caching or explicit timeouts.
 - Accounts, favorites, character sheets, and gameplay tracking are not implemented.
 - Automated frontend and backend tests are not implemented.
-- A public deployment has not yet been verified.
+- The free backend service may take approximately a minute to wake after a period of inactivity.
 
 ## Planned development
 
