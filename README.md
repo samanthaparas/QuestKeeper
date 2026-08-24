@@ -198,7 +198,7 @@ Automated tests have not been added yet.
 
 **Problem:** The local frontend expects a backend on `localhost`, which will not work for a publicly deployed frontend.
 
-**Current solution:** The frontend supports `VITE_API_BASE_URL`. A deployed environment will need that variable set to the deployed QuestKeeper backend URL.
+**Current solution:** The frontend supports `VITE_API_BASE_URL`. In local development, it defaults to `http://localhost:3001/api`. The deployed Render frontend is configured to use `https://questkeeper-api.onrender.com/api`, allowing the same frontend codebase to work correctly in both local and production environments.
 
 ## Known limitations
 
