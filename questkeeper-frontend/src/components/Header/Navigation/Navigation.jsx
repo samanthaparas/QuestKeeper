@@ -24,6 +24,10 @@ function Navigation() {
         Spells
       </Link>
 
+      <Link className="navigation__link" to="/characters">
+        Characters
+      </Link>
+
       <Link className="navigation__link" to="/about">
         About
       </Link>

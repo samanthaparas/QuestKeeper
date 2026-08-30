@@ -7,6 +7,8 @@ import RacesPage from "./pages/RacesPage";
 import ClassesPage from "./pages/ClassesPage";
 import SpellsPage from "./pages/SpellsPage";
 import BackgroundsPage from "./pages/BackgroundsPage";
+import CharacterCreationPage from "./pages/CharacterCreationPage/CharacterCreationPage";
+import CharactersPage from "./pages/CharactersPage/CharactersPage";
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
         <Route path="/classes" element={<ClassesPage />} />
         <Route path="/spells" element={<SpellsPage />} />
         <Route path="/backgrounds" element={<BackgroundsPage />} />
+        <Route path="/characters" element={<CharactersPage />} />
+        <Route path="/characters/new" element={<CharacterCreationPage />} />
         <Route path="/about" element={<About />} />
       </Routes>
     </>

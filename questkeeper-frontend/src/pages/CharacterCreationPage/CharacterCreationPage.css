@@ -1,0 +1,107 @@
+.character-creation {
+  min-height: 100vh;
+  background-color: #050505;
+  color: #f5f1e8;
+  padding: 48px;
+}
+
+.character-creation__content {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.character-creation__step-count {
+  color: #d8c7a3;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin: 0 0 16px;
+}
+
+.character-creation__title {
+  color: #d4af37;
+  font-size: 32px;
+  margin: 0 0 24px;
+}
+
+.character-creation__name-input {
+  width: 100%;
+  max-width: 480px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid rgba(217, 164, 65, 0.4);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.04);
+  color: #f5f1e8;
+  font: inherit;
+  font-size: 18px;
+}
+
+.character-creation__name-input:focus-visible {
+  outline: 2px solid #f1d28a;
+  outline-offset: 2px;
+}
+
+.character-creation__review-list {
+  list-style: none;
+  margin: 0 0 32px;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.character-creation__nav {
+  display: flex;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.character-creation__next-button {
+  min-height: 44px;
+  padding: 0 24px;
+  border: 1px solid rgba(217, 164, 65, 0.55);
+  border-radius: 999px;
+  background-color: rgba(217, 164, 65, 0.15);
+  color: #f1d28a;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.character-creation__next-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.character-creation__next-button:focus-visible {
+  outline: 2px solid #f1d28a;
+  outline-offset: 3px;
+}
+
+.character-creation__cancel-button {
+  min-height: 44px;
+  padding: 0 24px;
+  border: 1px solid rgba(245, 241, 232, 0.3);
+  border-radius: 999px;
+  background-color: transparent;
+  color: #f5f1e8;
+  font: inherit;
+  cursor: pointer;
+}
+
+.character-creation__cancel-button:focus-visible {
+  outline: 2px solid #f5f1e8;
+  outline-offset: 3px;
+}
+
+@media screen and (max-width: 600px) {
+  .character-creation {
+    padding: 24px 20px;
+  }
+
+  .character-creation__title {
+    font-size: 26px;
+  }
+}
