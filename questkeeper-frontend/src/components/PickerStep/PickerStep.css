@@ -1,0 +1,76 @@
+.picker-step__title {
+  color: #d4af37;
+  font-size: 28px;
+  margin: 0;
+}
+
+.picker-step__description {
+  max-width: 700px;
+  margin: 12px 0 24px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #d8c7a3;
+}
+
+.picker-step__status,
+.picker-step__error {
+  color: #d8c7a3;
+  margin: 0 0 16px;
+}
+
+.picker-step__error {
+  color: #ffb4a8;
+}
+
+.picker-step__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.picker-step__list {
+  display: grid;
+  gap: 12px;
+}
+
+.picker-step__confirm-button {
+  min-height: 44px;
+  padding: 0 20px;
+  margin-top: 20px;
+  border: 1px solid rgba(217, 164, 65, 0.55);
+  border-radius: 999px;
+  background-color: rgba(217, 164, 65, 0.15);
+  color: #f1d28a;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.picker-step__confirm-button:focus-visible {
+  outline: 2px solid #f1d28a;
+  outline-offset: 3px;
+}
+
+.picker-step__back-button {
+  min-height: 40px;
+  padding: 0 18px;
+  margin-top: 32px;
+  border: 1px solid rgba(245, 241, 232, 0.3);
+  border-radius: 999px;
+  background-color: transparent;
+  color: #f5f1e8;
+  font: inherit;
+  cursor: pointer;
+}
+
+.picker-step__back-button:focus-visible {
+  outline: 2px solid #f5f1e8;
+  outline-offset: 3px;
+}
+
+@media screen and (max-width: 600px) {
+  .picker-step__layout {
+    grid-template-columns: 1fr;
+  }
+}
