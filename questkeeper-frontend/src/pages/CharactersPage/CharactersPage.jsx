@@ -1,15 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { listCharacters, deleteCharacter } from "../../utils/characterStore";
 import "./CharactersPage.css";
 
 function CharactersPage() {
-  const [characters, setCharacters] = useState([]);
+  const [characters, setCharacters] = useState(() => listCharacters());
   const navigate = useNavigate();
-
-  useEffect(() => {
-    setCharacters(listCharacters());
-  }, []);
 
   function handleDelete(id) {
     deleteCharacter(id);
