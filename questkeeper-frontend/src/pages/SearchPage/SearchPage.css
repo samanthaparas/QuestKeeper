@@ -36,6 +36,10 @@
 
 .search-page__detail-wrapper {
   width: 100%;
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
 }
 
 .search-page__results {
@@ -88,6 +92,9 @@
 
   .search-page__detail-wrapper {
     display: none;
+    position: static;
+    max-height: none;
+    overflow: visible;
   }
 
   .search-page__layout--detail-open .search-page__results {

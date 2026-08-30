@@ -34,6 +34,13 @@
   gap: 12px;
 }
 
+.picker-step__detail {
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
 .picker-step__confirm-button {
   min-height: 44px;
   padding: 0 20px;
@@ -72,5 +79,11 @@
 @media screen and (max-width: 600px) {
   .picker-step__layout {
     grid-template-columns: 1fr;
+  }
+
+  .picker-step__detail {
+    position: static;
+    max-height: none;
+    overflow: visible;
   }
 }
