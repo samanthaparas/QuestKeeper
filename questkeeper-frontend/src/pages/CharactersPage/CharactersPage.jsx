@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { listCharacters, deleteCharacter } from "../../utils/characterStore";
 import "./CharactersPage.css";
 
@@ -39,13 +39,16 @@ function CharactersPage() {
         <ul className="characters-page__list">
           {characters.map((sheet) => (
             <li className="characters-page__item" key={sheet.id}>
-              <div className="characters-page__item-info">
+              <Link
+                className="characters-page__item-info"
+                to={`/characters/${sheet.id}`}
+              >
                 <span className="characters-page__item-name">{sheet.name}</span>
                 <span className="characters-page__item-meta">
                   Level {sheet.level} · {sheet.race?.name ?? "No race"} ·{" "}
                   {sheet.class?.name ?? "No class"}
                 </span>
-              </div>
+              </Link>
 
               <button
                 className="characters-page__delete-button"
