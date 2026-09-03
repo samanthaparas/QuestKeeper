@@ -23,12 +23,23 @@ export function mapRaceToSnapshot(raw) {
     return acc;
   }, {});
 
+  const abilityScoreChoice = raw.ability_bonus_options
+    ? {
+        choose: raw.ability_bonus_options.choose,
+        options: raw.ability_bonus_options.from.options.map((option) => ({
+          ability: ABILITY_ABBREVIATION_TO_NAME[option.ability_score.name],
+          bonus: option.bonus,
+        })),
+      }
+    : null;
+
   return {
     id: raw.index,
     name: raw.name,
     source: "SRD 5.1",
     speed: raw.speed,
     abilityScoreIncreases,
+    abilityScoreChoice,
     traits: raw.traits.map((trait) => trait.name),
   };
 }

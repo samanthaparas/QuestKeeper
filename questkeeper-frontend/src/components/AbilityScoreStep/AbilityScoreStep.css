@@ -18,6 +18,41 @@
   max-width: 640px;
 }
 
+.ability-score-step__bonus-choice {
+  max-width: 640px;
+  margin-top: 24px;
+  padding: 16px 20px;
+  border: 1px solid rgba(217, 164, 65, 0.25);
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.ability-score-step__bonus-choice-title {
+  color: #f1d28a;
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 0 0 12px;
+}
+
+.ability-score-step__bonus-checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.ability-score-step__bonus-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(217, 164, 65, 0.25);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.03);
+  color: #f5f1e8;
+  font-size: 14px;
+  cursor: pointer;
+}
+
 .ability-score-step__row {
   display: flex;
   align-items: center;

@@ -2,19 +2,11 @@ import { useState } from "react";
 import {
   ABILITY_SCORES,
   STANDARD_ARRAY,
+  ABILITY_LABELS,
   applyRaceBonuses,
   getAbilityModifier,
 } from "../../utils/characterSheet";
 import "./AbilityScoreStep.css";
-
-const ABILITY_LABELS = {
-  strength: "Strength",
-  dexterity: "Dexterity",
-  constitution: "Constitution",
-  intelligence: "Intelligence",
-  wisdom: "Wisdom",
-  charisma: "Charisma",
-};
 
 function formatModifier(mod) {
   return mod >= 0 ? `+${mod}` : `${mod}`;
@@ -29,14 +21,30 @@ function createEmptyAssignments() {
 
 function AbilityScoreStep({ race, onNext, onBack }) {
   const [assignments, setAssignments] = useState(createEmptyAssignments);
+  const [chosenBonusAbilities, setChosenBonusAbilities] = useState([]);
 
   const usedValues = Object.values(assignments).filter((v) => v !== null);
-  const isComplete = usedValues.length === ABILITY_SCORES.length;
-  const finalScores = applyRaceBonuses(assignments, race);
+  const finalScores = applyRaceBonuses(assignments, race, chosenBonusAbilities);
+  const needsBonusChoice = Boolean(race?.abilityScoreChoice);
+  const hasMadeBonusChoice =
+    !needsBonusChoice ||
+    chosenBonusAbilities.length === race.abilityScoreChoice.choose;
+  const isComplete =
+    usedValues.length === ABILITY_SCORES.length && hasMadeBonusChoice;
 
   function handleAssign(ability, rawValue) {
     const value = rawValue === "" ? null : Number(rawValue);
     setAssignments((prev) => ({ ...prev, [ability]: value }));
+  }
+
+  function toggleBonusAbility(ability) {
+    const maxChoices = race?.abilityScoreChoice?.choose ?? 0;
+
+    setChosenBonusAbilities((prev) => {
+      if (prev.includes(ability)) return prev.filter((a) => a !== ability);
+      if (prev.length >= maxChoices) return prev;
+      return [...prev, ability];
+    });
   }
 
   function optionsFor(ability) {
@@ -97,6 +105,36 @@ function AbilityScoreStep({ race, onNext, onBack }) {
           );
         })}
       </div>
+
+      {race?.abilityScoreChoice && (
+        <div className="ability-score-step__bonus-choice">
+          <p className="ability-score-step__bonus-choice-title">
+            {race.name} lets you choose {race.abilityScoreChoice.choose} more
+            abilities to increase by +1 each:
+          </p>
+
+          <div className="ability-score-step__bonus-checklist">
+            {race.abilityScoreChoice.options.map(({ ability, bonus }) => (
+              <label
+                className="ability-score-step__bonus-checkbox"
+                key={ability}
+              >
+                <input
+                  type="checkbox"
+                  checked={chosenBonusAbilities.includes(ability)}
+                  disabled={
+                    !chosenBonusAbilities.includes(ability) &&
+                    chosenBonusAbilities.length >=
+                      race.abilityScoreChoice.choose
+                  }
+                  onChange={() => toggleBonusAbility(ability)}
+                />
+                {ABILITY_LABELS[ability]} (+{bonus})
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="ability-score-step__nav">
         <button

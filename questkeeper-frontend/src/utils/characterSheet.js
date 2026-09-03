@@ -9,6 +9,24 @@ export const ABILITY_SCORES = [
 
 export const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 
+export const ABILITY_ABBREVIATIONS = {
+  strength: "STR",
+  dexterity: "DEX",
+  constitution: "CON",
+  intelligence: "INT",
+  wisdom: "WIS",
+  charisma: "CHA",
+};
+
+export const ABILITY_LABELS = {
+  strength: "Strength",
+  dexterity: "Dexterity",
+  constitution: "Constitution",
+  intelligence: "Intelligence",
+  wisdom: "Wisdom",
+  charisma: "Charisma",
+};
+
 export function getAbilityModifier(score) {
   return Math.floor((score - 10) / 2);
 }
@@ -17,13 +35,24 @@ export function getProficiencyBonus(level) {
   return Math.ceil(level / 4) + 1;
 }
 
-export function applyRaceBonuses(baseScores, race) {
-  if (!race?.abilityScoreIncreases) return { ...baseScores };
-
+export function applyRaceBonuses(baseScores, race, chosenAbilities = []) {
   const result = { ...baseScores };
 
-  for (const [ability, bonus] of Object.entries(race.abilityScoreIncreases)) {
-    result[ability] = (result[ability] ?? 0) + bonus;
+  if (race?.abilityScoreIncreases) {
+    for (const [ability, bonus] of Object.entries(race.abilityScoreIncreases)) {
+      result[ability] = (result[ability] ?? 0) + bonus;
+    }
+  }
+
+  if (race?.abilityScoreChoice) {
+    chosenAbilities.forEach((ability) => {
+      const option = race.abilityScoreChoice.options.find(
+        (opt) => opt.ability === ability,
+      );
+      if (option) {
+        result[ability] = (result[ability] ?? 0) + option.bonus;
+      }
+    });
   }
 
   return result;
@@ -79,6 +108,22 @@ export function applyAbilityScoreChoice(abilityScores, choice) {
   return result;
 }
 
+function addSpellToSpellcasting(spellcasting, characterClass, spellChoice) {
+  const base = spellcasting ?? {
+    type: characterClass?.spellcastingType ?? "known",
+    cantripsKnown: [],
+    spellsKnown: [],
+  };
+
+  const entry = { index: spellChoice.spellIndex, name: spellChoice.spellName };
+
+  if (spellChoice.spellLevel === 0) {
+    return { ...base, cantripsKnown: [...base.cantripsKnown, entry] };
+  }
+
+  return { ...base, spellsKnown: [...base.spellsKnown, entry] };
+}
+
 export function finalizeLevelUp(sheet) {
   const { pendingLevelUp } = sheet;
   if (!pendingLevelUp) return sheet;
@@ -88,6 +133,8 @@ export function finalizeLevelUp(sheet) {
     (s) => s.key === "abilityOrFeat",
   );
 
+  const spellStep = pendingLevelUp.steps.find((s) => s.key === "spells");
+
   const conModifier = getAbilityModifier(sheet.abilityScores.constitution);
   const hpGained = Math.max(1, (hpStep?.data?.amount ?? 0) + conModifier);
 
@@ -95,10 +142,27 @@ export function finalizeLevelUp(sheet) {
     ? applyAbilityScoreChoice(sheet.abilityScores, abilityStep.data)
     : sheet.abilityScores;
 
+  const spellcasting = spellStep
+    ? addSpellToSpellcasting(sheet.spellcasting, sheet.class, spellStep.data)
+    : sheet.spellcasting;
+
+  const feats =
+    abilityStep?.data?.type === "feat"
+      ? [
+          ...ABILITY_ABBREVIATIONS(sheet.feats ?? []),
+          {
+            index: abilityStep.data.featIndex,
+            name: abilityStep.data.featName,
+          },
+        ]
+      : (sheet.feats ?? []);
+
   return {
     ...sheet,
     level: pendingLevelUp.targetLevel,
     abilityScores,
+    spellcasting,
+    feats,
     combat: {
       ...sheet.combat,
       hitPoints: {
@@ -169,6 +233,7 @@ export function createCharacterSheet(overrides = {}) {
 
     equipment: [],
     spellcasting: null,
+    feats: [],
     abilityScoreImprovements: [],
     pendingLevelUp: null,
     notes: "",
