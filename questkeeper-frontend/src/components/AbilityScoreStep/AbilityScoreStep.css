@@ -1,0 +1,132 @@
+.ability-score-step__title {
+  color: #d4af37;
+  font-size: 32px;
+  margin: 0 0 12px;
+}
+
+.ability-score-step__description {
+  color: #d8c7a3;
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 640px;
+  margin: 0 0 32px;
+}
+
+.ability-score-step__grid {
+  display: grid;
+  gap: 16px;
+  max-width: 640px;
+}
+
+.ability-score-step__row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border: 1px solid rgba(217, 164, 65, 0.25);
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.ability-score-step__label {
+  flex: 1;
+  font-weight: 700;
+  color: #f5f1e8;
+}
+
+.ability-score-step__select {
+  min-height: 40px;
+  min-width: 64px;
+  padding: 0 10px;
+  border: 1px solid rgba(217, 164, 65, 0.4);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.04);
+  color: #f5f1e8;
+  font: inherit;
+}
+
+.ability-score-step__select:focus-visible {
+  outline: 2px solid #f1d28a;
+  outline-offset: 2px;
+}
+
+.ability-score-step__select option {
+  background-color: #1a1a1a;
+  color: #f5f1e8;
+}
+
+.ability-score-step__preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+  justify-content: flex-end;
+}
+
+.ability-score-step__bonus {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: rgba(217, 164, 65, 0.15);
+  color: #f1d28a;
+}
+
+.ability-score-step__final {
+  font-weight: 700;
+  color: #f5f1e8;
+}
+
+.ability-score-step__nav {
+  display: flex;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.ability-score-step__next-button {
+  min-height: 44px;
+  padding: 0 24px;
+  border: 1px solid rgba(217, 164, 65, 0.55);
+  border-radius: 999px;
+  background-color: rgba(217, 164, 65, 0.15);
+  color: #f1d28a;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ability-score-step__next-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ability-score-step__next-button:focus-visible {
+  outline: 2px solid #f1d28a;
+  outline-offset: 3px;
+}
+
+.ability-score-step__back-button {
+  min-height: 44px;
+  padding: 0 24px;
+  border: 1px solid rgba(245, 241, 232, 0.3);
+  border-radius: 999px;
+  background-color: transparent;
+  color: #f5f1e8;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ability-score-step__back-button:focus-visible {
+  outline: 2px solid #f5f1e8;
+  outline-offset: 3px;
+}
+
+@media screen and (max-width: 600px) {
+  .ability-score-step__row {
+    flex-wrap: wrap;
+  }
+
+  .ability-score-step__preview {
+    justify-content: flex-start;
+    min-width: 0;
+  }
+}

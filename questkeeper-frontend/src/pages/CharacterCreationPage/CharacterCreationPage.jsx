@@ -13,12 +13,19 @@ import {
   mapClassToSnapshot,
   mapBackgroundToSnapshot,
 } from "../../utils/characterSnapshots";
-import { createCharacterSheet } from "../../utils/characterSheet";
+import {
+  createCharacterSheet,
+  ABILITY_SCORES,
+  getAbilityModifier,
+  getStartingHitPoints,
+  getStartingArmorClass,
+} from "../../utils/characterSheet";
 import { saveCharacter } from "../../utils/characterStore";
 import PickerStep from "../../components/PickerStep/PickerStep";
+import AbilityScoreStep from "../../components/AbilityScoreStep/AbilityScoreStep";
 import "./CharacterCreationPage.css";
 
-const STEPS = ["name", "race", "class", "background", "review"];
+const STEPS = ["name", "race", "class", "background", "abilities", "review"];
 
 function mapRaceToDetailPanelResult(data) {
   const abilityBonuses = data.ability_bonuses
@@ -89,6 +96,7 @@ function CharacterCreationPage() {
   const [race, setRace] = useState(null);
   const [characterClass, setCharacterClass] = useState(null);
   const [background, setBackground] = useState(null);
+  const [abilityScores, setAbilityScores] = useState(null);
 
   const step = STEPS[stepIndex];
 
@@ -97,11 +105,32 @@ function CharacterCreationPage() {
   }
 
   function handleCreate() {
+    const conModifier = getAbilityModifier(abilityScores.constitution);
+    const dexModifier = getAbilityModifier(abilityScores.dexterity);
+    const hitDie = characterClass?.hitDie ?? 8;
+    const maxHitPoints = getStartingHitPoints(hitDie, conModifier);
+
+    const savingThrows = ABILITY_SCORES.reduce((acc, ability) => {
+      acc[ability] =
+        characterClass?.savingThrowProficiencies?.includes(ability) ?? false;
+      return acc;
+    }, {});
+
     const sheet = createCharacterSheet({
       name,
       race,
       class: characterClass,
       background,
+      abilityScores,
+      savingThrows,
+      combat: {
+        armorClass: getStartingArmorClass(dexModifier),
+        initiative: dexModifier,
+        speed: race?.speed ?? 30,
+        hitPoints: { max: maxHitPoints, current: maxHitPoints, temporary: 0 },
+        hitDice: { total: 1, remaining: 1, die: hitDie },
+        hpHistory: [],
+      },
     });
 
     saveCharacter(sheet);
@@ -205,6 +234,17 @@ function CharacterCreationPage() {
           />
         )}
 
+        {step === "abilities" && (
+          <AbilityScoreStep
+            race={race}
+            onNext={(scores) => {
+              setAbilityScores(scores);
+              goToStep(stepIndex + 1);
+            }}
+            onBack={() => goToStep(stepIndex - 1)}
+          />
+        )}
+
         {step === "review" && (
           <div className="character-creation__review-step">
             <h1 className="character-creation__title">
@@ -223,6 +263,14 @@ function CharacterCreationPage() {
               </li>
               <li>
                 <strong>Background:</strong> {background?.name ?? "Not chosen"}
+              </li>
+              <li>
+                <strong>Ability Scores:</strong>{" "}
+                {ABILITY_SCORES.map((ability) => {
+                  const score = abilityScores?.[ability] ?? 10;
+                  const mod = getAbilityModifier(score);
+                  return `${ability.slice(0, 3).toUpperCase()} ${score} (${mod >= 0 ? "+" : ""}${mod})`;
+                }).join(" · ")}
               </li>
             </ul>
 

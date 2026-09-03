@@ -7,12 +7,34 @@ export const ABILITY_SCORES = [
   "charisma",
 ];
 
+export const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
+
 export function getAbilityModifier(score) {
   return Math.floor((score - 10) / 2);
 }
 
 export function getProficiencyBonus(level) {
   return Math.ceil(level / 4) + 1;
+}
+
+export function applyRaceBonuses(baseScores, race) {
+  if (!race?.abilityScoreIncreases) return { ...baseScores };
+
+  const result = { ...baseScores };
+
+  for (const [ability, bonus] of Object.entries(race.abilityScoreIncreases)) {
+    result[ability] = (result[ability] ?? 0) + bonus;
+  }
+
+  return result;
+}
+
+export function getStartingHitPoints(hitDie, conModifier) {
+  return Math.max(1, hitDie + conModifier);
+}
+
+export function getStartingArmorClass(dexModifier) {
+  return 10 + dexModifier;
 }
 
 function createDefaultAbilityScores() {
