@@ -37,6 +37,93 @@ export function getStartingArmorClass(dexModifier) {
   return 10 + dexModifier;
 }
 
+export const ABILITY_SCORE_IMPROVEMENT_LEVELS = [4, 8, 12, 16, 19];
+
+export function getLevelUpStepKeys(targetLevel, characterClass) {
+  const steps = ["hitPoints"];
+
+  if (ABILITY_SCORE_IMPROVEMENT_LEVELS.includes(targetLevel)) {
+    steps.push("abilityOrFeat");
+  }
+
+  if (characterClass?.spellcastingType) {
+    steps.push("spells");
+  }
+
+  return steps;
+}
+
+export function rollHitDie(die) {
+  return Math.floor(Math.random() * die) + 1;
+}
+
+export function getAverageHitDieValue(die) {
+  return Math.floor(die / 2) + 1;
+}
+
+export function applyAbilityScoreChoice(abilityScores, choice) {
+  if (!choice) return { ...abilityScores };
+
+  const result = { ...abilityScores };
+
+  if (choice.type === "asi-one") {
+    result[choice.ability] = (result[choice.ability] ?? 0) + 2;
+  }
+
+  if (choice.type === "asi-two") {
+    choice.abilities.forEach((ability) => {
+      result[ability] = (result[ability] ?? 0) + 1;
+    });
+  }
+
+  return result;
+}
+
+export function finalizeLevelUp(sheet) {
+  const { pendingLevelUp } = sheet;
+  if (!pendingLevelUp) return sheet;
+
+  const hpStep = pendingLevelUp.steps.find((s) => s.key === "hitPoints");
+  const abilityStep = pendingLevelUp.steps.find(
+    (s) => s.key === "abilityOrFeat",
+  );
+
+  const conModifier = getAbilityModifier(sheet.abilityScores.constitution);
+  const hpGained = Math.max(1, (hpStep?.data?.amount ?? 0) + conModifier);
+
+  const abilityScores = abilityStep
+    ? applyAbilityScoreChoice(sheet.abilityScores, abilityStep.data)
+    : sheet.abilityScores;
+
+  return {
+    ...sheet,
+    level: pendingLevelUp.targetLevel,
+    abilityScores,
+    combat: {
+      ...sheet.combat,
+      hitPoints: {
+        ...sheet.combat.hitPoints,
+        max: sheet.combat.hitPoints.max + hpGained,
+        current: sheet.combat.hitPoints.current + hpGained,
+      },
+      hitDice: {
+        ...sheet.combat.hitDice,
+        total: sheet.combat.hitDice.total + 1,
+        remaining: sheet.combat.hitDice.remaining + 1,
+      },
+      hpHistory: [
+        ...sheet.combat.hpHistory,
+        {
+          level: pendingLevelUp.targetLevel,
+          gained: hpGained,
+          at: new Date().toISOString(),
+        },
+      ],
+    },
+    pendingLevelUp: null,
+  };
+}
+
 function createDefaultAbilityScores() {
   return ABILITY_SCORES.reduce((scores, ability) => {
     scores[ability] = 10;

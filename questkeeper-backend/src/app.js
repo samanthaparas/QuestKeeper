@@ -4,6 +4,7 @@ import spellsRouter from "./routes/spells.js";
 import classesRouter from "./routes/classes.js";
 import racesRouter from "./routes/races.js";
 import backgroundsRouter from "./routes/backgrounds.js";
+import featsRouter from "./routes/feats.js";
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use("/api/spells", spellsRouter);
 app.use("/api/classes", classesRouter);
 app.use("/api/races", racesRouter);
 app.use("/api/backgrounds", backgroundsRouter);
+app.use("/api/feats", featsRouter);
 
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({
