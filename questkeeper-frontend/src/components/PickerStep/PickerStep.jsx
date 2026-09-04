@@ -55,13 +55,6 @@ function PickerStep({
 
   return (
     <div className="picker-step">
-      <button
-        className="picker-step__back-button"
-        type="button"
-        onClick={onBack}
-      >
-        {backLabel}
-      </button>
       <h2 className="picker-step__title">{title}</h2>
       <p className="picker-step__description">{description}</p>
 
@@ -101,6 +94,14 @@ function PickerStep({
           />
         </div>
       </div>
+
+      <button
+        className="picker-step__back-button"
+        type="button"
+        onClick={onBack}
+      >
+        {backLabel}
+      </button>
     </div>
   );
 }
