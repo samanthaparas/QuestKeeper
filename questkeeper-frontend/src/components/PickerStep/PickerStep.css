@@ -1,3 +1,12 @@
+/* Flex column so the Back button can visually lead via `order` while
+   staying last in the DOM/tab order — keyboard and screen-reader users
+   still reach it after the step's title and options, matching the order
+   before Back was moved to the top for sighted/pointer users. */
+.picker-step {
+  display: flex;
+  flex-direction: column;
+}
+
 .picker-step__title {
   color: #d4af37;
   font-size: 28px;
@@ -34,6 +43,11 @@
   gap: 12px;
 }
 
+/* Keeps the panel in view against the page as the option list scrolls
+   (top: 24px) and caps a long entry to an internally-scrolling box instead
+   of stretching the page (max-height/overflow-y). Reachability of the
+   Choose button through that internal scroll is handled separately by
+   DetailPanel's own sticky header (DetailPanel.css), not by these rules. */
 .picker-step__detail {
   position: sticky;
   top: 24px;
@@ -42,9 +56,9 @@
 }
 
 .picker-step__confirm-button {
+  margin-left: auto;
   min-height: 44px;
   padding: 0 20px;
-  margin-top: 20px;
   border: 1px solid rgba(217, 164, 65, 0.55);
   border-radius: 999px;
   background-color: rgba(217, 164, 65, 0.15);
@@ -60,9 +74,11 @@
 }
 
 .picker-step__back-button {
+  order: -1;
+  align-self: flex-start;
   min-height: 40px;
   padding: 0 18px;
-  margin-top: 32px;
+  margin-bottom: 24px;
   border: 1px solid rgba(245, 241, 232, 0.3);
   border-radius: 999px;
   background-color: transparent;

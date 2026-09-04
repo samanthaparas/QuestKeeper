@@ -1,10 +1,16 @@
 import "./DetailPanel.css";
 
-function DetailPanel({ selectedResult }) {
+// `actions`: an optional single React node rendered next to the title
+// (e.g. PickerStep's Choose button). Not a multi-action slot — there's no
+// defined layout/ordering for more than one element here.
+function DetailPanel({ selectedResult, actions }) {
   if (!selectedResult) {
     return (
       <section className="detail-panel">
-        <h2 className="detail-panel__title">Select an Item</h2>
+        <div className="flex-header-row detail-panel__header">
+          <h2 className="detail-panel__title">Select an Item</h2>
+          {actions}
+        </div>
         <p>Choose something from the list to view details.</p>
       </section>
     );
@@ -12,7 +18,11 @@ function DetailPanel({ selectedResult }) {
 
   return (
     <section className="detail-panel">
-      <h2 className="detail-panel__title">{selectedResult.name}</h2>
+      <div className="flex-header-row detail-panel__header">
+        <h2 className="detail-panel__title">{selectedResult.name}</h2>
+        {actions}
+      </div>
+
       <p className="detail-panel__type">{selectedResult.category}</p>
 
       {selectedResult.description && (

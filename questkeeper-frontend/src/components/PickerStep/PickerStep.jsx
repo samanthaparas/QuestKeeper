@@ -78,17 +78,20 @@ function PickerStep({
             <p className="picker-step__status">Loading details...</p>
           )}
 
-          <DetailPanel selectedResult={selectedDetail} />
-
-          {selectedDetail && !isDetailLoading && (
-            <button
-              className="picker-step__confirm-button"
-              type="button"
-              onClick={handleConfirm}
-            >
-              Choose {selectedDetail.name}
-            </button>
-          )}
+          <DetailPanel
+            selectedResult={selectedDetail}
+            actions={
+              selectedDetail && !isDetailLoading ? (
+                <button
+                  className="picker-step__confirm-button"
+                  type="button"
+                  onClick={handleConfirm}
+                >
+                  Choose {selectedDetail.name}
+                </button>
+              ) : null
+            }
+          />
         </div>
       </div>
 

@@ -52,3 +52,13 @@ h3,
 .logo {
   font-family: var(--font-heading);
 }
+
+/* ---------- Shared Utilities ---------- */
+
+.flex-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}

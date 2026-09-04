@@ -16,6 +16,18 @@
   font-size: 32px;
 }
 
+/* Pins the title + Choose button within .picker-step__detail's own internal
+   scroll (PickerStep.css), not just the panel's stickiness to the page.
+   Background approximates .detail-panel's composited color so scrolled
+   content doesn't show through underneath it. */
+.detail-panel__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: #0d0d0d;
+  padding-bottom: 8px;
+}
+
 .detail-panel__type {
   margin: 0 0 20px;
   color: #d9a441;
