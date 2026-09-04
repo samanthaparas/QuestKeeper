@@ -45,8 +45,13 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
     asiMode === "feat";
 
   const maxSpellLevel = Math.min(9, Math.ceil(targetLevel / 2));
+  const knownSpellIndexes = new Set([
+    ...(sheet.spellcasting?.cantripsKnown ?? []).map((s) => s.index),
+    ...(sheet.spellcasting?.spellsKnown ?? []).map((s) => s.index),
+  ]);
   const availableSpells = classSpells.filter(
-    (spell) => spell.level <= maxSpellLevel,
+    (spell) =>
+      spell.level <= maxSpellLevel && !knownSpellIndexes.has(spell.index),
   );
 
   useEffect(() => {
@@ -103,12 +108,44 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
   }
 
   function confirmSpell() {
+    if (!selectedSpellIndex) {
+      completeStep(null);
+      return;
+    }
+
     const spell = classSpells.find((s) => s.index === selectedSpellIndex);
     completeStep({
       spellIndex: spell.index,
       spellName: spell.name,
       spellLevel: spell.level,
     });
+  }
+
+  function describeStepChoice(step) {
+    if (step.key === "hitPoints") {
+      const total = Math.max(1, step.data.amount + conModifier);
+      return `Hit Points: +${total} (${step.data.amount} rolled/taken + ${conModifier} CON)`;
+    }
+
+    if (step.key === "abilityOrFeat") {
+      if (step.data.type === "asi-one") {
+        return `Ability Score Improvement: +2 ${ABILITY_LABELS[step.data.ability]}`;
+      }
+      if (step.data.type === "asi-two") {
+        return `Ability Score Improvement: +1 ${step.data.abilities
+          .map((a) => ABILITY_LABELS[a])
+          .join(", +1 ")}`;
+      }
+      return `Feat: ${step.data.featName}`;
+    }
+
+    if (step.key === "spells") {
+      return step.data
+        ? `New Spell: ${step.data.spellName}`
+        : "No new spell learned";
+    }
+
+    return null;
   }
 
   function handleFinish() {
@@ -122,6 +159,11 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
   return (
     <div className="level-up-wizard">
       <div className="level-up-wizard__header">
+        <p className="level-up-wizard__character-name">
+          {sheet.name} — {sheet.race?.name ?? "No race"}{" "}
+          {sheet.class?.name ?? "No class"} ·{" "}
+          {sheet.background?.name ?? "No background"}
+        </p>
         <h2 className="level-up-wizard__title">
           Level {sheet.level} &rarr; {targetLevel}
         </h2>
@@ -348,7 +390,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
             <p className="level-up-wizard__error">{spellsError}</p>
           )}
 
-          {!isSpellsLoading && !spellsError && (
+          {!isSpellsLoading && !spellsError && availableSpells.length > 0 && (
             <select
               className="level-up-wizard__spell-select"
               value={selectedSpellIndex}
@@ -364,10 +406,17 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
             </select>
           )}
 
+          {!isSpellsLoading && !spellsError && availableSpells.length === 0 && (
+            <p className="level-up-wizard__step-description">
+              {sheet.name} already knows every spell available at this level.
+              Nothing new to learn this time.
+            </p>
+          )}
+
           <button
             type="button"
             className="level-up-wizard__next-button"
-            disabled={!selectedSpellIndex}
+            disabled={availableSpells.length > 0 && !selectedSpellIndex}
             onClick={confirmSpell}
           >
             Next
@@ -378,22 +427,28 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
       {!currentStep && (
         <div className="level-up-wizard__step">
           <h3 className="level-up-wizard__step-title">
-            Level {targetLevel} Ready
+            Review Level {targetLevel}
           </h3>
           <p className="level-up-wizard__step-description">
-            All set. Confirm to apply this level up to {sheet.name}.
+            Double-check these choices for {sheet.name} before finishing. Not
+            right? Use Cancel below to discard this level-up and start over.
           </p>
+
+          <ul className="level-up-wizard__review-list">
+            {pendingLevelUp.steps.map((step) => (
+              <li key={step.key}>{describeStepChoice(step)}</li>
+            ))}
+          </ul>
 
           <button
             type="button"
             className="level-up-wizard__next-button"
             onClick={handleFinish}
           >
-            Finish Level Up
+            Confirm &amp; Finish Level Up
           </button>
         </div>
       )}
-
       <button
         type="button"
         className="level-up-wizard__cancel-button"

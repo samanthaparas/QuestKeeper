@@ -142,14 +142,14 @@ export function finalizeLevelUp(sheet) {
     ? applyAbilityScoreChoice(sheet.abilityScores, abilityStep.data)
     : sheet.abilityScores;
 
-  const spellcasting = spellStep
+  const spellcasting = spellStep?.data
     ? addSpellToSpellcasting(sheet.spellcasting, sheet.class, spellStep.data)
     : sheet.spellcasting;
 
   const feats =
     abilityStep?.data?.type === "feat"
       ? [
-          ...ABILITY_ABBREVIATIONS(sheet.feats ?? []),
+          ...(sheet.feats ?? []),
           {
             index: abilityStep.data.featIndex,
             name: abilityStep.data.featName,

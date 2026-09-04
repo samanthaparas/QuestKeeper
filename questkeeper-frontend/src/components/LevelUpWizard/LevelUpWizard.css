@@ -245,6 +245,22 @@
   outline-offset: 3px;
 }
 
+.level-up-wizard__character-name {
+  color: #d8c7a3;
+  font-size: 14px;
+  margin: 0 0 4px;
+}
+
+.level-up-wizard__review-list {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  font-size: 16px;
+  color: #f5f1e8;
+}
+
 @media screen and (max-width: 600px) {
   .level-up-wizard {
     padding: 20px;
