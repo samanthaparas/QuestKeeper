@@ -1,6 +1,6 @@
 import "./DetailPanel.css";
 
-function DetailPanel({ selectedResult }) {
+function DetailPanel({ selectedResult, actions }) {
   if (!selectedResult) {
     return (
       <section className="detail-panel">
@@ -12,7 +12,11 @@ function DetailPanel({ selectedResult }) {
 
   return (
     <section className="detail-panel">
-      <h2 className="detail-panel__title">{selectedResult.name}</h2>
+      <div className="detail-panel__header">
+        <h2 className="detail-panel__title">{selectedResult.name}</h2>
+        {actions}
+      </div>
+
       <p className="detail-panel__type">{selectedResult.category}</p>
 
       {selectedResult.description && (

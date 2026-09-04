@@ -16,6 +16,14 @@
   font-size: 32px;
 }
 
+.detail-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .detail-panel__type {
   margin: 0 0 20px;
   color: #d9a441;
