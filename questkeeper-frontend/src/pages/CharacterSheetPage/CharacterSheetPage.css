@@ -263,6 +263,11 @@
   font: inherit;
 }
 
+.character-sheet__resource-form-select option {
+  background-color: #1a1a1a;
+  color: #f5f1e8;
+}
+
 .character-sheet__resource-form-input--small {
   width: 80px;
 }
@@ -410,6 +415,7 @@
   font: inherit;
   font-weight: 700;
   font-size: 20px;
+  text-align: center;
 }
 
 .character-sheet__ability-input {
@@ -544,13 +550,13 @@
   overflow-y: auto;
 }
 
-.character-sheet__hp-input::-webkit-inner-spin-button,
-.character-sheet__hp-input::-webkit-outer-spin-button {
+.character-sheet input[type="number"]::-webkit-inner-spin-button,
+.character-sheet input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.character-sheet__hp-input {
+.character-sheet input[type="number"] {
   -moz-appearance: textfield;
 }
 

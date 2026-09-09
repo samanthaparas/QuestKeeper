@@ -8,6 +8,7 @@ import {
   getAbilityModifier,
   getSkillModifier,
   getProficiencyBonus,
+  formatModifier,
   buildLevelUpSummary,
   createResource,
   updateResource,
@@ -34,29 +35,11 @@ import LevelUpWizard from "../../components/LevelUpWizard/LevelUpWizard";
 import EditableItemList from "../../components/EditableItemList/EditableItemList";
 import "./CharacterSheetPage.css";
 
-function formatNotesLines(notes) {
-  return (notes ?? "")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-function formatModifier(mod) {
-  return mod >= 0 ? `+${mod}` : `${mod}`;
-}
-
 function CharacterSheetPage() {
   const { id } = useParams();
   const [sheet, setSheet] = useState(() => getCharacter(id));
   const [isLevelingUp, setIsLevelingUp] = useState(false);
   const [levelUpSummary, setLevelUpSummary] = useState(null);
-  const [newAttackName, setNewAttackName] = useState("");
-  const [newAttackToHit, setNewAttackToHit] = useState("");
-  const [newAttackDamage, setNewAttackDamage] = useState("");
-  const [newAttackDamageType, setNewAttackDamageType] = useState("");
-  const [newAttackNotes, setNewAttackNotes] = useState("");
-  const [isAddingAttack, setIsAddingAttack] = useState(false);
-  const [editingAttackIndex, setEditingAttackIndex] = useState(null);
 
   if (!sheet) {
     return (
@@ -313,65 +296,32 @@ function CharacterSheetPage() {
     persistSheet(applyRest(sheet, restType));
   }
 
-  function resetAttackForm() {
-    setNewAttackName("");
-    setNewAttackToHit("");
-    setNewAttackDamage("");
-    setNewAttackDamageType("");
-    setNewAttackNotes("");
-    setEditingAttackIndex(null);
-    setIsAddingAttack(false);
+  function handleAttackAdd(values) {
+    const attack = createAttack({
+      name: values.name.trim(),
+      toHit: values.toHit,
+      damage: values.damage.trim(),
+      damageType: values.damageType.trim(),
+      notes: values.notes.trim(),
+    });
+    persistSheet({ ...sheet, attacks: [...(sheet.attacks ?? []), attack] });
   }
 
-  function handleAttackFormSubmit(e) {
-    e.preventDefault();
-    if (!newAttackName.trim()) return;
-
-    if (editingAttackIndex) {
-      persistSheet({
-        ...sheet,
-        attacks: updateAttack(sheet.attacks, editingAttackIndex, {
-          name: newAttackName.trim(),
-          toHit: Number(newAttackToHit) || 0,
-          damage: newAttackDamage.trim(),
-          damageType: newAttackDamageType.trim(),
-          notes: newAttackNotes.trim(),
-        }),
-      });
-    } else {
-      const attack = createAttack({
-        name: newAttackName.trim(),
-        toHit: newAttackToHit,
-        damage: newAttackDamage.trim(),
-        damageType: newAttackDamageType.trim(),
-        notes: newAttackNotes.trim(),
-      });
-      persistSheet({ ...sheet, attacks: [...(sheet.attacks ?? []), attack] });
-    }
-
-    resetAttackForm();
+  function handleAttackUpdate(id, values) {
+    persistSheet({
+      ...sheet,
+      attacks: updateAttack(sheet.attacks, id, {
+        name: values.name.trim(),
+        toHit: Number(values.toHit) || 0,
+        damage: values.damage.trim(),
+        damageType: values.damageType.trim(),
+        notes: values.notes.trim(),
+      }),
+    });
   }
 
-  function handleEditAttack(attack) {
-    setNewAttackName(attack.name);
-    setNewAttackToHit(attack.toHit);
-    setNewAttackDamage(attack.damage);
-    setNewAttackDamageType(attack.damageType);
-    setNewAttackNotes(attack.notes);
-    setEditingAttackIndex(attack.index);
-    setIsAddingAttack(true);
-  }
-
-  function handleRemoveAttack(index) {
-    const attack = (sheet.attacks ?? []).find((a) => a.index === index);
-    if (
-      !window.confirm(
-        `Remove "${attack?.name ?? "this attack"}"? This can't be undone.`,
-      )
-    ) {
-      return;
-    }
-    persistSheet({ ...sheet, attacks: removeAttack(sheet.attacks, index) });
+  function handleAttackRemove(id) {
+    persistSheet({ ...sheet, attacks: removeAttack(sheet.attacks, id) });
   }
 
   function handleSpellSlotChange(level, field, value) {
@@ -647,144 +597,51 @@ function CharacterSheetPage() {
                   })}
                 </section>
 
-                <section className="character-sheet__section">
-                  <div className="character-sheet__section-header-row">
-                    <h2 className="character-sheet__section-title">Attacks</h2>
-                    {!isAddingAttack && (
-                      <button
-                        type="button"
-                        className="character-sheet__resource-add-button"
-                        onClick={() => setIsAddingAttack(true)}
-                      >
-                        Add Weapon
-                      </button>
-                    )}
-                  </div>
-
-                  {(sheet.attacks ?? []).length === 0 ? (
-                    <p className="character-sheet__empty-text">
-                      No attacks recorded yet.
-                    </p>
-                  ) : (
-                    <div className="character-sheet__attacks-table">
-                      <div className="character-sheet__attacks-header">
-                        <span>Weapon</span>
-                        <span>To Hit</span>
-                        <span>Damage</span>
-                        <span>Type</span>
-                        <span></span>
-                      </div>
-                      {sheet.attacks.map((attack) => (
-                        <div
-                          className="character-sheet__attacks-row"
-                          key={attack.index}
-                        >
-                          <span className="character-sheet__attacks-name">
-                            {attack.name}
-                            {attack.notes && (
-                              <ul className="character-sheet__attacks-notes-list">
-                                {formatNotesLines(attack.notes).map(
-                                  (line, i) => (
-                                    <li key={i}>{line}</li>
-                                  ),
-                                )}
-                              </ul>
-                            )}
-                          </span>
-                          <span className="character-sheet__attacks-cell">
-                            {formatModifier(attack.toHit)}
-                          </span>
-                          <span className="character-sheet__attacks-cell">
-                            {attack.damage}
-                          </span>
-                          <span className="character-sheet__attacks-cell">
-                            {attack.damageType}
-                          </span>
-                          <span className="character-sheet__attacks-actions">
-                            <button
-                              type="button"
-                              className="character-sheet__resource-remove"
-                              onClick={() => handleEditAttack(attack)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="character-sheet__resource-remove"
-                              onClick={() => handleRemoveAttack(attack.index)}
-                            >
-                              Remove
-                            </button>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {isAddingAttack && (
-                    <form
-                      className="character-sheet__attack-form"
-                      onSubmit={handleAttackFormSubmit}
-                    >
-                      <div className="character-sheet__resource-form">
-                        <input
-                          type="text"
-                          className="character-sheet__resource-form-input"
-                          placeholder="Weapon name (e.g. Night Terror Longsword)"
-                          value={newAttackName}
-                          onChange={(e) => setNewAttackName(e.target.value)}
-                        />
-                        <input
-                          type="number"
-                          className="character-sheet__resource-form-input character-sheet__resource-form-input--small"
-                          placeholder="To Hit"
-                          value={newAttackToHit}
-                          onChange={(e) => setNewAttackToHit(e.target.value)}
-                        />
-                        <input
-                          type="text"
-                          className="character-sheet__resource-form-input character-sheet__resource-form-input--small"
-                          placeholder="Damage (e.g. 2d8+10)"
-                          value={newAttackDamage}
-                          onChange={(e) => setNewAttackDamage(e.target.value)}
-                        />
-                        <input
-                          type="text"
-                          className="character-sheet__resource-form-input character-sheet__resource-form-input--small"
-                          placeholder="Type (e.g. Slashing)"
-                          value={newAttackDamageType}
-                          onChange={(e) =>
-                            setNewAttackDamageType(e.target.value)
-                          }
-                        />
-                      </div>
-
-                      <textarea
-                        className="character-sheet__textarea"
-                        placeholder="Notes (optional) - one line per bullet point"
-                        value={newAttackNotes}
-                        onChange={(e) => setNewAttackNotes(e.target.value)}
-                        rows={3}
-                      />
-
-                      <div className="character-sheet__attack-form-actions">
-                        <button
-                          type="button"
-                          className="character-sheet__resource-remove"
-                          onClick={resetAttackForm}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          className="character-sheet__resource-add-button"
-                        >
-                          {editingAttackIndex ? "Save Changes" : "Add Attack"}
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </section>
+                <EditableItemList
+                  title="Attacks"
+                  items={sheet.attacks ?? []}
+                  getItemId={(item) => item.index}
+                  fields={[
+                    {
+                      key: "name",
+                      type: "text",
+                      label: "Weapon",
+                      placeholder: "Weapon name (e.g. Night Terror Longsword)",
+                    },
+                    { key: "toHit", type: "number", placeholder: "To Hit" },
+                    {
+                      key: "damage",
+                      type: "text",
+                      placeholder: "Damage (e.g. 2d8+10)",
+                    },
+                    {
+                      key: "damageType",
+                      type: "text",
+                      placeholder: "Type (e.g. Slashing)",
+                    },
+                    {
+                      key: "notes",
+                      type: "textarea",
+                      placeholder:
+                        "Notes (optional) - one line per bullet point",
+                    },
+                  ]}
+                  columns={[
+                    {
+                      key: "toHit",
+                      label: "To Hit",
+                      width: "70px",
+                      format: (item) => formatModifier(item.toHit),
+                    },
+                    { key: "damage", label: "Damage", width: "100px" },
+                    { key: "damageType", label: "Type", width: "110px" },
+                  ]}
+                  emptyText="No attacks recorded yet."
+                  addButtonLabel="Add Weapon"
+                  onAdd={handleAttackAdd}
+                  onUpdate={handleAttackUpdate}
+                  onRemove={handleAttackRemove}
+                />
 
                 <section className="character-sheet__section">
                   <EditableItemList

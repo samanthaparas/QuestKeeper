@@ -56,6 +56,10 @@ export function getSkillModifier(score, isProficient, proficiencyBonus) {
   return getAbilityModifier(score) + (isProficient ? proficiencyBonus : 0);
 }
 
+export function formatModifier(mod) {
+  return mod >= 0 ? `+${mod}` : `${mod}`;
+}
+
 export function getProficiencyBonus(level) {
   return Math.ceil(level / 4) + 1;
 }
