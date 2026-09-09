@@ -69,6 +69,7 @@ function EditableItemList({
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [values, setValues] = useState(() => createEmptyValues(fields));
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
 
   function resetForm() {
     setValues(createEmptyValues(fields));
@@ -115,6 +116,46 @@ function EditableItemList({
     }
   }
 
+  function toggleExpanded(id) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function renderPrimaryCell(item, id, notes) {
+    const isExpanded = expandedIds.has(id);
+
+    return (
+      <span className="character-sheet__resource-name">
+        {getLabel(item)}
+        {notes && (
+          <>
+            <button
+              type="button"
+              className="character-sheet__details-toggle"
+              onClick={() => toggleExpanded(id)}
+            >
+              {isExpanded ? "▾ Hide details" : "▸ Show details"}
+            </button>
+            {isExpanded && (
+              <ul className="character-sheet__attacks-notes-list">
+                {formatNotesLines(notes).map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </span>
+    );
+  }
+
   const gridTemplateColumns = columns
     ? `minmax(220px, 1fr) ${columns.map((col) => col.width).join(" ")} 140px`
     : undefined;
@@ -158,16 +199,7 @@ function EditableItemList({
                 style={{ gridTemplateColumns }}
                 key={id}
               >
-                <span className="character-sheet__attacks-name">
-                  {getLabel(item)}
-                  {notes && (
-                    <ul className="character-sheet__attacks-notes-list">
-                      {formatNotesLines(notes).map((line, i) => (
-                        <li key={i}>{line}</li>
-                      ))}
-                    </ul>
-                  )}
-                </span>
+                {renderPrimaryCell(item, id, notes)}
                 {columns.map((col) => (
                   <span className="character-sheet__attacks-cell" key={col.key}>
                     {col.format ? col.format(item) : item[col.key]}
@@ -201,16 +233,7 @@ function EditableItemList({
 
             return (
               <li className="character-sheet__resource-row" key={id}>
-                <span className="character-sheet__resource-name">
-                  {getLabel(item)}
-                  {notes && (
-                    <ul className="character-sheet__attacks-notes-list">
-                      {formatNotesLines(notes).map((line, i) => (
-                        <li key={i}>{line}</li>
-                      ))}
-                    </ul>
-                  )}
-                </span>
+                {renderPrimaryCell(item, id, notes)}
 
                 {extraRowContent && extraRowContent(item)}
 
