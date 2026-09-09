@@ -11,8 +11,16 @@ import {
   createResource,
   setResourceCurrent,
   removeResource,
+  updateResource,
   setCurrentHp,
   applyRest,
+  createEquipmentItem,
+  updateEquipmentItem,
+  createAttack,
+  updateAttack,
+  createFeat,
+  updateFeat,
+  updateSpell,
 } from "./characterSheet";
 
 describe("getAbilityModifier", () => {
@@ -327,5 +335,249 @@ describe("buildLevelUpSummary", () => {
     const after = baseSheet({ spellcasting: null });
 
     expect(buildLevelUpSummary(before, after).newSpell).toBeNull();
+  });
+});
+
+describe("createAttack", () => {
+  it("creates an attack with the given fields", () => {
+    const attack = createAttack({
+      name: "Night Terror Longsword",
+      toHit: 13,
+      damage: "2d8+10",
+      damageType: "Slashing",
+      notes: "Demons & Undead take additional 2d10 radiant damage.",
+    });
+
+    expect(attack.name).toBe("Night Terror Longsword");
+    expect(attack.toHit).toBe(13);
+    expect(attack.damage).toBe("2d8+10");
+    expect(attack.damageType).toBe("Slashing");
+    expect(attack.notes).toBe(
+      "Demons & Undead take additional 2d10 radiant damage.",
+    );
+    expect(attack.index).toBeTruthy();
+  });
+
+  it("defaults toHit to 0 and the text fields to empty strings", () => {
+    const attack = createAttack({ name: "Fists" });
+
+    expect(attack.toHit).toBe(0);
+    expect(attack.damage).toBe("");
+    expect(attack.damageType).toBe("");
+    expect(attack.notes).toBe("");
+  });
+});
+
+describe("updateAttack", () => {
+  const attacks = [
+    {
+      index: "a",
+      name: "Javelin",
+      toHit: 10,
+      damage: "1d6+5",
+      damageType: "Piercing",
+      notes: "",
+    },
+    {
+      index: "b",
+      name: "Longsword",
+      toHit: 13,
+      damage: "2d8+10",
+      damageType: "Slashing",
+      notes: "",
+    },
+  ];
+
+  it("updates only the matching attack", () => {
+    const result = updateAttack(attacks, "a", { toHit: 11 });
+
+    expect(result.find((a) => a.index === "a").toHit).toBe(11);
+    expect(result.find((a) => a.index === "b").toHit).toBe(13);
+  });
+
+  it("merges partial updates without dropping other fields", () => {
+    const result = updateAttack(attacks, "b", {
+      notes: "Bonus radiant damage",
+    });
+    const updated = result.find((a) => a.index === "b");
+
+    expect(updated.notes).toBe("Bonus radiant damage");
+    expect(updated.damage).toBe("2d8+10");
+    expect(updated.name).toBe("Longsword");
+  });
+});
+
+describe("createEquipmentItem", () => {
+  it("creates an item with the given quantity and description", () => {
+    const item = createEquipmentItem({
+      name: "Marked cards",
+      quantity: 10,
+      description: "regular cards",
+    });
+
+    expect(item.name).toBe("Marked cards");
+    expect(item.quantity).toBe(10);
+    expect(item.description).toBe("regular cards");
+    expect(item.index).toBeTruthy();
+  });
+
+  it("defaults quantity to 1 when missing, zero, or negative", () => {
+    expect(createEquipmentItem({ name: "Rope" }).quantity).toBe(1);
+    expect(createEquipmentItem({ name: "Rope", quantity: 0 }).quantity).toBe(1);
+    expect(createEquipmentItem({ name: "Rope", quantity: -3 }).quantity).toBe(
+      1,
+    );
+  });
+
+  it("defaults description to an empty string", () => {
+    expect(createEquipmentItem({ name: "Rope" }).description).toBe("");
+  });
+});
+
+describe("updateEquipmentItem", () => {
+  const equipment = [
+    { index: "a", name: "Chain Mail", quantity: 1, description: "" },
+    { index: "b", name: "Pouch", quantity: 1, description: "" },
+  ];
+
+  it("updates only the matching item", () => {
+    const result = updateEquipmentItem(equipment, "a", { quantity: 2 });
+
+    expect(result.find((i) => i.index === "a").quantity).toBe(2);
+    expect(result.find((i) => i.index === "b").quantity).toBe(1);
+  });
+});
+
+describe("createFeat", () => {
+  it("creates a feat with a description", () => {
+    const feat = createFeat({
+      name: "Inspiring Leader",
+      description: "3(Cha) + 12(current level) = 15 hit points",
+    });
+
+    expect(feat.name).toBe("Inspiring Leader");
+    expect(feat.description).toBe("3(Cha) + 12(current level) = 15 hit points");
+    expect(feat.index).toBeTruthy();
+  });
+
+  it("defaults description to an empty string", () => {
+    expect(createFeat({ name: "Shield Master" }).description).toBe("");
+  });
+});
+
+describe("updateFeat", () => {
+  const feats = [
+    { index: "a", name: "Shield Master", description: "" },
+    { index: "b", name: "Inspiring Leader", description: "" },
+  ];
+
+  it("updates only the matching feat", () => {
+    const result = updateFeat(feats, "b", { description: "Rally the party" });
+
+    expect(result.find((f) => f.index === "b").description).toBe(
+      "Rally the party",
+    );
+    expect(result.find((f) => f.index === "a").description).toBe("");
+  });
+});
+
+describe("updateResource", () => {
+  const resources = [
+    {
+      id: "a",
+      name: "Lay on Hands",
+      max: 65,
+      current: 65,
+      resetOn: "long",
+      notes: "",
+    },
+    {
+      id: "b",
+      name: "Second Wind",
+      max: 1,
+      current: 0,
+      resetOn: "short",
+      notes: "",
+    },
+  ];
+
+  it("updates fields on only the matching resource", () => {
+    const result = updateResource(resources, "a", { name: "Healing Pool" });
+
+    expect(result.find((r) => r.id === "a").name).toBe("Healing Pool");
+    expect(result.find((r) => r.id === "b").name).toBe("Second Wind");
+  });
+
+  it("leaves current alone when max increases", () => {
+    const result = updateResource(resources, "b", { max: 2 });
+    const updated = result.find((r) => r.id === "b");
+
+    expect(updated.max).toBe(2);
+    expect(updated.current).toBe(0);
+  });
+
+  it("clamps current down when max shrinks below it", () => {
+    const result = updateResource(resources, "a", { max: 10 });
+    const updated = result.find((r) => r.id === "a");
+
+    expect(updated.max).toBe(10);
+    expect(updated.current).toBe(10);
+  });
+});
+
+describe("updateSpell", () => {
+  function makeSpellcasting() {
+    return {
+      type: "known",
+      cantripsKnown: [{ index: "a", name: "Mage Hand", level: 0, notes: "" }],
+      spellsKnown: [{ index: "b", name: "Bless", level: 1, notes: "" }],
+    };
+  }
+
+  it("updates a spell without changing which list it's in", () => {
+    const result = updateSpell(makeSpellcasting(), "spellsKnown", "b", {
+      name: "Bless",
+      level: 1,
+      notes: "Pick 3 targets",
+    });
+
+    expect(result.spellsKnown).toHaveLength(1);
+    expect(result.spellsKnown[0].notes).toBe("Pick 3 targets");
+    expect(result.cantripsKnown).toHaveLength(1);
+  });
+
+  it("moves a spell into cantripsKnown when edited down to level 0", () => {
+    const result = updateSpell(makeSpellcasting(), "spellsKnown", "b", {
+      name: "Bless",
+      level: 0,
+      notes: "",
+    });
+
+    expect(result.spellsKnown).toHaveLength(0);
+    expect(result.cantripsKnown).toHaveLength(2);
+    expect(result.cantripsKnown.find((s) => s.index === "b").name).toBe(
+      "Bless",
+    );
+  });
+
+  it("moves a spell into spellsKnown when edited up from a cantrip", () => {
+    const result = updateSpell(makeSpellcasting(), "cantripsKnown", "a", {
+      name: "Mage Hand",
+      level: 2,
+      notes: "",
+    });
+
+    expect(result.cantripsKnown).toHaveLength(0);
+    expect(result.spellsKnown).toHaveLength(2);
+    expect(result.spellsKnown.find((s) => s.index === "a").level).toBe(2);
+  });
+
+  it("returns the spellcasting unchanged if the spell isn't found", () => {
+    const spellcasting = makeSpellcasting();
+    const result = updateSpell(spellcasting, "spellsKnown", "missing", {
+      level: 0,
+    });
+
+    expect(result).toBe(spellcasting);
   });
 });
