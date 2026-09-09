@@ -60,6 +60,7 @@ function EditableItemList({
   onUpdate,
   onRemove,
   extraRowContent,
+  columns,
 }) {
   const primaryField = fields[0];
   const textareaField = fields.find((field) => field.type === "textarea");
@@ -102,6 +103,22 @@ function EditableItemList({
     setIsAdding(true);
   }
 
+  function getLabel(item) {
+    return formatPrimaryLabel
+      ? formatPrimaryLabel(item)
+      : item[primaryField.key];
+  }
+
+  function handleRemoveClick(item, id) {
+    if (window.confirm(`Remove "${getLabel(item)}"? This can't be undone.`)) {
+      onRemove(id);
+    }
+  }
+
+  const gridTemplateColumns = columns
+    ? `minmax(220px, 1fr) ${columns.map((col) => col.width).join(" ")} 140px`
+    : undefined;
+
   return (
     <section className="character-sheet__section">
       <div className="character-sheet__section-header-row">
@@ -119,6 +136,63 @@ function EditableItemList({
 
       {items.length === 0 ? (
         <p className="character-sheet__empty-text">{emptyText}</p>
+      ) : columns ? (
+        <div className="character-sheet__attacks-table">
+          <div
+            className="character-sheet__attacks-header"
+            style={{ gridTemplateColumns }}
+          >
+            <span>{primaryField.label ?? ""}</span>
+            {columns.map((col) => (
+              <span key={col.key}>{col.label}</span>
+            ))}
+            <span></span>
+          </div>
+          {items.map((item) => {
+            const id = getItemId(item);
+            const notes = textareaField ? item[textareaField.key] : "";
+
+            return (
+              <div
+                className="character-sheet__attacks-row"
+                style={{ gridTemplateColumns }}
+                key={id}
+              >
+                <span className="character-sheet__attacks-name">
+                  {getLabel(item)}
+                  {notes && (
+                    <ul className="character-sheet__attacks-notes-list">
+                      {formatNotesLines(notes).map((line, i) => (
+                        <li key={i}>{line}</li>
+                      ))}
+                    </ul>
+                  )}
+                </span>
+                {columns.map((col) => (
+                  <span className="character-sheet__attacks-cell" key={col.key}>
+                    {col.format ? col.format(item) : item[col.key]}
+                  </span>
+                ))}
+                <span className="character-sheet__attacks-actions">
+                  <button
+                    type="button"
+                    className="character-sheet__resource-remove"
+                    onClick={() => handleEdit(item)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="character-sheet__resource-remove"
+                    onClick={() => handleRemoveClick(item, id)}
+                  >
+                    Remove
+                  </button>
+                </span>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <ul className="character-sheet__resource-list">
           {items.map((item) => {
@@ -128,9 +202,7 @@ function EditableItemList({
             return (
               <li className="character-sheet__resource-row" key={id}>
                 <span className="character-sheet__resource-name">
-                  {formatPrimaryLabel
-                    ? formatPrimaryLabel(item)
-                    : item[primaryField.key]}
+                  {getLabel(item)}
                   {notes && (
                     <ul className="character-sheet__attacks-notes-list">
                       {formatNotesLines(notes).map((line, i) => (
@@ -153,18 +225,7 @@ function EditableItemList({
                   <button
                     type="button"
                     className="character-sheet__resource-remove"
-                    onClick={() => {
-                      const label = formatPrimaryLabel
-                        ? formatPrimaryLabel(item)
-                        : item[primaryField.key];
-                      if (
-                        window.confirm(
-                          `Remove "${label}"? This can't be undone.`,
-                        )
-                      ) {
-                        onRemove(id);
-                      }
-                    }}
+                    onClick={() => handleRemoveClick(item, id)}
                   >
                     Remove
                   </button>
