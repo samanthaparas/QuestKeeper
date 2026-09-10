@@ -149,6 +149,7 @@ function addSpellToSpellcasting(spellcasting, characterClass, spellChoice) {
     name: spellChoice.spellName,
     level: spellChoice.spellLevel,
     notes: "",
+    components: "",
   };
 
   if (spellChoice.spellLevel === 0) {
@@ -284,6 +285,8 @@ export function createCharacterSheet(overrides = {}) {
 
     name: "Unnamed Character",
     level: 1,
+    size: "Medium",
+    languages: "",
     inspiration: 0,
     gold: 0,
     experienceMode: "guided", // "guided" | "freeForAll"
@@ -309,6 +312,8 @@ export function createCharacterSheet(overrides = {}) {
     attacks: [],
     spellcasting: null,
     feats: [],
+    features: [],
+    proficiencies: [],
     resources: [],
     abilityScoreImprovements: [],
     pendingLevelUp: null,
@@ -460,7 +465,7 @@ export function updateFeat(feats, index, updates) {
   );
 }
 
-export function addManualSpell(sheet, { name, level, notes }) {
+export function addManualSpell(sheet, { name, level, notes, components }) {
   const base = sheet.spellcasting ?? {
     type: sheet.class?.spellcastingType ?? "known",
     cantripsKnown: [],
@@ -473,6 +478,7 @@ export function addManualSpell(sheet, { name, level, notes }) {
     name,
     level: numericLevel,
     notes: notes || "",
+    components: components || "",
   };
 
   if (numericLevel === 0) {
