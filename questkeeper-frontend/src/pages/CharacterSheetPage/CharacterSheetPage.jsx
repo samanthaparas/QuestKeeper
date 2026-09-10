@@ -95,6 +95,14 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, combat: { ...sheet.combat, speed: numeric } });
   }
 
+  function handleSizeChange(value) {
+    persistSheet({ ...sheet, size: value });
+  }
+
+  function handleLanguagesChange(value) {
+    persistSheet({ ...sheet, languages: value });
+  }
+
   function handleInspirationChange(value) {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) return;
@@ -252,6 +260,56 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, feats: removeFeat(sheet.feats, id) });
   }
 
+  function handleFeatureAdd(values) {
+    const feature = createFeat({
+      name: values.name.trim(),
+      description: values.description.trim(),
+    });
+    persistSheet({ ...sheet, features: [...(sheet.features ?? []), feature] });
+  }
+
+  function handleFeatureUpdate(id, values) {
+    persistSheet({
+      ...sheet,
+      features: updateFeat(sheet.features, id, {
+        name: values.name.trim(),
+        description: values.description.trim(),
+      }),
+    });
+  }
+
+  function handleFeatureRemove(id) {
+    persistSheet({ ...sheet, features: removeFeat(sheet.features, id) });
+  }
+
+  function handleProficiencyAdd(values) {
+    const proficiency = createFeat({
+      name: values.name.trim(),
+      description: values.description.trim(),
+    });
+    persistSheet({
+      ...sheet,
+      proficiencies: [...(sheet.proficiencies ?? []), proficiency],
+    });
+  }
+
+  function handleProficiencyUpdate(id, values) {
+    persistSheet({
+      ...sheet,
+      proficiencies: updateFeat(sheet.proficiencies, id, {
+        name: values.name.trim(),
+        description: values.description.trim(),
+      }),
+    });
+  }
+
+  function handleProficiencyRemove(id) {
+    persistSheet({
+      ...sheet,
+      proficiencies: removeFeat(sheet.proficiencies, id),
+    });
+  }
+
   function findSpellListKey(id) {
     return (sheet.spellcasting?.cantripsKnown ?? []).some(
       (spell) => spell.index === id,
@@ -265,6 +323,7 @@ function CharacterSheetPage() {
       name: values.name.trim(),
       level: values.level,
       notes: values.notes.trim(),
+      components: values.components.trim(),
     });
     persistSheet({ ...sheet, spellcasting });
   }
@@ -278,6 +337,7 @@ function CharacterSheetPage() {
         name: values.name.trim(),
         level: Number(values.level),
         notes: values.notes.trim(),
+        components: values.components.trim(),
       },
     );
     persistSheet({ ...sheet, spellcasting });
@@ -550,6 +610,32 @@ function CharacterSheetPage() {
                   />
                 </span>
               </div>
+
+              <div className="character-sheet__stat-box">
+                <span className="character-sheet__stat-label">Size</span>
+                <select
+                  className="character-sheet__stat-input"
+                  value={sheet.size ?? "Medium"}
+                  onChange={(e) => handleSizeChange(e.target.value)}
+                >
+                  <option value="Tiny">Tiny</option>
+                  <option value="Small">Small</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Large">Large</option>
+                  <option value="Huge">Huge</option>
+                  <option value="Gargantuan">Gargantuan</option>
+                </select>
+              </div>
+              <div className="character-sheet__stat-box">
+                <span className="character-sheet__stat-label">Languages</span>
+                <input
+                  type="text"
+                  className="character-sheet__stat-input"
+                  value={sheet.languages ?? ""}
+                  onChange={(e) => handleLanguagesChange(e.target.value)}
+                  placeholder="Common, Infernal"
+                />
+              </div>
             </section>
 
             <div className="character-sheet__layout">
@@ -750,6 +836,59 @@ function CharacterSheetPage() {
 
                 <section className="character-sheet__section">
                   <EditableItemList
+                    title="Proficiencies"
+                    items={sheet.proficiencies ?? []}
+                    getItemId={(item) => item.index}
+                    fields={[
+                      {
+                        key: "name",
+                        type: "text",
+                        placeholder:
+                          "Proficiency (e.g. Longswords, Heavy Armor)",
+                      },
+                      {
+                        key: "description",
+                        type: "textarea",
+                        placeholder:
+                          "Notes (optional) - one line per bullet point",
+                      },
+                    ]}
+                    emptyText="No weapon, armor, or tool proficiencies recorded yet."
+                    addButtonLabel="Add Proficiency"
+                    onAdd={handleProficiencyAdd}
+                    onUpdate={handleProficiencyUpdate}
+                    onRemove={handleProficiencyRemove}
+                  />
+                </section>
+
+                <section className="character-sheet__section">
+                  <EditableItemList
+                    title="Features"
+                    items={sheet.features ?? []}
+                    getItemId={(item) => item.index}
+                    fields={[
+                      {
+                        key: "name",
+                        type: "text",
+                        placeholder: "Feature name (e.g. Aura of Protection)",
+                      },
+                      {
+                        key: "description",
+                        type: "textarea",
+                        placeholder:
+                          "Description (optional) - one line per bullet point",
+                      },
+                    ]}
+                    emptyText="No class or racial features recorded yet."
+                    addButtonLabel="Add Feature"
+                    onAdd={handleFeatureAdd}
+                    onUpdate={handleFeatureUpdate}
+                    onRemove={handleFeatureRemove}
+                  />
+                </section>
+
+                <section className="character-sheet__section">
+                  <EditableItemList
                     title="Feats"
                     items={sheet.feats ?? []}
                     getItemId={(item) => item.index}
@@ -848,6 +987,14 @@ function CharacterSheetPage() {
                         })),
                       ],
                     },
+
+                    {
+                      key: "components",
+                      type: "text",
+                      placeholder: "Components (V, S, M)",
+                      width: "large",
+                    },
+
                     {
                       key: "notes",
                       type: "textarea",
@@ -861,9 +1008,16 @@ function CharacterSheetPage() {
                   onUpdate={handleSpellUpdate}
                   onRemove={handleSpellRemove}
                   extraRowContent={(spell) => (
-                    <span className="character-sheet__resource-reset">
-                      {spell.level === 0 ? "Cantrip" : `Level ${spell.level}`}
-                    </span>
+                    <>
+                      <span className="character-sheet__resource-reset">
+                        {spell.level === 0 ? "Cantrip" : `Level ${spell.level}`}
+                      </span>
+                      {spell.components && (
+                        <span className="character-sheet__resource-reset">
+                          {spell.components}
+                        </span>
+                      )}
+                    </>
                   )}
                 />
 

@@ -272,6 +272,14 @@
   width: 80px;
 }
 
+.character-sheet__resource-form-input--medium {
+  width: 130px;
+}
+
+.character-sheet__resource-form-input--large {
+  width: 200px;
+}
+
 .character-sheet__resource-add-button {
   min-height: 40px;
   padding: 0 20px;
