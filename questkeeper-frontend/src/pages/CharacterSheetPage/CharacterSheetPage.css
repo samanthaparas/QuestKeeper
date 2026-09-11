@@ -363,9 +363,10 @@
 
 .character-sheet__stat-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(4, minmax(90px, 160px)) minmax(220px, 1fr);
   gap: 12px;
   margin-bottom: 32px;
+  align-items: start;
 }
 
 .character-sheet__stat-box {
@@ -442,6 +443,25 @@
   font-weight: 700;
   font-size: 20px;
   text-align: center;
+}
+
+.character-sheet__stat-textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 6px;
+  border: 1px solid rgba(217, 164, 65, 0.4);
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.04);
+  color: #f5f1e8;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  resize: none;
+}
+
+.character-sheet__stat-textarea:focus-visible {
+  outline: 2px solid #f1d28a;
+  outline-offset: 2px;
 }
 
 .character-sheet__ability-input {
