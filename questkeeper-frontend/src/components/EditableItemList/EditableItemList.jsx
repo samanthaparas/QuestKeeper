@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useId } from "react";
 import "../../pages/CharacterSheetPage/CharacterSheetPage.css";
 
 function formatNotesLines(notes) {
@@ -65,6 +65,7 @@ function EditableItemList({
   const primaryField = fields[0];
   const textareaField = fields.find((field) => field.type === "textarea");
   const formFields = fields.filter((field) => field.type !== "textarea");
+  const formId = useId();
 
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -164,16 +165,66 @@ function EditableItemList({
     <section className="character-sheet__section">
       <div className="character-sheet__section-header-row">
         <h2 className="character-sheet__section-title">{title}</h2>
-        {!isAdding && (
-          <button
-            type="button"
-            className="character-sheet__resource-add-button"
-            onClick={() => setIsAdding(true)}
-          >
-            {addButtonLabel}
-          </button>
-        )}
+        <div className="character-sheet__section-header-actions">
+          {isAdding && (
+            <button
+              type="button"
+              className="character-sheet__resource-remove"
+              onClick={resetForm}
+            >
+              Cancel
+            </button>
+          )}
+          {isAdding ? (
+            <button
+              type="submit"
+              form={formId}
+              className="character-sheet__resource-add-button"
+            >
+              {editingId ? "Save Changes" : addButtonLabel}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="character-sheet__resource-add-button"
+              onClick={() => setIsAdding(true)}
+            >
+              {addButtonLabel}
+            </button>
+          )}
+        </div>
       </div>
+
+      {isAdding && (
+        <form
+          id={formId}
+          className="character-sheet__attack-form"
+          onSubmit={handleSubmit}
+        >
+          <div className="character-sheet__resource-form">
+            {formFields.map((field) => (
+              <EditableItemField
+                key={field.key}
+                field={field}
+                value={values[field.key]}
+                onChange={(value) => handleFieldChange(field.key, value)}
+              />
+            ))}
+          </div>
+
+          {textareaField && (
+            <textarea
+              className="character-sheet__textarea"
+              placeholder={textareaField.placeholder}
+              value={values[textareaField.key]}
+              onChange={(e) =>
+                handleFieldChange(textareaField.key, e.target.value)
+              }
+              rows={3}
+            />
+          )}
+        </form>
+      )}
 
       {items.length === 0 ? (
         <p className="character-sheet__empty-text">{emptyText}</p>
@@ -257,49 +308,6 @@ function EditableItemList({
             );
           })}
         </ul>
-      )}
-
-      {isAdding && (
-        <form className="character-sheet__attack-form" onSubmit={handleSubmit}>
-          <div className="character-sheet__resource-form">
-            {formFields.map((field) => (
-              <EditableItemField
-                key={field.key}
-                field={field}
-                value={values[field.key]}
-                onChange={(value) => handleFieldChange(field.key, value)}
-              />
-            ))}
-          </div>
-
-          {textareaField && (
-            <textarea
-              className="character-sheet__textarea"
-              placeholder={textareaField.placeholder}
-              value={values[textareaField.key]}
-              onChange={(e) =>
-                handleFieldChange(textareaField.key, e.target.value)
-              }
-              rows={3}
-            />
-          )}
-
-          <div className="character-sheet__attack-form-actions">
-            <button
-              type="button"
-              className="character-sheet__resource-remove"
-              onClick={resetForm}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="character-sheet__resource-add-button"
-            >
-              {editingId ? "Save Changes" : addButtonLabel}
-            </button>
-          </div>
-        </form>
       )}
     </section>
   );
