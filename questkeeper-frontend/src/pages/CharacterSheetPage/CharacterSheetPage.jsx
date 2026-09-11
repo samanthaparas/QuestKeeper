@@ -1071,6 +1071,9 @@ function CharacterSheetPage() {
                           <span className="character-sheet__skill-ability">
                             {ABILITY_ABBREVIATIONS[skill.ability]}
                           </span>
+                          <span className="character-sheet__skill-prof-badge">
+                            {isProficient ? "P" : ""}
+                          </span>
                           <span className="character-sheet__skill-modifier">
                             {formatModifier(modifier)}
                           </span>
