@@ -628,12 +628,12 @@ function CharacterSheetPage() {
               </div>
               <div className="character-sheet__stat-box">
                 <span className="character-sheet__stat-label">Languages</span>
-                <input
-                  type="text"
-                  className="character-sheet__stat-input"
+                <textarea
+                  className="character-sheet__stat-textarea"
                   value={sheet.languages ?? ""}
                   onChange={(e) => handleLanguagesChange(e.target.value)}
-                  placeholder="Common, Infernal"
+                  placeholder={"Common\nInfernal"}
+                  rows={2}
                 />
               </div>
             </section>
