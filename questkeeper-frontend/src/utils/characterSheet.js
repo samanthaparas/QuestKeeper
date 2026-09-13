@@ -413,6 +413,7 @@ export function createEquipmentItem({ name, quantity, description }) {
     name,
     quantity: quantity && quantity > 0 ? quantity : 1,
     description: description || "",
+    attuned: false,
   };
 }
 
@@ -424,6 +425,10 @@ export function updateEquipmentItem(equipment, index, updates) {
   return (equipment ?? []).map((item) =>
     item.index === index ? { ...item, ...updates } : item,
   );
+}
+
+export function getAttunedCount(equipment) {
+  return (equipment ?? []).filter((item) => item.attuned).length;
 }
 
 export function createAttack({ name, toHit, damage, damageType, notes }) {

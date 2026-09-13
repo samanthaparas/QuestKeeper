@@ -19,6 +19,7 @@ import {
   createEquipmentItem,
   updateEquipmentItem,
   removeEquipmentItem,
+  getAttunedCount,
   createAttack,
   removeAttack,
   updateAttack,
@@ -214,6 +215,19 @@ function CharacterSheetPage() {
     persistSheet({
       ...sheet,
       equipment: removeEquipmentItem(sheet.equipment, id),
+    });
+  }
+
+  function handleEquipmentAttuneToggle(id, currentlyAttuned) {
+    if (!currentlyAttuned && getAttunedCount(sheet.equipment) >= 3) {
+      window.alert("You can only attune to 3 items at a time.");
+      return;
+    }
+    persistSheet({
+      ...sheet,
+      equipment: updateEquipmentItem(sheet.equipment, id, {
+        attuned: !currentlyAttuned,
+      }),
     });
   }
 
@@ -818,6 +832,9 @@ function CharacterSheetPage() {
                 </section>
 
                 <section className="character-sheet__section">
+                  <p className="character-sheet__attunement-summary">
+                    Attuned Items: {getAttunedCount(sheet.equipment)} / 3
+                  </p>
                   <EditableItemList
                     title="Equipment"
                     items={sheet.equipment ?? []}
@@ -851,6 +868,21 @@ function CharacterSheetPage() {
                     onAdd={handleEquipmentAdd}
                     onUpdate={handleEquipmentUpdate}
                     onRemove={handleEquipmentRemove}
+                    extraRowContent={(item) => (
+                      <button
+                        type="button"
+                        className={`character-sheet__attune-toggle${
+                          item.attuned
+                            ? " character-sheet__attune-toggle--active"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          handleEquipmentAttuneToggle(item.index, item.attuned)
+                        }
+                      >
+                        {item.attuned ? "★ Attuned" : "☆ Attune"}
+                      </button>
+                    )}
                   />
                 </section>
 
