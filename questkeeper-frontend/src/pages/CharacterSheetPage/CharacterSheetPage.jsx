@@ -40,6 +40,14 @@ function CharacterSheetPage() {
   const [sheet, setSheet] = useState(() => getCharacter(id));
   const [isLevelingUp, setIsLevelingUp] = useState(false);
   const [levelUpSummary, setLevelUpSummary] = useState(null);
+  const [activeSlotLevels, setActiveSlotLevels] = useState(
+    () =>
+      new Set(
+        getSpellSlots(sheet?.spellcasting)
+          .filter((slot) => slot.max > 0)
+          .map((slot) => slot.level),
+      ),
+  );
 
   if (!sheet) {
     return (
@@ -391,6 +399,18 @@ function CharacterSheetPage() {
     persistSheet({
       ...sheet,
       spellcasting: setSpellSlot(sheet.spellcasting, level, field, numeric),
+    });
+  }
+
+  function handleShowSlotLevel(level) {
+    setActiveSlotLevels((prev) => new Set(prev).add(level));
+  }
+
+  function handleHideSlotLevel(level) {
+    setActiveSlotLevels((prev) => {
+      const next = new Set(prev);
+      next.delete(level);
+      return next;
     });
   }
 
@@ -919,47 +939,75 @@ function CharacterSheetPage() {
                   </h2>
 
                   <ul className="character-sheet__spell-slots-grid">
-                    {getSpellSlots(sheet.spellcasting).map((slot) => (
-                      <li
-                        className="character-sheet__spell-slot-card"
-                        key={slot.level}
-                      >
-                        <span className="character-sheet__spell-slot-label">
-                          Level {slot.level}
-                        </span>
-                        <span className="character-sheet__spell-slot-count">
-                          <input
-                            type="number"
-                            className="character-sheet__hp-input character-sheet__hp-input--tiny"
-                            value={slot.current}
-                            onChange={(e) =>
-                              handleSpellSlotChange(
-                                slot.level,
-                                "current",
-                                e.target.value,
-                              )
-                            }
-                            min={0}
-                            max={slot.max}
-                          />
-                          {" / "}
-                          <input
-                            type="number"
-                            className="character-sheet__hp-input character-sheet__hp-input--tiny"
-                            value={slot.max}
-                            onChange={(e) =>
-                              handleSpellSlotChange(
-                                slot.level,
-                                "max",
-                                e.target.value,
-                              )
-                            }
-                            min={0}
-                          />
-                        </span>
-                      </li>
-                    ))}
+                    {getSpellSlots(sheet.spellcasting)
+                      .filter((slot) => activeSlotLevels.has(slot.level))
+                      .map((slot) => (
+                        <li
+                          className="character-sheet__spell-slot-card"
+                          key={slot.level}
+                        >
+                          <span className="character-sheet__spell-slot-label">
+                            Level {slot.level}
+                          </span>
+                          <span className="character-sheet__spell-slot-count">
+                            <input
+                              type="number"
+                              className="character-sheet__hp-input character-sheet__hp-input--tiny"
+                              value={slot.current}
+                              onChange={(e) =>
+                                handleSpellSlotChange(
+                                  slot.level,
+                                  "current",
+                                  e.target.value,
+                                )
+                              }
+                              min={0}
+                              max={slot.max}
+                            />
+                            {" / "}
+                            <input
+                              type="number"
+                              className="character-sheet__hp-input character-sheet__hp-input--tiny"
+                              value={slot.max}
+                              onChange={(e) =>
+                                handleSpellSlotChange(
+                                  slot.level,
+                                  "max",
+                                  e.target.value,
+                                )
+                              }
+                              min={0}
+                            />
+                          </span>
+                          <button
+                            type="button"
+                            className="character-sheet__resource-remove"
+                            onClick={() => handleHideSlotLevel(slot.level)}
+                          >
+                            Hide
+                          </button>
+                        </li>
+                      ))}
                   </ul>
+
+                  {getSpellSlots(sheet.spellcasting).some(
+                    (slot) => !activeSlotLevels.has(slot.level),
+                  ) && (
+                    <div className="character-sheet__resource-form">
+                      {getSpellSlots(sheet.spellcasting)
+                        .filter((slot) => !activeSlotLevels.has(slot.level))
+                        .map((slot) => (
+                          <button
+                            type="button"
+                            key={slot.level}
+                            className="character-sheet__resource-remove"
+                            onClick={() => handleShowSlotLevel(slot.level)}
+                          >
+                            + Level {slot.level}
+                          </button>
+                        ))}
+                    </div>
+                  )}
                 </section>
 
                 <EditableItemList
