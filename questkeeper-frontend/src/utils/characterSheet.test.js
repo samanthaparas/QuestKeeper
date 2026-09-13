@@ -16,6 +16,7 @@ import {
   applyRest,
   createEquipmentItem,
   updateEquipmentItem,
+  getAttunedCount,
   createAttack,
   updateAttack,
   createFeat,
@@ -445,6 +446,23 @@ describe("updateEquipmentItem", () => {
 
     expect(result.find((i) => i.index === "a").quantity).toBe(2);
     expect(result.find((i) => i.index === "b").quantity).toBe(1);
+  });
+});
+
+describe("getAttunedCount", () => {
+  it("counts only items marked as attuned", () => {
+    const equipment = [
+      { index: "a", name: "Ring", attuned: true },
+      { index: "b", name: "Cloak", attuned: false },
+      { index: "c", name: "Amulet", attuned: true },
+    ];
+
+    expect(getAttunedCount(equipment)).toBe(2);
+  });
+
+  it("returns 0 for empty or missing equipment", () => {
+    expect(getAttunedCount([])).toBe(0);
+    expect(getAttunedCount(undefined)).toBe(0);
   });
 });
 
