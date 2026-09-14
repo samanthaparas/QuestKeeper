@@ -1,18 +1,18 @@
+import {
+  resolveEdition,
+  fetchDnd5eList,
+  fetchDnd5eById,
+} from "../utils/dnd5eApiClient.js";
+
 export async function getFeats(req, res, next) {
   try {
-    const response = await fetch("https://www.dnd5eapi.co/api/2014/feats");
-
-    if (!response.ok) {
-      const error = new Error("Unable to retrieve feats.");
-      error.statusCode = response.status;
-      throw error;
-    }
-
-    const data = await response.json();
-
-    res.status(200).json({
-      data: data.results,
-    });
+    const edition = resolveEdition(req.query);
+    const data = await fetchDnd5eList(
+      "feats",
+      edition,
+      "Unable to retrieve feats.",
+    );
+    res.status(200).json({ data });
   } catch (error) {
     next(error);
   }
@@ -21,22 +21,14 @@ export async function getFeats(req, res, next) {
 export async function getFeatById(req, res, next) {
   try {
     const { featId } = req.params;
-
-    const response = await fetch(
-      `https://www.dnd5eapi.co/api/2014/feats/${featId}`,
+    const edition = resolveEdition(req.query);
+    const data = await fetchDnd5eById(
+      "feats",
+      edition,
+      featId,
+      "Unable to retrieve feat details.",
     );
-
-    if (!response.ok) {
-      const error = new Error("Unable to retrieve feat details.");
-      error.statusCode = response.status;
-      throw error;
-    }
-
-    const data = await response.json();
-
-    res.status(200).json({
-      data: data,
-    });
+    res.status(200).json({ data });
   } catch (error) {
     next(error);
   }
