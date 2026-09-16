@@ -25,6 +25,8 @@ import {
   updateFeat,
   updateSpell,
   getSpellcastingAbility,
+  getStartingSpellCounts,
+  buildStartingSpellcasting,
 } from "./characterSheet";
 
 describe("getAbilityModifier", () => {
@@ -625,5 +627,62 @@ describe("updateSpell", () => {
     });
 
     expect(result).toBe(spellcasting);
+  });
+});
+
+describe("getStartingSpellCounts", () => {
+  it("gives known casters the API's cantrips_known and spells_known", () => {
+    expect(
+      getStartingSpellCounts("sorcerer", {
+        cantrips_known: 4,
+        spells_known: 2,
+      }),
+    ).toEqual({ cantrips: 4, spells: 2 });
+  });
+
+  it("gives the wizard a fixed 6-spell spellbook regardless of spells_known", () => {
+    expect(getStartingSpellCounts("wizard", { cantrips_known: 3 })).toEqual({
+      cantrips: 3,
+      spells: 6,
+    });
+  });
+
+  it("gives prepared casters like cleric/druid cantrips only, no fixed spell list", () => {
+    expect(getStartingSpellCounts("cleric", { cantrips_known: 3 })).toEqual({
+      cantrips: 3,
+      spells: 0,
+    });
+  });
+
+  it("returns zero for classes with no starting spellcasting at level 1", () => {
+    expect(
+      getStartingSpellCounts("paladin", { spell_slots_level_1: 0 }),
+    ).toEqual({ cantrips: 0, spells: 0 });
+  });
+
+  it("returns zero when there is no level-one spellcasting data at all", () => {
+    expect(getStartingSpellCounts("fighter", null)).toEqual({
+      cantrips: 0,
+      spells: 0,
+    });
+  });
+});
+
+describe("buildStartingSpellcasting", () => {
+  it("builds cantripsKnown/spellsKnown entries from the chosen spell objects", () => {
+    const result = buildStartingSpellcasting(
+      "wizard",
+      [{ index: "fire-bolt", name: "Fire Bolt", level: 0 }],
+      [{ index: "magic-missile", name: "Magic Missile", level: 1 }],
+    );
+
+    expect(result.type).toBe("prepared");
+    expect(result.cantripsKnown).toHaveLength(1);
+    expect(result.cantripsKnown[0].name).toBe("Fire Bolt");
+    expect(result.spellsKnown[0].name).toBe("Magic Missile");
+  });
+
+  it("returns null for a class with no spellcasting type", () => {
+    expect(buildStartingSpellcasting("fighter", [], [])).toBeNull();
   });
 });

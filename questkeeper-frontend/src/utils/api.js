@@ -81,3 +81,10 @@ export function getClassSpells(classId) {
     `Failed to fetch spell list for class ${classId}:`,
   );
 }
+
+export function getClassLevel(classId, level) {
+  return requestJson(
+    `/classes/${encodeURIComponent(classId)}/levels/${encodeURIComponent(level)}`,
+    `Failed to fetch level ${level} details for class ${classId}:`,
+  );
+}
