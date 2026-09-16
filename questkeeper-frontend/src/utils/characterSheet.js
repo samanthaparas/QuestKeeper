@@ -67,6 +67,40 @@ export function getSpellcastingAbility(classId) {
   return SPELLCASTING_BY_CLASS[classId]?.ability ?? null;
 }
 
+export function getStartingSpellCounts(classId, levelOneSpellcasting) {
+  const cantrips = levelOneSpellcasting?.cantrips_known ?? 0;
+  if (cantrips === 0) return { cantrips: 0, spells: 0 };
+
+  if (classId === "wizard") return { cantrips, spells: 6 };
+  if (getSpellcastingType(classId) === "prepared")
+    return { cantrips, spells: 0 };
+
+  return { cantrips, spells: levelOneSpellcasting?.spells_known ?? 0 };
+}
+
+export function buildStartingSpellcasting(
+  classId,
+  chosenCantrips,
+  chosenSpells,
+) {
+  const type = getSpellcastingType(classId);
+  if (!type) return null;
+
+  const toEntry = (spell) => ({
+    index: spell.index,
+    name: spell.name,
+    level: spell.level,
+    notes: "",
+    components: "",
+  });
+
+  return {
+    type,
+    cantripsKnown: chosenCantrips.map(toEntry),
+    spellsKnown: chosenSpells.map(toEntry),
+  };
+}
+
 export function getAbilityModifier(score) {
   return Math.floor((score - 10) / 2);
 }
