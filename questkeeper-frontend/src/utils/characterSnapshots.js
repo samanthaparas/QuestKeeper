@@ -1,3 +1,5 @@
+import { getSpellcastingType, getSpellcastingAbility } from "./characterSheet";
+
 const ABILITY_ABBREVIATION_TO_NAME = {
   STR: "strength",
   DEX: "dexterity",
@@ -7,14 +9,14 @@ const ABILITY_ABBREVIATION_TO_NAME = {
   CHA: "charisma",
 };
 
-const PREPARED_CASTER_CLASSES = ["cleric", "druid", "paladin", "wizard"];
-const KNOWN_CASTER_CLASSES = ["bard", "ranger", "sorcerer", "warlock"];
+// const PREPARED_CASTER_CLASSES = ["cleric", "druid", "paladin", "wizard"];
+// const KNOWN_CASTER_CLASSES = ["bard", "ranger", "sorcerer", "warlock"];
 
-function getSpellcastingType(classIndex) {
-  if (PREPARED_CASTER_CLASSES.includes(classIndex)) return "prepared";
-  if (KNOWN_CASTER_CLASSES.includes(classIndex)) return "known";
-  return null;
-}
+// function getSpellcastingType(classIndex) {
+//   if (PREPARED_CASTER_CLASSES.includes(classIndex)) return "prepared";
+//   if (KNOWN_CASTER_CLASSES.includes(classIndex)) return "known";
+//   return null;
+// }
 
 function mapStartingEquipment(raw) {
   return (raw.starting_equipment ?? []).map((item) => ({
@@ -74,6 +76,7 @@ export function mapClassToSnapshot(raw) {
     spellcastingType: getSpellcastingType(raw.index),
     skillChoice,
     startingEquipment: mapStartingEquipment(raw),
+    spellcastingAbility: getSpellcastingAbility(raw.index),
   };
 }
 

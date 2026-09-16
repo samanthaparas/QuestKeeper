@@ -5,6 +5,8 @@ import {
   applyRaceBonuses,
   getStartingHitPoints,
   getStartingArmorClass,
+  getSpellSaveDC,
+  getSpellAttackModifier,
   applyAbilityScoreChoice,
   finalizeLevelUp,
   buildLevelUpSummary,
@@ -22,6 +24,7 @@ import {
   createFeat,
   updateFeat,
   updateSpell,
+  getSpellcastingAbility,
 } from "./characterSheet";
 
 describe("getAbilityModifier", () => {
@@ -58,6 +61,31 @@ describe("getStartingArmorClass", () => {
   it("is 10 plus the DEX modifier", () => {
     expect(getStartingArmorClass(3)).toBe(13);
     expect(getStartingArmorClass(-1)).toBe(9);
+  });
+});
+
+describe("getSpellSaveDC", () => {
+  it("is 8 plus proficiency bonus plus ability modifier", () => {
+    expect(getSpellSaveDC(16, 2)).toBe(13); // +3 mod, +2 prof
+    expect(getSpellSaveDC(20, 6)).toBe(19); // +5 mod, +6 prof
+  });
+});
+
+describe("getSpellAttackModifier", () => {
+  it("is proficiency bonus plus ability modifier", () => {
+    expect(getSpellAttackModifier(16, 2)).toBe(5);
+    expect(getSpellAttackModifier(8, 3)).toBe(2);
+  });
+});
+
+describe("getSpellcastingAbility", () => {
+  it("returns the right ability for known caster classes", () => {
+    expect(getSpellcastingAbility("wizard")).toBe("intelligence");
+    expect(getSpellcastingAbility("paladin")).toBe("charisma");
+  });
+
+  it("returns null for non-caster classes", () => {
+    expect(getSpellcastingAbility("fighter")).toBeNull();
   });
 });
 
