@@ -53,6 +53,23 @@ function CharacterSheetPage() {
       ),
   );
 
+  const [loadedId, setLoadedId] = useState(id);
+
+  if (id !== loadedId) {
+    const loaded = getCharacter(id);
+    setLoadedId(id);
+    setSheet(loaded);
+    setIsLevelingUp(false);
+    setLevelUpSummary(null);
+    setActiveSlotLevels(
+      new Set(
+        getSpellSlots(loaded?.spellcasting)
+          .filter((slot) => slot.max > 0)
+          .map((slot) => slot.level),
+      ),
+    );
+  }
+
   if (!sheet) {
     return (
       <main className="character-sheet character-sheet--empty">
