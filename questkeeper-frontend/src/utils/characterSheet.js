@@ -48,12 +48,39 @@ export const ABILITY_LABELS = {
   charisma: "Charisma",
 };
 
+export const SPELLCASTING_BY_CLASS = {
+  bard: { type: "known", ability: "charisma" },
+  cleric: { type: "prepared", ability: "wisdom" },
+  druid: { type: "prepared", ability: "wisdom" },
+  paladin: { type: "prepared", ability: "charisma" },
+  ranger: { type: "known", ability: "wisdom" },
+  sorcerer: { type: "known", ability: "charisma" },
+  warlock: { type: "known", ability: "charisma" },
+  wizard: { type: "prepared", ability: "intelligence" },
+};
+
+export function getSpellcastingType(classId) {
+  return SPELLCASTING_BY_CLASS[classId]?.type ?? null;
+}
+
+export function getSpellcastingAbility(classId) {
+  return SPELLCASTING_BY_CLASS[classId]?.ability ?? null;
+}
+
 export function getAbilityModifier(score) {
   return Math.floor((score - 10) / 2);
 }
 
 export function getSkillModifier(score, isProficient, proficiencyBonus) {
   return getAbilityModifier(score) + (isProficient ? proficiencyBonus : 0);
+}
+
+export function getSpellSaveDC(abilityScore, proficiencyBonus) {
+  return 8 + proficiencyBonus + getAbilityModifier(abilityScore);
+}
+
+export function getSpellAttackModifier(abilityScore, proficiencyBonus) {
+  return proficiencyBonus + getAbilityModifier(abilityScore);
 }
 
 export function formatModifier(mod) {

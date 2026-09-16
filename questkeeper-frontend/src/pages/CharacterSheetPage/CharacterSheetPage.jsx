@@ -8,6 +8,9 @@ import {
   getAbilityModifier,
   getSkillModifier,
   getProficiencyBonus,
+  getSpellcastingAbility,
+  getSpellSaveDC,
+  getSpellAttackModifier,
   formatModifier,
   buildLevelUpSummary,
   createResource,
@@ -430,6 +433,8 @@ function CharacterSheetPage() {
 
   const proficiencyBonus = getProficiencyBonus(sheet.level);
   const { combat } = sheet;
+  const spellcastingAbility =
+    sheet.class?.spellcastingAbility ?? getSpellcastingAbility(sheet.class?.id);
 
   return (
     <main className="character-sheet">
@@ -762,6 +767,48 @@ function CharacterSheetPage() {
                   onUpdate={handleAttackUpdate}
                   onRemove={handleAttackRemove}
                 />
+
+                {spellcastingAbility && (
+                  <section className="character-sheet__section">
+                    <h2 className="character-sheet__section-title">
+                      Spellcasting
+                    </h2>
+                    <div className="character-sheet__hero-row">
+                      <div className="character-sheet__stat-box">
+                        <span className="character-sheet__stat-label">
+                          Spellcasting Ability
+                        </span>
+                        <span className="character-sheet__stat-value">
+                          {ABILITY_ABBREVIATIONS[spellcastingAbility]}
+                        </span>
+                      </div>
+                      <div className="character-sheet__stat-box">
+                        <span className="character-sheet__stat-label">
+                          Spell Save DC
+                        </span>
+                        <span className="character-sheet__stat-value">
+                          {getSpellSaveDC(
+                            sheet.abilityScores[spellcastingAbility],
+                            proficiencyBonus,
+                          )}
+                        </span>
+                      </div>
+                      <div className="character-sheet__stat-box">
+                        <span className="character-sheet__stat-label">
+                          Spell Attack
+                        </span>
+                        <span className="character-sheet__stat-value">
+                          {formatModifier(
+                            getSpellAttackModifier(
+                              sheet.abilityScores[spellcastingAbility],
+                              proficiencyBonus,
+                            ),
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </section>
+                )}
 
                 <section className="character-sheet__section">
                   <EditableItemList
