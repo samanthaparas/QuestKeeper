@@ -88,3 +88,17 @@ export function getClassLevel(classId, level) {
     `Failed to fetch level ${level} details for class ${classId}:`,
   );
 }
+
+export function getSubraceDetails(subraceId) {
+  return requestJson(
+    `/subraces/${encodeURIComponent(subraceId)}`,
+    `Failed to fetch subrace details for ID ${subraceId}:`,
+  );
+}
+
+export function getSubclassDetails(subclassId) {
+  return requestJson(
+    `/subclasses/${encodeURIComponent(subclassId)}`,
+    `Failed to fetch subclass details for ID ${subclassId}:`,
+  );
+}

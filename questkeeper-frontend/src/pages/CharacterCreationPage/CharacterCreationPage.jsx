@@ -7,11 +7,15 @@ import {
   getClassDetails,
   getBackgrounds,
   getBackgroundDetails,
+  getSubraceDetails,
+  getSubclassDetails,
 } from "../../utils/api";
 import {
   mapRaceToSnapshot,
   mapClassToSnapshot,
   mapBackgroundToSnapshot,
+  mapSubraceToSnapshot,
+  mapSubclassToSnapshot,
 } from "../../utils/characterSnapshots";
 import {
   createCharacterSheet,
@@ -20,6 +24,8 @@ import {
   getStartingHitPoints,
   getStartingArmorClass,
   buildStartingSpellcasting,
+  mergeSubrace,
+  LEVEL_ONE_SUBCLASS_CLASSES,
 } from "../../utils/characterSheet";
 import { saveCharacter } from "../../utils/characterStore";
 import PickerStep from "../../components/PickerStep/PickerStep";
@@ -31,7 +37,9 @@ import ClassSpellChoiceStep from "../../components/ClassSpellChoiceStep/ClassSpe
 const STEPS = [
   "name",
   "race",
+  "subrace",
   "class",
+  "subclass",
   "classSkills",
   "classSpells",
   "background",
@@ -77,6 +85,29 @@ function mapClassToDetailPanelResult(data) {
   };
 }
 
+function mapSubraceToDetailPanelResult(data) {
+  const abilityBonuses = data.ability_bonuses
+    .map((ability) => `${ability.ability_score.name} +${ability.bonus}`)
+    .join(", ");
+
+  return {
+    name: data.name,
+    category: "Subrace",
+    description: data.desc,
+    abilityBonuses,
+    traits: data.racial_traits.map((trait) => trait.name),
+  };
+}
+
+function mapSubclassToDetailPanelResult(data) {
+  return {
+    name: data.name,
+    category: "Subclass",
+    description: data.desc.join(" "),
+    flavor: data.subclass_flavor,
+  };
+}
+
 function mapBackgroundToDetailPanelResult(data) {
   const startingProficiencies = data.starting_proficiencies.map(
     (item) => item.name,
@@ -115,6 +146,13 @@ function CharacterCreationPage() {
   const [classRaw, setClassRaw] = useState(null);
   const [backgroundRaw, setBackgroundRaw] = useState(null);
   const [abilityAssignments, setAbilityAssignments] = useState(null);
+  const [subrace, setSubrace] = useState(null);
+  const [subraceRaw, setSubraceRaw] = useState(null);
+  const [subclass, setSubclass] = useState(null);
+  const [subclassRaw, setSubclassRaw] = useState(null);
+
+  const finalRace = mergeSubrace(race, subrace);
+
   const step = STEPS[stepIndex];
 
   function goToStep(index) {
@@ -126,6 +164,10 @@ function CharacterCreationPage() {
     const dexModifier = getAbilityModifier(abilityScores.dexterity);
     const hitDie = characterClass?.hitDie ?? 8;
     const maxHitPoints = getStartingHitPoints(hitDie, conModifier);
+
+    const finalClass = subclass
+      ? { ...characterClass, subclass }
+      : characterClass;
 
     const savingThrows = ABILITY_SCORES.reduce((acc, ability) => {
       acc[ability] =
@@ -154,8 +196,8 @@ function CharacterCreationPage() {
 
     const sheet = createCharacterSheet({
       name,
-      race,
-      class: characterClass,
+      race: finalRace,
+      class: finalClass,
       background,
       abilityScores,
       savingThrows,
@@ -165,7 +207,7 @@ function CharacterCreationPage() {
       combat: {
         armorClass: getStartingArmorClass(dexModifier),
         initiative: dexModifier,
-        speed: race?.speed ?? 30,
+        speed: finalRace?.speed ?? 30,
         hitPoints: { max: maxHitPoints, current: maxHitPoints, temporary: 0 },
         hitDice: { total: 1, remaining: 1, die: hitDie },
         hpHistory: [],
@@ -232,8 +274,32 @@ function CharacterCreationPage() {
             onChoose={(snapshot, raw) => {
               setRace(snapshot);
               setRaceRaw(raw);
+              setSubrace(null);
+              setSubraceRaw(null);
               goToStep(stepIndex + 1);
             }}
+            onBack={() => goToStep(stepIndex - 1)}
+            backLabel="Back"
+          />
+        )}
+
+        {step === "subrace" && (
+          <PickerStep
+            title="Choose a Subrace"
+            description={`${race?.name ?? "Your race"} has specific variants with their own traits and bonuses.`}
+            category="Subrace"
+            fetchList={() => Promise.resolve(raceRaw?.subraces ?? [])}
+            fetchDetails={getSubraceDetails}
+            mapToDetailPanelResult={mapSubraceToDetailPanelResult}
+            mapToSnapshot={mapSubraceToSnapshot}
+            initialSelectedRaw={subraceRaw}
+            emptyMessage={`${race?.name ?? "This race"} has no subraces to choose from.`}
+            onChoose={(snapshot, raw) => {
+              setSubrace(snapshot);
+              setSubraceRaw(raw);
+              goToStep(stepIndex + 1);
+            }}
+            onSkip={() => goToStep(stepIndex + 1)}
             onBack={() => goToStep(stepIndex - 1)}
             backLabel="Back"
           />
@@ -254,8 +320,42 @@ function CharacterCreationPage() {
               setClassRaw(raw);
               setClassSkills([]);
               setSpellChoices(null);
+              setSubclass(null);
+              setSubclassRaw(null);
               goToStep(stepIndex + 1);
             }}
+            onBack={() => goToStep(stepIndex - 1)}
+            backLabel="Back"
+          />
+        )}
+
+        {step === "subclass" && (
+          <PickerStep
+            title="Choose a Subclass"
+            description={
+              LEVEL_ONE_SUBCLASS_CLASSES.includes(characterClass?.id)
+                ? `${characterClass?.name ?? "Your class"}'s specialization shapes how you play. Pick one now.`
+                : `${characterClass?.name ?? "This class"} chooses a subclass later as you level up, not at creation.`
+            }
+            category="Subclass"
+            fetchList={() =>
+              Promise.resolve(
+                LEVEL_ONE_SUBCLASS_CLASSES.includes(characterClass?.id)
+                  ? (classRaw?.subclasses ?? [])
+                  : [],
+              )
+            }
+            fetchDetails={getSubclassDetails}
+            mapToDetailPanelResult={mapSubclassToDetailPanelResult}
+            mapToSnapshot={mapSubclassToSnapshot}
+            initialSelectedRaw={subclassRaw}
+            emptyMessage={`${characterClass?.name ?? "This class"} chooses a subclass later as you level up, not at creation.`}
+            onChoose={(snapshot, raw) => {
+              setSubclass(snapshot);
+              setSubclassRaw(raw);
+              goToStep(stepIndex + 1);
+            }}
+            onSkip={() => goToStep(stepIndex + 1)}
             onBack={() => goToStep(stepIndex - 1)}
             backLabel="Back"
           />
@@ -308,7 +408,7 @@ function CharacterCreationPage() {
 
         {step === "abilities" && (
           <AbilityScoreStep
-            race={race}
+            race={finalRace}
             initialAssignments={abilityAssignments?.assignments}
             initialChosenBonusAbilities={
               abilityAssignments?.chosenBonusAbilities
@@ -334,11 +434,12 @@ function CharacterCreationPage() {
               </li>
 
               <li>
-                <strong>Race:</strong> {race?.name ?? "Not chosen"}
+                <strong>Race:</strong> {finalRace?.name ?? "Not chosen"}
               </li>
 
               <li>
                 <strong>Class:</strong> {characterClass?.name ?? "Not chosen"}
+                {subclass ? ` (${subclass.name})` : ""}
               </li>
 
               <li>

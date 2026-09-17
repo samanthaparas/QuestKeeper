@@ -5,6 +5,8 @@ import classesRouter from "./routes/classes.js";
 import racesRouter from "./routes/races.js";
 import backgroundsRouter from "./routes/backgrounds.js";
 import featsRouter from "./routes/feats.js";
+import subracesRouter from "./routes/subraces.js";
+import subclassesRouter from "./routes/subclasses.js";
 
 const app = express();
 
@@ -22,6 +24,8 @@ app.use("/api/classes", classesRouter);
 app.use("/api/races", racesRouter);
 app.use("/api/backgrounds", backgroundsRouter);
 app.use("/api/feats", featsRouter);
+app.use("/api/subraces", subracesRouter);
+app.use("/api/subclasses", subclassesRouter);
 
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({
