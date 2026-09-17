@@ -3,15 +3,23 @@ import { getClassSpells, getClassLevel } from "../../utils/api";
 import { getStartingSpellCounts } from "../../utils/characterSheet";
 import "./ClassSpellChoiceStep.css";
 
-function ClassSpellChoiceStep({ characterClass, onNext, onBack }) {
+function ClassSpellChoiceStep({
+  characterClass,
+  initialCantrips,
+  initialSpells,
+  onNext,
+  onBack,
+}) {
   const isCaster = Boolean(characterClass?.spellcastingType);
 
   const [classSpells, setClassSpells] = useState([]);
   const [spellCounts, setSpellCounts] = useState({ cantrips: 0, spells: 0 });
   const [isLoading, setIsLoading] = useState(isCaster);
   const [error, setError] = useState("");
-  const [chosenCantrips, setChosenCantrips] = useState([]);
-  const [chosenSpells, setChosenSpells] = useState([]);
+  const [chosenCantrips, setChosenCantrips] = useState(
+    () => initialCantrips ?? [],
+  );
+  const [chosenSpells, setChosenSpells] = useState(() => initialSpells ?? []);
 
   useEffect(() => {
     if (!isCaster) return;

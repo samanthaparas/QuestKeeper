@@ -1,9 +1,14 @@
 import { useState } from "react";
 import "./ClassSkillChoiceStep.css";
 
-function ClassSkillChoiceStep({ characterClass, onNext, onBack }) {
+function ClassSkillChoiceStep({
+  characterClass,
+  initialSelected,
+  onNext,
+  onBack,
+}) {
   const skillChoice = characterClass?.skillChoice;
-  const [chosenSkills, setChosenSkills] = useState([]);
+  const [chosenSkills, setChosenSkills] = useState(() => initialSelected ?? []);
 
   const maxChoices = skillChoice?.choose ?? 0;
   const isComplete = chosenSkills.length === maxChoices;

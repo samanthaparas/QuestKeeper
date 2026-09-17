@@ -19,9 +19,19 @@ function createEmptyAssignments() {
   }, {});
 }
 
-function AbilityScoreStep({ race, onNext, onBack }) {
-  const [assignments, setAssignments] = useState(createEmptyAssignments);
-  const [chosenBonusAbilities, setChosenBonusAbilities] = useState([]);
+function AbilityScoreStep({
+  race,
+  initialAssignments,
+  initialChosenBonusAbilities,
+  onNext,
+  onBack,
+}) {
+  const [assignments, setAssignments] = useState(
+    () => initialAssignments ?? createEmptyAssignments(),
+  );
+  const [chosenBonusAbilities, setChosenBonusAbilities] = useState(
+    () => initialChosenBonusAbilities ?? [],
+  );
 
   const usedValues = Object.values(assignments).filter((v) => v !== null);
   const finalScores = applyRaceBonuses(assignments, race, chosenBonusAbilities);
@@ -149,7 +159,9 @@ function AbilityScoreStep({ race, onNext, onBack }) {
           className="ability-score-step__next-button"
           type="button"
           disabled={!isComplete}
-          onClick={() => onNext(finalScores)}
+          onClick={() =>
+            onNext(finalScores, { assignments, chosenBonusAbilities })
+          }
         >
           Next
         </button>

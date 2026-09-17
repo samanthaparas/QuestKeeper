@@ -11,6 +11,7 @@ function PickerStep({
   fetchDetails,
   mapToDetailPanelResult,
   mapToSnapshot,
+  initialSelectedRaw,
   onChoose,
   onBack,
   backLabel,
@@ -18,9 +19,15 @@ function PickerStep({
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(null);
-  const [selectedDetail, setSelectedDetail] = useState(null);
-  const [selectedRaw, setSelectedRaw] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(
+    () => initialSelectedRaw?.index ?? null,
+  );
+  const [selectedDetail, setSelectedDetail] = useState(() =>
+    initialSelectedRaw ? mapToDetailPanelResult(initialSelectedRaw) : null,
+  );
+  const [selectedRaw, setSelectedRaw] = useState(
+    () => initialSelectedRaw ?? null,
+  );
   const [isDetailLoading, setIsDetailLoading] = useState(false);
 
   useEffect(() => {
@@ -50,7 +57,7 @@ function PickerStep({
   }
 
   function handleConfirm() {
-    onChoose(mapToSnapshot(selectedRaw));
+    onChoose(mapToSnapshot(selectedRaw), selectedRaw);
   }
 
   return (
