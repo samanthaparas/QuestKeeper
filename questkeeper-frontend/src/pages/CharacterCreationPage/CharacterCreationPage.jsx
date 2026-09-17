@@ -111,7 +111,10 @@ function CharacterCreationPage() {
   const [abilityScores, setAbilityScores] = useState(null);
   const [classSkills, setClassSkills] = useState([]);
   const [spellChoices, setSpellChoices] = useState(null);
-
+  const [raceRaw, setRaceRaw] = useState(null);
+  const [classRaw, setClassRaw] = useState(null);
+  const [backgroundRaw, setBackgroundRaw] = useState(null);
+  const [abilityAssignments, setAbilityAssignments] = useState(null);
   const step = STEPS[stepIndex];
 
   function goToStep(index) {
@@ -225,8 +228,10 @@ function CharacterCreationPage() {
             fetchDetails={getRaceDetails}
             mapToDetailPanelResult={mapRaceToDetailPanelResult}
             mapToSnapshot={mapRaceToSnapshot}
-            onChoose={(snapshot) => {
+            initialSelectedRaw={raceRaw}
+            onChoose={(snapshot, raw) => {
               setRace(snapshot);
+              setRaceRaw(raw);
               goToStep(stepIndex + 1);
             }}
             onBack={() => goToStep(stepIndex - 1)}
@@ -243,8 +248,12 @@ function CharacterCreationPage() {
             fetchDetails={getClassDetails}
             mapToDetailPanelResult={mapClassToDetailPanelResult}
             mapToSnapshot={mapClassToSnapshot}
-            onChoose={(snapshot) => {
+            initialSelectedRaw={classRaw}
+            onChoose={(snapshot, raw) => {
               setCharacterClass(snapshot);
+              setClassRaw(raw);
+              setClassSkills([]);
+              setSpellChoices(null);
               goToStep(stepIndex + 1);
             }}
             onBack={() => goToStep(stepIndex - 1)}
@@ -255,6 +264,7 @@ function CharacterCreationPage() {
         {step === "classSkills" && (
           <ClassSkillChoiceStep
             characterClass={characterClass}
+            initialSelected={classSkills.map((s) => s.index)}
             onNext={(selected) => {
               setClassSkills(selected);
               goToStep(stepIndex + 1);
@@ -266,6 +276,8 @@ function CharacterCreationPage() {
         {step === "classSpells" && (
           <ClassSpellChoiceStep
             characterClass={characterClass}
+            initialCantrips={(spellChoices?.cantrips ?? []).map((s) => s.index)}
+            initialSpells={(spellChoices?.spells ?? []).map((s) => s.index)}
             onNext={(choices) => {
               setSpellChoices(choices);
               goToStep(stepIndex + 1);
@@ -283,8 +295,10 @@ function CharacterCreationPage() {
             fetchDetails={getBackgroundDetails}
             mapToDetailPanelResult={mapBackgroundToDetailPanelResult}
             mapToSnapshot={mapBackgroundToSnapshot}
-            onChoose={(snapshot) => {
+            initialSelectedRaw={backgroundRaw}
+            onChoose={(snapshot, raw) => {
               setBackground(snapshot);
+              setBackgroundRaw(raw);
               goToStep(stepIndex + 1);
             }}
             onBack={() => goToStep(stepIndex - 1)}
@@ -295,8 +309,13 @@ function CharacterCreationPage() {
         {step === "abilities" && (
           <AbilityScoreStep
             race={race}
-            onNext={(scores) => {
+            initialAssignments={abilityAssignments?.assignments}
+            initialChosenBonusAbilities={
+              abilityAssignments?.chosenBonusAbilities
+            }
+            onNext={(scores, raw) => {
               setAbilityScores(scores);
+              setAbilityAssignments(raw);
               goToStep(stepIndex + 1);
             }}
             onBack={() => goToStep(stepIndex - 1)}
