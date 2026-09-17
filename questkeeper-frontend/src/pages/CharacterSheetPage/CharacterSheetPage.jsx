@@ -519,8 +519,11 @@ function CharacterSheetPage() {
               <h1 className="character-sheet__title">{sheet.name}</h1>
               <p className="character-sheet__subtitle">
                 Level {sheet.level} {sheet.race?.name ?? "No race"}{" "}
-                {sheet.class?.name ?? "No class"} ·{" "}
-                {sheet.background?.name ?? "No background"}
+                {sheet.class?.name ?? "No class"}
+                {sheet.class?.subclass?.name
+                  ? ` (${sheet.class.subclass.name})`
+                  : ""}{" "}
+                · {sheet.background?.name ?? "No background"}
               </p>
             </header>
 

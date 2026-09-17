@@ -59,6 +59,8 @@ export const SPELLCASTING_BY_CLASS = {
   wizard: { type: "prepared", ability: "intelligence" },
 };
 
+export const LEVEL_ONE_SUBCLASS_CLASSES = ["cleric", "sorcerer", "warlock"];
+
 export function getSpellcastingType(classId) {
   return SPELLCASTING_BY_CLASS[classId]?.type ?? null;
 }
@@ -146,6 +148,26 @@ export function applyRaceBonuses(baseScores, race, chosenAbilities = []) {
   }
 
   return result;
+}
+
+export function mergeSubrace(race, subrace) {
+  if (!subrace) return race;
+
+  const abilityScoreIncreases = { ...race.abilityScoreIncreases };
+  for (const [ability, bonus] of Object.entries(
+    subrace.abilityScoreIncreases,
+  )) {
+    abilityScoreIncreases[ability] =
+      (abilityScoreIncreases[ability] ?? 0) + bonus;
+  }
+
+  return {
+    ...race,
+    name: subrace.name,
+    subrace: { id: subrace.id, name: subrace.name },
+    abilityScoreIncreases,
+    traits: [...(race.traits ?? []), ...(subrace.traits ?? [])],
+  };
 }
 
 export function getStartingHitPoints(hitDie, conModifier) {

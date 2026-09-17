@@ -12,7 +12,9 @@ function PickerStep({
   mapToDetailPanelResult,
   mapToSnapshot,
   initialSelectedRaw,
+  emptyMessage,
   onChoose,
+  onSkip,
   onBack,
   backLabel,
 }) {
@@ -60,6 +62,9 @@ function PickerStep({
     onChoose(mapToSnapshot(selectedRaw), selectedRaw);
   }
 
+  const showEmptyState =
+    !isLoading && !apiError && items.length === 0 && Boolean(emptyMessage);
+
   return (
     <div className="picker-step">
       <h2 className="picker-step__title">{title}</h2>
@@ -67,40 +72,53 @@ function PickerStep({
 
       {isLoading && <p className="picker-step__status">Loading options...</p>}
       {apiError && <p className="picker-step__error">{apiError}</p>}
+      {showEmptyState && <p className="picker-step__status">{emptyMessage}</p>}
 
-      <div className="picker-step__layout">
-        <div className="picker-step__list">
-          {items.map((item) => (
-            <ResultCard
-              key={item.index}
-              result={{ name: item.name, category }}
-              isSelected={selectedIndex === item.index}
-              onClick={() => handleSelect(item)}
+      {!isLoading && !apiError && !showEmptyState && (
+        <div className="picker-step__layout">
+          <div className="picker-step__list">
+            {items.map((item) => (
+              <ResultCard
+                key={item.index}
+                result={{ name: item.name, category }}
+                isSelected={selectedIndex === item.index}
+                onClick={() => handleSelect(item)}
+              />
+            ))}
+          </div>
+
+          <div className="picker-step__detail">
+            {isDetailLoading && (
+              <p className="picker-step__status">Loading details...</p>
+            )}
+
+            <DetailPanel
+              selectedResult={selectedDetail}
+              actions={
+                selectedDetail && !isDetailLoading ? (
+                  <button
+                    className="picker-step__confirm-button"
+                    type="button"
+                    onClick={handleConfirm}
+                  >
+                    Choose {selectedDetail.name}
+                  </button>
+                ) : null
+              }
             />
-          ))}
+          </div>
         </div>
+      )}
 
-        <div className="picker-step__detail">
-          {isDetailLoading && (
-            <p className="picker-step__status">Loading details...</p>
-          )}
-
-          <DetailPanel
-            selectedResult={selectedDetail}
-            actions={
-              selectedDetail && !isDetailLoading ? (
-                <button
-                  className="picker-step__confirm-button"
-                  type="button"
-                  onClick={handleConfirm}
-                >
-                  Choose {selectedDetail.name}
-                </button>
-              ) : null
-            }
-          />
-        </div>
-      </div>
+      {showEmptyState && (
+        <button
+          className="picker-step__skip-button"
+          type="button"
+          onClick={onSkip}
+        >
+          Next
+        </button>
+      )}
 
       <button
         className="picker-step__back-button"

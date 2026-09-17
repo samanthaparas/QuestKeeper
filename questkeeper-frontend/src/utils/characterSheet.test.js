@@ -27,6 +27,7 @@ import {
   getSpellcastingAbility,
   getStartingSpellCounts,
   buildStartingSpellcasting,
+  mergeSubrace,
 } from "./characterSheet";
 
 describe("getAbilityModifier", () => {
@@ -136,6 +137,36 @@ describe("applyRaceBonuses", () => {
     expect(result.charisma).toBe(10);
     expect(result.strength).toBe(16);
     expect(result.wisdom).toBe(11);
+  });
+});
+
+describe("mergeSubrace", () => {
+  it("merges the subrace's ability bonuses on top of the base race's", () => {
+    const race = {
+      name: "Elf",
+      abilityScoreIncreases: { dexterity: 2 },
+      traits: ["Darkvision"],
+    };
+    const subrace = {
+      id: "high-elf",
+      name: "High Elf",
+      abilityScoreIncreases: { intelligence: 1 },
+      traits: ["High Elf Cantrip"],
+    };
+
+    const result = mergeSubrace(race, subrace);
+
+    expect(result.name).toBe("High Elf");
+    expect(result.abilityScoreIncreases).toEqual({
+      dexterity: 2,
+      intelligence: 1,
+    });
+    expect(result.traits).toEqual(["Darkvision", "High Elf Cantrip"]);
+  });
+
+  it("returns the race unchanged when there is no subrace", () => {
+    const race = { name: "Human", abilityScoreIncreases: {} };
+    expect(mergeSubrace(race, null)).toBe(race);
   });
 });
 

@@ -145,6 +145,30 @@ function DetailPanel({ selectedResult, actions }) {
         </>
       )}
 
+      {selectedResult.category === "Subrace" && (
+        <>
+          <p>
+            <strong>Ability Bonuses:</strong> {selectedResult.abilityBonuses}
+          </p>
+
+          <p>
+            <strong>Traits:</strong>
+          </p>
+
+          <ul className="detail-panel__list">
+            {selectedResult.traits?.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {selectedResult.category === "Subclass" && (
+        <p>
+          <strong>{selectedResult.flavor}</strong>
+        </p>
+      )}
+
       {selectedResult.category === "Spell" && (
         <>
           {selectedResult.level !== undefined && (

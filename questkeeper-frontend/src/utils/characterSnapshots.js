@@ -93,3 +93,26 @@ export function mapBackgroundToSnapshot(raw) {
     startingEquipment: mapStartingEquipment(raw),
   };
 }
+
+export function mapSubraceToSnapshot(raw) {
+  const abilityScoreIncreases = raw.ability_bonuses.reduce((acc, item) => {
+    const abilityName = ABILITY_ABBREVIATION_TO_NAME[item.ability_score.name];
+    acc[abilityName] = item.bonus;
+    return acc;
+  }, {});
+
+  return {
+    id: raw.index,
+    name: raw.name,
+    abilityScoreIncreases,
+    traits: raw.racial_traits.map((trait) => trait.name),
+  };
+}
+
+export function mapSubclassToSnapshot(raw) {
+  return {
+    id: raw.index,
+    name: raw.name,
+    flavor: raw.subclass_flavor,
+  };
+}
