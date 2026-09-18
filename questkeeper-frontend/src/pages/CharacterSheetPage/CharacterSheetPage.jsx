@@ -511,6 +511,10 @@ function CharacterSheetPage() {
                 <li>New Feat: {levelUpSummary.newFeat.name}</li>
               )}
 
+              {levelUpSummary.newSubclass && (
+                <li>New Subclass: {levelUpSummary.newSubclass.name}</li>
+              )}
+
               {levelUpSummary.newSpell && (
                 <li>New Spell: {levelUpSummary.newSpell.name}</li>
               )}

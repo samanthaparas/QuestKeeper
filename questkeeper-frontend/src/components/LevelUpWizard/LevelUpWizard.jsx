@@ -13,7 +13,12 @@ import {
   getProficiencyBonus,
 } from "../../utils/characterSheet";
 
-import { getFeatDetails, getClassSpells } from "../../utils/api";
+import {
+  getFeatDetails,
+  getClassSpells,
+  getClassDetails,
+  getSubclassDetails,
+} from "../../utils/api";
 import "./LevelUpWizard.css";
 
 function LevelUpWizard({ sheet, onComplete, onCancel }) {
@@ -35,6 +40,10 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
   const [asiAbilities, setAsiAbilities] = useState([]);
   const [featDetails, setFeatDetails] = useState(null);
   const [isFeatLoading, setIsFeatLoading] = useState(false);
+
+  const [classSubclass, setClassSubclass] = useState(null);
+  const [isSubclassLoading, setIsSubclassLoading] = useState(true);
+  const [subclassError, setSubclassError] = useState("");
 
   const [classSpells, setClassSpells] = useState([]);
   const [isSpellsLoading, setIsSpellsLoading] = useState(true);
@@ -67,6 +76,24 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
         setSpellsError("Unable to load spell list. Please try again later."),
       )
       .finally(() => setIsSpellsLoading(false));
+  }, [currentStep?.key, sheet.class]);
+
+  useEffect(() => {
+    if (currentStep?.key !== "subclass") return;
+
+    getClassDetails(sheet.class.id)
+      .then((classData) => {
+        const entry = classData.subclasses?.[0];
+        if (!entry) throw new Error("No subclass available");
+        return getSubclassDetails(entry.index);
+      })
+      .then(setClassSubclass)
+      .catch(() =>
+        setSubclassError(
+          "Unable to load subclass details. Please try again later.",
+        ),
+      )
+      .finally(() => setIsSubclassLoading(false));
   }, [currentStep?.key, sheet.class]);
 
   function completeStep(data) {
@@ -141,6 +168,10 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
           .join(", +1 ")}`;
       }
       return `Feat: ${step.data.featName}`;
+    }
+
+    if (step.key === "subclass") {
+      return `New Subclass: ${step.data.name}`;
     }
 
     if (step.key === "spells") {
@@ -402,6 +433,50 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
             className="level-up-wizard__next-button"
             disabled={!isAsiValid}
             onClick={confirmAbilityOrFeat}
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {currentStep?.key === "subclass" && (
+        <div className="level-up-wizard__step">
+          <h3 className="level-up-wizard__step-title">Choose Your Subclass</h3>
+          <p className="level-up-wizard__step-description">
+            At level {targetLevel}, {sheet.class?.name ?? "your class"} gains a
+            subclass that shapes how you play. SRD 2014 only includes one
+            subclass per class, so there's nothing to pick between — review it
+            below.
+          </p>
+
+          {isSubclassLoading && <p>Loading subclass...</p>}
+          {subclassError && (
+            <p className="level-up-wizard__error">{subclassError}</p>
+          )}
+
+          {classSubclass && (
+            <div className="level-up-wizard__feat-card">
+              <h4>{classSubclass.name}</h4>
+              <p>
+                <em>{classSubclass.subclass_flavor}</em>
+              </p>
+              {classSubclass.desc?.map((line, index) => (
+                <p key={index}>{line}</p>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="level-up-wizard__next-button"
+            disabled={!classSubclass}
+            onClick={() =>
+              completeStep({
+                id: classSubclass.index,
+                name: classSubclass.name,
+                flavor: classSubclass.subclass_flavor,
+              })
+            }
           >
             Next
           </button>

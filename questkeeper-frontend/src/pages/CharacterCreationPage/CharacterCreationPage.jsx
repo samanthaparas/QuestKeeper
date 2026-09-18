@@ -27,7 +27,7 @@ import {
   getStartingArmorClass,
   buildStartingSpellcasting,
   mergeSubrace,
-  LEVEL_ONE_SUBCLASS_CLASSES,
+  getSubclassLevel,
   getSubraceCantripTraitId,
   addRacialCantrip,
 } from "../../utils/characterSheet";
@@ -360,14 +360,14 @@ function CharacterCreationPage() {
           <PickerStep
             title="Choose a Subclass"
             description={
-              LEVEL_ONE_SUBCLASS_CLASSES.includes(characterClass?.id)
+              getSubclassLevel(characterClass?.id) === 1
                 ? `${characterClass?.name ?? "Your class"}'s specialization shapes how you play. Pick one now.`
                 : `${characterClass?.name ?? "This class"} chooses a subclass later as you level up, not at creation.`
             }
             category="Subclass"
             fetchList={() =>
               Promise.resolve(
-                LEVEL_ONE_SUBCLASS_CLASSES.includes(characterClass?.id)
+                getSubclassLevel(characterClass?.id) === 1
                   ? (classRaw?.subclasses ?? [])
                   : [],
               )

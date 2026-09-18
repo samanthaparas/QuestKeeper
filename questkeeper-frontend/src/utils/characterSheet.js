@@ -59,11 +59,29 @@ export const SPELLCASTING_BY_CLASS = {
   wizard: { type: "prepared", ability: "intelligence" },
 };
 
-// Every SRD 2014 class has exactly one subclass in the data, but only these
-// three actually grant it at level 1 (Cleric: Divine Domain, Sorcerer:
-// Sorcerous Origin, Warlock: Otherworldly Patron) - everyone else picks
-// theirs at level 2 or 3, which isn't something character creation covers.
-export const LEVEL_ONE_SUBCLASS_CLASSES = ["cleric", "sorcerer", "warlock"];
+// Every SRD 2014 class has exactly one subclass, but they're granted at
+// different levels: Cleric/Sorcerer/Warlock at 1 (handled at character
+// creation, see CharacterCreationPage), Wizard/Druid at 2, everyone else
+// at 3. Verified against each class's actual level-by-level feature data,
+// not assumed.
+export const SUBCLASS_LEVEL_BY_CLASS = {
+  cleric: 1,
+  sorcerer: 1,
+  warlock: 1,
+  wizard: 2,
+  druid: 2,
+  bard: 3,
+  barbarian: 3,
+  fighter: 3,
+  monk: 3,
+  paladin: 3,
+  ranger: 3,
+  rogue: 3,
+};
+
+export function getSubclassLevel(classId) {
+  return SUBCLASS_LEVEL_BY_CLASS[classId] ?? null;
+}
 
 // Only High Elf currently grants a choosable free cantrip via a racial
 // trait (SRD "High Elf Cantrip") - map subrace id -> trait id so this
@@ -216,6 +234,10 @@ export const ABILITY_SCORE_IMPROVEMENT_LEVELS = [4, 8, 12, 16, 19];
 export function getLevelUpStepKeys(targetLevel, characterClass) {
   const steps = ["hitPoints"];
 
+  if (getSubclassLevel(characterClass?.id) === targetLevel) {
+    steps.push("subclass");
+  }
+
   if (ABILITY_SCORE_IMPROVEMENT_LEVELS.includes(targetLevel)) {
     steps.push("abilityOrFeat");
   }
@@ -226,7 +248,6 @@ export function getLevelUpStepKeys(targetLevel, characterClass) {
 
   return steps;
 }
-
 export function rollHitDie(die) {
   return Math.floor(Math.random() * die) + 1;
 }
@@ -285,6 +306,7 @@ export function finalizeLevelUp(sheet) {
   );
 
   const spellStep = pendingLevelUp.steps.find((s) => s.key === "spells");
+  const subclassStep = pendingLevelUp.steps.find((s) => s.key === "subclass");
 
   const conModifier = getAbilityModifier(sheet.abilityScores.constitution);
   const hpGained = Math.max(1, (hpStep?.data?.amount ?? 0) + conModifier);
@@ -308,9 +330,14 @@ export function finalizeLevelUp(sheet) {
         ]
       : (sheet.feats ?? []);
 
+  const characterClass = subclassStep?.data
+    ? { ...sheet.class, subclass: subclassStep.data }
+    : sheet.class;
+
   return {
     ...sheet,
     level: pendingLevelUp.targetLevel,
+    class: characterClass,
     abilityScores,
     spellcasting,
     feats,
@@ -353,6 +380,12 @@ export function buildLevelUpSummary(before, after) {
       ? after.feats[after.feats.length - 1]
       : null;
 
+  const newSubclass =
+    after.class?.subclass &&
+    after.class.subclass.id !== before.class?.subclass?.id
+      ? after.class.subclass
+      : null;
+
   const beforeCantripCount = before.spellcasting?.cantripsKnown?.length ?? 0;
   const afterCantripCount = after.spellcasting?.cantripsKnown?.length ?? 0;
   const beforeSpellCount = before.spellcasting?.spellsKnown?.length ?? 0;
@@ -373,6 +406,7 @@ export function buildLevelUpSummary(before, after) {
     toProficiency: getProficiencyBonus(after.level),
     abilityChanges,
     newFeat,
+    newSubclass,
     newSpell,
   };
 }
