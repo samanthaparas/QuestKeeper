@@ -434,7 +434,8 @@ export function createCharacterSheet(overrides = {}) {
     abilityScoreImprovements: [],
     pendingLevelUp: null,
     notes: "",
-    companions: [],
+    backstory: "",
+    appearance: "",
 
     ...overrides,
   };

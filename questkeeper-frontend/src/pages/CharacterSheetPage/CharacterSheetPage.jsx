@@ -201,6 +201,14 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, companion: value });
   }
 
+  function handleBackstoryChange(value) {
+    persistSheet({ ...sheet, backstory: value });
+  }
+
+  function handleAppearanceChange(value) {
+    persistSheet({ ...sheet, appearance: value });
+  }
+
   function handleResourceCurrentChange(id, value) {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) return;
@@ -1167,6 +1175,30 @@ function CharacterSheetPage() {
                     </>
                   )}
                 />
+
+                <section className="character-sheet__section">
+                  <h2 className="character-sheet__section-title">Backstory</h2>
+                  <textarea
+                    className="character-sheet__textarea"
+                    value={sheet.backstory ?? ""}
+                    onChange={(e) => handleBackstoryChange(e.target.value)}
+                    placeholder="Where your character comes from, what drives them, key life events"
+                    rows={5}
+                  />
+                </section>
+
+                <section className="character-sheet__section">
+                  <h2 className="character-sheet__section-title">
+                    Appearance &amp; Traits
+                  </h2>
+                  <textarea
+                    className="character-sheet__textarea"
+                    value={sheet.appearance ?? ""}
+                    onChange={(e) => handleAppearanceChange(e.target.value)}
+                    placeholder="Physical description, personality traits, ideals, bonds, flaws"
+                    rows={4}
+                  />
+                </section>
 
                 <section className="character-sheet__section">
                   <h2 className="character-sheet__section-title">Companion</h2>
