@@ -1,23 +1,25 @@
 .footer {
   margin-top: 80px;
   padding: 40px 20px;
-  border-top: 1px solid rgba(217, 164, 65, 0.35);
+  border-top: 1px solid var(--qk-border);
+  background-color: var(--qk-surface);
   text-align: center;
 }
 
 .footer__title {
-  color: #d9a441;
+  color: var(--qk-terracotta);
   font-size: 24px;
   margin-bottom: 8px;
 }
 
 .footer__tagline {
-  color: #f1d28a;
+  color: var(--qk-text-muted);
   font-size: 16px;
 }
 
 .footer__copyright {
-  color: #8f8f8f;
+  color: var(--qk-text-muted);
   font-size: 14px;
   margin-top: 16px;
+  opacity: 0.75;
 }

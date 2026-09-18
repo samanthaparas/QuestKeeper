@@ -1,36 +1,40 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import "./Navigation.css";
+
+function linkClass({ isActive }) {
+  return `navigation__link${isActive ? " navigation__link--active" : ""}`;
+}
 
 function Navigation() {
   return (
     <nav className="navigation">
-      <Link className="navigation__link" to="/">
+      <NavLink className={linkClass} to="/" end>
         Home
-      </Link>
+      </NavLink>
 
-      <Link className="navigation__link" to="/races">
+      <NavLink className={linkClass} to="/races">
         Races
-      </Link>
+      </NavLink>
 
-      <Link className="navigation__link" to="/classes">
+      <NavLink className={linkClass} to="/classes">
         Classes
-      </Link>
+      </NavLink>
 
-      <Link className="navigation__link" to="/backgrounds">
+      <NavLink className={linkClass} to="/backgrounds">
         Backgrounds
-      </Link>
+      </NavLink>
 
-      <Link className="navigation__link" to="/spells">
+      <NavLink className={linkClass} to="/spells">
         Spells
-      </Link>
+      </NavLink>
 
-      <Link className="navigation__link" to="/characters">
+      <NavLink className={linkClass} to="/characters">
         Characters
-      </Link>
+      </NavLink>
 
-      <Link className="navigation__link" to="/about">
+      <NavLink className={linkClass} to="/about">
         About
-      </Link>
+      </NavLink>
     </nav>
   );
 }

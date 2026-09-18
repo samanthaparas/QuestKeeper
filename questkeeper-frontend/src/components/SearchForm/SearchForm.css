@@ -1,10 +1,22 @@
 .search-form {
-  padding: 2px;
-  background-color: rgb(24, 24, 24);
-  border-radius: 50px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  width: min(100%, 760px);
+  min-height: 58px;
+  padding: 6px;
+  gap: 6px;
+  margin: 0 auto;
+
+  background: var(--qk-surface);
+  border: 2px solid var(--qk-border);
+  border-radius: 15px;
+  box-shadow: 0 12px 30px var(--qk-shadow);
+}
+
+.search-form:focus-within {
+  border-color: var(--qk-terracotta);
+  box-shadow:
+    0 0 0 4px var(--qk-terracotta-soft),
+    0 12px 30px var(--qk-shadow);
 }
 
 .search-form__label {
@@ -18,55 +30,46 @@
   border: 0;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  clip-path: inset(50%);
-  white-space: nowrap;
+.search-form__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 16px;
   border: 0;
-  padding: 0;
-  margin: -1px;
+  background: transparent;
+  color: var(--qk-text);
+  font-family: var(--qk-font-body);
+  font-size: 17px;
 }
 
-.search-form__input {
-  min-width: 0;
-  flex: 1;
-  padding: 12px;
-  font-size: 16px;
-  border: 1px solid rgb(24, 24, 24);
-  border-radius: 50px;
-  background-color: rgb(24, 24, 24);
-  color: white;
+.search-form__input::placeholder {
+  color: var(--qk-text-muted);
 }
 
 .search-form__input:focus-visible {
-  outline: 2px solid #f1d28a;
-  outline-offset: 3px;
+  outline: none;
 }
 
 .search-form__button {
   flex-shrink: 0;
-  padding: 10px 22px;
-  border: 1px solid #d9a441;
-  border-radius: 50px;
-  background-color: #d9a441;
-  color: #181818;
+  min-width: 116px;
+  min-height: 46px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .search-form__button:hover:not(:disabled) {
-  background-color: #f1d28a;
-  border-color: #f1d28a;
+  background-color: var(--qk-terracotta-hover);
 }
 
 .search-form__button:focus-visible {
-  outline: 2px solid #f1d28a;
+  outline: 2px solid var(--qk-focus);
   outline-offset: 3px;
 }
 
@@ -76,7 +79,16 @@
 }
 
 @media (max-width: 480px) {
+  .search-form {
+    flex-direction: column;
+    min-height: unset;
+  }
+
+  .search-form__input {
+    padding: 10px 12px;
+  }
+
   .search-form__button {
-    padding-inline: 16px;
+    width: 100%;
   }
 }
