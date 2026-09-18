@@ -8,7 +8,11 @@ import {
   finalizeLevelUp,
   ABILITY_SCORES,
   ABILITY_LABELS,
+  ABILITY_ABBREVIATIONS,
+  formatModifier,
+  getProficiencyBonus,
 } from "../../utils/characterSheet";
+
 import { getFeatDetails, getClassSpells } from "../../utils/api";
 import "./LevelUpWizard.css";
 
@@ -171,6 +175,32 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
           Step {Math.min(stepIndex + 1, pendingLevelUp.steps.length)} of{" "}
           {pendingLevelUp.steps.length}
         </p>
+      </div>
+
+      <div className="level-up-wizard__current-stats">
+        <span className="level-up-wizard__current-stat">
+          HP{" "}
+          <strong>
+            {sheet.combat.hitPoints.current}/{sheet.combat.hitPoints.max}
+          </strong>
+        </span>
+        <span className="level-up-wizard__current-stat">
+          AC <strong>{sheet.combat.armorClass}</strong>
+        </span>
+        <span className="level-up-wizard__current-stat">
+          Proficiency{" "}
+          <strong>{formatModifier(getProficiencyBonus(sheet.level))}</strong>
+        </span>
+        {ABILITY_SCORES.map((ability) => (
+          <span className="level-up-wizard__current-stat" key={ability}>
+            {ABILITY_ABBREVIATIONS[ability]}{" "}
+            <strong>
+              {sheet.abilityScores[ability]} (
+              {formatModifier(getAbilityModifier(sheet.abilityScores[ability]))}
+              )
+            </strong>
+          </span>
+        ))}
       </div>
 
       {currentStep?.key === "hitPoints" && (
