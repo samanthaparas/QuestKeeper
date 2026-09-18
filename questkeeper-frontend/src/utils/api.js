@@ -102,3 +102,10 @@ export function getSubclassDetails(subclassId) {
     `Failed to fetch subclass details for ID ${subclassId}:`,
   );
 }
+
+export function getTraitDetails(traitId) {
+  return requestJson(
+    `/traits/${encodeURIComponent(traitId)}`,
+    `Failed to fetch trait details for ID ${traitId}:`,
+  );
+}
