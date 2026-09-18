@@ -25,6 +25,27 @@
   margin: 0;
 }
 
+.level-up-wizard__current-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  border: 1px solid rgba(217, 164, 65, 0.25);
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.level-up-wizard__current-stat {
+  color: #d8c7a3;
+  font-size: 13px;
+}
+
+.level-up-wizard__current-stat strong {
+  color: #f1d28a;
+  font-weight: 700;
+}
+
 .level-up-wizard__step-title {
   color: #f1d28a;
   font-size: 22px;
