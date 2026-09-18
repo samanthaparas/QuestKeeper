@@ -1,24 +1,62 @@
-/* ---------- Fonts ---------- */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Nunito+Sans:wght@400;500;600;700&display=swap");
 
-@font-face {
-  font-family: "Cinzel";
-  src: url("./assets/fonts/Cinzel-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: "Poppins";
-  src: url("./assets/fonts/Poppins-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-}
-
-/* ---------- Global Variables ---------- */
+/* ---------- Wayfarer Design Tokens ---------- */
 
 :root {
-  --font-heading: "Cinzel", Georgia, serif;
-  --font-body: "Poppins", Arial, sans-serif;
+  /* Main surfaces */
+  --qk-background: #efe2cf;
+  --qk-surface: #fff7e8;
+  --qk-surface-muted: #e5d1b6;
+
+  /* Text */
+  --qk-text: #34261f;
+  --qk-text-muted: #756154;
+
+  /* Structure */
+  --qk-border: #cfb493;
+  --qk-shadow: rgba(90, 52, 29, 0.13);
+
+  /* Brand colors */
+  --qk-terracotta: #b45437;
+  --qk-terracotta-hover: #98432d;
+  --qk-terracotta-soft: #f0c8a9;
+
+  --qk-moss: #58705c;
+  --qk-moss-soft: #dce5d9;
+
+  --qk-brass: #c48b38;
+  --qk-brass-soft: #f2dfc0;
+
+  /* Feedback */
+  --qk-danger: #a64136;
+  --qk-warning: #a66a2c;
+  --qk-focus: #487c83;
+
+  /* Typography */
+  --qk-font-display: "Fraunces", Georgia, serif;
+  --qk-font-body: "Nunito Sans", Arial, sans-serif;
+
+  /* Backward-compatible aliases for older component CSS */
+  --font-heading: var(--qk-font-display);
+  --font-body: var(--qk-font-body);
+
+  /* Layout */
+  --qk-content-width: 1240px;
+  --qk-reading-width: 720px;
+
+  --qk-space-1: 4px;
+  --qk-space-2: 8px;
+  --qk-space-3: 12px;
+  --qk-space-4: 16px;
+  --qk-space-5: 24px;
+  --qk-space-6: 32px;
+  --qk-space-7: 48px;
+  --qk-space-8: 64px;
+
+  --qk-radius-small: 8px;
+  --qk-radius-control: 10px;
+  --qk-radius-card: 14px;
+  --qk-radius-large: 18px;
 }
 
 /* ---------- Global Reset ---------- */
@@ -34,23 +72,23 @@ body,
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  background-color: #050505;
+  background-color: var(--qk-background);
 }
 
 /* ---------- Global Typography ---------- */
 
 body {
-  font-family: var(--font-body);
-  color: #f5f1e8;
+  font-family: var(--qk-font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--qk-text);
 }
-
-/* All headings use Cinzel */
 
 h1,
 h2,
 h3,
 .logo {
-  font-family: var(--font-heading);
+  font-family: var(--qk-font-display);
 }
 
 /* ---------- Shared Utilities ---------- */

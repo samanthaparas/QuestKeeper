@@ -1,0 +1,64 @@
+.qk-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: var(--qk-radius-control);
+  font-family: var(--qk-font-body);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.qk-button--large {
+  min-height: 48px;
+  padding: 0 24px;
+}
+
+.qk-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.qk-button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.qk-button--primary {
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+  border-color: var(--qk-terracotta);
+}
+
+.qk-button--primary:hover:not(:disabled) {
+  background-color: var(--qk-terracotta-hover);
+  border-color: var(--qk-terracotta-hover);
+}
+
+.qk-button--secondary {
+  background-color: transparent;
+  color: var(--qk-text);
+  border-color: var(--qk-border);
+}
+
+.qk-button--secondary:hover:not(:disabled) {
+  background-color: var(--qk-surface-muted);
+}
+
+.qk-button--danger {
+  background-color: var(--qk-danger);
+  color: var(--qk-surface);
+  border-color: var(--qk-danger);
+}
+
+.qk-button--danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
