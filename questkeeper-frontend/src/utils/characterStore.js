@@ -39,3 +39,12 @@ export function saveCharacter(sheet) {
 export function deleteCharacter(id) {
   writeAll(readAll().filter((sheet) => sheet.id !== id));
 }
+
+export function getMostRecentCharacter() {
+  const characters = readAll();
+  if (characters.length === 0) return null;
+
+  return [...characters].sort(
+    (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
+  )[0];
+}

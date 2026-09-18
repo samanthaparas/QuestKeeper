@@ -18,7 +18,7 @@ function SearchForm({ searchQuery, onSearchChange, onSearchSubmit }) {
             e.currentTarget.form?.requestSubmit();
           }
         }}
-        placeholder="Search everything..."
+        placeholder="Search spells, classes, races, rules, or game terms…"
         required
       />
       <button

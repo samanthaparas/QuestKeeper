@@ -1,9 +1,11 @@
 .header {
-  padding: 24px 30px;
+  min-height: 72px;
+  padding: 12px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #050505;
+  background-color: var(--qk-surface);
+  border-bottom: 1px solid var(--qk-border);
   box-sizing: border-box;
 }
 
@@ -15,8 +17,8 @@
 }
 
 .header__icon {
-  width: 64px;
-  height: 64px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
 }
 
@@ -26,17 +28,17 @@
 }
 
 .header__title {
-  color: #d9a441;
-  font-family: var(--font-heading);
-  font-size: 32px;
-  font-weight: 700;
+  color: var(--qk-terracotta);
+  font-family: var(--qk-font-display);
+  font-size: 24px;
+  font-weight: 600;
   line-height: 1;
 }
 
 .header__tagline {
-  color: #f1d28a;
-  font-family: var(--font-body);
-  font-size: 14px;
+  color: var(--qk-text-muted);
+  font-family: var(--qk-font-body);
+  font-size: 13px;
   line-height: 1.2;
 }
 
@@ -47,25 +49,26 @@
 }
 
 .header__profile {
-  min-width: 36px;
-  min-height: 36px;
-  padding: 0 10px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid rgba(217, 164, 65, 0.35);
-  background-color: rgba(255, 255, 255, 0.04);
-  color: #f1d28a;
-  font-family: var(--font-body);
+  border: 1px solid var(--qk-border);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+  font-family: var(--qk-font-body);
   cursor: pointer;
 }
 
 .header__menu {
   display: none;
-  font-family: var(--font-body);
+  font-family: var(--qk-font-body);
+  color: var(--qk-text);
 }
 
 .header__menu:focus-visible,
 .header__profile:focus-visible {
-  outline: 2px solid #f1d28a;
+  outline: 2px solid var(--qk-focus);
   outline-offset: 3px;
 }
 
@@ -73,20 +76,21 @@
   .header {
     display: grid;
     grid-template-columns: 64px 1fr 64px;
-    padding: 16px 20px;
+    padding: 12px 20px;
     align-items: center;
     justify-items: center;
     row-gap: 16px;
+    min-height: 60px;
   }
 
   .header__menu {
     display: block;
     justify-self: start;
-    min-height: 36px;
+    min-height: 40px;
     padding: 0;
     background: transparent;
     border: none;
-    color: #f1d28a;
+    color: var(--qk-terracotta);
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
