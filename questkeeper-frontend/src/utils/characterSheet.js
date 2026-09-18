@@ -59,7 +59,22 @@ export const SPELLCASTING_BY_CLASS = {
   wizard: { type: "prepared", ability: "intelligence" },
 };
 
+// Every SRD 2014 class has exactly one subclass in the data, but only these
+// three actually grant it at level 1 (Cleric: Divine Domain, Sorcerer:
+// Sorcerous Origin, Warlock: Otherworldly Patron) - everyone else picks
+// theirs at level 2 or 3, which isn't something character creation covers.
 export const LEVEL_ONE_SUBCLASS_CLASSES = ["cleric", "sorcerer", "warlock"];
+
+// Only High Elf currently grants a choosable free cantrip via a racial
+// trait (SRD "High Elf Cantrip") - map subrace id -> trait id so this
+// stays easy to extend if another subrace ever needs the same treatment.
+export const SUBRACE_CANTRIP_TRAITS = {
+  "high-elf": "high-elf-cantrip",
+};
+
+export function getSubraceCantripTraitId(subraceId) {
+  return SUBRACE_CANTRIP_TRAITS[subraceId] ?? null;
+}
 
 export function getSpellcastingType(classId) {
   return SPELLCASTING_BY_CLASS[classId]?.type ?? null;
@@ -101,6 +116,24 @@ export function buildStartingSpellcasting(
     cantripsKnown: chosenCantrips.map(toEntry),
     spellsKnown: chosenSpells.map(toEntry),
   };
+}
+
+export function addRacialCantrip(spellcasting, cantrip) {
+  const base = spellcasting ?? {
+    type: "known",
+    cantripsKnown: [],
+    spellsKnown: [],
+  };
+
+  const entry = {
+    index: cantrip.index,
+    name: cantrip.name,
+    level: 0,
+    notes: "",
+    components: "",
+  };
+
+  return { ...base, cantripsKnown: [...base.cantripsKnown, entry] };
 }
 
 export function getAbilityModifier(score) {

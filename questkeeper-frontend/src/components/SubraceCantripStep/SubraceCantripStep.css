@@ -1,0 +1,83 @@
+.subrace-cantrip-step__title {
+  color: #d4af37;
+  font-size: 32px;
+  margin: 0 0 12px;
+}
+
+.subrace-cantrip-step__description {
+  color: #d8c7a3;
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 640px;
+  margin: 0 0 24px;
+}
+
+.subrace-cantrip-step__error {
+  color: #e8a0a0;
+  font-size: 16px;
+  margin: 0 0 24px;
+}
+
+.subrace-cantrip-step__checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  max-width: 640px;
+}
+
+.subrace-cantrip-step__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(217, 164, 65, 0.25);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.03);
+  color: #f5f1e8;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.subrace-cantrip-step__nav {
+  display: flex;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.subrace-cantrip-step__next-button {
+  min-height: 44px;
+  padding: 0 24px;
+  border: 1px solid rgba(217, 164, 65, 0.55);
+  border-radius: 999px;
+  background-color: rgba(217, 164, 65, 0.15);
+  color: #f1d28a;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.subrace-cantrip-step__next-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.subrace-cantrip-step__next-button:focus-visible {
+  outline: 2px solid #f1d28a;
+  outline-offset: 3px;
+}
+
+.subrace-cantrip-step__back-button {
+  min-height: 44px;
+  padding: 0 24px;
+  border: 1px solid rgba(245, 241, 232, 0.3);
+  background-color: transparent;
+  border-radius: 999px;
+  color: #f5f1e8;
+  font: inherit;
+  cursor: pointer;
+}
+
+.subrace-cantrip-step__back-button:focus-visible {
+  outline: 2px solid #f5f1e8;
+  outline-offset: 3px;
+}

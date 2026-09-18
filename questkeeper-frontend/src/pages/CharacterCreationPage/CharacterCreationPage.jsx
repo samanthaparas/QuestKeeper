@@ -10,6 +10,7 @@ import {
   getSubraceDetails,
   getSubclassDetails,
 } from "../../utils/api";
+
 import {
   mapRaceToSnapshot,
   mapClassToSnapshot,
@@ -17,6 +18,7 @@ import {
   mapSubraceToSnapshot,
   mapSubclassToSnapshot,
 } from "../../utils/characterSnapshots";
+
 import {
   createCharacterSheet,
   ABILITY_SCORES,
@@ -26,18 +28,23 @@ import {
   buildStartingSpellcasting,
   mergeSubrace,
   LEVEL_ONE_SUBCLASS_CLASSES,
+  getSubraceCantripTraitId,
+  addRacialCantrip,
 } from "../../utils/characterSheet";
+
 import { saveCharacter } from "../../utils/characterStore";
 import PickerStep from "../../components/PickerStep/PickerStep";
 import AbilityScoreStep from "../../components/AbilityScoreStep/AbilityScoreStep";
 import ClassSkillChoiceStep from "../../components/ClassSkillChoiceStep/ClassSkillChoiceStep";
 import "./CharacterCreationPage.css";
 import ClassSpellChoiceStep from "../../components/ClassSpellChoiceStep/ClassSpellChoiceStep";
+import SubraceCantripStep from "../../components/SubraceCantripStep/SubraceCantripStep";
 
 const STEPS = [
   "name",
   "race",
   "subrace",
+  "subraceCantrip",
   "class",
   "subclass",
   "classSkills",
@@ -150,6 +157,7 @@ function CharacterCreationPage() {
   const [subraceRaw, setSubraceRaw] = useState(null);
   const [subclass, setSubclass] = useState(null);
   const [subclassRaw, setSubclassRaw] = useState(null);
+  const [subraceCantrip, setSubraceCantrip] = useState(null);
 
   const finalRace = mergeSubrace(race, subrace);
 
@@ -194,6 +202,10 @@ function CharacterCreationPage() {
       spellChoices?.spells ?? [],
     );
 
+    const finalSpellcasting = subraceCantrip
+      ? addRacialCantrip(spellcasting, subraceCantrip)
+      : spellcasting;
+
     const sheet = createCharacterSheet({
       name,
       race: finalRace,
@@ -203,7 +215,7 @@ function CharacterCreationPage() {
       savingThrows,
       skills,
       equipment,
-      spellcasting,
+      spellcasting: finalSpellcasting,
       combat: {
         armorClass: getStartingArmorClass(dexModifier),
         initiative: dexModifier,
@@ -276,6 +288,7 @@ function CharacterCreationPage() {
               setRaceRaw(raw);
               setSubrace(null);
               setSubraceRaw(null);
+              setSubraceCantrip(null);
               goToStep(stepIndex + 1);
             }}
             onBack={() => goToStep(stepIndex - 1)}
@@ -297,11 +310,25 @@ function CharacterCreationPage() {
             onChoose={(snapshot, raw) => {
               setSubrace(snapshot);
               setSubraceRaw(raw);
+              setSubraceCantrip(null);
               goToStep(stepIndex + 1);
             }}
             onSkip={() => goToStep(stepIndex + 1)}
             onBack={() => goToStep(stepIndex - 1)}
             backLabel="Back"
+          />
+        )}
+
+        {step === "subraceCantrip" && (
+          <SubraceCantripStep
+            subrace={subrace}
+            traitId={getSubraceCantripTraitId(subrace?.id)}
+            initialSelected={subraceCantrip ? [subraceCantrip.index] : []}
+            onNext={(selected) => {
+              setSubraceCantrip(selected[0] ?? null);
+              goToStep(stepIndex + 1);
+            }}
+            onBack={() => goToStep(stepIndex - 1)}
           />
         )}
 
@@ -480,6 +507,7 @@ function CharacterCreationPage() {
                 {[
                   ...(spellChoices?.cantrips ?? []),
                   ...(spellChoices?.spells ?? []),
+                  ...(subraceCantrip ? [subraceCantrip] : []),
                 ]
                   .map((s) => s.name)
                   .join(", ") || "None"}

@@ -28,6 +28,8 @@ import {
   getStartingSpellCounts,
   buildStartingSpellcasting,
   mergeSubrace,
+  getSubraceCantripTraitId,
+  addRacialCantrip,
 } from "./characterSheet";
 
 describe("getAbilityModifier", () => {
@@ -715,5 +717,38 @@ describe("buildStartingSpellcasting", () => {
 
   it("returns null for a class with no spellcasting type", () => {
     expect(buildStartingSpellcasting("fighter", [], [])).toBeNull();
+  });
+});
+
+describe("getSubraceCantripTraitId", () => {
+  it("returns the trait id for High Elf", () => {
+    expect(getSubraceCantripTraitId("high-elf")).toBe("high-elf-cantrip");
+  });
+
+  it("returns null for subraces without a cantrip trait", () => {
+    expect(getSubraceCantripTraitId("hill-dwarf")).toBeNull();
+  });
+});
+
+describe("addRacialCantrip", () => {
+  it("adds the cantrip to an existing spellcasting object", () => {
+    const spellcasting = {
+      type: "prepared",
+      cantripsKnown: [],
+      spellsKnown: [],
+    };
+    const result = addRacialCantrip(spellcasting, {
+      index: "light",
+      name: "Light",
+    });
+
+    expect(result.cantripsKnown).toHaveLength(1);
+    expect(result.cantripsKnown[0]).toMatchObject({ name: "Light", level: 0 });
+  });
+
+  it("creates a spellcasting object for a non-caster who otherwise has none", () => {
+    const result = addRacialCantrip(null, { index: "light", name: "Light" });
+    expect(result.cantripsKnown[0].name).toBe("Light");
+    expect(result.spellsKnown).toEqual([]);
   });
 });
