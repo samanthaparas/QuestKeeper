@@ -460,6 +460,11 @@ function CharacterSheetPage() {
   const { combat } = sheet;
   const spellcastingAbility =
     sheet.class?.spellcastingAbility ?? getSpellcastingAbility(sheet.class?.id);
+  const hasSpellcasting =
+    Boolean(spellcastingAbility) ||
+    (sheet.spellcasting?.cantripsKnown?.length ?? 0) > 0 ||
+    (sheet.spellcasting?.spellsKnown?.length ?? 0) > 0 ||
+    getSpellSlots(sheet.spellcasting).some((slot) => slot.max > 0);
 
   return (
     <main className="character-sheet">
@@ -1040,141 +1045,147 @@ function CharacterSheetPage() {
                   />
                 </section>
 
-                <section className="character-sheet__section">
-                  <h2 className="character-sheet__section-title">
-                    Spell Slots
-                  </h2>
+                {hasSpellcasting && (
+                  <>
+                    <section className="character-sheet__section">
+                      <h2 className="character-sheet__section-title">
+                        Spell Slots
+                      </h2>
 
-                  <ul className="character-sheet__spell-slots-grid">
-                    {getSpellSlots(sheet.spellcasting)
-                      .filter((slot) => activeSlotLevels.has(slot.level))
-                      .map((slot) => (
-                        <li
-                          className="character-sheet__spell-slot-card"
-                          key={slot.level}
-                        >
-                          <span className="character-sheet__spell-slot-label">
-                            Level {slot.level}
-                          </span>
-                          <span className="character-sheet__spell-slot-count">
-                            <input
-                              type="number"
-                              className="character-sheet__hp-input character-sheet__hp-input--tiny"
-                              value={slot.current}
-                              onChange={(e) =>
-                                handleSpellSlotChange(
-                                  slot.level,
-                                  "current",
-                                  e.target.value,
-                                )
-                              }
-                              min={0}
-                              max={slot.max}
-                            />
-                            {" / "}
-                            <input
-                              type="number"
-                              className="character-sheet__hp-input character-sheet__hp-input--tiny"
-                              value={slot.max}
-                              onChange={(e) =>
-                                handleSpellSlotChange(
-                                  slot.level,
-                                  "max",
-                                  e.target.value,
-                                )
-                              }
-                              min={0}
-                            />
-                          </span>
-                          <button
-                            type="button"
-                            className="character-sheet__resource-remove"
-                            onClick={() => handleHideSlotLevel(slot.level)}
-                          >
-                            Hide
-                          </button>
-                        </li>
-                      ))}
-                  </ul>
+                      <ul className="character-sheet__spell-slots-grid">
+                        {getSpellSlots(sheet.spellcasting)
+                          .filter((slot) => activeSlotLevels.has(slot.level))
+                          .map((slot) => (
+                            <li
+                              className="character-sheet__spell-slot-card"
+                              key={slot.level}
+                            >
+                              <span className="character-sheet__spell-slot-label">
+                                Level {slot.level}
+                              </span>
+                              <span className="character-sheet__spell-slot-count">
+                                <input
+                                  type="number"
+                                  className="character-sheet__hp-input character-sheet__hp-input--tiny"
+                                  value={slot.current}
+                                  onChange={(e) =>
+                                    handleSpellSlotChange(
+                                      slot.level,
+                                      "current",
+                                      e.target.value,
+                                    )
+                                  }
+                                  min={0}
+                                  max={slot.max}
+                                />
+                                {" / "}
+                                <input
+                                  type="number"
+                                  className="character-sheet__hp-input character-sheet__hp-input--tiny"
+                                  value={slot.max}
+                                  onChange={(e) =>
+                                    handleSpellSlotChange(
+                                      slot.level,
+                                      "max",
+                                      e.target.value,
+                                    )
+                                  }
+                                  min={0}
+                                />
+                              </span>
+                              <button
+                                type="button"
+                                className="character-sheet__resource-remove"
+                                onClick={() => handleHideSlotLevel(slot.level)}
+                              >
+                                Hide
+                              </button>
+                            </li>
+                          ))}
+                      </ul>
 
-                  {getSpellSlots(sheet.spellcasting).some(
-                    (slot) => !activeSlotLevels.has(slot.level),
-                  ) && (
-                    <div className="character-sheet__resource-form">
-                      {getSpellSlots(sheet.spellcasting)
-                        .filter((slot) => !activeSlotLevels.has(slot.level))
-                        .map((slot) => (
-                          <button
-                            type="button"
-                            key={slot.level}
-                            className="character-sheet__resource-remove"
-                            onClick={() => handleShowSlotLevel(slot.level)}
-                          >
-                            + Level {slot.level}
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </section>
-
-                <EditableItemList
-                  title="Spells"
-                  items={[
-                    ...(sheet.spellcasting?.cantripsKnown ?? []),
-                    ...(sheet.spellcasting?.spellsKnown ?? []),
-                  ].sort((a, b) => (a.level ?? 0) - (b.level ?? 0))}
-                  getItemId={(item) => item.index}
-                  fields={[
-                    {
-                      key: "name",
-                      type: "text",
-                      placeholder: "Spell name (e.g. Bless)",
-                    },
-                    {
-                      key: "level",
-                      type: "select",
-                      defaultValue: "0",
-                      options: [
-                        { value: "0", label: "Cantrip" },
-                        ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((lvl) => ({
-                          value: String(lvl),
-                          label: `Level ${lvl}`,
-                        })),
-                      ],
-                    },
-
-                    {
-                      key: "components",
-                      type: "text",
-                      placeholder: "Components (V, S, M)",
-                      width: "large",
-                    },
-
-                    {
-                      key: "notes",
-                      type: "textarea",
-                      placeholder:
-                        "Notes (optional) - one line per bullet point",
-                    },
-                  ]}
-                  emptyText="No spells recorded yet."
-                  addButtonLabel="Add Spell"
-                  onAdd={handleSpellAdd}
-                  onUpdate={handleSpellUpdate}
-                  onRemove={handleSpellRemove}
-                  extraRowContent={(spell) => (
-                    <>
-                      <span className="character-sheet__resource-reset">
-                        {spell.level === 0 ? "Cantrip" : `Level ${spell.level}`}
-                      </span>
-                      {spell.components && (
-                        <span className="character-sheet__resource-reset">
-                          {spell.components}
-                        </span>
+                      {getSpellSlots(sheet.spellcasting).some(
+                        (slot) => !activeSlotLevels.has(slot.level),
+                      ) && (
+                        <div className="character-sheet__resource-form">
+                          {getSpellSlots(sheet.spellcasting)
+                            .filter((slot) => !activeSlotLevels.has(slot.level))
+                            .map((slot) => (
+                              <button
+                                type="button"
+                                key={slot.level}
+                                className="character-sheet__resource-remove"
+                                onClick={() => handleShowSlotLevel(slot.level)}
+                              >
+                                + Level {slot.level}
+                              </button>
+                            ))}
+                        </div>
                       )}
-                    </>
-                  )}
-                />
+                    </section>
+
+                    <EditableItemList
+                      title="Spells"
+                      items={[
+                        ...(sheet.spellcasting?.cantripsKnown ?? []),
+                        ...(sheet.spellcasting?.spellsKnown ?? []),
+                      ].sort((a, b) => (a.level ?? 0) - (b.level ?? 0))}
+                      getItemId={(item) => item.index}
+                      fields={[
+                        {
+                          key: "name",
+                          type: "text",
+                          placeholder: "Spell name (e.g. Bless)",
+                        },
+                        {
+                          key: "level",
+                          type: "select",
+                          defaultValue: "0",
+                          options: [
+                            { value: "0", label: "Cantrip" },
+                            ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((lvl) => ({
+                              value: String(lvl),
+                              label: `Level ${lvl}`,
+                            })),
+                          ],
+                        },
+
+                        {
+                          key: "components",
+                          type: "text",
+                          placeholder: "Components (V, S, M)",
+                          width: "large",
+                        },
+
+                        {
+                          key: "notes",
+                          type: "textarea",
+                          placeholder:
+                            "Notes (optional) - one line per bullet point",
+                        },
+                      ]}
+                      emptyText="No spells recorded yet."
+                      addButtonLabel="Add Spell"
+                      onAdd={handleSpellAdd}
+                      onUpdate={handleSpellUpdate}
+                      onRemove={handleSpellRemove}
+                      extraRowContent={(spell) => (
+                        <>
+                          <span className="character-sheet__resource-reset">
+                            {spell.level === 0
+                              ? "Cantrip"
+                              : `Level ${spell.level}`}
+                          </span>
+                          {spell.components && (
+                            <span className="character-sheet__resource-reset">
+                              {spell.components}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    />
+                  </>
+                )}
 
                 <section className="character-sheet__section">
                   <h2 className="character-sheet__section-title">Backstory</h2>
