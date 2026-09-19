@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import Navigation from "./Navigation/Navigation";
-import logoIcon from "../../assets/QK-favicon.png";
+import logoIcon from "../../assets/brand/questkeeper-book-logo-64.png";
 import "./Header.css";
 
 function Header() {
