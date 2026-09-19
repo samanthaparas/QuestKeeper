@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getClassSpells, getClassLevel } from "../../utils/api";
 import { getStartingSpellCounts } from "../../utils/characterSheet";
 import "./ClassSpellChoiceStep.css";
+import Button from "../Button/Button";
 
 function ClassSpellChoiceStep({
   characterClass,
@@ -172,22 +173,13 @@ function ClassSpellChoiceStep({
       )}
 
       <div className="class-spell-choice-step__nav">
-        <button
-          className="class-spell-choice-step__back-button"
-          type="button"
-          onClick={onBack}
-        >
+        <Button variant="secondary" onClick={onBack}>
           Back
-        </button>
+        </Button>
 
-        <button
-          className="class-spell-choice-step__next-button"
-          type="button"
-          disabled={!canProceed}
-          onClick={handleNext}
-        >
+        <Button disabled={!canProceed} onClick={handleNext}>
           Next
-        </button>
+        </Button>
       </div>
     </div>
   );

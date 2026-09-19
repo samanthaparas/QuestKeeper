@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./ClassSkillChoiceStep.css";
+import Button from "../Button/Button";
 
 function ClassSkillChoiceStep({
   characterClass,
@@ -69,22 +70,13 @@ function ClassSkillChoiceStep({
       )}
 
       <div className="class-skill-choice-step__nav">
-        <button
-          className="class-skill-choice-step__back-button"
-          type="button"
-          onClick={onBack}
-        >
+        <Button variant="secondary" onClick={onBack}>
           Back
-        </button>
+        </Button>
 
-        <button
-          className="class-skill-choice-step__next-button"
-          type="button"
-          disabled={!isComplete}
-          onClick={handleNext}
-        >
+        <Button disabled={!isComplete} onClick={handleNext}>
           Next
-        </button>
+        </Button>
       </div>
     </div>
   );

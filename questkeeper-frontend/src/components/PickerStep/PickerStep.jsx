@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import ResultCard from "../ResultCard/ResultCard";
 import DetailPanel from "../DetailPanel/DetailPanel";
 import "./PickerStep.css";
+import Button from "../Button/Button";
 
 function PickerStep({
   title,
@@ -80,7 +81,7 @@ function PickerStep({
             {items.map((item) => (
               <ResultCard
                 key={item.index}
-                result={{ name: item.name, category }}
+                result={{ name: item.name, category, index: item.index }}
                 isSelected={selectedIndex === item.index}
                 onClick={() => handleSelect(item)}
               />
@@ -96,13 +97,12 @@ function PickerStep({
               selectedResult={selectedDetail}
               actions={
                 selectedDetail && !isDetailLoading ? (
-                  <button
-                    className="picker-step__confirm-button"
-                    type="button"
+                  <Button
+                    className="picker-step__confirm-position"
                     onClick={handleConfirm}
                   >
                     Choose {selectedDetail.name}
-                  </button>
+                  </Button>
                 ) : null
               }
             />
@@ -111,22 +111,18 @@ function PickerStep({
       )}
 
       {showEmptyState && (
-        <button
-          className="picker-step__skip-button"
-          type="button"
-          onClick={onSkip}
-        >
+        <Button className="picker-step__skip-position" onClick={onSkip}>
           Next
-        </button>
+        </Button>
       )}
 
-      <button
-        className="picker-step__back-button"
-        type="button"
+      <Button
+        variant="secondary"
+        className="picker-step__back-position"
         onClick={onBack}
       >
         {backLabel}
-      </button>
+      </Button>
     </div>
   );
 }
