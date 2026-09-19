@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getTraitDetails } from "../../utils/api";
 import "./SubraceCantripStep.css";
+import Button from "../Button/Button";
 
 function SubraceCantripStep({
   subrace,
@@ -98,22 +99,13 @@ function SubraceCantripStep({
       )}
 
       <div className="subrace-cantrip-step__nav">
-        <button
-          className="subrace-cantrip-step__back-button"
-          type="button"
-          onClick={onBack}
-        >
+        <Button variant="secondary" onClick={onBack}>
           Back
-        </button>
+        </Button>
 
-        <button
-          className="subrace-cantrip-step__next-button"
-          type="button"
-          disabled={traitId ? !isComplete : false}
-          onClick={handleNext}
-        >
+        <Button disabled={traitId ? !isComplete : false} onClick={handleNext}>
           Next
-        </button>
+        </Button>
       </div>
     </div>
   );

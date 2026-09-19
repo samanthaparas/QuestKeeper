@@ -7,6 +7,7 @@ import {
   getAbilityModifier,
 } from "../../utils/characterSheet";
 import "./AbilityScoreStep.css";
+import Button from "../Button/Button";
 
 function formatModifier(mod) {
   return mod >= 0 ? `+${mod}` : `${mod}`;
@@ -147,24 +148,18 @@ function AbilityScoreStep({
       )}
 
       <div className="ability-score-step__nav">
-        <button
-          className="ability-score-step__back-button"
-          type="button"
-          onClick={onBack}
-        >
+        <Button variant="secondary" onClick={onBack}>
           Back
-        </button>
+        </Button>
 
-        <button
-          className="ability-score-step__next-button"
-          type="button"
+        <Button
           disabled={!isComplete}
           onClick={() =>
             onNext(finalScores, { assignments, chosenBonusAbilities })
           }
         >
           Next
-        </button>
+        </Button>
       </div>
     </div>
   );

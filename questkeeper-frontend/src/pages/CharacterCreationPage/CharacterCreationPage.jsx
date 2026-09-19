@@ -40,6 +40,14 @@ import "./CharacterCreationPage.css";
 import ClassSpellChoiceStep from "../../components/ClassSpellChoiceStep/ClassSpellChoiceStep";
 import SubraceCantripStep from "../../components/SubraceCantripStep/SubraceCantripStep";
 
+import {
+  CREATION_STEP_GROUPS,
+  getGroupStatus,
+} from "../../utils/creationSteps";
+import CreationStepRail from "../../components/CreationStepRail/CreationStepRail";
+import CreationSummaryPanel from "../../components/CreationSummaryPanel/CreationSummaryPanel";
+import Button from "../../components/Button/Button";
+
 const STEPS = [
   "name",
   "race",
@@ -161,6 +169,12 @@ function CharacterCreationPage() {
 
   const finalRace = mergeSubrace(race, subrace);
 
+  const railGroups = CREATION_STEP_GROUPS.map((group) => ({
+    label: group.label,
+    status: getGroupStatus(group, STEPS, stepIndex),
+    firstIndex: STEPS.indexOf(group.steps[0]),
+  }));
+
   const step = STEPS[stepIndex];
 
   function goToStep(index) {
@@ -232,307 +246,309 @@ function CharacterCreationPage() {
 
   return (
     <main className="character-creation">
-      <div className="character-creation__content">
-        <p className="character-creation__step-count">
-          Step {stepIndex + 1} of {STEPS.length}
-        </p>
+      <div className="character-creation__layout">
+        <CreationStepRail groups={railGroups} onJump={goToStep} />
 
-        {step === "name" && (
-          <div className="character-creation__name-step">
-            <h1 className="character-creation__title">
-              What's your character's name?
-            </h1>
+        <div className="character-creation__content">
+          {step === "name" && (
+            <div className="character-creation__name-step">
+              <h1 className="character-creation__title">
+                What's your character's name?
+              </h1>
 
-            <input
-              className="character-creation__name-input"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Character name"
-              autoFocus
+              <input
+                className="character-creation__name-input"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Character name"
+                autoFocus
+              />
+
+              <div className="character-creation__nav">
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate("/characters")}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  disabled={!name.trim()}
+                  onClick={() => goToStep(stepIndex + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === "race" && (
+            <PickerStep
+              title="Choose a Race"
+              description="Your character's race shapes their natural traits and abilities. Pick one to read what it offers before you commit."
+              category="Race"
+              fetchList={getRaces}
+              fetchDetails={getRaceDetails}
+              mapToDetailPanelResult={mapRaceToDetailPanelResult}
+              mapToSnapshot={mapRaceToSnapshot}
+              initialSelectedRaw={raceRaw}
+              onChoose={(snapshot, raw) => {
+                setRace(snapshot);
+                setRaceRaw(raw);
+                setSubrace(null);
+                setSubraceRaw(null);
+                setSubraceCantrip(null);
+                goToStep(stepIndex + 1);
+              }}
+              onBack={() => goToStep(stepIndex - 1)}
+              backLabel="Back"
             />
+          )}
 
-            <div className="character-creation__nav">
-              <button
-                className="character-creation__cancel-button"
-                type="button"
-                onClick={() => navigate("/characters")}
-              >
-                Cancel
-              </button>
+          {step === "subrace" && (
+            <PickerStep
+              title="Choose a Subrace"
+              description={`${race?.name ?? "Your race"} has specific variants with their own traits and bonuses.`}
+              category="Subrace"
+              fetchList={() => Promise.resolve(raceRaw?.subraces ?? [])}
+              fetchDetails={getSubraceDetails}
+              mapToDetailPanelResult={mapSubraceToDetailPanelResult}
+              mapToSnapshot={mapSubraceToSnapshot}
+              initialSelectedRaw={subraceRaw}
+              emptyMessage={`${race?.name ?? "This race"} has no subraces to choose from.`}
+              onChoose={(snapshot, raw) => {
+                setSubrace(snapshot);
+                setSubraceRaw(raw);
+                setSubraceCantrip(null);
+                goToStep(stepIndex + 1);
+              }}
+              onSkip={() => goToStep(stepIndex + 1)}
+              onBack={() => goToStep(stepIndex - 1)}
+              backLabel="Back"
+            />
+          )}
 
-              <button
-                className="character-creation__next-button"
-                type="button"
-                disabled={!name.trim()}
-                onClick={() => goToStep(stepIndex + 1)}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+          {step === "subraceCantrip" && (
+            <SubraceCantripStep
+              subrace={subrace}
+              traitId={getSubraceCantripTraitId(subrace?.id)}
+              initialSelected={subraceCantrip ? [subraceCantrip.index] : []}
+              onNext={(selected) => {
+                setSubraceCantrip(selected[0] ?? null);
+                goToStep(stepIndex + 1);
+              }}
+              onBack={() => goToStep(stepIndex - 1)}
+            />
+          )}
 
-        {step === "race" && (
-          <PickerStep
-            title="Choose a Race"
-            description="Your character's race shapes their natural traits and abilities. Pick one to read what it offers before you commit."
-            category="Race"
-            fetchList={getRaces}
-            fetchDetails={getRaceDetails}
-            mapToDetailPanelResult={mapRaceToDetailPanelResult}
-            mapToSnapshot={mapRaceToSnapshot}
-            initialSelectedRaw={raceRaw}
-            onChoose={(snapshot, raw) => {
-              setRace(snapshot);
-              setRaceRaw(raw);
-              setSubrace(null);
-              setSubraceRaw(null);
-              setSubraceCantrip(null);
-              goToStep(stepIndex + 1);
-            }}
-            onBack={() => goToStep(stepIndex - 1)}
-            backLabel="Back"
-          />
-        )}
+          {step === "class" && (
+            <PickerStep
+              title="Choose a Class"
+              description="Your character's class is what they do best in a fight or a tough situation. Pick one to see how it plays before you commit."
+              category="Class"
+              fetchList={getClasses}
+              fetchDetails={getClassDetails}
+              mapToDetailPanelResult={mapClassToDetailPanelResult}
+              mapToSnapshot={mapClassToSnapshot}
+              initialSelectedRaw={classRaw}
+              onChoose={(snapshot, raw) => {
+                setCharacterClass(snapshot);
+                setClassRaw(raw);
+                setClassSkills([]);
+                setSpellChoices(null);
+                setSubclass(null);
+                setSubclassRaw(null);
+                goToStep(stepIndex + 1);
+              }}
+              onBack={() => goToStep(stepIndex - 1)}
+              backLabel="Back"
+            />
+          )}
 
-        {step === "subrace" && (
-          <PickerStep
-            title="Choose a Subrace"
-            description={`${race?.name ?? "Your race"} has specific variants with their own traits and bonuses.`}
-            category="Subrace"
-            fetchList={() => Promise.resolve(raceRaw?.subraces ?? [])}
-            fetchDetails={getSubraceDetails}
-            mapToDetailPanelResult={mapSubraceToDetailPanelResult}
-            mapToSnapshot={mapSubraceToSnapshot}
-            initialSelectedRaw={subraceRaw}
-            emptyMessage={`${race?.name ?? "This race"} has no subraces to choose from.`}
-            onChoose={(snapshot, raw) => {
-              setSubrace(snapshot);
-              setSubraceRaw(raw);
-              setSubraceCantrip(null);
-              goToStep(stepIndex + 1);
-            }}
-            onSkip={() => goToStep(stepIndex + 1)}
-            onBack={() => goToStep(stepIndex - 1)}
-            backLabel="Back"
-          />
-        )}
-
-        {step === "subraceCantrip" && (
-          <SubraceCantripStep
-            subrace={subrace}
-            traitId={getSubraceCantripTraitId(subrace?.id)}
-            initialSelected={subraceCantrip ? [subraceCantrip.index] : []}
-            onNext={(selected) => {
-              setSubraceCantrip(selected[0] ?? null);
-              goToStep(stepIndex + 1);
-            }}
-            onBack={() => goToStep(stepIndex - 1)}
-          />
-        )}
-
-        {step === "class" && (
-          <PickerStep
-            title="Choose a Class"
-            description="Your character's class is what they do best in a fight or a tough situation. Pick one to see how it plays before you commit."
-            category="Class"
-            fetchList={getClasses}
-            fetchDetails={getClassDetails}
-            mapToDetailPanelResult={mapClassToDetailPanelResult}
-            mapToSnapshot={mapClassToSnapshot}
-            initialSelectedRaw={classRaw}
-            onChoose={(snapshot, raw) => {
-              setCharacterClass(snapshot);
-              setClassRaw(raw);
-              setClassSkills([]);
-              setSpellChoices(null);
-              setSubclass(null);
-              setSubclassRaw(null);
-              goToStep(stepIndex + 1);
-            }}
-            onBack={() => goToStep(stepIndex - 1)}
-            backLabel="Back"
-          />
-        )}
-
-        {step === "subclass" && (
-          <PickerStep
-            title="Choose a Subclass"
-            description={
-              getSubclassLevel(characterClass?.id) === 1
-                ? `${characterClass?.name ?? "Your class"}'s specialization shapes how you play. Pick one now.`
-                : `${characterClass?.name ?? "This class"} chooses a subclass later as you level up, not at creation.`
-            }
-            category="Subclass"
-            fetchList={() =>
-              Promise.resolve(
+          {step === "subclass" && (
+            <PickerStep
+              title="Choose a Subclass"
+              description={
                 getSubclassLevel(characterClass?.id) === 1
-                  ? (classRaw?.subclasses ?? [])
-                  : [],
-              )
-            }
-            fetchDetails={getSubclassDetails}
-            mapToDetailPanelResult={mapSubclassToDetailPanelResult}
-            mapToSnapshot={mapSubclassToSnapshot}
-            initialSelectedRaw={subclassRaw}
-            emptyMessage={`${characterClass?.name ?? "This class"} chooses a subclass later as you level up, not at creation.`}
-            onChoose={(snapshot, raw) => {
-              setSubclass(snapshot);
-              setSubclassRaw(raw);
-              goToStep(stepIndex + 1);
-            }}
-            onSkip={() => goToStep(stepIndex + 1)}
-            onBack={() => goToStep(stepIndex - 1)}
-            backLabel="Back"
-          />
-        )}
+                  ? `${characterClass?.name ?? "Your class"}'s specialization shapes how you play. Pick one now.`
+                  : `${characterClass?.name ?? "This class"} chooses a subclass later as you level up, not at creation.`
+              }
+              category="Subclass"
+              fetchList={() =>
+                Promise.resolve(
+                  getSubclassLevel(characterClass?.id) === 1
+                    ? (classRaw?.subclasses ?? [])
+                    : [],
+                )
+              }
+              fetchDetails={getSubclassDetails}
+              mapToDetailPanelResult={mapSubclassToDetailPanelResult}
+              mapToSnapshot={mapSubclassToSnapshot}
+              initialSelectedRaw={subclassRaw}
+              emptyMessage={`${characterClass?.name ?? "This class"} chooses a subclass later as you level up, not at creation.`}
+              onChoose={(snapshot, raw) => {
+                setSubclass(snapshot);
+                setSubclassRaw(raw);
+                goToStep(stepIndex + 1);
+              }}
+              onSkip={() => goToStep(stepIndex + 1)}
+              onBack={() => goToStep(stepIndex - 1)}
+              backLabel="Back"
+            />
+          )}
 
-        {step === "classSkills" && (
-          <ClassSkillChoiceStep
-            characterClass={characterClass}
-            initialSelected={classSkills.map((s) => s.index)}
-            onNext={(selected) => {
-              setClassSkills(selected);
-              goToStep(stepIndex + 1);
-            }}
-            onBack={() => goToStep(stepIndex - 1)}
-          />
-        )}
+          {step === "classSkills" && (
+            <ClassSkillChoiceStep
+              characterClass={characterClass}
+              initialSelected={classSkills.map((s) => s.index)}
+              onNext={(selected) => {
+                setClassSkills(selected);
+                goToStep(stepIndex + 1);
+              }}
+              onBack={() => goToStep(stepIndex - 1)}
+            />
+          )}
 
-        {step === "classSpells" && (
-          <ClassSpellChoiceStep
-            characterClass={characterClass}
-            initialCantrips={(spellChoices?.cantrips ?? []).map((s) => s.index)}
-            initialSpells={(spellChoices?.spells ?? []).map((s) => s.index)}
-            onNext={(choices) => {
-              setSpellChoices(choices);
-              goToStep(stepIndex + 1);
-            }}
-            onBack={() => goToStep(stepIndex - 1)}
-          />
-        )}
+          {step === "classSpells" && (
+            <ClassSpellChoiceStep
+              characterClass={characterClass}
+              initialCantrips={(spellChoices?.cantrips ?? []).map(
+                (s) => s.index,
+              )}
+              initialSpells={(spellChoices?.spells ?? []).map((s) => s.index)}
+              onNext={(choices) => {
+                setSpellChoices(choices);
+                goToStep(stepIndex + 1);
+              }}
+              onBack={() => goToStep(stepIndex - 1)}
+            />
+          )}
 
-        {step === "background" && (
-          <PickerStep
-            title="Choose a Background"
-            description="Your character's background covers their life before adventuring, including free skills and equipment."
-            category="Background"
-            fetchList={getBackgrounds}
-            fetchDetails={getBackgroundDetails}
-            mapToDetailPanelResult={mapBackgroundToDetailPanelResult}
-            mapToSnapshot={mapBackgroundToSnapshot}
-            initialSelectedRaw={backgroundRaw}
-            onChoose={(snapshot, raw) => {
-              setBackground(snapshot);
-              setBackgroundRaw(raw);
-              goToStep(stepIndex + 1);
-            }}
-            onBack={() => goToStep(stepIndex - 1)}
-            backLabel="Back"
-          />
-        )}
+          {step === "background" && (
+            <PickerStep
+              title="Choose a Background"
+              description="Your character's background covers their life before adventuring, including free skills and equipment."
+              category="Background"
+              fetchList={getBackgrounds}
+              fetchDetails={getBackgroundDetails}
+              mapToDetailPanelResult={mapBackgroundToDetailPanelResult}
+              mapToSnapshot={mapBackgroundToSnapshot}
+              initialSelectedRaw={backgroundRaw}
+              onChoose={(snapshot, raw) => {
+                setBackground(snapshot);
+                setBackgroundRaw(raw);
+                goToStep(stepIndex + 1);
+              }}
+              onBack={() => goToStep(stepIndex - 1)}
+              backLabel="Back"
+            />
+          )}
 
-        {step === "abilities" && (
-          <AbilityScoreStep
-            race={finalRace}
-            initialAssignments={abilityAssignments?.assignments}
-            initialChosenBonusAbilities={
-              abilityAssignments?.chosenBonusAbilities
-            }
-            onNext={(scores, raw) => {
-              setAbilityScores(scores);
-              setAbilityAssignments(raw);
-              goToStep(stepIndex + 1);
-            }}
-            onBack={() => goToStep(stepIndex - 1)}
-          />
-        )}
+          {step === "abilities" && (
+            <AbilityScoreStep
+              race={finalRace}
+              initialAssignments={abilityAssignments?.assignments}
+              initialChosenBonusAbilities={
+                abilityAssignments?.chosenBonusAbilities
+              }
+              onNext={(scores, raw) => {
+                setAbilityScores(scores);
+                setAbilityAssignments(raw);
+                goToStep(stepIndex + 1);
+              }}
+              onBack={() => goToStep(stepIndex - 1)}
+            />
+          )}
 
-        {step === "review" && (
-          <div className="character-creation__review-step">
-            <h1 className="character-creation__title">
-              Review {name || "Your Character"}
-            </h1>
+          {step === "review" && (
+            <div className="character-creation__review-step">
+              <h1 className="character-creation__title">
+                Review {name || "Your Character"}
+              </h1>
 
-            <ul className="character-creation__review-list">
-              <li>
-                <strong>Name:</strong> {name}
-              </li>
+              <ul className="character-creation__review-list">
+                <li>
+                  <strong>Name:</strong> {name}
+                </li>
 
-              <li>
-                <strong>Race:</strong> {finalRace?.name ?? "Not chosen"}
-              </li>
+                <li>
+                  <strong>Race:</strong> {finalRace?.name ?? "Not chosen"}
+                </li>
 
-              <li>
-                <strong>Class:</strong> {characterClass?.name ?? "Not chosen"}
-                {subclass ? ` (${subclass.name})` : ""}
-              </li>
+                <li>
+                  <strong>Class:</strong> {characterClass?.name ?? "Not chosen"}
+                  {subclass ? ` (${subclass.name})` : ""}
+                </li>
 
-              <li>
-                <strong>Background:</strong> {background?.name ?? "Not chosen"}
-              </li>
+                <li>
+                  <strong>Background:</strong>{" "}
+                  {background?.name ?? "Not chosen"}
+                </li>
 
-              <li>
-                <strong>Ability Scores:</strong>{" "}
-                {ABILITY_SCORES.map((ability) => {
-                  const score = abilityScores?.[ability] ?? 10;
-                  const mod = getAbilityModifier(score);
-                  return `${ability.slice(0, 3).toUpperCase()} ${score} (${mod >= 0 ? "+" : ""}${mod})`;
-                }).join(" · ")}
-              </li>
+                <li>
+                  <strong>Ability Scores:</strong>{" "}
+                  {ABILITY_SCORES.map((ability) => {
+                    const score = abilityScores?.[ability] ?? 10;
+                    const mod = getAbilityModifier(score);
+                    return `${ability.slice(0, 3).toUpperCase()} ${score} (${mod >= 0 ? "+" : ""}${mod})`;
+                  }).join(" · ")}
+                </li>
 
-              <li>
-                <strong>Skill Proficiencies:</strong>{" "}
-                {[...(background?.skillProficiencies ?? []), ...classSkills]
-                  .map((s) => s.name)
-                  .join(", ") || "None"}
-              </li>
+                <li>
+                  <strong>Skill Proficiencies:</strong>{" "}
+                  {[...(background?.skillProficiencies ?? []), ...classSkills]
+                    .map((s) => s.name)
+                    .join(", ") || "None"}
+                </li>
 
-              <li>
-                <strong>Starting Equipment:</strong>{" "}
-                {[
-                  ...(characterClass?.startingEquipment ?? []),
-                  ...(background?.startingEquipment ?? []),
-                ]
-                  .map(
-                    (item) =>
-                      `${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ""}`,
-                  )
-                  .join(", ") || "None"}
-              </li>
+                <li>
+                  <strong>Starting Equipment:</strong>{" "}
+                  {[
+                    ...(characterClass?.startingEquipment ?? []),
+                    ...(background?.startingEquipment ?? []),
+                  ]
+                    .map(
+                      (item) =>
+                        `${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ""}`,
+                    )
+                    .join(", ") || "None"}
+                </li>
 
-              <li>
-                <strong>Starting Spells:</strong>{" "}
-                {[
-                  ...(spellChoices?.cantrips ?? []),
-                  ...(spellChoices?.spells ?? []),
-                  ...(subraceCantrip ? [subraceCantrip] : []),
-                ]
-                  .map((s) => s.name)
-                  .join(", ") || "None"}
-              </li>
-            </ul>
+                <li>
+                  <strong>Starting Spells:</strong>{" "}
+                  {[
+                    ...(spellChoices?.cantrips ?? []),
+                    ...(spellChoices?.spells ?? []),
+                    ...(subraceCantrip ? [subraceCantrip] : []),
+                  ]
+                    .map((s) => s.name)
+                    .join(", ") || "None"}
+                </li>
+              </ul>
 
-            <div className="character-creation__nav">
-              <button
-                className="character-creation__cancel-button"
-                type="button"
-                onClick={() => goToStep(stepIndex - 1)}
-              >
-                Back
-              </button>
+              <div className="character-creation__nav">
+                <Button
+                  variant="secondary"
+                  onClick={() => goToStep(stepIndex - 1)}
+                >
+                  Back
+                </Button>
 
-              <button
-                className="character-creation__next-button"
-                type="button"
-                onClick={handleCreate}
-              >
-                Create Character
-              </button>
+                <Button onClick={handleCreate}>Create Character</Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        <CreationSummaryPanel
+          name={name}
+          race={finalRace}
+          characterClass={characterClass}
+          subclass={subclass}
+          background={background}
+          abilityScores={abilityScores}
+        />
       </div>
     </main>
   );
