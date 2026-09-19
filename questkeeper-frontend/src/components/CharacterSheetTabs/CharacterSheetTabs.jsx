@@ -1,6 +1,6 @@
 import "./CharacterSheetTabs.css";
 
-export const CHARACTER_SHEET_TABS = [
+const CHARACTER_SHEET_TABS = [
   { key: "actions", label: "Actions" },
   { key: "spells", label: "Spells", casterOnly: true },
   { key: "resources", label: "Resources" },
