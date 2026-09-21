@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import EditableItemList from "../EditableItemList/EditableItemList";
+import { getSpells, getSpellDetails } from "../../utils/api";
 import {
   ABILITY_ABBREVIATIONS,
   getSpellSaveDC,
@@ -20,6 +22,30 @@ function CharacterSheetSpellsTab({
   onSpellUpdate,
   onSpellRemove,
 }) {
+  const [allSpells, setAllSpells] = useState([]);
+
+  useEffect(() => {
+    getSpells()
+      .then(setAllSpells)
+      .catch(() => {
+        // Autocomplete is a nice-to-have - freeform entry still works if this fails.
+      });
+  }, []);
+
+  function getSpellAutofill(name) {
+    const match = allSpells.find(
+      (spell) => spell.name.toLowerCase() === name.trim().toLowerCase(),
+    );
+    if (!match) return null;
+
+    return getSpellDetails(match.index)
+      .then((details) => ({
+        level: String(match.level),
+        components: (details.components ?? []).join(", "),
+      }))
+      .catch(() => null);
+  }
+
   const slots = getSpellSlots(spellcasting);
 
   return (
@@ -37,17 +63,13 @@ function CharacterSheetSpellsTab({
               </span>
             </div>
             <div className="character-sheet__stat-box">
-              <span className="character-sheet__stat-label">
-                Spell Save DC
-              </span>
+              <span className="character-sheet__stat-label">Spell Save DC</span>
               <span className="character-sheet__stat-value">
                 {getSpellSaveDC(abilityScore, proficiencyBonus)}
               </span>
             </div>
             <div className="character-sheet__stat-box">
-              <span className="character-sheet__stat-label">
-                Spell Attack
-              </span>
+              <span className="character-sheet__stat-label">Spell Attack</span>
               <span className="character-sheet__stat-value">
                 {formatModifier(
                   getSpellAttackModifier(abilityScore, proficiencyBonus),
@@ -65,10 +87,7 @@ function CharacterSheetSpellsTab({
           {slots
             .filter((slot) => activeSlotLevels.has(slot.level))
             .map((slot) => (
-              <li
-                className="character-sheet__spell-slot-card"
-                key={slot.level}
-              >
+              <li className="character-sheet__spell-slot-card" key={slot.level}>
                 <span className="character-sheet__spell-slot-label">
                   Level {slot.level}
                 </span>
@@ -131,7 +150,14 @@ function CharacterSheetSpellsTab({
         ].sort((a, b) => (a.level ?? 0) - (b.level ?? 0))}
         getItemId={(item) => item.index}
         fields={[
-          { key: "name", type: "text", placeholder: "Spell name (e.g. Bless)" },
+          {
+            key: "name",
+            type: "text",
+            placeholder: "Spell name (e.g. Bless)",
+            datalistId: "spell-name-suggestions",
+            datalistOptions: allSpells.map((spell) => spell.name),
+            getAutofill: getSpellAutofill,
+          },
           {
             key: "level",
             type: "select",
