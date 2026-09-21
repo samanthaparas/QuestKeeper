@@ -95,6 +95,13 @@ function CharacterSheetPage() {
     setSheet(saved);
     setLevelUpSummary(summary);
     setIsLevelingUp(false);
+    setActiveSlotLevels((prev) => {
+      const next = new Set(prev);
+      getSpellSlots(saved.spellcasting)
+        .filter((slot) => slot.max > 0)
+        .forEach((slot) => next.add(slot.level));
+      return next;
+    });
   }
 
   function persistSheet(updated) {
@@ -593,6 +600,9 @@ function CharacterSheetPage() {
               <Button onClick={() => setIsLevelingUp(true)}>Level Up</Button>
               <Button variant="secondary" onClick={() => handleRest("long")}>
                 Long Rest
+              </Button>
+              <Button variant="secondary" onClick={() => handleRest("short")}>
+                Short Rest
               </Button>
             </div>
 

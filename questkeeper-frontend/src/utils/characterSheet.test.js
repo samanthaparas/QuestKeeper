@@ -28,6 +28,7 @@ import {
   getSpellcastingAbility,
   getStartingSpellCounts,
   buildStartingSpellcasting,
+  getSpellSlotProgression,
   mergeSubrace,
   getSubraceCantripTraitId,
   addRacialCantrip,
@@ -304,6 +305,32 @@ describe("applyRest", () => {
     expect(result.resources.find((r) => r.id === "a").current).toBe(0);
     expect(result.resources.find((r) => r.id === "b").current).toBe(1);
   });
+
+  it("a short rest recovers a Warlock's Pact Magic slots", () => {
+    const sheet = {
+      ...makeSheet(),
+      class: { id: "warlock" },
+      spellcasting: {
+        spellSlots: [{ level: 2, max: 2, current: 0 }],
+      },
+    };
+
+    const result = applyRest(sheet, "short");
+    expect(result.spellcasting.spellSlots[0].current).toBe(2);
+  });
+
+  it("a short rest does not recover a non-Warlock's spell slots", () => {
+    const sheet = {
+      ...makeSheet(),
+      class: { id: "wizard" },
+      spellcasting: {
+        spellSlots: [{ level: 1, max: 4, current: 0 }],
+      },
+    };
+
+    const result = applyRest(sheet, "short");
+    expect(result.spellcasting.spellSlots[0].current).toBe(0);
+  });
 });
 
 describe("finalizeLevelUp", () => {
@@ -355,6 +382,46 @@ describe("finalizeLevelUp", () => {
   it("clears pendingLevelUp once applied", () => {
     const result = finalizeLevelUp(makeSheet());
     expect(result.pendingLevelUp).toBeNull();
+  });
+  it("recomputes spell slots for the new level using the class's progression", () => {
+    const sheet = {
+      level: 1,
+      abilityScores: { constitution: 14 },
+      class: { id: "wizard", spellcastingType: "prepared" },
+      spellcasting: {
+        type: "prepared",
+        cantripsKnown: [],
+        spellsKnown: [],
+        spellSlots: [{ level: 1, max: 2, current: 0 }],
+      },
+      feats: [],
+      combat: {
+        hitPoints: { max: 8, current: 8, temporary: 0 },
+        hitDice: { total: 1, remaining: 1, die: 6 },
+        hpHistory: [],
+      },
+      pendingLevelUp: {
+        targetLevel: 3,
+        steps: [
+          { key: "hitPoints", data: { amount: 4 } },
+          { key: "spells", data: null },
+        ],
+      },
+    };
+
+    const result = finalizeLevelUp(sheet);
+    const slots = result.spellcasting.spellSlots;
+
+    expect(slots.find((s) => s.level === 1)).toEqual({
+      level: 1,
+      max: 4,
+      current: 4,
+    });
+    expect(slots.find((s) => s.level === 2)).toEqual({
+      level: 2,
+      max: 2,
+      current: 2,
+    });
   });
 });
 
@@ -730,6 +797,52 @@ describe("buildStartingSpellcasting", () => {
 
   it("returns null for a class with no spellcasting type", () => {
     expect(buildStartingSpellcasting("fighter", [], [])).toBeNull();
+  });
+});
+
+describe("getSpellSlotProgression", () => {
+  it("gives a level 1 full caster 2 first-level slots and nothing else", () => {
+    const slots = getSpellSlotProgression("wizard", 1);
+    expect(slots.find((s) => s.level === 1).max).toBe(2);
+    expect(slots.filter((s) => s.level !== 1).every((s) => s.max === 0)).toBe(
+      true,
+    );
+  });
+
+  it("matches the full-caster table at level 17 (every spell level unlocked)", () => {
+    const slots = getSpellSlotProgression("cleric", 17);
+    expect(slots.map((s) => s.max)).toEqual([4, 3, 3, 3, 2, 1, 1, 1, 1]);
+  });
+
+  it("gives a level 1 half-caster no slots at all", () => {
+    const slots = getSpellSlotProgression("paladin", 1);
+    expect(slots.every((s) => s.max === 0)).toBe(true);
+  });
+
+  it("gives a half-caster the full-caster table's row at level ceil(L/2)", () => {
+    expect(getSpellSlotProgression("ranger", 2).map((s) => s.max)).toEqual(
+      getSpellSlotProgression("bard", 1).map((s) => s.max),
+    );
+    expect(getSpellSlotProgression("ranger", 7).map((s) => s.max)).toEqual(
+      getSpellSlotProgression("bard", 4).map((s) => s.max),
+    );
+  });
+
+  it("gives a Warlock all their slots at one scaling spell level", () => {
+    const level5 = getSpellSlotProgression("warlock", 5);
+    expect(level5.find((s) => s.level === 3).max).toBe(2);
+    expect(level5.filter((s) => s.level !== 3).every((s) => s.max === 0)).toBe(
+      true,
+    );
+
+    const level17 = getSpellSlotProgression("warlock", 17);
+    expect(level17.find((s) => s.level === 5).max).toBe(4);
+  });
+
+  it("gives a non-caster class no slots at any level", () => {
+    expect(
+      getSpellSlotProgression("fighter", 20).every((s) => s.max === 0),
+    ).toBe(true);
   });
 });
 
