@@ -317,23 +317,6 @@
   min-width: 200px;
 }
 
-.character-sheet__resource-add-button {
-  min-height: 40px;
-  padding: 0 20px;
-  border: 1px solid var(--qk-terracotta);
-  border-radius: 999px;
-  background-color: var(--qk-terracotta);
-  color: var(--qk-surface);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.character-sheet__resource-add-button:hover {
-  background-color: var(--qk-terracotta-hover);
-  border-color: var(--qk-terracotta-hover);
-}
-
 .character-sheet__level-up-summary {
   max-width: var(--qk-reading-width);
   margin: 0 auto;

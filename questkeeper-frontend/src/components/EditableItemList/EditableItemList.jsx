@@ -1,5 +1,6 @@
 import { useState, useId } from "react";
 import "../../pages/CharacterSheetPage/CharacterSheetPage.css";
+import Button from "../Button/Button";
 
 function formatNotesLines(notes) {
   return (notes ?? "")
@@ -167,30 +168,16 @@ function EditableItemList({
         <h2 className="character-sheet__section-title">{title}</h2>
         <div className="character-sheet__section-header-actions">
           {isAdding && (
-            <button
-              type="button"
-              className="character-sheet__resource-remove"
-              onClick={resetForm}
-            >
+            <Button variant="secondary" onClick={resetForm}>
               Cancel
-            </button>
+            </Button>
           )}
           {isAdding ? (
-            <button
-              type="submit"
-              form={formId}
-              className="character-sheet__resource-add-button"
-            >
+            <Button type="submit" form={formId}>
               {editingId ? "Save Changes" : addButtonLabel}
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              className="character-sheet__resource-add-button"
-              onClick={() => setIsAdding(true)}
-            >
-              {addButtonLabel}
-            </button>
+            <Button onClick={() => setIsAdding(true)}>{addButtonLabel}</Button>
           )}
         </div>
       </div>
