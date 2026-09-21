@@ -4,6 +4,7 @@ import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
 import "../pages/SearchPage/SearchPage.css";
+import Button from "../components/Button/Button";
 
 function ClassesPage() {
   const [classResults, setClassResults] = useState([]);
@@ -130,13 +131,13 @@ function ClassesPage() {
 
           <div className="search-page__detail-wrapper">
             {selectedResult && (
-              <button
+              <Button
+                variant="secondary"
                 className="search-page__back-button"
-                type="button"
                 onClick={() => setSelectedResult(null)}
               >
                 Back to results
-              </button>
+              </Button>
             )}
 
             <DetailPanel selectedResult={selectedResult} />
