@@ -469,6 +469,7 @@ export function createCharacterSheet(overrides = {}) {
     pendingLevelUp: null,
     notes: "",
     backstory: "",
+    showBackstory: true,
     appearance: "",
 
     ...overrides,

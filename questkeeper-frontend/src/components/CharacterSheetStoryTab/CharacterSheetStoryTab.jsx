@@ -1,6 +1,8 @@
 function CharacterSheetStoryTab({
   backstory,
+  showBackstory,
   onBackstoryChange,
+  onToggleBackstoryVisibility,
   appearance,
   onAppearanceChange,
   companion,
@@ -11,18 +13,36 @@ function CharacterSheetStoryTab({
   return (
     <>
       <section className="character-sheet__section">
-        <h2 className="character-sheet__section-title">Backstory</h2>
-        <textarea
-          className="character-sheet__textarea"
-          value={backstory ?? ""}
-          onChange={(e) => onBackstoryChange(e.target.value)}
-          placeholder="Where your character comes from, what drives them, key life events"
-          rows={5}
-        />
+        <div className="character-sheet__section-header-row">
+          <h2 className="character-sheet__section-title">Backstory</h2>
+          <button
+            type="button"
+            className="character-sheet__resource-remove"
+            onClick={onToggleBackstoryVisibility}
+          >
+            {showBackstory ? "Hide Section" : "Show Section"}
+          </button>
+        </div>
+
+        {showBackstory ? (
+          <textarea
+            className="character-sheet__textarea"
+            value={backstory ?? ""}
+            onChange={(e) => onBackstoryChange(e.target.value)}
+            placeholder="Where your character comes from, what drives them, key life events"
+            rows={5}
+          />
+        ) : (
+          <p className="character-sheet__empty-text">
+            Backstory is hidden. Click "Show Section" to bring it back.
+          </p>
+        )}
       </section>
 
       <section className="character-sheet__section">
-        <h2 className="character-sheet__section-title">Appearance &amp; Traits</h2>
+        <h2 className="character-sheet__section-title">
+          Appearance &amp; Traits
+        </h2>
         <textarea
           className="character-sheet__textarea"
           value={appearance ?? ""}
