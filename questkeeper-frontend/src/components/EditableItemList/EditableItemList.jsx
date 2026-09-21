@@ -38,14 +38,34 @@ function EditableItemField({ field, value, onChange }) {
   }`;
 
   return (
-    <input
-      type={field.type}
-      className={className}
-      placeholder={field.placeholder}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      min={field.type === "number" ? field.min : undefined}
-    />
+    <>
+      <input
+        type={field.type}
+        className={className}
+        placeholder={field.placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        min={field.type === "number" ? field.min : undefined}
+        list={field.datalistId}
+        autoComplete="off"
+      />
+      {field.datalistId && value && (
+        <button
+          type="button"
+          className="character-sheet__resource-remove"
+          onClick={() => onChange("")}
+        >
+          Clear
+        </button>
+      )}
+      {field.datalistId && (
+        <datalist id={field.datalistId}>
+          {field.datalistOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      )}
+    </>
   );
 }
 
@@ -81,6 +101,15 @@ function EditableItemList({
 
   function handleFieldChange(key, value) {
     setValues((prev) => ({ ...prev, [key]: value }));
+
+    const field = fields.find((f) => f.key === key);
+    if (field?.getAutofill) {
+      Promise.resolve(field.getAutofill(value)).then((autofill) => {
+        if (autofill) {
+          setValues((prev) => ({ ...prev, ...autofill }));
+        }
+      });
+    }
   }
 
   function handleSubmit(e) {
