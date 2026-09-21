@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { listCharacters, deleteCharacter } from "../../utils/characterStore";
 import "./CharactersPage.css";
+import Button from "../../components/Button/Button";
 
 function CharactersPage() {
   const [characters, setCharacters] = useState(() => listCharacters());
@@ -26,13 +27,12 @@ function CharactersPage() {
           for later.
         </p>
 
-        <button
+        <Button
           className="characters-page__create-button"
-          type="button"
           onClick={() => navigate("/characters/new")}
         >
           + New Character
-        </button>
+        </Button>
 
         {characters.length === 0 && (
           <p className="characters-page__empty">
@@ -54,13 +54,12 @@ function CharactersPage() {
                 </span>
               </Link>
 
-              <button
-                className="characters-page__delete-button"
-                type="button"
+              <Button
+                variant="danger"
                 onClick={() => handleDelete(sheet.id, sheet.name)}
               >
                 Delete
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
