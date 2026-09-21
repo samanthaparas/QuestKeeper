@@ -20,6 +20,7 @@ import {
   getSubclassDetails,
 } from "../../utils/api";
 import "./LevelUpWizard.css";
+import Button from "../Button/Button";
 
 function LevelUpWizard({ sheet, onComplete, onCancel }) {
   const targetLevel = sheet.level + 1;
@@ -317,14 +318,12 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
             </p>
           )}
 
-          <button
-            type="button"
-            className="level-up-wizard__next-button"
+          <Button
             disabled={!hpChoice}
             onClick={() => completeStep({ amount: hpChoice.amount })}
           >
             Next
-          </button>
+          </Button>
         </div>
       )}
 
@@ -428,14 +427,9 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
             </div>
           )}
 
-          <button
-            type="button"
-            className="level-up-wizard__next-button"
-            disabled={!isAsiValid}
-            onClick={confirmAbilityOrFeat}
-          >
+          <Button disabled={!isAsiValid} onClick={confirmAbilityOrFeat}>
             Next
-          </button>
+          </Button>
         </div>
       )}
 
@@ -466,9 +460,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
             </div>
           )}
 
-          <button
-            type="button"
-            className="level-up-wizard__next-button"
+          <Button
             disabled={!classSubclass}
             onClick={() =>
               completeStep({
@@ -479,7 +471,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
             }
           >
             Next
-          </button>
+          </Button>
         </div>
       )}
 
@@ -518,14 +510,12 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
             </p>
           )}
 
-          <button
-            type="button"
-            className="level-up-wizard__next-button"
+          <Button
             disabled={availableSpells.length > 0 && !selectedSpellIndex}
             onClick={confirmSpell}
           >
             Next
-          </button>
+          </Button>
         </div>
       )}
 
@@ -545,22 +535,12 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
             ))}
           </ul>
 
-          <button
-            type="button"
-            className="level-up-wizard__next-button"
-            onClick={handleFinish}
-          >
-            Confirm &amp; Finish Level Up
-          </button>
+          <Button onClick={handleFinish}>Confirm &amp; Finish Level Up</Button>
         </div>
       )}
-      <button
-        type="button"
-        className="level-up-wizard__cancel-button"
-        onClick={onCancel}
-      >
+      <Button variant="secondary" onClick={onCancel}>
         Cancel
-      </button>
+      </Button>
     </div>
   );
 }
