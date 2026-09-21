@@ -496,6 +496,16 @@ export function createResource({ name, max, resetOn, notes }) {
   };
 }
 
+export function createCompanionCreature() {
+  return {
+    name: "",
+    armorClass: 10,
+    speed: 30,
+    hitPoints: { current: 0, max: 0 },
+    notes: "",
+  };
+}
+
 export function setResourceCurrent(resources, id, value) {
   return (resources ?? []).map((resource) =>
     resource.id === id
