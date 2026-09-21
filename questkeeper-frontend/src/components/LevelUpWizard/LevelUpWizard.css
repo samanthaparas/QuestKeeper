@@ -2,9 +2,9 @@
   max-width: 640px;
   margin: 0 auto;
   padding: 32px;
-  border: 1px solid rgba(217, 164, 65, 0.35);
-  border-radius: 16px;
-  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-large);
+  background-color: var(--qk-surface);
 }
 
 .level-up-wizard__header {
@@ -12,13 +12,14 @@
 }
 
 .level-up-wizard__title {
-  color: #d4af37;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
   font-size: 28px;
   margin: 0 0 8px;
 }
 
 .level-up-wizard__step-count {
-  color: #d8c7a3;
+  color: var(--qk-text-muted);
   font-size: 13px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -31,36 +32,37 @@
   gap: 8px 16px;
   margin-bottom: 24px;
   padding: 12px 16px;
-  border: 1px solid rgba(217, 164, 65, 0.25);
-  border-radius: 10px;
-  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface-muted);
 }
 
 .level-up-wizard__current-stat {
-  color: #d8c7a3;
+  color: var(--qk-text-muted);
   font-size: 13px;
 }
 
 .level-up-wizard__current-stat strong {
-  color: #f1d28a;
+  color: var(--qk-text);
   font-weight: 700;
 }
 
 .level-up-wizard__step-title {
-  color: #f1d28a;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
   font-size: 22px;
   margin: 0 0 12px;
 }
 
 .level-up-wizard__step-description {
-  color: #d8c7a3;
+  color: var(--qk-text-muted);
   font-size: 15px;
   line-height: 1.6;
   margin: 0 0 20px;
 }
 
 .level-up-wizard__error {
-  color: #ffb4a8;
+  color: var(--qk-danger);
   margin: 0 0 16px;
 }
 
@@ -78,7 +80,7 @@
 
 .level-up-wizard__hp-manual-label {
   display: block;
-  color: #d8c7a3;
+  color: var(--qk-text-muted);
   font-size: 14px;
   margin-bottom: 8px;
 }
@@ -92,40 +94,40 @@
   width: 80px;
   min-height: 44px;
   padding: 0 12px;
-  border: 1px solid rgba(217, 164, 65, 0.4);
-  border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.04);
-  color: #f5f1e8;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
   font: inherit;
 }
 
 .level-up-wizard__hp-manual-input:focus-visible {
-  outline: 2px solid #f1d28a;
+  outline: 2px solid var(--qk-focus);
   outline-offset: 2px;
 }
 
 .level-up-wizard__hp-button {
   min-height: 44px;
   padding: 0 20px;
-  border: 1px solid rgba(217, 164, 65, 0.4);
+  border: 1px solid var(--qk-border);
   border-radius: 999px;
-  background-color: rgba(255, 255, 255, 0.04);
-  color: #f5f1e8;
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
   font: inherit;
   cursor: pointer;
 }
 
 .level-up-wizard__hp-button:hover {
-  background-color: rgba(217, 164, 65, 0.12);
+  background-color: var(--qk-terracotta-soft);
 }
 
 .level-up-wizard__hp-button:focus-visible {
-  outline: 2px solid #f1d28a;
+  outline: 2px solid var(--qk-focus);
   outline-offset: 2px;
 }
 
 .level-up-wizard__hp-result {
-  color: #f5f1e8;
+  color: var(--qk-text);
   font-size: 16px;
   margin-bottom: 24px;
 }
@@ -142,23 +144,23 @@
 .level-up-wizard__mode-button {
   min-height: 44px;
   padding: 0 18px;
-  border: 1px solid rgba(217, 164, 65, 0.4);
+  border: 1px solid var(--qk-border);
   border-radius: 999px;
-  background-color: rgba(255, 255, 255, 0.04);
-  color: #f5f1e8;
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
   font: inherit;
   cursor: pointer;
 }
 
 .level-up-wizard__mode-button--active {
-  border-color: #f1d28a;
-  background-color: rgba(217, 164, 65, 0.2);
-  color: #f1d28a;
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-terracotta-hover);
   font-weight: 700;
 }
 
 .level-up-wizard__mode-button:focus-visible {
-  outline: 2px solid #f1d28a;
+  outline: 2px solid var(--qk-focus);
   outline-offset: 2px;
 }
 
@@ -174,25 +176,26 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  border: 1px solid rgba(217, 164, 65, 0.25);
-  border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.03);
-  color: #f5f1e8;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
   cursor: pointer;
 }
 
 .level-up-wizard__feat-card {
   padding: 16px;
-  border: 1px solid rgba(217, 164, 65, 0.25);
-  border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.03);
-  color: #d8c7a3;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text-muted);
   line-height: 1.6;
   margin-bottom: 20px;
 }
 
 .level-up-wizard__feat-card h4 {
-  color: #f1d28a;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
   margin: 0 0 8px;
 }
 
@@ -205,69 +208,27 @@
   min-height: 44px;
   padding: 0 14px;
   margin-bottom: 20px;
-  border: 1px solid rgba(217, 164, 65, 0.4);
-  border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.04);
-  color: #f5f1e8;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
   font: inherit;
 }
 
 .level-up-wizard__ability-select:focus-visible,
 .level-up-wizard__spell-select:focus-visible {
-  outline: 2px solid #f1d28a;
+  outline: 2px solid var(--qk-focus);
   outline-offset: 2px;
 }
 
 .level-up-wizard__ability-select option,
 .level-up-wizard__spell-select option {
-  background-color: #1a1a1a;
-  color: #f5f1e8;
-}
-
-/* Nav buttons */
-
-.level-up-wizard__next-button {
-  min-height: 44px;
-  padding: 0 24px;
-  border: 1px solid rgba(217, 164, 65, 0.55);
-  border-radius: 999px;
-  background-color: rgba(217, 164, 65, 0.15);
-  color: #f1d28a;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.level-up-wizard__next-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.level-up-wizard__next-button:focus-visible {
-  outline: 2px solid #f1d28a;
-  outline-offset: 3px;
-}
-
-.level-up-wizard__cancel-button {
-  display: block;
-  min-height: 40px;
-  padding: 0 20px;
-  margin-top: 20px;
-  border: 1px solid rgba(245, 241, 232, 0.3);
-  border-radius: 999px;
-  background-color: transparent;
-  color: #d8c7a3;
-  font: inherit;
-  cursor: pointer;
-}
-
-.level-up-wizard__cancel-button:focus-visible {
-  outline: 2px solid #f5f1e8;
-  outline-offset: 3px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
 }
 
 .level-up-wizard__character-name {
-  color: #d8c7a3;
+  color: var(--qk-text-muted);
   font-size: 14px;
   margin: 0 0 4px;
 }
@@ -279,7 +240,7 @@
   display: grid;
   gap: 10px;
   font-size: 16px;
-  color: #f5f1e8;
+  color: var(--qk-text);
 }
 
 @media screen and (max-width: 600px) {
