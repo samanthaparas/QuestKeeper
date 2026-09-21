@@ -129,11 +129,15 @@ export function buildStartingSpellcasting(
     components: "",
   });
 
-  return {
-    type,
-    cantripsKnown: chosenCantrips.map(toEntry),
-    spellsKnown: chosenSpells.map(toEntry),
-  };
+  return applySpellSlotProgression(
+    {
+      type,
+      cantripsKnown: chosenCantrips.map(toEntry),
+      spellsKnown: chosenSpells.map(toEntry),
+    },
+    classId,
+    1,
+  );
 }
 
 export function addRacialCantrip(spellcasting, cantrip) {
@@ -315,9 +319,21 @@ export function finalizeLevelUp(sheet) {
     ? applyAbilityScoreChoice(sheet.abilityScores, abilityStep.data)
     : sheet.abilityScores;
 
-  const spellcasting = spellStep?.data
+  const characterClass = subclassStep?.data
+    ? { ...sheet.class, subclass: subclassStep.data }
+    : sheet.class;
+
+  const spellcastingAfterSpellStep = spellStep?.data
     ? addSpellToSpellcasting(sheet.spellcasting, sheet.class, spellStep.data)
     : sheet.spellcasting;
+
+  const spellcasting = getSpellcastingType(characterClass?.id)
+    ? applySpellSlotProgression(
+        spellcastingAfterSpellStep,
+        characterClass.id,
+        pendingLevelUp.targetLevel,
+      )
+    : spellcastingAfterSpellStep;
 
   const feats =
     abilityStep?.data?.type === "feat"
@@ -329,10 +345,6 @@ export function finalizeLevelUp(sheet) {
           },
         ]
       : (sheet.feats ?? []);
-
-  const characterClass = subclassStep?.data
-    ? { ...sheet.class, subclass: subclassStep.data }
-    : sheet.class;
 
   return {
     ...sheet,
@@ -547,8 +559,12 @@ export function applyRest(sheet, restType) {
       ? setCurrentHp(sheet.combat.hitPoints, sheet.combat.hitPoints.max)
       : sheet.combat.hitPoints;
 
+  const isWarlock = sheet.class?.id === "warlock";
+  const shouldResetSpellSlots =
+    restType === "long" || (restType === "short" && isWarlock);
+
   const spellcasting =
-    restType === "long" && sheet.spellcasting
+    shouldResetSpellSlots && sheet.spellcasting
       ? {
           ...sheet.spellcasting,
           spellSlots: getSpellSlots(sheet.spellcasting).map((slot) => ({
@@ -681,6 +697,114 @@ export function updateSpell(spellcasting, listKey, index, updates) {
   return {
     ...withoutOld,
     [targetListKey]: [...withoutOld[targetListKey], updated],
+  };
+}
+
+// Full-caster spell slot table (Bard, Cleric, Druid, Sorcerer, Wizard), by
+// character level 1-20. Each row is slot counts for spell levels 1-9 in
+// order. Half-casters reuse this same table (see getSpellSlotProgression)
+// rather than needing their own - a half-caster's slots at level L exactly
+// match this table's row at level ceil(L/2), verified against all 20 levels.
+const FULL_CASTER_SLOT_TABLE = {
+  1: [2, 0, 0, 0, 0, 0, 0, 0, 0],
+  2: [3, 0, 0, 0, 0, 0, 0, 0, 0],
+  3: [4, 2, 0, 0, 0, 0, 0, 0, 0],
+  4: [4, 3, 0, 0, 0, 0, 0, 0, 0],
+  5: [4, 3, 2, 0, 0, 0, 0, 0, 0],
+  6: [4, 3, 3, 0, 0, 0, 0, 0, 0],
+  7: [4, 3, 3, 1, 0, 0, 0, 0, 0],
+  8: [4, 3, 3, 2, 0, 0, 0, 0, 0],
+  9: [4, 3, 3, 3, 1, 0, 0, 0, 0],
+  10: [4, 3, 3, 3, 2, 0, 0, 0, 0],
+  11: [4, 3, 3, 3, 2, 1, 0, 0, 0],
+  12: [4, 3, 3, 3, 2, 1, 0, 0, 0],
+  13: [4, 3, 3, 3, 2, 1, 1, 0, 0],
+  14: [4, 3, 3, 3, 2, 1, 1, 0, 0],
+  15: [4, 3, 3, 3, 2, 1, 1, 1, 0],
+  16: [4, 3, 3, 3, 2, 1, 1, 1, 0],
+  17: [4, 3, 3, 3, 2, 1, 1, 1, 1],
+  18: [4, 3, 3, 3, 3, 1, 1, 1, 1],
+  19: [4, 3, 3, 3, 3, 2, 1, 1, 1],
+  20: [4, 3, 3, 3, 3, 2, 2, 1, 1],
+};
+
+const HALF_CASTER_CLASSES = new Set(["paladin", "ranger"]);
+const FULL_CASTER_CLASSES = new Set([
+  "bard",
+  "cleric",
+  "druid",
+  "sorcerer",
+  "wizard",
+]);
+
+// Warlock Pact Magic: a handful of slots that are all the same spell level,
+// which itself scales with character level - a completely different system
+// from every other caster, but it still fits the existing 9-row
+// {level, max} shape (only one row is ever nonzero).
+const WARLOCK_PACT_MAGIC_TABLE = {
+  1: { slots: 1, slotLevel: 1 },
+  2: { slots: 2, slotLevel: 1 },
+  3: { slots: 2, slotLevel: 2 },
+  4: { slots: 2, slotLevel: 2 },
+  5: { slots: 2, slotLevel: 3 },
+  6: { slots: 2, slotLevel: 3 },
+  7: { slots: 2, slotLevel: 4 },
+  8: { slots: 2, slotLevel: 4 },
+  9: { slots: 2, slotLevel: 5 },
+  10: { slots: 2, slotLevel: 5 },
+  11: { slots: 3, slotLevel: 5 },
+  12: { slots: 3, slotLevel: 5 },
+  13: { slots: 3, slotLevel: 5 },
+  14: { slots: 3, slotLevel: 5 },
+  15: { slots: 3, slotLevel: 5 },
+  16: { slots: 3, slotLevel: 5 },
+  17: { slots: 4, slotLevel: 5 },
+  18: { slots: 4, slotLevel: 5 },
+  19: { slots: 4, slotLevel: 5 },
+  20: { slots: 4, slotLevel: 5 },
+};
+
+export function getSpellSlotProgression(classId, level) {
+  const clampedLevel = Math.max(1, Math.min(20, level));
+  const emptyRows = () =>
+    Array.from({ length: 9 }, (_, i) => ({ level: i + 1, max: 0 }));
+
+  if (classId === "warlock") {
+    const { slots, slotLevel } = WARLOCK_PACT_MAGIC_TABLE[clampedLevel];
+    return emptyRows().map((row) =>
+      row.level === slotLevel ? { ...row, max: slots } : row,
+    );
+  }
+
+  if (HALF_CASTER_CLASSES.has(classId)) {
+    if (clampedLevel < 2) return emptyRows();
+    const row = FULL_CASTER_SLOT_TABLE[Math.ceil(clampedLevel / 2)];
+    return row.map((max, i) => ({ level: i + 1, max }));
+  }
+
+  if (FULL_CASTER_CLASSES.has(classId)) {
+    const row = FULL_CASTER_SLOT_TABLE[clampedLevel];
+    return row.map((max, i) => ({ level: i + 1, max }));
+  }
+
+  return emptyRows();
+}
+
+export function applySpellSlotProgression(spellcasting, classId, level) {
+  const progression = getSpellSlotProgression(classId, level);
+  const base = spellcasting ?? {
+    type: getSpellcastingType(classId) ?? "known",
+    cantripsKnown: [],
+    spellsKnown: [],
+  };
+
+  return {
+    ...base,
+    spellSlots: progression.map(({ level: slotLevel, max }) => ({
+      level: slotLevel,
+      max,
+      current: max,
+    })),
   };
 }
 
