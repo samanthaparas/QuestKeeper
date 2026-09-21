@@ -12,6 +12,7 @@ import {
   formatModifier,
   buildLevelUpSummary,
   createResource,
+  createCompanionCreature,
   updateResource,
   setResourceCurrent,
   removeResource,
@@ -206,6 +207,45 @@ function CharacterSheetPage() {
 
   function handleCompanionChange(value) {
     persistSheet({ ...sheet, companion: value });
+  }
+
+  function handleCompanionModeToggle() {
+    const nextMode = sheet.companionMode === "creature" ? "text" : "creature";
+    persistSheet({
+      ...sheet,
+      companionMode: nextMode,
+      companionCreature: sheet.companionCreature ?? createCompanionCreature(),
+    });
+  }
+
+  function handleCompanionCreatureChange(field, value) {
+    const numeric = field === "name" ? value : Number(value);
+    if (field !== "name" && Number.isNaN(numeric)) return;
+
+    persistSheet({
+      ...sheet,
+      companionCreature: { ...sheet.companionCreature, [field]: numeric },
+    });
+  }
+
+  function handleCompanionCreatureHpChange(field, value) {
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) return;
+
+    persistSheet({
+      ...sheet,
+      companionCreature: {
+        ...sheet.companionCreature,
+        hitPoints: { ...sheet.companionCreature.hitPoints, [field]: numeric },
+      },
+    });
+  }
+
+  function handleCompanionCreatureNotesChange(value) {
+    persistSheet({
+      ...sheet,
+      companionCreature: { ...sheet.companionCreature, notes: value },
+    });
   }
 
   function handleBackstoryChange(value) {
@@ -847,6 +887,16 @@ function CharacterSheetPage() {
                     onAppearanceChange={handleAppearanceChange}
                     companion={sheet.companion}
                     onCompanionChange={handleCompanionChange}
+                    companionMode={sheet.companionMode}
+                    companionCreature={sheet.companionCreature}
+                    onToggleCompanionMode={handleCompanionModeToggle}
+                    onCompanionCreatureChange={handleCompanionCreatureChange}
+                    onCompanionCreatureHpChange={
+                      handleCompanionCreatureHpChange
+                    }
+                    onCompanionCreatureNotesChange={
+                      handleCompanionCreatureNotesChange
+                    }
                     notes={sheet.notes}
                     onNotesChange={handleNotesChange}
                   />

@@ -11,6 +11,7 @@ import {
   finalizeLevelUp,
   buildLevelUpSummary,
   createResource,
+  createCompanionCreature,
   setResourceCurrent,
   removeResource,
   updateResource,
@@ -210,6 +211,18 @@ describe("createResource", () => {
     expect(resource.current).toBe(1);
     expect(resource.resetOn).toBe("long");
     expect(resource.id).toBeTruthy();
+  });
+});
+
+describe("createCompanionCreature", () => {
+  it("creates a companion creature with sensible defaults", () => {
+    const creature = createCompanionCreature();
+
+    expect(creature.name).toBe("");
+    expect(creature.armorClass).toBe(10);
+    expect(creature.speed).toBe(30);
+    expect(creature.hitPoints).toEqual({ current: 0, max: 0 });
+    expect(creature.notes).toBe("");
   });
 });
 
