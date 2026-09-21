@@ -212,6 +212,10 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, backstory: value });
   }
 
+  function handleToggleBackstoryVisibility() {
+    persistSheet({ ...sheet, showBackstory: sheet.showBackstory === false });
+  }
+
   function handleAppearanceChange(value) {
     persistSheet({ ...sheet, appearance: value });
   }
@@ -834,7 +838,11 @@ function CharacterSheetPage() {
                 {activeTab === "story" && (
                   <CharacterSheetStoryTab
                     backstory={sheet.backstory}
+                    showBackstory={sheet.showBackstory !== false}
                     onBackstoryChange={handleBackstoryChange}
+                    onToggleBackstoryVisibility={
+                      handleToggleBackstoryVisibility
+                    }
                     appearance={sheet.appearance}
                     onAppearanceChange={handleAppearanceChange}
                     companion={sheet.companion}
