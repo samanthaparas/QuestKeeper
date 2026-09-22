@@ -30,6 +30,19 @@ export const SKILLS = [
 
 export const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 
+export function rollAbilityScore() {
+  const rolls = [1, 2, 3, 4].map(() => Math.floor(Math.random() * 6) + 1);
+  const droppedIndex = rolls.reduce(
+    (lowest, roll, index) => (roll < rolls[lowest] ? index : lowest),
+    0,
+  );
+  const total = rolls.reduce(
+    (sum, roll, index) => (index === droppedIndex ? sum : sum + roll),
+    0,
+  );
+  return { rolls, droppedIndex, total };
+}
+
 export const ABILITY_ABBREVIATIONS = {
   strength: "STR",
   dexterity: "DEX",
@@ -46,6 +59,21 @@ export const ABILITY_LABELS = {
   intelligence: "Intelligence",
   wisdom: "Wisdom",
   charisma: "Charisma",
+};
+
+export const ABILITY_DESCRIPTIONS = {
+  strength:
+    "Physical power. Governs melee attacks, carrying capacity, and forcing your way through things.",
+  dexterity:
+    "Agility and reflexes. Governs ranged attacks, Armor Class, initiative, and stealth.",
+  constitution:
+    "Health and stamina. Determines hit points and resistance to poison, disease, and exhaustion.",
+  intelligence:
+    "Reasoning and memory. Powers Wizard spellcasting and skills like Arcana, History, and Investigation.",
+  wisdom:
+    "Awareness and intuition. Powers Cleric and Druid spellcasting and skills like Perception and Insight.",
+  charisma:
+    "Force of personality. Powers Bard, Sorcerer, Warlock, and Paladin spellcasting and skills like Persuasion and Deception.",
 };
 
 export const SPELLCASTING_BY_CLASS = {

@@ -3,8 +3,10 @@ import {
   ABILITY_SCORES,
   STANDARD_ARRAY,
   ABILITY_LABELS,
+  ABILITY_DESCRIPTIONS,
   applyRaceBonuses,
   getAbilityModifier,
+  rollAbilityScore,
 } from "../../utils/characterSheet";
 import "./AbilityScoreStep.css";
 import Button from "../Button/Button";
@@ -20,13 +22,52 @@ function createEmptyAssignments() {
   }, {});
 }
 
+function createEmptyRolledPool() {
+  return Array.from({ length: 6 }, () => ({
+    rolls: null,
+    droppedIndex: null,
+    total: null,
+  }));
+}
+
+function poolValuesFor(scoreMethod, rolledPool) {
+  if (scoreMethod === "roll") {
+    return rolledPool
+      .map((slot) => slot.total)
+      .filter((total) => total !== null);
+  }
+  return STANDARD_ARRAY;
+}
+
+function optionsFor(ability, pool, assignments) {
+  const current = assignments[ability];
+  const allUsedValues = Object.values(assignments).filter((v) => v !== null);
+
+  const remaining = [...pool];
+  allUsedValues.forEach((used) => {
+    const index = remaining.indexOf(used);
+    if (index !== -1) remaining.splice(index, 1);
+  });
+
+  const options = current !== null ? [current, ...remaining] : remaining;
+  return options.sort((a, b) => b - a);
+}
+
 function AbilityScoreStep({
   race,
   initialAssignments,
   initialChosenBonusAbilities,
+  initialScoreMethod,
+  initialRolledPool,
   onNext,
   onBack,
 }) {
+  const [scoreMethod, setScoreMethod] = useState(
+    () => initialScoreMethod ?? "standard",
+  );
+  const [rolledPool, setRolledPool] = useState(
+    () => initialRolledPool ?? createEmptyRolledPool(),
+  );
   const [assignments, setAssignments] = useState(
     () => initialAssignments ?? createEmptyAssignments(),
   );
@@ -34,14 +75,20 @@ function AbilityScoreStep({
     () => initialChosenBonusAbilities ?? [],
   );
 
+  const pool = poolValuesFor(scoreMethod, rolledPool);
   const usedValues = Object.values(assignments).filter((v) => v !== null);
   const finalScores = applyRaceBonuses(assignments, race, chosenBonusAbilities);
   const needsBonusChoice = Boolean(race?.abilityScoreChoice);
   const hasMadeBonusChoice =
     !needsBonusChoice ||
     chosenBonusAbilities.length === race.abilityScoreChoice.choose;
+  const poolIsReady =
+    scoreMethod === "standard" ||
+    rolledPool.every((slot) => slot.total !== null);
   const isComplete =
-    usedValues.length === ABILITY_SCORES.length && hasMadeBonusChoice;
+    poolIsReady &&
+    usedValues.length === ABILITY_SCORES.length &&
+    hasMadeBonusChoice;
 
   function handleAssign(ability, rawValue) {
     const value = rawValue === "" ? null : Number(rawValue);
@@ -58,21 +105,116 @@ function AbilityScoreStep({
     });
   }
 
-  function optionsFor(ability) {
-    const current = assignments[ability];
-    const remaining = STANDARD_ARRAY.filter((v) => !usedValues.includes(v));
-    const options = current !== null ? [current, ...remaining] : remaining;
-    return [...new Set(options)].sort((a, b) => b - a);
+  function handleScoreMethodChange(method) {
+    setScoreMethod(method);
+    setAssignments(createEmptyAssignments());
+  }
+
+  function handleRollSlot(slotIndex) {
+    const result = rollAbilityScore();
+    setRolledPool((prev) =>
+      prev.map((slot, index) => (index === slotIndex ? result : slot)),
+    );
+    setAssignments(createEmptyAssignments());
+  }
+
+  function handleManualSlotChange(slotIndex, rawValue) {
+    const total = rawValue === "" ? null : Number(rawValue);
+    setRolledPool((prev) =>
+      prev.map((slot, index) =>
+        index === slotIndex ? { rolls: null, droppedIndex: null, total } : slot,
+      ),
+    );
+    setAssignments(createEmptyAssignments());
   }
 
   return (
     <div className="ability-score-step">
       <h2 className="ability-score-step__title">Assign Ability Scores</h2>
-      <p className="ability-score-step__description">
-        Assign each value from the standard array (15, 14, 13, 12, 10, 8) to one
-        ability. {race?.name ?? "Your race"}'s bonuses are applied automatically
-        below.
-      </p>
+
+      <div className="ability-score-step__method-toggle">
+        <button
+          type="button"
+          className={`ability-score-step__method-button${
+            scoreMethod === "standard"
+              ? " ability-score-step__method-button--active"
+              : ""
+          }`}
+          onClick={() => handleScoreMethodChange("standard")}
+        >
+          Standard Array
+        </button>
+        <button
+          type="button"
+          className={`ability-score-step__method-button${
+            scoreMethod === "roll"
+              ? " ability-score-step__method-button--active"
+              : ""
+          }`}
+          onClick={() => handleScoreMethodChange("roll")}
+        >
+          Roll for Stats
+        </button>
+      </div>
+
+      {scoreMethod === "standard" && (
+        <p className="ability-score-step__description">
+          Assign each value from the standard array (15, 14, 13, 12, 10, 8) to
+          one ability. {race?.name ?? "Your race"}'s bonuses are applied
+          automatically below.
+        </p>
+      )}
+
+      {scoreMethod === "roll" && (
+        <>
+          <p className="ability-score-step__description">
+            Roll six scores (4d6, dropping the lowest die) and assign them
+            below, or type in your own totals if you rolled physical dice.
+          </p>
+
+          <div className="ability-score-step__roll-pool">
+            {rolledPool.map((slot, slotIndex) => (
+              <div className="ability-score-step__roll-slot" key={slotIndex}>
+                <Button
+                  variant="secondary"
+                  onClick={() => handleRollSlot(slotIndex)}
+                >
+                  Roll
+                </Button>
+
+                {slot.rolls && (
+                  <span className="ability-score-step__roll-dice">
+                    {slot.rolls.map((die, dieIndex) => (
+                      <span
+                        key={dieIndex}
+                        className={`ability-score-step__die${
+                          dieIndex === slot.droppedIndex
+                            ? " ability-score-step__die--dropped"
+                            : ""
+                        }`}
+                      >
+                        {die}
+                      </span>
+                    ))}
+                  </span>
+                )}
+
+                <input
+                  type="number"
+                  className="ability-score-step__roll-total"
+                  placeholder="Total"
+                  min={3}
+                  max={18}
+                  value={slot.total ?? ""}
+                  onChange={(e) =>
+                    handleManualSlotChange(slotIndex, e.target.value)
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="ability-score-step__grid">
         {ABILITY_SCORES.map((ability) => {
@@ -82,9 +224,14 @@ function AbilityScoreStep({
 
           return (
             <div className="ability-score-step__row" key={ability}>
-              <span className="ability-score-step__label">
-                {ABILITY_LABELS[ability]}
-              </span>
+              <div className="ability-score-step__label">
+                <span className="ability-score-step__label-name">
+                  {ABILITY_LABELS[ability]}
+                </span>
+                <span className="ability-score-step__label-hint">
+                  {ABILITY_DESCRIPTIONS[ability]}
+                </span>
+              </div>
 
               <select
                 className="ability-score-step__select"
@@ -92,8 +239,8 @@ function AbilityScoreStep({
                 onChange={(e) => handleAssign(ability, e.target.value)}
               >
                 <option value="">--</option>
-                {optionsFor(ability).map((value) => (
-                  <option key={value} value={value}>
+                {optionsFor(ability, pool, assignments).map((value, index) => (
+                  <option key={`${value}-${index}`} value={value}>
                     {value}
                   </option>
                 ))}
@@ -155,7 +302,12 @@ function AbilityScoreStep({
         <Button
           disabled={!isComplete}
           onClick={() =>
-            onNext(finalScores, { assignments, chosenBonusAbilities })
+            onNext(finalScores, {
+              assignments,
+              chosenBonusAbilities,
+              scoreMethod,
+              rolledPool,
+            })
           }
         >
           Next

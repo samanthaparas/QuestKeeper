@@ -183,6 +183,18 @@
   cursor: pointer;
 }
 
+.level-up-wizard__ability-checkbox-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.level-up-wizard__ability-checkbox-hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--qk-text-muted);
+}
+
 .level-up-wizard__feat-card {
   padding: 16px;
   border: 1px solid var(--qk-border);

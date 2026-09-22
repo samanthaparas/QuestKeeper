@@ -64,9 +64,21 @@
 }
 
 .ability-score-step__label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   flex: 1;
+}
+
+.ability-score-step__label-name {
   font-weight: 700;
   color: var(--qk-text);
+}
+
+.ability-score-step__label-hint {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--qk-text-muted);
 }
 
 .ability-score-step__select {
@@ -110,6 +122,97 @@
   display: flex;
   gap: 16px;
   margin-top: 32px;
+}
+
+.ability-score-step__method-toggle {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.ability-score-step__method-button {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ability-score-step__method-button--active {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-terracotta-hover);
+  font-weight: 700;
+}
+
+.ability-score-step__method-button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.ability-score-step__roll-pool {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  max-width: 640px;
+  margin-bottom: 24px;
+}
+
+.ability-score-step__roll-slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.ability-score-step__roll-dice {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ability-score-step__die {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ability-score-step__die--dropped {
+  color: var(--qk-text-muted);
+  background-color: transparent;
+  text-decoration: line-through;
+}
+
+.ability-score-step__roll-total {
+  width: 56px;
+  min-height: 36px;
+  padding: 2px 6px;
+  margin-left: auto;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+}
+
+.ability-score-step__roll-total:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
 }
 
 @media screen and (max-width: 600px) {
