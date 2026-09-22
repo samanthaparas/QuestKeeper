@@ -16,7 +16,7 @@ function createEmptyValues(fields) {
   }, {});
 }
 
-function EditableItemField({ field, value, onChange }) {
+function EditableItemField({ field, value, allValues, onChange }) {
   if (field.type === "select") {
     return (
       <select
@@ -36,6 +36,7 @@ function EditableItemField({ field, value, onChange }) {
   const className = `character-sheet__resource-form-input${
     field.width ? ` character-sheet__resource-form-input--${field.width}` : ""
   }`;
+  const hint = field.getHint ? field.getHint(allValues) : null;
 
   return (
     <>
@@ -64,6 +65,9 @@ function EditableItemField({ field, value, onChange }) {
             <option key={option} value={option} />
           ))}
         </datalist>
+      )}
+      {hint && (
+        <span className="character-sheet__item-description">{hint}</span>
       )}
     </>
   );
@@ -223,6 +227,7 @@ function EditableItemList({
                 key={field.key}
                 field={field}
                 value={values[field.key]}
+                allValues={values}
                 onChange={(value) => handleFieldChange(field.key, value)}
               />
             ))}
