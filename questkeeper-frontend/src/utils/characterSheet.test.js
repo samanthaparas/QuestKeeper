@@ -8,6 +8,7 @@ import {
   getSpellSaveDC,
   getSpellAttackModifier,
   applyAbilityScoreChoice,
+  rollAbilityScore,
   finalizeLevelUp,
   buildLevelUpSummary,
   createResource,
@@ -895,5 +896,30 @@ describe("getFeatDescriptionLines", () => {
 
   it("returns an empty array when neither shape is present", () => {
     expect(getFeatDescriptionLines({})).toEqual([]);
+  });
+});
+
+describe("rollAbilityScore", () => {
+  it("rolls four d6 and sums the three highest", () => {
+    const original = Math.random;
+    const values = [0, 0.5, 0.99, 0.2]; // -> dice 1, 4, 6, 2
+    let call = 0;
+    Math.random = () => values[call++];
+
+    const result = rollAbilityScore();
+
+    Math.random = original;
+
+    expect(result.rolls).toEqual([1, 4, 6, 2]);
+    expect(result.droppedIndex).toBe(0);
+    expect(result.total).toBe(12); // 4 + 6 + 2, dropping the 1
+  });
+
+  it("always returns a total between 3 and 18", () => {
+    for (let i = 0; i < 50; i++) {
+      const { total } = rollAbilityScore();
+      expect(total).toBeGreaterThanOrEqual(3);
+      expect(total).toBeLessThanOrEqual(18);
+    }
   });
 });

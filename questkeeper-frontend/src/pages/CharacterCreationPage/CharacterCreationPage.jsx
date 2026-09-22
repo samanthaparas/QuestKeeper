@@ -452,6 +452,8 @@ function CharacterCreationPage() {
               initialChosenBonusAbilities={
                 abilityAssignments?.chosenBonusAbilities
               }
+              initialScoreMethod={abilityAssignments?.scoreMethod}
+              initialRolledPool={abilityAssignments?.rolledPool}
               onNext={(scores, raw) => {
                 setAbilityScores(scores);
                 setAbilityAssignments(raw);

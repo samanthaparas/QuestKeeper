@@ -9,6 +9,7 @@ import {
   getFeatDescriptionLines,
   ABILITY_SCORES,
   ABILITY_LABELS,
+  ABILITY_DESCRIPTIONS,
   ABILITY_ABBREVIATIONS,
   formatModifier,
   getProficiencyBonus,
@@ -428,25 +429,39 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
                     }
                     onChange={() => toggleAsiAbility(ability)}
                   />
-                  {ABILITY_LABELS[ability]}
+                  <span className="level-up-wizard__ability-checkbox-text">
+                    <span className="level-up-wizard__ability-checkbox-name">
+                      {ABILITY_LABELS[ability]}
+                    </span>
+                    <span className="level-up-wizard__ability-checkbox-hint">
+                      {ABILITY_DESCRIPTIONS[ability]}
+                    </span>
+                  </span>
                 </label>
               ))}
             </div>
           )}
 
           {asiMode === "asi-one" && (
-            <select
-              className="level-up-wizard__ability-select"
-              value={asiAbility}
-              onChange={(e) => setAsiAbility(e.target.value)}
-            >
-              <option value="">Choose an ability</option>
-              {ABILITY_SCORES.map((ability) => (
-                <option key={ability} value={ability}>
-                  {ABILITY_LABELS[ability]}
-                </option>
-              ))}
-            </select>
+            <>
+              <select
+                className="level-up-wizard__ability-select"
+                value={asiAbility}
+                onChange={(e) => setAsiAbility(e.target.value)}
+              >
+                <option value="">Choose an ability</option>
+                {ABILITY_SCORES.map((ability) => (
+                  <option key={ability} value={ability}>
+                    {ABILITY_LABELS[ability]}
+                  </option>
+                ))}
+              </select>
+              {asiAbility && (
+                <p className="level-up-wizard__step-description">
+                  {ABILITY_DESCRIPTIONS[asiAbility]}
+                </p>
+              )}
+            </>
           )}
 
           {asiMode === "feat" && (
