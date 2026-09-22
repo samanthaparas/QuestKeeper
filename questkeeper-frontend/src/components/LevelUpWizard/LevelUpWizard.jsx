@@ -20,6 +20,7 @@ import {
   getClassSpells,
   getClassDetails,
   getSubclassDetails,
+  getSpellDetails,
 } from "../../utils/api";
 import "./LevelUpWizard.css";
 import Button from "../Button/Button";
@@ -54,6 +55,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
   const [isSpellsLoading, setIsSpellsLoading] = useState(true);
   const [spellsError, setSpellsError] = useState("");
   const [selectedSpellIndex, setSelectedSpellIndex] = useState("");
+  const [selectedSpellDetails, setSelectedSpellDetails] = useState(null);
 
   const currentStep = pendingLevelUp.steps[stepIndex];
 
@@ -82,6 +84,18 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
       )
       .finally(() => setIsSpellsLoading(false));
   }, [currentStep?.key, sheet.class]);
+
+  useEffect(() => {
+    if (!selectedSpellIndex) return;
+
+    getSpellDetails(selectedSpellIndex)
+      .then(setSelectedSpellDetails)
+      .catch(() => setSelectedSpellDetails(null));
+  }, [selectedSpellIndex]);
+
+  const isSpellDetailLoading =
+    Boolean(selectedSpellIndex) &&
+    selectedSpellDetails?.index !== selectedSpellIndex;
 
   useEffect(() => {
     if (currentStep?.key !== "subclass") return;
@@ -541,6 +555,36 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
                 </option>
               ))}
             </select>
+          )}
+
+          {selectedSpellIndex && (
+            <div className="level-up-wizard__feat-card">
+              {isSpellDetailLoading && <p>Loading spell details...</p>}
+              {selectedSpellDetails && (
+                <>
+                  <h4>{selectedSpellDetails.name}</h4>
+                  {selectedSpellDetails.desc?.map((line, index) => (
+                    <p key={index}>{line}</p>
+                  ))}
+                  {selectedSpellDetails.casting_time && (
+                    <p>
+                      <strong>Casting Time:</strong>{" "}
+                      {selectedSpellDetails.casting_time}
+                    </p>
+                  )}
+                  {selectedSpellDetails.range && (
+                    <p>
+                      <strong>Range:</strong> {selectedSpellDetails.range}
+                    </p>
+                  )}
+                  {selectedSpellDetails.duration && (
+                    <p>
+                      <strong>Duration:</strong> {selectedSpellDetails.duration}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           )}
 
           {!isSpellsLoading && !spellsError && availableSpells.length === 0 && (
