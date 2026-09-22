@@ -6,6 +6,7 @@ import {
   getAverageHitDieValue,
   getAbilityModifier,
   finalizeLevelUp,
+  getFeatDescriptionLines,
   ABILITY_SCORES,
   ABILITY_LABELS,
   ABILITY_ABBREVIATIONS,
@@ -14,6 +15,7 @@ import {
 } from "../../utils/characterSheet";
 
 import {
+  getFeats,
   getFeatDetails,
   getClassSpells,
   getClassDetails,
@@ -39,6 +41,8 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
   const [asiMode, setAsiMode] = useState(""); // "asi-two" | "asi-one" | "feat"
   const [asiAbility, setAsiAbility] = useState("");
   const [asiAbilities, setAsiAbilities] = useState([]);
+  const [allFeats, setAllFeats] = useState([]);
+  const [featSelection, setFeatSelection] = useState("");
   const [featDetails, setFeatDetails] = useState(null);
   const [isFeatLoading, setIsFeatLoading] = useState(false);
 
@@ -56,7 +60,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
   const isAsiValid =
     (asiMode === "asi-one" && asiAbility) ||
     (asiMode === "asi-two" && asiAbilities.length === 2) ||
-    asiMode === "feat";
+    (asiMode === "feat" && Boolean(featDetails));
 
   const maxSpellLevel = Math.min(9, Math.ceil(targetLevel / 2));
   const knownSpellIndexes = new Set([
@@ -97,6 +101,15 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
       .finally(() => setIsSubclassLoading(false));
   }, [currentStep?.key, sheet.class]);
 
+  useEffect(() => {
+    Promise.all([getFeats(), getFeats("2024")])
+      .then(([legacy, updated]) => setAllFeats([...legacy, ...updated]))
+      .catch(() => {
+        // Feat picking degrades to an empty dropdown; not worth a hard
+        // error state for this one field.
+      });
+  }, []);
+
   function completeStep(data) {
     setPendingLevelUp((prev) => ({
       ...prev,
@@ -115,14 +128,20 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
     });
   }
 
-  function selectFeatMode() {
-    setAsiMode("feat");
-    if (!featDetails && !isFeatLoading) {
-      setIsFeatLoading(true);
-      getFeatDetails("grappler")
-        .then(setFeatDetails)
-        .finally(() => setIsFeatLoading(false));
+  function handleFeatSelectionChange(selection) {
+    setFeatSelection(selection);
+
+    if (!selection) {
+      setFeatDetails(null);
+      return;
     }
+
+    const [edition, featIndex] = selection.split(":");
+    setIsFeatLoading(true);
+    getFeatDetails(featIndex, edition)
+      .then(setFeatDetails)
+      .catch(() => setFeatDetails(null))
+      .finally(() => setIsFeatLoading(false));
   }
 
   function confirmAbilityOrFeat() {
@@ -133,7 +152,11 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
     } else if (asiMode === "asi-two") {
       data = { type: "asi-two", abilities: asiAbilities };
     } else {
-      data = { type: "feat", featIndex: "grappler", featName: "Grappler" };
+      data = {
+        type: "feat",
+        featIndex: featDetails.index,
+        featName: featDetails.name,
+      };
     }
 
     completeStep(data);
@@ -334,8 +357,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
           </h3>
           <p className="level-up-wizard__step-description">
             At level {targetLevel}, choose one: increase two abilities by +1
-            each, increase one ability by +2, or take a feat. SRD 2014 only
-            includes one feat, Grappler, so that's the only feat option here.
+            each, increase one ability by +2, or take a feat.
           </p>
 
           <div className="level-up-wizard__mode-options">
@@ -370,7 +392,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
                   ? " level-up-wizard__mode-button--active"
                   : ""
               }`}
-              onClick={selectFeatMode}
+              onClick={() => setAsiMode("feat")}
             >
               Take a Feat
             </button>
@@ -414,17 +436,35 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
           )}
 
           {asiMode === "feat" && (
-            <div className="level-up-wizard__feat-card">
-              {isFeatLoading && <p>Loading Grappler...</p>}
-              {featDetails && (
-                <>
-                  <h4>{featDetails.name}</h4>
-                  {featDetails.desc?.map((line, index) => (
-                    <p key={index}>{line}</p>
-                  ))}
-                </>
-              )}
-            </div>
+            <>
+              <select
+                className="level-up-wizard__ability-select"
+                value={featSelection}
+                onChange={(e) => handleFeatSelectionChange(e.target.value)}
+              >
+                <option value="">Choose a feat</option>
+                {allFeats.map((feat) => (
+                  <option
+                    key={`${feat.edition}:${feat.index}`}
+                    value={`${feat.edition}:${feat.index}`}
+                  >
+                    {feat.name} ({feat.edition} SRD)
+                  </option>
+                ))}
+              </select>
+
+              <div className="level-up-wizard__feat-card">
+                {isFeatLoading && <p>Loading feat...</p>}
+                {featDetails && (
+                  <>
+                    <h4>{featDetails.name}</h4>
+                    {getFeatDescriptionLines(featDetails).map((line, index) => (
+                      <p key={index}>{line}</p>
+                    ))}
+                  </>
+                )}
+              </div>
+            </>
           )}
 
           <Button disabled={!isAsiValid} onClick={confirmAbilityOrFeat}>
