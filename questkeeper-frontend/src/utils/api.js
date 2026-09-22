@@ -42,13 +42,15 @@ export function getClassDetails(classId) {
   );
 }
 
-export function getBackgrounds() {
-  return requestJson("/backgrounds", "Failed to fetch backgrounds:");
+export function getBackgrounds(edition) {
+  const query = edition ? `?edition=${encodeURIComponent(edition)}` : "";
+  return requestJson(`/backgrounds${query}`, "Failed to fetch backgrounds:");
 }
 
-export function getBackgroundDetails(backgroundId) {
+export function getBackgroundDetails(backgroundId, edition) {
+  const query = edition ? `?edition=${encodeURIComponent(edition)}` : "";
   return requestJson(
-    `/backgrounds/${encodeURIComponent(backgroundId)}`,
+    `/backgrounds/${encodeURIComponent(backgroundId)}${query}`,
     `Failed to fetch background details for ID ${backgroundId}:`,
   );
 }
@@ -64,13 +66,15 @@ export function getSpellDetails(spellId) {
   );
 }
 
-export function getFeats() {
-  return requestJson("/feats", "Failed to fetch feats:");
+export function getFeats(edition) {
+  const query = edition ? `?edition=${encodeURIComponent(edition)}` : "";
+  return requestJson(`/feats${query}`, "Failed to fetch feats:");
 }
 
-export function getFeatDetails(featId) {
+export function getFeatDetails(featId, edition) {
+  const query = edition ? `?edition=${encodeURIComponent(edition)}` : "";
   return requestJson(
-    `/feats/${encodeURIComponent(featId)}`,
+    `/feats/${encodeURIComponent(featId)}${query}`,
     `Failed to fetch feat details for ID ${featId}:`,
   );
 }

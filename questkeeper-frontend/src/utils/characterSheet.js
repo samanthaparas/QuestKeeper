@@ -113,6 +113,12 @@ export function getStartingSpellCounts(classId, levelOneSpellcasting) {
   return { cantrips, spells: levelOneSpellcasting?.spells_known ?? 0 };
 }
 
+export function getFeatDescriptionLines(feat) {
+  if (Array.isArray(feat.desc)) return feat.desc;
+  if (typeof feat.description === "string") return feat.description.split("\n");
+  return [];
+}
+
 export function buildStartingSpellcasting(
   classId,
   chosenCantrips,

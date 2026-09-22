@@ -28,6 +28,7 @@ import {
   getSpellcastingAbility,
   getStartingSpellCounts,
   buildStartingSpellcasting,
+  getFeatDescriptionLines,
   getSpellSlotProgression,
   mergeSubrace,
   getSubraceCantripTraitId,
@@ -876,5 +877,23 @@ describe("addRacialCantrip", () => {
     const result = addRacialCantrip(null, { index: "light", name: "Light" });
     expect(result.cantripsKnown[0].name).toBe("Light");
     expect(result.spellsKnown).toEqual([]);
+  });
+});
+
+describe("getFeatDescriptionLines", () => {
+  it("returns the desc array as-is for a 2014-shaped feat", () => {
+    const lines = getFeatDescriptionLines({ desc: ["Line one.", "Line two."] });
+    expect(lines).toEqual(["Line one.", "Line two."]);
+  });
+
+  it("splits a 2024-shaped feat's description string on newlines", () => {
+    const lines = getFeatDescriptionLines({
+      description: "Line one.\nLine two.",
+    });
+    expect(lines).toEqual(["Line one.", "Line two."]);
+  });
+
+  it("returns an empty array when neither shape is present", () => {
+    expect(getFeatDescriptionLines({})).toEqual([]);
   });
 });

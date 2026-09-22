@@ -6,6 +6,47 @@ import ResultCard from "../components/ResultCard/ResultCard";
 import "../pages/SearchPage/SearchPage.css";
 import Button from "../components/Button/Button";
 
+function formatBackground2014(data) {
+  const startingProficiencies = data.starting_proficiencies.map(
+    (item) => item.name,
+  );
+  const startingEquipment = data.starting_equipment.map(
+    (item) => `${item.equipment.name} x${item.quantity}`,
+  );
+
+  return {
+    name: data.name,
+    category: "Background",
+    edition: "2014",
+    startingProficiencies,
+    languages: `Choose ${data.language_options.choose} languages`,
+    startingEquipment,
+    startingGold: `${data.starting_gold.quantity} ${data.starting_gold.unit}`,
+    featureName: data.feature.name,
+    featureDescription: data.feature.desc.join(" "),
+    personalityTraits: `Choose ${data.personality_traits.choose}`,
+    ideals: `Choose ${data.ideals.choose}`,
+    bonds: `Choose ${data.bonds.choose}`,
+    flaws: `Choose ${data.flaws.choose}`,
+  };
+}
+
+function formatBackground2024(data) {
+  const abilityScoreNames = data.ability_scores.map((a) => a.name).join(", ");
+  const startingProficiencies = data.proficiencies.map((item) => item.name);
+  const equipmentChoices = data.equipment_options.map((option) => option.desc);
+
+  return {
+    name: data.name,
+    category: "Background",
+    edition: "2024",
+    abilityScoreOptions: `Choose from ${abilityScoreNames} (+2/+1 split, or +1 to each)`,
+    grantedFeatName: data.feat?.name,
+    startingProficiencies,
+    equipmentChoices,
+  };
+}
+
 function BackgroundsPage() {
   const [backgroundResults, setBackgroundResults] = useState([]);
   const [selectedResult, setSelectedResult] = useState(null);
@@ -14,12 +55,13 @@ function BackgroundsPage() {
   const [apiError, setApiError] = useState("");
 
   useEffect(() => {
-    getBackgrounds()
-      .then((data) => {
-        const formattedBackgrounds = data.map((item) => ({
+    Promise.all([getBackgrounds(), getBackgrounds("2024")])
+      .then(([legacy, updated]) => {
+        const formattedBackgrounds = [...legacy, ...updated].map((item) => ({
           index: item.index,
           name: item.name,
           category: "Background",
+          edition: item.edition,
           description: "Select this background to view more details.",
           url: item.url,
         }));
@@ -50,34 +92,17 @@ function BackgroundsPage() {
   function handleResultClick(result) {
     setSelectedResult(result);
 
-    getBackgroundDetails(result.index)
+    getBackgroundDetails(result.index, result.edition)
       .then((data) => {
-        const startingProficiencies = data.starting_proficiencies.map(
-          (item) => item.name,
-        );
+        const formattedBackground =
+          result.edition === "2024"
+            ? formatBackground2024(data)
+            : formatBackground2014(data);
 
-        const startingEquipment = data.starting_equipment.map(
-          (item) => `${item.equipment.name} x${item.quantity}`,
-        );
-
-        const featureDescription = data.feature.desc.join(" ");
-
-        const formattedBackground = {
-          name: data.name,
-          category: "Background",
-          startingProficiencies,
-          languages: `Choose ${data.language_options.choose} languages`,
-          startingEquipment,
-          startingGold: `${data.starting_gold.quantity} ${data.starting_gold.unit}`,
-          featureName: data.feature.name,
-          featureDescription,
-          personalityTraits: `Choose ${data.personality_traits.choose}`,
-          ideals: `Choose ${data.ideals.choose}`,
-          bonds: `Choose ${data.bonds.choose}`,
-          flaws: `Choose ${data.flaws.choose}`,
-        };
-
-        setSelectedResult(formattedBackground);
+        setSelectedResult({
+          ...formattedBackground,
+          index: result.index,
+        });
         setApiError("");
       })
       .catch(() => {
@@ -98,7 +123,8 @@ function BackgroundsPage() {
         </p>
 
         <p className="search-page__note">
-          More backgrounds may be added as the API expands.
+          Includes both the 2014 and 2024 SRD rulesets, labeled by edition -
+          character creation currently only uses 2014 backgrounds.
         </p>
 
         <SearchForm
@@ -126,9 +152,12 @@ function BackgroundsPage() {
 
             {filteredBackgrounds.map((result) => (
               <ResultCard
-                key={result.name}
+                key={`${result.edition}:${result.index}`}
                 result={result}
-                isSelected={selectedResult?.name === result.name}
+                isSelected={
+                  selectedResult?.index === result.index &&
+                  selectedResult?.edition === result.edition
+                }
                 onClick={() => handleResultClick(result)}
               />
             ))}

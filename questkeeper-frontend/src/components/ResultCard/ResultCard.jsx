@@ -31,7 +31,10 @@ function ResultCard({ result, onClick, isSelected }) {
       )}
       <div className="result-card__text">
         <h3 className="result-card__name">{result.name}</h3>
-        <p className="result-card__type">{result.category}</p>
+        <p className="result-card__type">
+          {result.category}
+          {result.edition && ` · ${result.edition} SRD`}
+        </p>
       </div>
     </button>
   );

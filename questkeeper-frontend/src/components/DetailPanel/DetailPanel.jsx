@@ -23,7 +23,10 @@ function DetailPanel({ selectedResult, actions }) {
         {actions}
       </div>
 
-      <p className="detail-panel__type">{selectedResult.category}</p>
+      <p className="detail-panel__type">
+        {selectedResult.category}
+        {selectedResult.edition && ` · ${selectedResult.edition} SRD`}
+      </p>
 
       {selectedResult.description && (
         <p className="detail-panel__description">
@@ -90,60 +93,97 @@ function DetailPanel({ selectedResult, actions }) {
         </>
       )}
 
-      {selectedResult.category === "Background" && (
-        <>
-          <p>
-            <strong>Starting Proficiencies:</strong>
-          </p>
+      {selectedResult.category === "Background" &&
+        selectedResult.edition !== "2024" && (
+          <>
+            <p>
+              <strong>Starting Proficiencies:</strong>
+            </p>
 
-          <ul className="detail-panel__list">
-            {selectedResult.startingProficiencies?.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
+            <ul className="detail-panel__list">
+              {selectedResult.startingProficiencies?.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
 
-          <p>
-            <strong>Languages:</strong> {selectedResult.languages}
-          </p>
+            <p>
+              <strong>Languages:</strong> {selectedResult.languages}
+            </p>
 
-          <p>
-            <strong>Starting Equipment:</strong>
-          </p>
+            <p>
+              <strong>Starting Equipment:</strong>
+            </p>
 
-          <ul className="detail-panel__list">
-            {selectedResult.startingEquipment?.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
+            <ul className="detail-panel__list">
+              {selectedResult.startingEquipment?.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
 
-          <p>
-            <strong>Starting Gold:</strong> {selectedResult.startingGold}
-          </p>
+            <p>
+              <strong>Starting Gold:</strong> {selectedResult.startingGold}
+            </p>
 
-          <p>
-            <strong>Feature:</strong> {selectedResult.featureName}
-          </p>
+            <p>
+              <strong>Feature:</strong> {selectedResult.featureName}
+            </p>
 
-          <p>{selectedResult.featureDescription}</p>
+            <p>{selectedResult.featureDescription}</p>
 
-          <p>
-            <strong>Personality Traits:</strong>{" "}
-            {selectedResult.personalityTraits}
-          </p>
+            <p>
+              <strong>Personality Traits:</strong>{" "}
+              {selectedResult.personalityTraits}
+            </p>
 
-          <p>
-            <strong>Ideals:</strong> {selectedResult.ideals}
-          </p>
+            <p>
+              <strong>Ideals:</strong> {selectedResult.ideals}
+            </p>
 
-          <p>
-            <strong>Bonds:</strong> {selectedResult.bonds}
-          </p>
+            <p>
+              <strong>Bonds:</strong> {selectedResult.bonds}
+            </p>
 
-          <p>
-            <strong>Flaws:</strong> {selectedResult.flaws}
-          </p>
-        </>
-      )}
+            <p>
+              <strong>Flaws:</strong> {selectedResult.flaws}
+            </p>
+          </>
+        )}
+
+      {selectedResult.category === "Background" &&
+        selectedResult.edition === "2024" && (
+          <>
+            <p>
+              <strong>Ability Scores:</strong>{" "}
+              {selectedResult.abilityScoreOptions}
+            </p>
+
+            {selectedResult.grantedFeatName && (
+              <p>
+                <strong>Origin Feat:</strong> {selectedResult.grantedFeatName}
+              </p>
+            )}
+
+            <p>
+              <strong>Starting Proficiencies:</strong>
+            </p>
+
+            <ul className="detail-panel__list">
+              {selectedResult.startingProficiencies?.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+
+            <p>
+              <strong>Starting Equipment:</strong>
+            </p>
+
+            <ul className="detail-panel__list">
+              {selectedResult.equipmentChoices?.map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
+            </ul>
+          </>
+        )}
 
       {selectedResult.category === "Subrace" && (
         <>
