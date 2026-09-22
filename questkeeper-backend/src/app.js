@@ -8,6 +8,7 @@ import featsRouter from "./routes/feats.js";
 import subracesRouter from "./routes/subraces.js";
 import subclassesRouter from "./routes/subclasses.js";
 import traitsRouter from "./routes/traits.js";
+import weaponsRouter from "./routes/weapons.js";
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use("/api/feats", featsRouter);
 app.use("/api/subraces", subracesRouter);
 app.use("/api/subclasses", subclassesRouter);
 app.use("/api/traits", traitsRouter);
+app.use("/api/weapons", weaponsRouter);
 
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({

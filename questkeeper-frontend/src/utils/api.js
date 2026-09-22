@@ -109,3 +109,14 @@ export function getTraitDetails(traitId) {
     `Failed to fetch trait details for ID ${traitId}:`,
   );
 }
+
+export function getWeapons() {
+  return requestJson("/weapons", "Failed to fetch weapons:");
+}
+
+export function getWeaponDetails(weaponId) {
+  return requestJson(
+    `/weapons/${encodeURIComponent(weaponId)}`,
+    `Failed to fetch weapon details for ID ${weaponId}:`,
+  );
+}
