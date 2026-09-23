@@ -112,3 +112,111 @@ export function formatFeatDetails(feat) {
     paragraphs: toLines(getFeatDescriptionLines(feat)),
   };
 }
+
+export function formatMagicItemDetails(item) {
+  const lines = toLines(item.desc);
+  const requiresAttunement =
+    item.attunement === true ||
+    lines.some((line) => /requires attunement/i.test(line));
+
+  return {
+    name: item.name,
+    edition: item.edition ?? "2014",
+    kind: item.equipment_category?.name.replace(/s$/, "") ?? "Magic Item",
+    facts: compactFacts([
+      { label: "Rarity", value: item.rarity?.name },
+      { label: "Attunement", value: requiresAttunement ? "Required" : null },
+    ]),
+    paragraphs: lines,
+  };
+}
+
+const SPECIFIC_EQUIPMENT_CATEGORIES =
+  /^(light-armor|medium-armor|heavy-armor|shields|(simple|martial)-(melee|ranged)-weapons)$/;
+
+function getEquipmentKind(item) {
+  const categories = item.equipment_categories ?? [];
+  const specific = categories.find((category) =>
+    SPECIFIC_EQUIPMENT_CATEGORIES.test(category.index),
+  );
+  if (specific) return specific.name.replace(/s$/, "");
+  return item.equipment_category?.name ?? categories[0]?.name ?? "Equipment";
+}
+
+function formatArmorClass(item) {
+  const armorClass = item.armor_class;
+  if (!armorClass) return null;
+
+  const isShield = (item.equipment_categories ?? []).some(
+    (category) => category.index === "shields",
+  );
+  if (isShield) return `+${armorClass.base}`;
+  if (!armorClass.dex_bonus) return String(armorClass.base);
+
+  return armorClass.max_bonus
+    ? `${armorClass.base} + Dex modifier (max ${armorClass.max_bonus})`
+    : `${armorClass.base} + Dex modifier`;
+}
+
+function formatDamage(item) {
+  if (!item.damage?.damage_dice) return null;
+
+  const damageType = item.damage.damage_type?.name?.toLowerCase() ?? "";
+  const oneHanded = `${item.damage.damage_dice} ${damageType}`.trim();
+
+  return item.two_handed_damage
+    ? `${oneHanded} (${item.two_handed_damage.damage_dice} two-handed)`
+    : oneHanded;
+}
+
+function formatRange(item) {
+  const range = item.throw_range ?? item.range;
+  return range?.long ? `${range.normal}/${range.long} ft.` : null;
+}
+
+function formatContents(contents) {
+  return (contents ?? [])
+    .map(({ item, quantity }) =>
+      quantity > 1 ? `${item.name} x${quantity}` : item.name,
+    )
+    .join(", ");
+}
+
+export function formatEquipmentDetails(item) {
+  return {
+    name: item.name,
+    edition: item.edition ?? "2014",
+    kind: getEquipmentKind(item),
+    facts: compactFacts([
+      { label: "Armor Class", value: formatArmorClass(item) },
+      {
+        label: "Strength",
+        value: item.str_minimum ? `Str ${item.str_minimum}` : null,
+      },
+      {
+        label: "Stealth",
+        value: item.stealth_disadvantage ? "Disadvantage" : null,
+      },
+      { label: "Damage", value: formatDamage(item) },
+      { label: "Range", value: formatRange(item) },
+      {
+        label: "Properties",
+        value: (item.properties ?? [])
+          .map((property) => property.name)
+          .join(", "),
+      },
+      { label: "Mastery", value: item.mastery?.name },
+      { label: "Contents", value: formatContents(item.contents) },
+      {
+        label: "Cost",
+        value: item.cost ? `${item.cost.quantity} ${item.cost.unit}` : null,
+      },
+      { label: "Weight", value: item.weight ? `${item.weight} lb.` : null },
+    ]),
+    paragraphs: [
+      ...toLines(item.desc),
+      ...toLines(item.description),
+      ...toLines(item.special),
+    ],
+  };
+}

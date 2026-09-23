@@ -4,8 +4,9 @@ import {
   findSrdMatches,
   formatSpellDetails,
   formatFeatDetails,
+  formatMagicItemDetails,
+  formatEquipmentDetails,
 } from "./srdDetails";
-
 describe("normalizeItemName", () => {
   it("ignores capitals and extra spaces", () => {
     expect(normalizeItemName("  Fire   Bolt ")).toBe("fire bolt");
@@ -159,5 +160,217 @@ describe("formatFeatDetails", () => {
     expect(
       formatFeatDetails({ name: "Alert", desc: ["A benefit."] }).facts,
     ).toEqual([]);
+  });
+});
+
+describe("formatMagicItemDetails", () => {
+  it("reads a 2014 item's attunement from its first line", () => {
+    const details = formatMagicItemDetails({
+      name: "Cloak of Testing",
+      edition: "2014",
+      equipment_category: { name: "Wondrous Items" },
+      rarity: { name: "Uncommon" },
+      desc: ["Wondrous item, uncommon (requires attunement)", "A benefit."],
+    });
+
+    expect(details.kind).toBe("Wondrous Item");
+    expect(details.facts).toEqual([
+      { label: "Rarity", value: "Uncommon" },
+      { label: "Attunement", value: "Required" },
+    ]);
+    expect(details.paragraphs).toEqual([
+      "Wondrous item, uncommon (requires attunement)",
+      "A benefit.",
+    ]);
+  });
+
+  it("splits a 2024 item's description string and reads its attunement flag", () => {
+    const details = formatMagicItemDetails({
+      name: "Blade of Testing",
+      edition: "2024",
+      equipment_category: { name: "Weapons" },
+      rarity: { name: "Rare" },
+      attunement: true,
+      desc: "Weapon (Any Melee Weapon)  \n A benefit.",
+    });
+
+    expect(details.kind).toBe("Weapon");
+    expect(details.facts).toContainEqual({
+      label: "Attunement",
+      value: "Required",
+    });
+    expect(details.paragraphs).toEqual([
+      "Weapon (Any Melee Weapon)",
+      "A benefit.",
+    ]);
+  });
+
+  it("leaves out Attunement when the item doesn't need it", () => {
+    const labels = formatMagicItemDetails({
+      name: "Bag of Testing",
+      rarity: { name: "Uncommon" },
+      desc: ["Wondrous item, uncommon", "A benefit."],
+    }).facts.map((fact) => fact.label);
+
+    expect(labels).not.toContain("Attunement");
+  });
+});
+
+describe("formatEquipmentDetails", () => {
+  it("formats a melee weapon's damage, two-handed damage, and properties", () => {
+    const details = formatEquipmentDetails({
+      name: "Longsword",
+      equipment_categories: [
+        { index: "weapon", name: "Weapon" },
+        { index: "martial-melee-weapons", name: "Martial Melee Weapons" },
+      ],
+      damage: { damage_dice: "1d8", damage_type: { name: "Slashing" } },
+      two_handed_damage: {
+        damage_dice: "1d10",
+        damage_type: { name: "Slashing" },
+      },
+      range: { normal: 5 },
+      properties: [{ name: "Versatile" }],
+      cost: { quantity: 15, unit: "gp" },
+      weight: 3,
+    });
+
+    expect(details.kind).toBe("Martial Melee Weapon");
+    expect(details.facts).toEqual([
+      { label: "Damage", value: "1d8 slashing (1d10 two-handed)" },
+      { label: "Properties", value: "Versatile" },
+      { label: "Cost", value: "15 gp" },
+      { label: "Weight", value: "3 lb." },
+    ]);
+  });
+
+  it("shows a ranged weapon's normal and long range", () => {
+    const details = formatEquipmentDetails({
+      name: "Longbow",
+      range: { normal: 150, long: 600 },
+    });
+
+    expect(details.facts).toContainEqual({
+      label: "Range",
+      value: "150/600 ft.",
+    });
+  });
+
+  it("uses the thrown range for thrown melee weapons", () => {
+    const details = formatEquipmentDetails({
+      name: "Dagger",
+      range: { normal: 5 },
+      throw_range: { normal: 20, long: 60 },
+    });
+
+    expect(details.facts).toContainEqual({
+      label: "Range",
+      value: "20/60 ft.",
+    });
+  });
+
+  it("formats heavy armor's AC, Strength requirement, and stealth", () => {
+    const details = formatEquipmentDetails({
+      name: "Chain Mail",
+      equipment_categories: [
+        { index: "armor", name: "Armor" },
+        { index: "heavy-armor", name: "Heavy Armor" },
+      ],
+      armor_class: { base: 16, dex_bonus: false },
+      str_minimum: 13,
+      stealth_disadvantage: true,
+    });
+
+    expect(details.kind).toBe("Heavy Armor");
+    expect(details.facts).toEqual([
+      { label: "Armor Class", value: "16" },
+      { label: "Strength", value: "Str 13" },
+      { label: "Stealth", value: "Disadvantage" },
+    ]);
+  });
+
+  it("adds the Dex modifier, with a cap for medium armor", () => {
+    const light = formatEquipmentDetails({
+      name: "Leather Armor",
+      armor_class: { base: 11, dex_bonus: true },
+    });
+    const medium = formatEquipmentDetails({
+      name: "Scale Mail",
+      armor_class: { base: 14, dex_bonus: true, max_bonus: 2 },
+    });
+
+    expect(light.facts).toContainEqual({
+      label: "Armor Class",
+      value: "11 + Dex modifier",
+    });
+    expect(medium.facts).toContainEqual({
+      label: "Armor Class",
+      value: "14 + Dex modifier (max 2)",
+    });
+  });
+
+  it("shows a shield's AC as a bonus", () => {
+    const details = formatEquipmentDetails({
+      name: "Shield",
+      equipment_categories: [
+        { index: "armor", name: "Armor" },
+        { index: "shields", name: "Shields" },
+      ],
+      armor_class: { base: 2, dex_bonus: false },
+    });
+
+    expect(details.kind).toBe("Shield");
+    expect(details.facts).toContainEqual({ label: "Armor Class", value: "+2" });
+  });
+
+  it("lists a pack's contents with quantities", () => {
+    const details = formatEquipmentDetails({
+      name: "Explorer's Pack",
+      contents: [
+        { item: { name: "Backpack" }, quantity: 1 },
+        { item: { name: "Torch" }, quantity: 10 },
+      ],
+    });
+
+    expect(details.facts).toContainEqual({
+      label: "Contents",
+      value: "Backpack, Torch x10",
+    });
+  });
+
+  it("reads rules text from 2014 special and 2024 description", () => {
+    const older = formatEquipmentDetails({
+      name: "Net",
+      desc: [],
+      special: ["A special rule."],
+    });
+    const newer = formatEquipmentDetails({
+      name: "Longbow",
+      description: ["A description."],
+      mastery: { name: "Slow" },
+    });
+
+    expect(older.paragraphs).toEqual(["A special rule."]);
+    expect(newer.paragraphs).toEqual(["A description."]);
+    expect(newer.facts).toContainEqual({ label: "Mastery", value: "Slow" });
+  });
+
+  it("falls back to the general category for gear", () => {
+    const older = formatEquipmentDetails({
+      name: "Rope",
+      equipment_category: { name: "Adventuring Gear" },
+      equipment_categories: [
+        { index: "adventuring-gear", name: "Adventuring Gear" },
+      ],
+    });
+    const newer = formatEquipmentDetails({
+      name: "Rope",
+      equipment_categories: [
+        { index: "adventuring-gear", name: "Adventuring Gear" },
+      ],
+    });
+
+    expect(older.kind).toBe("Adventuring Gear");
+    expect(newer.kind).toBe("Adventuring Gear");
   });
 });
