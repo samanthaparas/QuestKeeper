@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import EditableItemList from "../EditableItemList/EditableItemList";
+import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
+import { findSrdMatches, formatSpellDetails } from "../../utils/srdDetails";
 import { getSpells, getSpellDetails } from "../../utils/api";
 import {
   ABILITY_ABBREVIATIONS,
@@ -23,6 +25,7 @@ function CharacterSheetSpellsTab({
   onSpellRemove,
 }) {
   const [allSpells, setAllSpells] = useState([]);
+  const [detailView, setDetailView] = useState(null);
 
   useEffect(() => {
     getSpells()
@@ -44,6 +47,32 @@ function CharacterSheetSpellsTab({
         components: (details.components ?? []).join(", "),
       }))
       .catch(() => null);
+  }
+
+  function openSpellDetails(spell) {
+    const matches = findSrdMatches(spell.name, allSpells);
+    const title = matches[0].name;
+    setDetailView({ title, status: "loading", details: [] });
+
+    Promise.all(matches.map((match) => getSpellDetails(match.index)))
+      .then((results) =>
+        setDetailView((current) =>
+          current?.title === title
+            ? {
+                title,
+                status: "ready",
+                details: results.map(formatSpellDetails),
+              }
+            : current,
+        ),
+      )
+      .catch(() =>
+        setDetailView((current) =>
+          current?.title === title
+            ? { title, status: "error", details: [] }
+            : current,
+        ),
+      );
   }
 
   const slots = getSpellSlots(spellcasting);
@@ -187,6 +216,10 @@ function CharacterSheetSpellsTab({
         onAdd={onSpellAdd}
         onUpdate={onSpellUpdate}
         onRemove={onSpellRemove}
+        isNameClickable={(spell) =>
+          findSrdMatches(spell.name, allSpells).length > 0
+        }
+        onNameClick={openSpellDetails}
         extraRowContent={(spell) => (
           <>
             <span className="character-sheet__resource-reset">
@@ -200,6 +233,7 @@ function CharacterSheetSpellsTab({
           </>
         )}
       />
+      <SrdDetailDialog view={detailView} onClose={() => setDetailView(null)} />
     </>
   );
 }

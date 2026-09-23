@@ -86,6 +86,8 @@ function EditableItemList({
   onRemove,
   extraRowContent,
   columns,
+  isNameClickable,
+  onNameClick,
 }) {
   const primaryField = fields[0];
   const textareaField = fields.find((field) => field.type === "textarea");
@@ -168,7 +170,18 @@ function EditableItemList({
 
     return (
       <span className="character-sheet__resource-name">
-        {getLabel(item)}
+        {isNameClickable?.(item) ? (
+          <button
+            type="button"
+            className="character-sheet__srd-link"
+            aria-haspopup="dialog"
+            onClick={() => onNameClick(item)}
+          >
+            {getLabel(item)}
+          </button>
+        ) : (
+          getLabel(item)
+        )}
         {notes && (
           <>
             <button
