@@ -9,6 +9,8 @@ import subracesRouter from "./routes/subraces.js";
 import subclassesRouter from "./routes/subclasses.js";
 import traitsRouter from "./routes/traits.js";
 import weaponsRouter from "./routes/weapons.js";
+import equipmentRouter from "./routes/equipment.js";
+import magicItemsRouter from "./routes/magicItems.js";
 
 const app = express();
 
@@ -30,6 +32,8 @@ app.use("/api/subraces", subracesRouter);
 app.use("/api/subclasses", subclassesRouter);
 app.use("/api/traits", traitsRouter);
 app.use("/api/weapons", weaponsRouter);
+app.use("/api/equipment", equipmentRouter);
+app.use("/api/magic-items", magicItemsRouter);
 
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({
