@@ -870,6 +870,10 @@ function CharacterSheetPage() {
 
                 {activeTab === "features" && (
                   <CharacterSheetFeaturesTab
+                    classId={sheet.class?.id}
+                    subclassId={sheet.class?.subclass?.id}
+                    raceId={sheet.race?.id}
+                    subraceId={sheet.race?.subrace?.id}
                     features={sheet.features ?? []}
                     onFeatureAdd={handleFeatureAdd}
                     onFeatureUpdate={handleFeatureUpdate}

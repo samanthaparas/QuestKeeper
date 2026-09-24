@@ -289,3 +289,48 @@ export function getEditionTabLabels(details) {
       : `${edition} SRD (${countByEdition[edition]})`;
   });
 }
+
+export function tagWithSource(source) {
+  return (entries) => entries.map((entry) => ({ ...entry, source }));
+}
+
+function formatFeatureOptions(feature) {
+  return (feature.feature_specific?.subfeature_options?.from?.options ?? [])
+    .map((option) => option.item?.name)
+    .filter(Boolean)
+    .join(", ");
+}
+
+export function formatClassFeatureDetails(feature) {
+  const source = feature.subclass?.name ?? feature.class?.name;
+
+  return {
+    name: feature.name,
+    edition: feature.edition ?? "2014",
+    kind: source ? `${source} Feature` : "Class Feature",
+    facts: compactFacts([
+      { label: "Level", value: feature.level ? String(feature.level) : null },
+      { label: "Options", value: formatFeatureOptions(feature) },
+    ]),
+    blocks: groupMarkdownTables(toLines(feature.desc)),
+  };
+}
+
+export function formatTraitDetails(trait) {
+  const sources = [...(trait.subraces ?? []), ...(trait.races ?? [])];
+
+  return {
+    name: trait.name,
+    edition: trait.edition ?? "2014",
+    kind: sources.length === 1 ? `${sources[0].name} Trait` : "Racial Trait",
+    facts: compactFacts([
+      {
+        label: "Proficiencies",
+        value: (trait.proficiencies ?? [])
+          .map((proficiency) => proficiency.name)
+          .join(", "),
+      },
+    ]),
+    blocks: groupMarkdownTables(toLines(trait.desc)),
+  };
+}

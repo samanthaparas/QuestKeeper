@@ -1,15 +1,38 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
-import { getFeats, getFeatDetails } from "../../utils/api";
+import {
+  getFeats,
+  getFeatDetails,
+  getClassFeatures,
+  getSubclassFeatures,
+  getRaceTraits,
+  getSubraceTraits,
+  getFeatureDetails,
+  getTraitDetails,
+} from "../../utils/api";
 import {
   findSrdMatches,
   preferEdition,
   formatFeatDetails,
+  createSrdNameLookup,
+  tagWithSource,
+  formatClassFeatureDetails,
+  formatTraitDetails,
 } from "../../utils/srdDetails";
 
+function loadFeatureDetails(match) {
+  return match.source === "trait"
+    ? getTraitDetails(match.index).then(formatTraitDetails)
+    : getFeatureDetails(match.index).then(formatClassFeatureDetails);
+}
+
 function CharacterSheetFeaturesTab({
+  classId,
+  subclassId,
+  raceId,
+  subraceId,
   features,
   onFeatureAdd,
   onFeatureUpdate,
@@ -24,6 +47,7 @@ function CharacterSheetFeaturesTab({
   onProficiencyRemove,
 }) {
   const [allFeats, setAllFeats] = useState([]);
+  const [characterFeatures, setCharacterFeatures] = useState([]);
   const detailView = useSrdDetailView();
 
   useEffect(() => {
@@ -35,6 +59,43 @@ function CharacterSheetFeaturesTab({
       ),
     );
   }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    const requests = [
+      classId && getClassFeatures(classId).then(tagWithSource("feature")),
+      subclassId &&
+        getSubclassFeatures(subclassId).then(tagWithSource("feature")),
+      raceId && getRaceTraits(raceId).then(tagWithSource("trait")),
+      subraceId && getSubraceTraits(subraceId).then(tagWithSource("trait")),
+    ].filter(Boolean);
+
+    Promise.allSettled(requests).then((results) => {
+      if (ignore) return;
+      setCharacterFeatures(
+        results.flatMap((result) =>
+          result.status === "fulfilled" ? result.value : [],
+        ),
+      );
+    });
+
+    return () => {
+      ignore = true;
+    };
+  }, [classId, subclassId, raceId, subraceId]);
+
+  const findFeatureMatches = useMemo(
+    () => createSrdNameLookup(characterFeatures),
+    [characterFeatures],
+  );
+
+  function openFeatureDetails(feature) {
+    const [match] = findFeatureMatches(feature.name);
+    detailView.open(match.name, () =>
+      loadFeatureDetails(match).then((details) => [details]),
+    );
+  }
 
   function getFeatMatches(feat) {
     return preferEdition(findSrdMatches(feat.name, allFeats), feat.edition);
@@ -75,6 +136,10 @@ function CharacterSheetFeaturesTab({
           onAdd={onFeatureAdd}
           onUpdate={onFeatureUpdate}
           onRemove={onFeatureRemove}
+          isNameClickable={(feature) =>
+            findFeatureMatches(feature.name).length > 0
+          }
+          onNameClick={openFeatureDetails}
         />
       </section>
 
