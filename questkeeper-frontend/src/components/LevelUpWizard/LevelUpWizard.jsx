@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   createPendingLevelUp,
   getLevelUpStepKeys,
-  rollHitDie,
+  rollDie,
   getAverageHitDieValue,
   getAbilityModifier,
   finalizeLevelUp,
@@ -287,7 +287,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
               type="button"
               className="level-up-wizard__hp-button"
               onClick={() =>
-                setHpChoice({ source: "roll", amount: rollHitDie(hitDie) })
+                setHpChoice({ source: "roll", amount: rollDie(hitDie) })
               }
             >
               Roll d{hitDie}
