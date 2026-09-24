@@ -8,6 +8,7 @@ import {
   formatEquipmentDetails,
   preferEdition,
   createSrdNameLookup,
+  getEditionTabLabels,
 } from "./srdDetails";
 describe("normalizeItemName", () => {
   it("ignores capitals and extra spaces", () => {
@@ -420,5 +421,23 @@ describe("createSrdNameLookup", () => {
     for (const name of ["LONGSWORD", "Cloak of Protection x2", "Long", ""]) {
       expect(findMatches(name)).toEqual(findSrdMatches(name, entries));
     }
+  });
+});
+
+describe("getEditionTabLabels", () => {
+  it("labels each version by its edition", () => {
+    expect(
+      getEditionTabLabels([{ edition: "2014" }, { edition: "2024" }]),
+    ).toEqual(["2014 SRD", "2024 SRD"]);
+  });
+
+  it("numbers a second version from the same edition", () => {
+    expect(
+      getEditionTabLabels([
+        { edition: "2014" },
+        { edition: "2014" },
+        { edition: "2024" },
+      ]),
+    ).toEqual(["2014 SRD", "2014 SRD (2)", "2024 SRD"]);
   });
 });

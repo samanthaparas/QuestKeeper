@@ -236,3 +236,14 @@ export function createSrdNameLookup(entries) {
 
   return (name) => entriesByName.get(normalizeItemName(name)) ?? [];
 }
+
+export function getEditionTabLabels(details) {
+  const countByEdition = {};
+
+  return details.map(({ edition }) => {
+    countByEdition[edition] = (countByEdition[edition] ?? 0) + 1;
+    return countByEdition[edition] === 1
+      ? `${edition} SRD`
+      : `${edition} SRD (${countByEdition[edition]})`;
+  });
+}
