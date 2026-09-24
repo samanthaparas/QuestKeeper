@@ -101,7 +101,7 @@ function Home() {
       )}
 
       <section className="home__beginner-path">
-        <Link className="home__beginner-step" to="/about">
+        <Link className="home__beginner-step" to="/guide">
           <span className="home__beginner-number">1</span>
           <h3>Learn the basics</h3>
           <p>A friendly guide to dice, abilities, turns, and choices.</p>

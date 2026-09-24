@@ -286,8 +286,20 @@ export function getLevelUpStepKeys(targetLevel, characterClass) {
 
   return steps;
 }
-export function rollHitDie(die) {
-  return Math.floor(Math.random() * die) + 1;
+
+export function rollDie(sides) {
+  return Math.floor(Math.random() * sides) + 1;
+}
+
+export function rollD20(mode = "normal") {
+  if (mode === "normal") {
+    const roll = rollDie(20);
+    return { rolls: [roll], result: roll };
+  }
+
+  const rolls = [rollDie(20), rollDie(20)];
+  const result = mode === "advantage" ? Math.max(...rolls) : Math.min(...rolls);
+  return { rolls, result };
 }
 
 export function getAverageHitDieValue(die) {

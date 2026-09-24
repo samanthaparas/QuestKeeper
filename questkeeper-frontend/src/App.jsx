@@ -10,6 +10,7 @@ import BackgroundsPage from "./pages/BackgroundsPage";
 import CharacterCreationPage from "./pages/CharacterCreationPage/CharacterCreationPage";
 import CharactersPage from "./pages/CharactersPage/CharactersPage";
 import CharacterSheetPage from "./pages/CharacterSheetPage/CharacterSheetPage";
+import Guide from "./pages/Guide/Guide";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="/characters/new" element={<CharacterCreationPage />} />
         <Route path="/characters/:id" element={<CharacterSheetPage />} />
         <Route path="/about" element={<About />} />
+        <Route path="/guide" element={<Guide />} />
       </Routes>
     </>
   );

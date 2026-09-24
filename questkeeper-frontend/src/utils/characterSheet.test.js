@@ -9,6 +9,7 @@ import {
   getSpellAttackModifier,
   applyAbilityScoreChoice,
   rollAbilityScore,
+  rollD20,
   finalizeLevelUp,
   buildLevelUpSummary,
   createResource,
@@ -961,5 +962,39 @@ describe("rollAbilityScore", () => {
       expect(total).toBeGreaterThanOrEqual(3);
       expect(total).toBeLessThanOrEqual(18);
     }
+  });
+});
+
+describe("rollD20", () => {
+  function withRandom(values, roll) {
+    const original = Math.random;
+    let call = 0;
+    Math.random = () => values[call++];
+    try {
+      return roll();
+    } finally {
+      Math.random = original;
+    }
+  }
+
+  it("rolls one d20 normally", () => {
+    expect(withRandom([0.5], () => rollD20())).toEqual({
+      rolls: [11],
+      result: 11,
+    });
+  });
+
+  it("keeps the higher of two d20s with advantage", () => {
+    expect(withRandom([0.1, 0.9], () => rollD20("advantage"))).toEqual({
+      rolls: [3, 19],
+      result: 19,
+    });
+  });
+
+  it("keeps the lower of two d20s with disadvantage", () => {
+    expect(withRandom([0.1, 0.9], () => rollD20("disadvantage"))).toEqual({
+      rolls: [3, 19],
+      result: 3,
+    });
   });
 });
