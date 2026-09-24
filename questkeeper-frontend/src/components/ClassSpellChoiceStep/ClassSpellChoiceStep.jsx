@@ -6,6 +6,8 @@ import Button from "../Button/Button";
 
 function ClassSpellChoiceStep({
   characterClass,
+  knownCantrip,
+  knownCantripSource,
   initialCantrips,
   initialSpells,
   onNext,
@@ -110,30 +112,44 @@ function ClassSpellChoiceStep({
             Cantrips ({chosenCantrips.length}/{spellCounts.cantrips})
           </h3>
           <div className="class-spell-choice-step__checklist">
-            {cantripOptions.map((spell) => (
-              <label
-                className="class-spell-choice-step__checkbox"
-                key={spell.index}
-              >
-                <input
-                  type="checkbox"
-                  checked={chosenCantrips.includes(spell.index)}
-                  disabled={
-                    !chosenCantrips.includes(spell.index) &&
-                    chosenCantrips.length >= spellCounts.cantrips
-                  }
-                  onChange={() =>
-                    toggleChoice(
-                      chosenCantrips,
-                      setChosenCantrips,
-                      spellCounts.cantrips,
-                      spell.index,
-                    )
-                  }
-                />
-                {spell.name}
-              </label>
-            ))}
+            {cantripOptions.map((spell) => {
+              const isAlreadyKnown = spell.index === knownCantrip?.index;
+
+              return (
+                <label
+                  className={`class-spell-choice-step__checkbox${
+                    isAlreadyKnown
+                      ? " class-spell-choice-step__checkbox--known"
+                      : ""
+                  }`}
+                  key={spell.index}
+                >
+                  <input
+                    type="checkbox"
+                    checked={chosenCantrips.includes(spell.index)}
+                    disabled={
+                      isAlreadyKnown ||
+                      (!chosenCantrips.includes(spell.index) &&
+                        chosenCantrips.length >= spellCounts.cantrips)
+                    }
+                    onChange={() =>
+                      toggleChoice(
+                        chosenCantrips,
+                        setChosenCantrips,
+                        spellCounts.cantrips,
+                        spell.index,
+                      )
+                    }
+                  />
+                  {spell.name}
+                  {isAlreadyKnown && (
+                    <span className="class-spell-choice-step__known-note">
+                      Already known from {knownCantripSource}
+                    </span>
+                  )}
+                </label>
+              );
+            })}
           </div>
 
           {spellCounts.spells > 0 && (

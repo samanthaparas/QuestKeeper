@@ -413,6 +413,8 @@ function CharacterCreationPage() {
           {step === "classSpells" && (
             <ClassSpellChoiceStep
               characterClass={characterClass}
+              knownCantrip={subraceCantrip}
+              knownCantripSource={subrace?.name}
               initialCantrips={(spellChoices?.cantrips ?? []).map(
                 (s) => s.index,
               )}

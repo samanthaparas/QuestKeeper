@@ -49,3 +49,16 @@
   gap: 16px;
   margin-top: 32px;
 }
+
+.class-spell-choice-step__checkbox--known {
+  flex-wrap: wrap;
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text-muted);
+  cursor: not-allowed;
+}
+
+.class-spell-choice-step__known-note {
+  flex-basis: 100%;
+  font-size: 12px;
+  font-style: italic;
+}
