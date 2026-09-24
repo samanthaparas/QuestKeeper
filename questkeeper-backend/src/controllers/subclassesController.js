@@ -1,3 +1,5 @@
+import { fetchDnd5eList } from "../utils/dnd5eApiClient.js";
+
 export async function getSubclassById(req, res, next) {
   try {
     const { subclassId } = req.params;
@@ -17,6 +19,19 @@ export async function getSubclassById(req, res, next) {
     res.status(200).json({
       data: data,
     });
+  } catch (error) {
+    next(error);
+  }
+}
+export async function getSubclassFeatures(req, res, next) {
+  try {
+    const { subclassId } = req.params;
+    const data = await fetchDnd5eList(
+      `subclasses/${encodeURIComponent(subclassId)}/features`,
+      "2014",
+      "Unable to retrieve subclass features.",
+    );
+    res.status(200).json({ data });
   } catch (error) {
     next(error);
   }

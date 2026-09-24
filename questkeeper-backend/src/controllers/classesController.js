@@ -1,3 +1,5 @@
+import { fetchDnd5eList } from "../utils/dnd5eApiClient.js";
+
 export async function getClasses(req, res, next) {
   try {
     const response = await fetch("https://www.dnd5eapi.co/api/2014/classes");
@@ -85,6 +87,20 @@ export async function getClassLevel(req, res, next) {
     res.status(200).json({
       data: data,
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getClassFeatures(req, res, next) {
+  try {
+    const { classId } = req.params;
+    const data = await fetchDnd5eList(
+      `classes/${encodeURIComponent(classId)}/features`,
+      "2014",
+      "Unable to retrieve class features.",
+    );
+    res.status(200).json({ data });
   } catch (error) {
     next(error);
   }
