@@ -9,6 +9,7 @@ import {
   preferEdition,
   createSrdNameLookup,
   getEditionTabLabels,
+  groupMarkdownTables,
 } from "./srdDetails";
 describe("normalizeItemName", () => {
   it("ignores capitals and extra spaces", () => {
@@ -104,7 +105,7 @@ describe("formatSpellDetails", () => {
   });
 
   it("puts the higher-level text after the description", () => {
-    expect(formatSpellDetails(spell).paragraphs).toEqual([
+    expect(formatSpellDetails(spell).blocks).toEqual([
       "First paragraph.",
       "Second paragraph.",
       "At Higher Levels. More damage at higher slots.",
@@ -127,7 +128,7 @@ describe("formatFeatDetails", () => {
 
     expect(details.kind).toBe("Feat");
     expect(details.facts).toEqual([{ label: "Prerequisite", value: "STR 13" }]);
-    expect(details.paragraphs).toEqual([
+    expect(details.blocks).toEqual([
       "You gain these benefits:",
       "- A benefit.",
     ]);
@@ -147,7 +148,7 @@ describe("formatFeatDetails", () => {
     expect(details.facts).toEqual([
       { label: "Prerequisite", value: "Level 4+, Strength or Dexterity 13+" },
     ]);
-    expect(details.paragraphs).toEqual([
+    expect(details.blocks).toEqual([
       "You gain these benefits.",
       "Punch and Grab. A benefit.",
     ]);
@@ -181,7 +182,7 @@ describe("formatMagicItemDetails", () => {
       { label: "Rarity", value: "Uncommon" },
       { label: "Attunement", value: "Required" },
     ]);
-    expect(details.paragraphs).toEqual([
+    expect(details.blocks).toEqual([
       "Wondrous item, uncommon (requires attunement)",
       "A benefit.",
     ]);
@@ -202,10 +203,7 @@ describe("formatMagicItemDetails", () => {
       label: "Attunement",
       value: "Required",
     });
-    expect(details.paragraphs).toEqual([
-      "Weapon (Any Melee Weapon)",
-      "A benefit.",
-    ]);
+    expect(details.blocks).toEqual(["Weapon (Any Melee Weapon)", "A benefit."]);
   });
 
   it("leaves out Attunement when the item doesn't need it", () => {
@@ -216,6 +214,24 @@ describe("formatMagicItemDetails", () => {
     }).facts.map((fact) => fact.label);
 
     expect(labels).not.toContain("Attunement");
+  });
+
+  it("flags text where sentences run together", () => {
+    const details = formatMagicItemDetails({
+      name: "Wand of Testing",
+      desc: "Wand  \n It crumbles and is destroyed.Wand of Testing Effects1d100",
+    });
+
+    expect(details.hasGarbledText).toBe(true);
+  });
+
+  it("doesn't flag clean text", () => {
+    const details = formatMagicItemDetails({
+      name: "Bag of Testing",
+      desc: ["Wondrous item, uncommon", "It holds things. It is roomy."],
+    });
+
+    expect(details.hasGarbledText).toBe(false);
   });
 });
 
@@ -353,8 +369,8 @@ describe("formatEquipmentDetails", () => {
       mastery: { name: "Slow" },
     });
 
-    expect(older.paragraphs).toEqual(["A special rule."]);
-    expect(newer.paragraphs).toEqual(["A description."]);
+    expect(older.blocks).toEqual(["A special rule."]);
+    expect(newer.blocks).toEqual(["A description."]);
     expect(newer.facts).toContainEqual({ label: "Mastery", value: "Slow" });
   });
 
@@ -439,5 +455,60 @@ describe("getEditionTabLabels", () => {
         { edition: "2024" },
       ]),
     ).toEqual(["2014 SRD", "2014 SRD (2)", "2024 SRD"]);
+  });
+});
+
+describe("groupMarkdownTables", () => {
+  it("turns a markdown table into a table block between paragraphs", () => {
+    expect(
+      groupMarkdownTables([
+        "Intro.",
+        "| d4 | Effect |",
+        "|---|---|",
+        "| 1 | Sparks. |",
+        "| 2-4 | Smoke. |",
+        "Outro.",
+      ]),
+    ).toEqual([
+      "Intro.",
+      {
+        header: ["d4", "Effect"],
+        rows: [
+          ["1", "Sparks."],
+          ["2-4", "Smoke."],
+        ],
+      },
+      "Outro.",
+    ]);
+  });
+
+  it("keeps two tables separate when text sits between them", () => {
+    const blocks = groupMarkdownTables([
+      "| A |",
+      "|---|",
+      "| 1 |",
+      "Between.",
+      "| B |",
+      "|---|",
+      "| 2 |",
+    ]);
+
+    expect(blocks).toHaveLength(3);
+    expect(blocks[0].header).toEqual(["A"]);
+    expect(blocks[2].header).toEqual(["B"]);
+  });
+
+  it("reads a row that's missing its closing pipe", () => {
+    const [table] = groupMarkdownTables([
+      "| d6 | Effect |",
+      "|---|---|",
+      "| 1 | Fog.",
+    ]);
+
+    expect(table.rows).toEqual([["1", "Fog."]]);
+  });
+
+  it("leaves text with no tables unchanged", () => {
+    expect(groupMarkdownTables(["One.", "Two."])).toEqual(["One.", "Two."]);
   });
 });

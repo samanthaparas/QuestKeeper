@@ -64,11 +64,45 @@ function SrdDetailEntries({ details }) {
           </dl>
         )}
 
-        {active.paragraphs.map((paragraph, paragraphIndex) => (
-          <p className="srd-dialog__paragraph" key={paragraphIndex}>
-            {paragraph}
+        {active.hasGarbledText && (
+          <p className="srd-dialog__notice">
+            Parts of this entry arrived garbled from the SRD data source, such
+            as missing spaces or tables run together into sentences.
           </p>
-        ))}
+        )}
+
+        {active.blocks.map((block, blockIndex) =>
+          typeof block === "string" ? (
+            <p className="srd-dialog__paragraph" key={blockIndex}>
+              {block}
+            </p>
+          ) : (
+            <div className="srd-dialog__table-wrapper" key={blockIndex}>
+              <table className="srd-dialog__table">
+                {block.header.length > 0 && (
+                  <thead>
+                    <tr>
+                      {block.header.map((cell, cellIndex) => (
+                        <th scope="col" key={cellIndex}>
+                          {cell}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                )}
+                <tbody>
+                  {block.rows.map((row, rowIndex) => (
+                    <tr key={rowIndex}>
+                      {row.map((cell, cellIndex) => (
+                        <td key={cellIndex}>{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ),
+        )}
       </section>
     </>
   );

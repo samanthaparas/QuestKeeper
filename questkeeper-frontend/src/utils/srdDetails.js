@@ -33,6 +33,47 @@ function toLines(text) {
   return lines.map((line) => line.replace(/\*\*/g, "").trim()).filter(Boolean);
 }
 
+const TABLE_DIVIDER = /^\|[\s:|-]+\|?$/;
+const RUN_ON_SENTENCE = /[a-z)]\.[A-Z][a-z]/;
+
+function splitTableRow(line) {
+  return line
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+export function groupMarkdownTables(lines) {
+  const blocks = [];
+  let tableLines = [];
+
+  function finishTable() {
+    if (tableLines.length === 0) return;
+
+    const hasHeader = TABLE_DIVIDER.test(tableLines[1] ?? "");
+    const rows = tableLines.map(splitTableRow);
+    blocks.push(
+      hasHeader
+        ? { header: rows[0], rows: rows.slice(2) }
+        : { header: [], rows },
+    );
+    tableLines = [];
+  }
+
+  for (const line of lines) {
+    if (line.startsWith("|")) {
+      tableLines.push(line);
+    } else {
+      finishTable();
+      blocks.push(line);
+    }
+  }
+  finishTable();
+
+  return blocks;
+}
+
 function compactFacts(facts) {
   return facts.filter((fact) => fact.value);
 }
@@ -73,10 +114,10 @@ export function formatSpellDetails(spell) {
       },
       { label: "Ritual", value: spell.ritual ? "Yes" : null },
     ]),
-    paragraphs: [
+    blocks: groupMarkdownTables([
       ...toLines(spell.desc),
       ...toLines(spell.higher_level).map((line) => `At Higher Levels. ${line}`),
-    ],
+    ]),
   };
 }
 
@@ -109,7 +150,7 @@ export function formatFeatDetails(feat) {
     facts: compactFacts([
       { label: "Prerequisite", value: formatFeatPrerequisite(feat) },
     ]),
-    paragraphs: toLines(getFeatDescriptionLines(feat)),
+    blocks: groupMarkdownTables(toLines(getFeatDescriptionLines(feat))),
   };
 }
 
@@ -127,7 +168,8 @@ export function formatMagicItemDetails(item) {
       { label: "Rarity", value: item.rarity?.name },
       { label: "Attunement", value: requiresAttunement ? "Required" : null },
     ]),
-    paragraphs: lines,
+    blocks: groupMarkdownTables(lines),
+    hasGarbledText: lines.some((line) => RUN_ON_SENTENCE.test(line)),
   };
 }
 
@@ -213,11 +255,11 @@ export function formatEquipmentDetails(item) {
       },
       { label: "Weight", value: item.weight ? `${item.weight} lb.` : null },
     ]),
-    paragraphs: [
+    blocks: groupMarkdownTables([
       ...toLines(item.desc),
       ...toLines(item.description),
       ...toLines(item.special),
-    ],
+    ]),
   };
 }
 
