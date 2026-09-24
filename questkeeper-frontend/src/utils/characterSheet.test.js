@@ -386,23 +386,43 @@ describe("finalizeLevelUp", () => {
     expect(result.pendingLevelUp).toBeNull();
   });
 
-  it("saves a chosen feat with its SRD edition", () => {
+  it("saves a chosen feat with its name and SRD edition", () => {
     const sheet = makeSheet();
     sheet.pendingLevelUp.steps.push({
       key: "abilityOrFeat",
-      data: {
-        type: "feat",
-        featIndex: "grappler",
-        featName: "Grappler",
-        featEdition: "2024",
-      },
+      data: { type: "feat", featName: "Grappler", featEdition: "2024" },
     });
 
-    const result = finalizeLevelUp(sheet);
+    const [feat] = finalizeLevelUp(sheet).feats;
 
-    expect(result.feats).toEqual([
-      { index: "grappler", name: "Grappler", edition: "2024" },
-    ]);
+    expect(feat.name).toBe("Grappler");
+    expect(feat.edition).toBe("2024");
+  });
+
+  it("gives the same feat taken at two level-ups a separate id each time", () => {
+    const takeFeat = (sheet) =>
+      finalizeLevelUp({
+        ...sheet,
+        pendingLevelUp: {
+          targetLevel: sheet.level + 1,
+          steps: [
+            { key: "hitPoints", data: { amount: 4 } },
+            {
+              key: "abilityOrFeat",
+              data: {
+                type: "feat",
+                featName: "Ability Score Improvement",
+                featEdition: "2024",
+              },
+            },
+          ],
+        },
+      });
+
+    const feats = takeFeat(takeFeat(makeSheet())).feats;
+
+    expect(feats).toHaveLength(2);
+    expect(feats[0].index).not.toBe(feats[1].index);
   });
 
   it("recomputes spell slots for the new level using the class's progression", () => {

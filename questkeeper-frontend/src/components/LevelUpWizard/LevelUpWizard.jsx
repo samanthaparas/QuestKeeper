@@ -169,7 +169,6 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
     } else {
       data = {
         type: "feat",
-        featIndex: featDetails.index,
         featName: featDetails.name,
         featEdition: featDetails.edition,
       };
