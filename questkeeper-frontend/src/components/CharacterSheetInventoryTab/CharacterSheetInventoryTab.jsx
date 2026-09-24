@@ -1,33 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
-import {
-  getEquipment,
-  getEquipmentDetails,
-  getMagicItems,
-  getMagicItemDetails,
-} from "../../utils/api";
+import { useSrdEquipmentLookup } from "../../hooks/useSrdEquipmentLookup";
 import { getAttunedCount } from "../../utils/characterSheet";
-import {
-  createSrdNameLookup,
-  formatEquipmentDetails,
-  formatMagicItemDetails,
-} from "../../utils/srdDetails";
-
-function withSource(source) {
-  return (entries) => entries.map((entry) => ({ ...entry, source }));
-}
-
-function loadItemDetails(match) {
-  return match.source === "magic-items"
-    ? getMagicItemDetails(match.index, match.edition).then(
-        formatMagicItemDetails,
-      )
-    : getEquipmentDetails(match.index, match.edition).then(
-        formatEquipmentDetails,
-      );
-}
 
 function CharacterSheetInventoryTab({
   equipment,
@@ -36,33 +11,13 @@ function CharacterSheetInventoryTab({
   onEquipmentRemove,
   onEquipmentAttuneToggle,
 }) {
-  const [srdItems, setSrdItems] = useState([]);
+  const equipmentLookup = useSrdEquipmentLookup();
   const detailView = useSrdDetailView();
 
-  useEffect(() => {
-    Promise.allSettled([
-      getEquipment("2014").then(withSource("equipment")),
-      getMagicItems("2014").then(withSource("magic-items")),
-      getEquipment("2024").then(withSource("equipment")),
-      getMagicItems("2024").then(withSource("magic-items")),
-    ]).then((results) =>
-      setSrdItems(
-        results.flatMap((result) =>
-          result.status === "fulfilled" ? result.value : [],
-        ),
-      ),
-    );
-  }, []);
-
-  const findItemMatches = useMemo(
-    () => createSrdNameLookup(srdItems),
-    [srdItems],
-  );
-
   function openItemDetails(item) {
-    const matches = findItemMatches(item.name);
+    const matches = equipmentLookup.findMatches(item.name);
     detailView.open(matches[0].name, () =>
-      Promise.all(matches.map(loadItemDetails)),
+      Promise.all(matches.map(equipmentLookup.loadDetails)),
     );
   }
 
@@ -103,7 +58,9 @@ function CharacterSheetInventoryTab({
         onAdd={onEquipmentAdd}
         onUpdate={onEquipmentUpdate}
         onRemove={onEquipmentRemove}
-        isNameClickable={(item) => findItemMatches(item.name).length > 0}
+        isNameClickable={(item) =>
+          equipmentLookup.findMatches(item.name).length > 0
+        }
         onNameClick={openItemDetails}
         extraRowContent={(item) => (
           <button
