@@ -10,6 +10,7 @@ import {
   getSpellSlots,
   formatModifier,
 } from "../../utils/characterSheet";
+import { useSrdDetailView } from "../../hooks/useSrdDetailView";
 
 function CharacterSheetSpellsTab({
   spellcasting,
@@ -25,7 +26,7 @@ function CharacterSheetSpellsTab({
   onSpellRemove,
 }) {
   const [allSpells, setAllSpells] = useState([]);
-  const [detailView, setDetailView] = useState(null);
+  const detailView = useSrdDetailView();
 
   useEffect(() => {
     getSpells()
@@ -51,28 +52,13 @@ function CharacterSheetSpellsTab({
 
   function openSpellDetails(spell) {
     const matches = findSrdMatches(spell.name, allSpells);
-    const title = matches[0].name;
-    setDetailView({ title, status: "loading", details: [] });
-
-    Promise.all(matches.map((match) => getSpellDetails(match.index)))
-      .then((results) =>
-        setDetailView((current) =>
-          current?.title === title
-            ? {
-                title,
-                status: "ready",
-                details: results.map(formatSpellDetails),
-              }
-            : current,
+    detailView.open(matches[0].name, () =>
+      Promise.all(
+        matches.map((match) =>
+          getSpellDetails(match.index).then(formatSpellDetails),
         ),
-      )
-      .catch(() =>
-        setDetailView((current) =>
-          current?.title === title
-            ? { title, status: "error", details: [] }
-            : current,
-        ),
-      );
+      ),
+    );
   }
 
   const slots = getSpellSlots(spellcasting);
@@ -233,7 +219,7 @@ function CharacterSheetSpellsTab({
           </>
         )}
       />
-      <SrdDetailDialog view={detailView} onClose={() => setDetailView(null)} />
+      <SrdDetailDialog view={detailView.view} onClose={detailView.close} />
     </>
   );
 }

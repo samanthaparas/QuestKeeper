@@ -385,6 +385,26 @@ describe("finalizeLevelUp", () => {
     const result = finalizeLevelUp(makeSheet());
     expect(result.pendingLevelUp).toBeNull();
   });
+
+  it("saves a chosen feat with its SRD edition", () => {
+    const sheet = makeSheet();
+    sheet.pendingLevelUp.steps.push({
+      key: "abilityOrFeat",
+      data: {
+        type: "feat",
+        featIndex: "grappler",
+        featName: "Grappler",
+        featEdition: "2024",
+      },
+    });
+
+    const result = finalizeLevelUp(sheet);
+
+    expect(result.feats).toEqual([
+      { index: "grappler", name: "Grappler", edition: "2024" },
+    ]);
+  });
+
   it("recomputes spell slots for the new level using the class's progression", () => {
     const sheet = {
       level: 1,

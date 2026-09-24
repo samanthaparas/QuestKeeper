@@ -376,6 +376,7 @@ export function finalizeLevelUp(sheet) {
           {
             index: abilityStep.data.featIndex,
             name: abilityStep.data.featName,
+            edition: abilityStep.data.featEdition,
           },
         ]
       : (sheet.feats ?? []);

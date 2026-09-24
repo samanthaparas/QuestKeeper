@@ -171,6 +171,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
         type: "feat",
         featIndex: featDetails.index,
         featName: featDetails.name,
+        featEdition: featDetails.edition,
       };
     }
 

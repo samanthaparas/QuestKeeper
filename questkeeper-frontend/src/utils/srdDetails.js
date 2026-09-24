@@ -220,3 +220,8 @@ export function formatEquipmentDetails(item) {
     ],
   };
 }
+
+export function preferEdition(matches, edition) {
+  const sameEdition = matches.filter((match) => match.edition === edition);
+  return sameEdition.length > 0 ? sameEdition : matches;
+}
