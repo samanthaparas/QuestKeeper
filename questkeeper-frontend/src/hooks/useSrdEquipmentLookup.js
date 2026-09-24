@@ -9,11 +9,8 @@ import {
   createSrdNameLookup,
   formatEquipmentDetails,
   formatMagicItemDetails,
+  tagWithSource,
 } from "../utils/srdDetails";
-
-function withSource(source) {
-  return (entries) => entries.map((entry) => ({ ...entry, source }));
-}
 
 function loadDetails(match) {
   return match.source === "magic-items"
@@ -30,10 +27,10 @@ export function useSrdEquipmentLookup() {
 
   useEffect(() => {
     Promise.allSettled([
-      getEquipment("2014").then(withSource("equipment")),
-      getMagicItems("2014").then(withSource("magic-items")),
-      getEquipment("2024").then(withSource("equipment")),
-      getMagicItems("2024").then(withSource("magic-items")),
+      getEquipment("2014").then(tagWithSource("equipment")),
+      getMagicItems("2014").then(tagWithSource("magic-items")),
+      getEquipment("2024").then(tagWithSource("equipment")),
+      getMagicItems("2024").then(tagWithSource("magic-items")),
     ]).then((results) =>
       setSrdItems(
         results.flatMap((result) =>

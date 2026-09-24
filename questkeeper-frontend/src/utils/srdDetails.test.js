@@ -10,6 +10,8 @@ import {
   createSrdNameLookup,
   getEditionTabLabels,
   groupMarkdownTables,
+  formatClassFeatureDetails,
+  formatTraitDetails,
 } from "./srdDetails";
 describe("normalizeItemName", () => {
   it("ignores capitals and extra spaces", () => {
@@ -510,5 +512,85 @@ describe("groupMarkdownTables", () => {
 
   it("leaves text with no tables unchanged", () => {
     expect(groupMarkdownTables(["One.", "Two."])).toEqual(["One.", "Two."]);
+  });
+});
+
+describe("formatClassFeatureDetails", () => {
+  it("labels a class feature with its class and level", () => {
+    const details = formatClassFeatureDetails({
+      name: "Divine Smite",
+      class: { name: "Paladin" },
+      level: 2,
+      desc: ["A benefit."],
+    });
+
+    expect(details.kind).toBe("Paladin Feature");
+    expect(details.edition).toBe("2014");
+    expect(details.facts).toEqual([{ label: "Level", value: "2" }]);
+    expect(details.blocks).toEqual(["A benefit."]);
+  });
+
+  it("labels a subclass feature with its subclass", () => {
+    const details = formatClassFeatureDetails({
+      name: "Channel Divinity: Sacred Weapon",
+      class: { name: "Paladin" },
+      subclass: { name: "Devotion" },
+      level: 3,
+    });
+
+    expect(details.kind).toBe("Devotion Feature");
+  });
+
+  it("lists the options a feature lets you choose", () => {
+    const details = formatClassFeatureDetails({
+      name: "Fighting Style",
+      class: { name: "Paladin" },
+      level: 2,
+      feature_specific: {
+        subfeature_options: {
+          from: {
+            options: [
+              { item: { name: "Fighting Style: Defense" } },
+              { item: { name: "Fighting Style: Dueling" } },
+            ],
+          },
+        },
+      },
+    });
+
+    expect(details.facts).toContainEqual({
+      label: "Options",
+      value: "Fighting Style: Defense, Fighting Style: Dueling",
+    });
+  });
+});
+
+describe("formatTraitDetails", () => {
+  it("names the one race or subrace a trait belongs to", () => {
+    const details = formatTraitDetails({
+      name: "Elf Weapon Training",
+      races: [],
+      subraces: [{ name: "High Elf" }],
+      proficiencies: [{ name: "Longswords" }, { name: "Shortbows" }],
+      desc: ["A benefit."],
+    });
+
+    expect(details.kind).toBe("High Elf Trait");
+    expect(details.facts).toEqual([
+      { label: "Proficiencies", value: "Longswords, Shortbows" },
+    ]);
+  });
+
+  it("uses a general label for a trait many races share", () => {
+    const details = formatTraitDetails({
+      name: "Darkvision",
+      races: [{ name: "Dwarf" }, { name: "Elf" }, { name: "Tiefling" }],
+      subraces: [],
+      proficiencies: [],
+      desc: ["A benefit."],
+    });
+
+    expect(details.kind).toBe("Racial Trait");
+    expect(details.facts).toEqual([]);
   });
 });

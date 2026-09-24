@@ -158,3 +158,38 @@ export function getMagicItemDetails(magicItemId, edition) {
     `Failed to fetch magic item details for ID ${magicItemId}:`,
   );
 }
+
+export function getClassFeatures(classId) {
+  return requestJson(
+    `/classes/${encodeURIComponent(classId)}/features`,
+    `Failed to fetch features for class ${classId}:`,
+  );
+}
+
+export function getSubclassFeatures(subclassId) {
+  return requestJson(
+    `/subclasses/${encodeURIComponent(subclassId)}/features`,
+    `Failed to fetch features for subclass ${subclassId}:`,
+  );
+}
+
+export function getRaceTraits(raceId) {
+  return requestJson(
+    `/races/${encodeURIComponent(raceId)}/traits`,
+    `Failed to fetch traits for race ${raceId}:`,
+  );
+}
+
+export function getSubraceTraits(subraceId) {
+  return requestJson(
+    `/subraces/${encodeURIComponent(subraceId)}/traits`,
+    `Failed to fetch traits for subrace ${subraceId}:`,
+  );
+}
+
+export function getFeatureDetails(featureId) {
+  return requestJson(
+    `/features/${encodeURIComponent(featureId)}`,
+    `Failed to fetch feature details for ID ${featureId}:`,
+  );
+}
