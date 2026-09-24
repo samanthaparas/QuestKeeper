@@ -38,12 +38,6 @@
   margin: 0;
 }
 
-.srd-dialog__entry + .srd-dialog__entry {
-  margin-top: var(--qk-space-5);
-  padding-top: var(--qk-space-5);
-  border-top: 1px solid var(--qk-border);
-}
-
 .srd-dialog__meta {
   display: flex;
   flex-wrap: wrap;
@@ -89,6 +83,49 @@
 .srd-dialog__paragraph {
   line-height: 1.6;
   margin: 0 0 var(--qk-space-3);
+}
+
+.srd-dialog__tabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qk-space-2);
+  margin: 0 calc(-1 * var(--qk-space-5)) var(--qk-space-4);
+  padding: var(--qk-space-3) var(--qk-space-5);
+  background-color: var(--qk-surface);
+  border-bottom: 1px solid var(--qk-border);
+}
+
+.srd-dialog__tab {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.srd-dialog__tab:hover {
+  border-color: var(--qk-terracotta);
+  color: var(--qk-text);
+}
+
+.srd-dialog__tab--active,
+.srd-dialog__tab--active:hover {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+.srd-dialog__tab:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
 }
 
 @media (max-width: 480px) {

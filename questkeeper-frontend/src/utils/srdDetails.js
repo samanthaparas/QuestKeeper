@@ -225,3 +225,25 @@ export function preferEdition(matches, edition) {
   const sameEdition = matches.filter((match) => match.edition === edition);
   return sameEdition.length > 0 ? sameEdition : matches;
 }
+
+export function createSrdNameLookup(entries) {
+  const entriesByName = new Map();
+
+  for (const entry of entries) {
+    const key = normalizeItemName(entry.name);
+    entriesByName.set(key, [...(entriesByName.get(key) ?? []), entry]);
+  }
+
+  return (name) => entriesByName.get(normalizeItemName(name)) ?? [];
+}
+
+export function getEditionTabLabels(details) {
+  const countByEdition = {};
+
+  return details.map(({ edition }) => {
+    countByEdition[edition] = (countByEdition[edition] ?? 0) + 1;
+    return countByEdition[edition] === 1
+      ? `${edition} SRD`
+      : `${edition} SRD (${countByEdition[edition]})`;
+  });
+}

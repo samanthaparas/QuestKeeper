@@ -7,6 +7,8 @@ import {
   formatMagicItemDetails,
   formatEquipmentDetails,
   preferEdition,
+  createSrdNameLookup,
+  getEditionTabLabels,
 } from "./srdDetails";
 describe("normalizeItemName", () => {
   it("ignores capitals and extra spaces", () => {
@@ -392,5 +394,50 @@ describe("preferEdition", () => {
 
   it("keeps every match when the saved edition isn't among them", () => {
     expect(preferEdition([matches[0]], "2024")).toEqual([matches[0]]);
+  });
+});
+
+describe("createSrdNameLookup", () => {
+  const entries = [
+    { index: "longsword", name: "Longsword", edition: "2014" },
+    { index: "longsword", name: "Longsword", edition: "2024" },
+    {
+      index: "cloak-of-protection",
+      name: "Cloak of Protection",
+      edition: "2014",
+    },
+  ];
+  const findMatches = createSrdNameLookup(entries);
+
+  it("finds every entry with the same cleaned-up name", () => {
+    expect(findMatches("  longsword ")).toEqual([entries[0], entries[1]]);
+  });
+
+  it("returns an empty list when nothing matches", () => {
+    expect(findMatches("Night Terror Longsword")).toEqual([]);
+  });
+
+  it("matches exactly the same names as findSrdMatches", () => {
+    for (const name of ["LONGSWORD", "Cloak of Protection x2", "Long", ""]) {
+      expect(findMatches(name)).toEqual(findSrdMatches(name, entries));
+    }
+  });
+});
+
+describe("getEditionTabLabels", () => {
+  it("labels each version by its edition", () => {
+    expect(
+      getEditionTabLabels([{ edition: "2014" }, { edition: "2024" }]),
+    ).toEqual(["2014 SRD", "2024 SRD"]);
+  });
+
+  it("numbers a second version from the same edition", () => {
+    expect(
+      getEditionTabLabels([
+        { edition: "2014" },
+        { edition: "2014" },
+        { edition: "2024" },
+      ]),
+    ).toEqual(["2014 SRD", "2014 SRD (2)", "2024 SRD"]);
   });
 });
