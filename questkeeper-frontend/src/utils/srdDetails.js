@@ -225,3 +225,14 @@ export function preferEdition(matches, edition) {
   const sameEdition = matches.filter((match) => match.edition === edition);
   return sameEdition.length > 0 ? sameEdition : matches;
 }
+
+export function createSrdNameLookup(entries) {
+  const entriesByName = new Map();
+
+  for (const entry of entries) {
+    const key = normalizeItemName(entry.name);
+    entriesByName.set(key, [...(entriesByName.get(key) ?? []), entry]);
+  }
+
+  return (name) => entriesByName.get(normalizeItemName(name)) ?? [];
+}

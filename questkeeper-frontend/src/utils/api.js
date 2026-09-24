@@ -20,6 +20,10 @@ function requestJson(path, errorMessage) {
     });
 }
 
+function editionQuery(edition) {
+  return edition ? `?edition=${encodeURIComponent(edition)}` : "";
+}
+
 export function getRaces() {
   return requestJson("/races", "Failed to fetch races:");
 }
@@ -43,14 +47,15 @@ export function getClassDetails(classId) {
 }
 
 export function getBackgrounds(edition) {
-  const query = edition ? `?edition=${encodeURIComponent(edition)}` : "";
-  return requestJson(`/backgrounds${query}`, "Failed to fetch backgrounds:");
+  return requestJson(
+    `/backgrounds${editionQuery(edition)}`,
+    "Failed to fetch backgrounds:",
+  );
 }
 
 export function getBackgroundDetails(backgroundId, edition) {
-  const query = edition ? `?edition=${encodeURIComponent(edition)}` : "";
   return requestJson(
-    `/backgrounds/${encodeURIComponent(backgroundId)}${query}`,
+    `/backgrounds/${encodeURIComponent(backgroundId)}${editionQuery(edition)}`,
     `Failed to fetch background details for ID ${backgroundId}:`,
   );
 }
@@ -67,14 +72,15 @@ export function getSpellDetails(spellId) {
 }
 
 export function getFeats(edition) {
-  const query = edition ? `?edition=${encodeURIComponent(edition)}` : "";
-  return requestJson(`/feats${query}`, "Failed to fetch feats:");
+  return requestJson(
+    `/feats${editionQuery(edition)}`,
+    "Failed to fetch feats:",
+  );
 }
 
 export function getFeatDetails(featId, edition) {
-  const query = edition ? `?edition=${encodeURIComponent(edition)}` : "";
   return requestJson(
-    `/feats/${encodeURIComponent(featId)}${query}`,
+    `/feats/${encodeURIComponent(featId)}${editionQuery(edition)}`,
     `Failed to fetch feat details for ID ${featId}:`,
   );
 }
@@ -122,5 +128,33 @@ export function getWeaponDetails(weaponId) {
   return requestJson(
     `/weapons/${encodeURIComponent(weaponId)}`,
     `Failed to fetch weapon details for ID ${weaponId}:`,
+  );
+}
+
+export function getEquipment(edition) {
+  return requestJson(
+    `/equipment${editionQuery(edition)}`,
+    "Failed to fetch equipment:",
+  );
+}
+
+export function getEquipmentDetails(equipmentId, edition) {
+  return requestJson(
+    `/equipment/${encodeURIComponent(equipmentId)}${editionQuery(edition)}`,
+    `Failed to fetch equipment details for ID ${equipmentId}:`,
+  );
+}
+
+export function getMagicItems(edition) {
+  return requestJson(
+    `/magic-items${editionQuery(edition)}`,
+    "Failed to fetch magic items:",
+  );
+}
+
+export function getMagicItemDetails(magicItemId, edition) {
+  return requestJson(
+    `/magic-items/${encodeURIComponent(magicItemId)}${editionQuery(edition)}`,
+    `Failed to fetch magic item details for ID ${magicItemId}:`,
   );
 }
