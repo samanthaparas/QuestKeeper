@@ -6,6 +6,7 @@ import {
   formatFeatDetails,
   formatMagicItemDetails,
   formatEquipmentDetails,
+  preferEdition,
 } from "./srdDetails";
 describe("normalizeItemName", () => {
   it("ignores capitals and extra spaces", () => {
@@ -372,5 +373,24 @@ describe("formatEquipmentDetails", () => {
 
     expect(older.kind).toBe("Adventuring Gear");
     expect(newer.kind).toBe("Adventuring Gear");
+  });
+});
+
+describe("preferEdition", () => {
+  const matches = [
+    { index: "grappler", name: "Grappler", edition: "2014" },
+    { index: "grappler", name: "Grappler", edition: "2024" },
+  ];
+
+  it("keeps only the saved edition when it's among the matches", () => {
+    expect(preferEdition(matches, "2024")).toEqual([matches[1]]);
+  });
+
+  it("keeps every match when no edition was saved", () => {
+    expect(preferEdition(matches, undefined)).toEqual(matches);
+  });
+
+  it("keeps every match when the saved edition isn't among them", () => {
+    expect(preferEdition([matches[0]], "2024")).toEqual([matches[0]]);
   });
 });

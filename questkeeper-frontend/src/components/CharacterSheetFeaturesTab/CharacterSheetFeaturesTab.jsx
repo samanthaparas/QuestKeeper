@@ -1,4 +1,13 @@
+import { useEffect, useState } from "react";
 import EditableItemList from "../EditableItemList/EditableItemList";
+import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
+import { useSrdDetailView } from "../../hooks/useSrdDetailView";
+import { getFeats, getFeatDetails } from "../../utils/api";
+import {
+  findSrdMatches,
+  preferEdition,
+  formatFeatDetails,
+} from "../../utils/srdDetails";
 
 function CharacterSheetFeaturesTab({
   features,
@@ -14,6 +23,34 @@ function CharacterSheetFeaturesTab({
   onProficiencyUpdate,
   onProficiencyRemove,
 }) {
+  const [allFeats, setAllFeats] = useState([]);
+  const detailView = useSrdDetailView();
+
+  useEffect(() => {
+    Promise.allSettled([getFeats("2014"), getFeats("2024")]).then((results) =>
+      setAllFeats(
+        results.flatMap((result) =>
+          result.status === "fulfilled" ? result.value : [],
+        ),
+      ),
+    );
+  }, []);
+
+  function getFeatMatches(feat) {
+    return preferEdition(findSrdMatches(feat.name, allFeats), feat.edition);
+  }
+
+  function openFeatDetails(feat) {
+    const matches = getFeatMatches(feat);
+    detailView.open(matches[0].name, () =>
+      Promise.all(
+        matches.map((match) =>
+          getFeatDetails(match.index, match.edition).then(formatFeatDetails),
+        ),
+      ),
+    );
+  }
+
   return (
     <>
       <section className="character-sheet__section">
@@ -63,6 +100,8 @@ function CharacterSheetFeaturesTab({
           onAdd={onFeatAdd}
           onUpdate={onFeatUpdate}
           onRemove={onFeatRemove}
+          isNameClickable={(feat) => getFeatMatches(feat).length > 0}
+          onNameClick={openFeatDetails}
         />
       </section>
 
@@ -90,6 +129,8 @@ function CharacterSheetFeaturesTab({
           onRemove={onProficiencyRemove}
         />
       </section>
+
+      <SrdDetailDialog view={detailView.view} onClose={detailView.close} />
     </>
   );
 }
