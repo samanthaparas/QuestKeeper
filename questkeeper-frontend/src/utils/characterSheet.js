@@ -374,7 +374,7 @@ export function finalizeLevelUp(sheet) {
       ? [
           ...(sheet.feats ?? []),
           {
-            index: abilityStep.data.featIndex,
+            index: crypto.randomUUID(),
             name: abilityStep.data.featName,
             edition: abilityStep.data.featEdition,
           },
