@@ -11,6 +11,7 @@ import traitsRouter from "./routes/traits.js";
 import weaponsRouter from "./routes/weapons.js";
 import equipmentRouter from "./routes/equipment.js";
 import magicItemsRouter from "./routes/magicItems.js";
+import featuresRouter from "./routes/features.js";
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use("/api/traits", traitsRouter);
 app.use("/api/weapons", weaponsRouter);
 app.use("/api/equipment", equipmentRouter);
 app.use("/api/magic-items", magicItemsRouter);
+app.use("/api/features", featuresRouter);
 
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({
