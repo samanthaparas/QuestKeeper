@@ -11,6 +11,7 @@ import CharacterCreationPage from "./pages/CharacterCreationPage/CharacterCreati
 import CharactersPage from "./pages/CharactersPage/CharactersPage";
 import CharacterSheetPage from "./pages/CharacterSheetPage/CharacterSheetPage";
 import Guide from "./pages/Guide/Guide";
+import AuthPage from "./pages/AuthPage/AuthPage";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="/characters/new" element={<CharacterCreationPage />} />
         <Route path="/characters/:id" element={<CharacterSheetPage />} />
         <Route path="/about" element={<About />} />
+        <Route path="/login" element={<AuthPage />} />
         <Route path="/guide" element={<Guide />} />
       </Routes>
     </>

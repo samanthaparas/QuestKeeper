@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../context/useAuth";
+import { signOut } from "../../utils/auth";
 import Navigation from "./Navigation/Navigation";
 import logoIcon from "../../assets/brand/questkeeper-book-logo-64.png";
 import "./Header.css";
 
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, isLoading } = useAuth();
 
   function handleMenuClick() {
     setIsMenuOpen(!isMenuOpen);
@@ -35,15 +38,20 @@ function Header() {
       <div className="header__actions">
         <Navigation />
 
-        {/* 
-          FUTURE PROFILE BUTTON
-          <button
-          className="header__profile"
-          type="button"
-          aria-label="Open profile"
-        >
-          Profile
-        </button> */}
+        {!isLoading &&
+          (user ? (
+            <button
+              className="header__profile"
+              type="button"
+              onClick={() => signOut()}
+            >
+              Log Out
+            </button>
+          ) : (
+            <Link className="header__profile" to="/login">
+              Log In
+            </Link>
+          ))}
       </div>
     </header>
   );
