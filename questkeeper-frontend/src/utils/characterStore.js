@@ -1,50 +1,57 @@
-const STORAGE_KEY = "questkeeper:characters";
+import { supabase } from "./supabaseClient";
 
-function readAll() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+function rowToSheet(row) {
+  return { ...row.data, id: row.id, updatedAt: row.updated_at };
 }
 
-function writeAll(characters) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(characters));
+export async function listCharacters() {
+  const { data, error } = await supabase
+    .from("characters")
+    .select("*")
+    .order("updated_at", { ascending: false });
+
+  if (error) throw error;
+  return data.map(rowToSheet);
 }
 
-export function listCharacters() {
-  return readAll();
+export async function getCharacter(id) {
+  const { data, error } = await supabase
+    .from("characters")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? rowToSheet(data) : null;
 }
 
-export function getCharacter(id) {
-  return readAll().find((sheet) => sheet.id === id) || null;
+export async function saveCharacter(sheet) {
+  const { id, ...rest } = sheet;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data, error } = await supabase
+    .from("characters")
+    .upsert({
+      id,
+      user_id: user.id,
+      data: rest,
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return rowToSheet(data);
 }
 
-export function saveCharacter(sheet) {
-  const characters = readAll();
-  const index = characters.findIndex((item) => item.id === sheet.id);
-  const savedSheet = { ...sheet, updatedAt: new Date().toISOString() };
-
-  if (index === -1) {
-    characters.push(savedSheet);
-  } else {
-    characters[index] = savedSheet;
-  }
-
-  writeAll(characters);
-  return savedSheet;
+export async function deleteCharacter(id) {
+  const { error } = await supabase.from("characters").delete().eq("id", id);
+  if (error) throw error;
 }
 
-export function deleteCharacter(id) {
-  writeAll(readAll().filter((sheet) => sheet.id !== id));
-}
-
-export function getMostRecentCharacter() {
-  const characters = readAll();
-  if (characters.length === 0) return null;
-
-  return [...characters].sort(
-    (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
-  )[0];
+export async function getMostRecentCharacter() {
+  const characters = await listCharacters();
+  return characters[0] ?? null;
 }

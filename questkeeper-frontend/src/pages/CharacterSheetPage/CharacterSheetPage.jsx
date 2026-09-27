@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getCharacter, saveCharacter } from "../../utils/characterStore";
 import {
@@ -47,34 +47,55 @@ import "./CharacterSheetPage.css";
 
 function CharacterSheetPage() {
   const { id } = useParams();
-  const [sheet, setSheet] = useState(() => getCharacter(id));
+  const [sheet, setSheet] = useState(null);
+  const [loadedId, setLoadedId] = useState(null);
   const [isLevelingUp, setIsLevelingUp] = useState(false);
   const [levelUpSummary, setLevelUpSummary] = useState(null);
   const [activeTab, setActiveTab] = useState("actions");
-  const [activeSlotLevels, setActiveSlotLevels] = useState(
-    () =>
-      new Set(
-        getSpellSlots(sheet?.spellcasting)
-          .filter((slot) => slot.max > 0)
-          .map((slot) => slot.level),
-      ),
-  );
+  const [activeSlotLevels, setActiveSlotLevels] = useState(() => new Set());
 
-  const [loadedId, setLoadedId] = useState(id);
+  const saveTimeoutRef = useRef(null);
+  const pendingUpdateRef = useRef(null);
 
-  if (id !== loadedId) {
-    const loaded = getCharacter(id);
-    setLoadedId(id);
-    setSheet(loaded);
-    setIsLevelingUp(false);
-    setLevelUpSummary(null);
-    setActiveTab("actions");
-    setActiveSlotLevels(
-      new Set(
-        getSpellSlots(loaded?.spellcasting)
-          .filter((slot) => slot.max > 0)
-          .map((slot) => slot.level),
-      ),
+  const isLoading = loadedId !== id;
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    getCharacter(id).then((loaded) => {
+      if (isCancelled) return;
+
+      setSheet(loaded);
+      setLoadedId(id);
+      setIsLevelingUp(false);
+      setLevelUpSummary(null);
+      setActiveTab("actions");
+      setActiveSlotLevels(
+        new Set(
+          getSpellSlots(loaded?.spellcasting)
+            .filter((slot) => slot.max > 0)
+            .map((slot) => slot.level),
+        ),
+      );
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(saveTimeoutRef.current);
+      runPendingSave();
+    };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <main className="character-sheet character-sheet--empty">
+        <h1 className="character-sheet__title">Loading character...</h1>
+      </main>
     );
   }
 
@@ -91,22 +112,50 @@ function CharacterSheetPage() {
 
   function handleLevelUpComplete(updatedSheet) {
     const summary = buildLevelUpSummary(sheet, updatedSheet);
-    const saved = saveCharacter(updatedSheet);
-    setSheet(saved);
+    setSheet(updatedSheet);
     setLevelUpSummary(summary);
     setIsLevelingUp(false);
     setActiveSlotLevels((prev) => {
       const next = new Set(prev);
-      getSpellSlots(saved.spellcasting)
+      getSpellSlots(updatedSheet.spellcasting)
         .filter((slot) => slot.max > 0)
         .forEach((slot) => next.add(slot.level));
       return next;
     });
+
+    saveCharacter(updatedSheet)
+      .then((saved) => {
+        setSheet((current) =>
+          current?.id === saved.id
+            ? { ...current, updatedAt: saved.updatedAt }
+            : current,
+        );
+      })
+      .catch((err) => console.error("Failed to save character:", err));
+  }
+
+  function runPendingSave() {
+    const toSave = pendingUpdateRef.current;
+    pendingUpdateRef.current = null;
+    if (!toSave) return;
+
+    saveCharacter(toSave)
+      .then((saved) => {
+        setSheet((current) =>
+          current?.id === saved.id
+            ? { ...current, updatedAt: saved.updatedAt }
+            : current,
+        );
+      })
+      .catch((err) => console.error("Failed to save character:", err));
   }
 
   function persistSheet(updated) {
-    const saved = saveCharacter(updated);
-    setSheet(saved);
+    setSheet(updated);
+    pendingUpdateRef.current = updated;
+
+    clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(runPendingSave, 600);
   }
 
   function handleLevelChange(value) {
