@@ -1,20 +1,27 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { listCharacters, deleteCharacter } from "../../utils/characterStore";
 import "./CharactersPage.css";
 import Button from "../../components/Button/Button";
 
 function CharactersPage() {
-  const [characters, setCharacters] = useState(() => listCharacters());
+  const [characters, setCharacters] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  function handleDelete(id, name) {
+  useEffect(() => {
+    listCharacters()
+      .then(setCharacters)
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  async function handleDelete(id, name) {
     const confirmed = window.confirm(`Delete ${name}? This cannot be undone.`);
 
     if (!confirmed) return;
 
-    deleteCharacter(id);
-    setCharacters(listCharacters());
+    await deleteCharacter(id);
+    setCharacters(await listCharacters());
   }
 
   return (
@@ -23,8 +30,7 @@ function CharactersPage() {
         <h1 className="characters-page__title">Your Characters</h1>
 
         <p className="characters-page__description">
-          Saved locally in this browser for now — accounts and sync are planned
-          for later.
+          Saved to your account — sign in anywhere to see the same characters.
         </p>
 
         <Button
@@ -34,7 +40,11 @@ function CharactersPage() {
           + New Character
         </Button>
 
-        {characters.length === 0 && (
+        {isLoading && (
+          <p className="characters-page__empty">Loading your characters...</p>
+        )}
+
+        {!isLoading && characters.length === 0 && (
           <p className="characters-page__empty">
             No characters yet. Create one to get started.
           </p>

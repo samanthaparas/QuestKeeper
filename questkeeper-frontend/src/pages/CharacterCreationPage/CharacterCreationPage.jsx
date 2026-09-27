@@ -181,7 +181,7 @@ function CharacterCreationPage() {
     setStepIndex(Math.max(0, Math.min(STEPS.length - 1, index)));
   }
 
-  function handleCreate() {
+  async function handleCreate() {
     const conModifier = getAbilityModifier(abilityScores.constitution);
     const dexModifier = getAbilityModifier(abilityScores.dexterity);
     const hitDie = characterClass?.hitDie ?? 8;
@@ -240,7 +240,7 @@ function CharacterCreationPage() {
       },
     });
 
-    saveCharacter(sheet);
+    await saveCharacter(sheet);
     navigate("/characters");
   }
 

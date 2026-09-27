@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import SearchForm from "../../components/SearchForm/SearchForm";
 import CategoryCard from "../../components/CategoryCard/CategoryCard";
@@ -11,8 +11,12 @@ const SUGGESTED_SEARCHES = ["Fireball", "Elf", "Wizard", "Acolyte"];
 
 function Home() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [recentCharacter, setRecentCharacter] = useState(null);
   const navigate = useNavigate();
-  const recentCharacter = getMostRecentCharacter();
+
+  useEffect(() => {
+    getMostRecentCharacter().then(setRecentCharacter);
+  }, []);
 
   function runSearch(term) {
     const trimmed = term.trim();

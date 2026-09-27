@@ -12,6 +12,7 @@ import CharactersPage from "./pages/CharactersPage/CharactersPage";
 import CharacterSheetPage from "./pages/CharacterSheetPage/CharacterSheetPage";
 import Guide from "./pages/Guide/Guide";
 import AuthPage from "./pages/AuthPage/AuthPage";
+import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 
 function App() {
   return (
@@ -25,9 +26,30 @@ function App() {
         <Route path="/classes" element={<ClassesPage />} />
         <Route path="/spells" element={<SpellsPage />} />
         <Route path="/backgrounds" element={<BackgroundsPage />} />
-        <Route path="/characters" element={<CharactersPage />} />
-        <Route path="/characters/new" element={<CharacterCreationPage />} />
-        <Route path="/characters/:id" element={<CharacterSheetPage />} />
+        <Route
+          path="/characters"
+          element={
+            <ProtectedRoute>
+              <CharactersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/characters/new"
+          element={
+            <ProtectedRoute>
+              <CharacterCreationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/characters/:id"
+          element={
+            <ProtectedRoute>
+              <CharacterSheetPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/about" element={<About />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/guide" element={<Guide />} />
