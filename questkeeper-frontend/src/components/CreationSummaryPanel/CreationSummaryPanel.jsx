@@ -3,17 +3,9 @@ import {
   ABILITY_SCORES,
   getAbilityModifier,
   formatModifier,
+  getInitials,
 } from "../../utils/characterSheet";
 import "./CreationSummaryPanel.css";
-
-function getInitials(name) {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
 
 function CreationSummaryPanel({
   name,

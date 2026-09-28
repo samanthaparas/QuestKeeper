@@ -1,0 +1,82 @@
+.portrait-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.portrait-upload__frame {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  padding: 0;
+  border: 2px solid var(--qk-border);
+  border-radius: 50%;
+  background-color: var(--qk-terracotta-soft);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.portrait-upload__frame:hover .portrait-upload__overlay,
+.portrait-upload__frame:focus-visible .portrait-upload__overlay {
+  opacity: 1;
+}
+
+.portrait-upload__frame:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 3px;
+}
+
+.portrait-upload__frame:disabled {
+  cursor: not-allowed;
+}
+
+.portrait-upload__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portrait-upload__initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--qk-terracotta-hover);
+  font-family: var(--qk-font-display);
+  font-weight: 700;
+  font-size: 28px;
+}
+
+.portrait-upload__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.portrait-upload__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.portrait-upload__error {
+  color: var(--qk-danger);
+  font-size: 12px;
+  margin: 0;
+  text-align: center;
+}

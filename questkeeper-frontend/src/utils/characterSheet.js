@@ -881,3 +881,12 @@ export function setSpellSlot(spellcasting, level, field, value) {
 
   return { ...base, spellSlots: updatedSlots };
 }
+
+export function getInitials(name) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
