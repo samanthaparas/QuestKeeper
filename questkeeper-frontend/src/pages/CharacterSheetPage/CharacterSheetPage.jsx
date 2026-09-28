@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useAuth } from "../../context/useAuth";
+import PortraitUpload from "../../components/PortraitUpload/PortraitUpload";
 import { getCharacter, saveCharacter } from "../../utils/characterStore";
 import {
   ABILITY_SCORES,
@@ -47,6 +49,7 @@ import "./CharacterSheetPage.css";
 
 function CharacterSheetPage() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [sheet, setSheet] = useState(null);
   const [loadedId, setLoadedId] = useState(null);
   const [isLevelingUp, setIsLevelingUp] = useState(false);
@@ -156,6 +159,10 @@ function CharacterSheetPage() {
 
     clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(runPendingSave, 600);
+  }
+
+  function handlePortraitUpload(url) {
+    persistSheet({ ...sheet, portraitUrl: url });
   }
 
   function handleLevelChange(value) {
@@ -634,15 +641,25 @@ function CharacterSheetPage() {
         {!isLevelingUp && !levelUpSummary && (
           <>
             <header className="character-sheet__header">
-              <h1 className="character-sheet__title">{sheet.name}</h1>
-              <p className="character-sheet__subtitle">
-                Level {sheet.level} {sheet.race?.name ?? "No race"}{" "}
-                {sheet.class?.name ?? "No class"}
-                {sheet.class?.subclass?.name
-                  ? ` (${sheet.class.subclass.name})`
-                  : ""}{" "}
-                · {sheet.background?.name ?? "No background"}
-              </p>
+              <div className="character-sheet__header-text">
+                <h1 className="character-sheet__title">{sheet.name}</h1>
+                <p className="character-sheet__subtitle">
+                  Level {sheet.level} {sheet.race?.name ?? "No race"}{" "}
+                  {sheet.class?.name ?? "No class"}
+                  {sheet.class?.subclass?.name
+                    ? ` (${sheet.class.subclass.name})`
+                    : ""}{" "}
+                  · {sheet.background?.name ?? "No background"}
+                </p>
+              </div>
+
+              <PortraitUpload
+                userId={user.id}
+                characterId={sheet.id}
+                name={sheet.name}
+                portraitUrl={sheet.portraitUrl}
+                onUpload={handlePortraitUpload}
+              />
             </header>
 
             <div className="character-sheet__actions">
