@@ -7,6 +7,10 @@
   background-color: var(--qk-surface);
 }
 
+.level-up-wizard__step {
+  margin-bottom: 16px;
+}
+
 .level-up-wizard__header {
   margin-bottom: 24px;
 }

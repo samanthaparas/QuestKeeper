@@ -549,29 +549,6 @@
   margin: 0;
 }
 
-.character-sheet__layout {
-  display: grid;
-  grid-template-columns: 1fr minmax(235px, 270px);
-  gap: 32px;
-  align-items: start;
-}
-
-.character-sheet__sidebar .character-sheet__section-title {
-  font-size: 18px;
-  margin-bottom: 8px;
-}
-
-.character-sheet__sidebar {
-  position: sticky;
-  top: 24px;
-  max-height: calc(100vh - 48px);
-  overflow-y: auto;
-  padding: 16px;
-  border: 1px solid var(--qk-border);
-  border-radius: var(--qk-radius-card);
-  background-color: var(--qk-surface);
-}
-
 .character-sheet input[type="number"]::-webkit-inner-spin-button,
 .character-sheet input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -712,16 +689,6 @@
   outline-offset: 2px;
 }
 
-@media screen and (max-width: 900px) {
-  .character-sheet__layout {
-    grid-template-columns: 1fr;
-  }
-
-  .character-sheet__sidebar {
-    position: static;
-  }
-}
-
 @media screen and (max-width: 600px) {
   .character-sheet {
     padding: 24px 20px;
@@ -729,5 +696,344 @@
 
   .character-sheet__title {
     font-size: 28px;
+  }
+}
+
+/* ---------- Sheet shell: left rail + body ---------- */
+/* The rail (identity, abilities, skills) sits beside the body (vitals + tabs).
+   Below 1024px the two stack and the page scrolls normally. */
+.character-sheet__shell {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.character-sheet__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.character-sheet__body {
+  min-width: 0;
+}
+
+.character-sheet__rail .character-sheet__header {
+  margin-bottom: 0;
+}
+
+.character-sheet__rail .character-sheet__title {
+  font-size: 24px;
+  margin: 0 0 2px;
+}
+
+.character-sheet__rail .character-sheet__subtitle {
+  font-size: 13px;
+}
+
+.character-sheet__skills {
+  margin-bottom: 0;
+  padding: 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.character-sheet__skills .character-sheet__section-title {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+/* Ability scores: one line per tile, six across, inside the vitals panel */
+.character-sheet__vitals .character-sheet__abilities {
+  flex: 1 1 100%;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.character-sheet__vitals .character-sheet__ability-card {
+  flex-direction: row;
+  justify-content: center;
+  gap: 5px;
+  padding: 3px 4px;
+}
+
+.character-sheet__vitals .character-sheet__ability-name {
+  font-size: 12px;
+}
+
+.character-sheet__vitals .character-sheet__ability-input {
+  width: 38px;
+  min-height: 22px;
+  padding: 0 2px;
+  font-size: 14px;
+}
+
+.character-sheet__vitals .character-sheet__ability-modifier {
+  min-width: 18px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.character-sheet__vitals .character-sheet__ability-save-badge {
+  margin-top: 0;
+  padding: 1px 6px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* Name + class/race line, left of Hit Points */
+.character-sheet__identity {
+  flex: 1 1 200px;
+  min-width: 180px;
+  align-self: center;
+  padding: 0 8px;
+}
+
+.character-sheet__identity .character-sheet__title {
+  font-size: 22px;
+  line-height: 1.15;
+  margin: 0 0 2px;
+}
+
+.character-sheet__identity .character-sheet__subtitle {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+/* Skills: tighter rows so all 18 fit in the rail */
+.character-sheet__skills {
+  padding: 8px;
+}
+
+.character-sheet__skills {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Rows share whatever height the card has, between 24px and 34px each */
+.character-sheet__skills .character-sheet__skills-list {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.character-sheet__skills .character-sheet__skill-row {
+  flex: 1 1 24px;
+  min-height: 24px;
+  max-height: 34px;
+  padding: 1px 8px;
+  font-size: 13px;
+}
+
+/* Vitals strip: compact tiles (label above value) in one row */
+.character-sheet__vitals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 6px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.character-sheet__vital {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 54px;
+  padding: 3px 6px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface-muted);
+}
+
+.character-sheet__vital--hp {
+  min-width: 132px;
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+}
+
+.character-sheet__vital-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--qk-text-muted);
+  white-space: nowrap;
+}
+
+.character-sheet__vital--hp .character-sheet__vital-label {
+  color: var(--qk-terracotta-hover);
+}
+
+.character-sheet__vital-value {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 700;
+  color: var(--qk-text);
+}
+
+.character-sheet__vital-input {
+  width: 46px;
+  min-height: 28px;
+  padding: 0 4px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.character-sheet__vital-input--hp {
+  width: 54px;
+  font-size: 19px;
+}
+
+.character-sheet__vital-unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--qk-text-muted);
+}
+
+.character-sheet__vital-static {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 28px;
+  color: var(--qk-text);
+}
+
+/* Inspiration and Gold share one tile, stacked */
+.character-sheet__vital-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 8px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface-muted);
+}
+
+.character-sheet__vital-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.character-sheet__vital-row .character-sheet__vital-input {
+  min-height: 22px;
+  font-size: 14px;
+}
+
+/* Tab bar: tabs on the left, Level Up / rests on the right */
+.character-sheet__tabbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--qk-border);
+}
+
+.character-sheet__tabbar .character-sheet-tabs {
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.character-sheet__tabbar .character-sheet-tabs__tab {
+  min-height: 38px;
+  padding: 0 14px;
+}
+
+.character-sheet__tabbar .character-sheet__actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.character-sheet__tabbar .qk-button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.character-sheet__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.character-sheet__size-select {
+  width: auto;
+  max-width: 160px;
+  text-align: left;
+}
+/* Desktop: fixed-height shell. The rail and the tab content scroll on their
+   own inside the viewport instead of the whole page scrolling. Sized for a
+   ~1240px-wide laptop viewport; roomier sizes for big screens are below. */
+@media (min-width: 1024px) {
+  .character-sheet {
+    height: calc(100vh - var(--qk-header-height));
+    min-height: 0;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 12px 16px;
+  }
+
+  .character-sheet__content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .character-sheet__shell {
+    flex: 1;
+    min-height: 380px;
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+
+  .character-sheet__rail {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Skills fills the whole rail; its own list scrolls only if it must */
+  .character-sheet__skills {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .character-sheet__body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .character-sheet__main {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+/* Bigger screens: give the rail and text more room */
+@media (min-width: 1500px) and (min-height: 800px) {
+  .character-sheet__shell {
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 24px;
   }
 }

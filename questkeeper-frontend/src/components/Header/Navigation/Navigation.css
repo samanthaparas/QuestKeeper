@@ -7,7 +7,7 @@
 .navigation__link {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 34px;
   padding: 0 12px;
   border-radius: 9px;
   color: var(--qk-text);

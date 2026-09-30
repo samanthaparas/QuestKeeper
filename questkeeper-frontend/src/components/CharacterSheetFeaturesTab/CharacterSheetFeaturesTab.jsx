@@ -45,6 +45,10 @@ function CharacterSheetFeaturesTab({
   onProficiencyAdd,
   onProficiencyUpdate,
   onProficiencyRemove,
+  languages,
+  onLanguagesChange,
+  size,
+  onSizeChange,
 }) {
   const [allFeats, setAllFeats] = useState([]);
   const [characterFeatures, setCharacterFeatures] = useState([]);
@@ -193,6 +197,35 @@ function CharacterSheetFeaturesTab({
           onUpdate={onProficiencyUpdate}
           onRemove={onProficiencyRemove}
         />
+      </section>
+
+      <section className="character-sheet__section">
+        <h2 className="character-sheet__section-title">Languages &amp; Size</h2>
+        <label className="character-sheet__field">
+          <span className="character-sheet__stat-label">Languages</span>
+          <textarea
+            className="character-sheet__textarea"
+            value={languages}
+            onChange={(e) => onLanguagesChange(e.target.value)}
+            placeholder={"Common\nInfernal"}
+            rows={2}
+          />
+        </label>
+        <label className="character-sheet__field">
+          <span className="character-sheet__stat-label">Size</span>
+          <select
+            className="character-sheet__stat-input character-sheet__size-select"
+            value={size}
+            onChange={(e) => onSizeChange(e.target.value)}
+          >
+            <option value="Tiny">Tiny</option>
+            <option value="Small">Small</option>
+            <option value="Medium">Medium</option>
+            <option value="Large">Large</option>
+            <option value="Huge">Huge</option>
+            <option value="Gargantuan">Gargantuan</option>
+          </select>
+        </label>
       </section>
 
       <SrdDetailDialog view={detailView.view} onClose={detailView.close} />
