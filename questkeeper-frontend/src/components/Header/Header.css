@@ -1,6 +1,17 @@
+:root {
+  --qk-header-height: 48px;
+}
+
+/* Roomier header (with tagline) only when there is vertical space */
+@media (min-height: 801px) {
+  :root {
+    --qk-header-height: 56px;
+  }
+}
+
 .header {
-  min-height: 72px;
-  padding: 12px 32px;
+  min-height: var(--qk-header-height);
+  padding: 6px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -17,8 +28,8 @@
 }
 
 .header__icon {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
 }
 
@@ -38,8 +49,14 @@
 .header__tagline {
   color: var(--qk-text-muted);
   font-family: var(--qk-font-body);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.2;
+}
+
+@media (max-height: 800px) {
+  .header__tagline {
+    display: none;
+  }
 }
 
 .header__actions {
@@ -49,8 +66,8 @@
 }
 
 .header__profile {
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 34px;
+  min-height: 34px;
   padding: 0 12px;
   border-radius: 999px;
   border: 1px solid var(--qk-border);

@@ -29,7 +29,7 @@ function Navigation() {
       </NavLink>
 
       <NavLink className={linkClass} to="/characters">
-        Characters
+        My Characters
       </NavLink>
 
       <NavLink className={linkClass} to="/about">

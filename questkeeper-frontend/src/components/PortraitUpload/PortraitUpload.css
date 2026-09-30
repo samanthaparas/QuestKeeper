@@ -7,8 +7,8 @@
 
 .portrait-upload__frame {
   position: relative;
-  width: 96px;
-  height: 96px;
+  width: 64px;
+  height: 64px;
   padding: 0;
   border: 2px solid var(--qk-border);
   border-radius: 50%;
@@ -46,7 +46,7 @@
   color: var(--qk-terracotta-hover);
   font-family: var(--qk-font-display);
   font-weight: 700;
-  font-size: 28px;
+  font-size: 20px;
 }
 
 .portrait-upload__overlay {

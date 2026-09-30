@@ -1,4 +1,11 @@
+import PortraitUpload from "../PortraitUpload/PortraitUpload";
+
 function CharacterSheetStoryTab({
+  userId,
+  characterId,
+  name,
+  portraitUrl,
+  onPortraitUpload,
   backstory,
   showBackstory,
   onBackstoryChange,
@@ -20,6 +27,17 @@ function CharacterSheetStoryTab({
 
   return (
     <>
+      <section className="character-sheet__section">
+        <h2 className="character-sheet__section-title">Portrait</h2>
+        <PortraitUpload
+          userId={userId}
+          characterId={characterId}
+          name={name}
+          portraitUrl={portraitUrl}
+          onUpload={onPortraitUpload}
+        />
+      </section>
+
       <section className="character-sheet__section">
         <div className="character-sheet__section-header-row">
           <h2 className="character-sheet__section-title">Backstory</h2>
