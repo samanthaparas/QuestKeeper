@@ -22,6 +22,7 @@ import {
   createEquipmentItem,
   updateEquipmentItem,
   getAttunedCount,
+  toggleSkillProficiency,
   createAttack,
   updateAttack,
   createFeat,
@@ -996,5 +997,28 @@ describe("rollD20", () => {
       rolls: [3, 19],
       result: 3,
     });
+  });
+});
+
+describe("toggleSkillProficiency", () => {
+  it("turns proficiency on for a skill that was off or missing", () => {
+    expect(toggleSkillProficiency({}, "stealth")).toEqual({ stealth: true });
+    expect(toggleSkillProficiency(undefined, "stealth")).toEqual({
+      stealth: true,
+    });
+  });
+
+  it("turns proficiency off for a skill that was on", () => {
+    const result = toggleSkillProficiency({ stealth: true }, "stealth");
+
+    expect(result.stealth).toBe(false);
+  });
+
+  it("leaves other skills alone and does not mutate the input", () => {
+    const skills = { stealth: true, arcana: true };
+    const result = toggleSkillProficiency(skills, "history");
+
+    expect(result).toEqual({ stealth: true, arcana: true, history: true });
+    expect(skills).toEqual({ stealth: true, arcana: true });
   });
 });

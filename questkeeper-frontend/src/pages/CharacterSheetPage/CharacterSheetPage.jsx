@@ -23,6 +23,7 @@ import {
   updateEquipmentItem,
   removeEquipmentItem,
   getAttunedCount,
+  toggleSkillProficiency,
   createAttack,
   removeAttack,
   updateAttack,
@@ -45,6 +46,16 @@ import CharacterSheetInventoryTab from "../../components/CharacterSheetInventory
 import CharacterSheetFeaturesTab from "../../components/CharacterSheetFeaturesTab/CharacterSheetFeaturesTab";
 import CharacterSheetStoryTab from "../../components/CharacterSheetStoryTab/CharacterSheetStoryTab";
 import "./CharacterSheetPage.css";
+
+// A controlled number input keeps typed text like "025" on screen even though
+// the stored value is 25. Rewrite the visible text once, sheet-wide, so a
+// leading zero never sticks around.
+function stripLeadingZeros(event) {
+  const input = event.target;
+  if (input.type === "number" && /^-?0+\d/.test(input.value)) {
+    input.value = input.value.replace(/^(-?)0+(?=\d)/, "$1");
+  }
+}
 
 function CharacterSheetPage() {
   const { id } = useParams();
@@ -372,6 +383,22 @@ function CharacterSheetPage() {
     });
   }
 
+  function handleEquipmentProficientToggle(id, currentlyProficient) {
+    persistSheet({
+      ...sheet,
+      equipment: updateEquipmentItem(sheet.equipment, id, {
+        proficient: !currentlyProficient,
+      }),
+    });
+  }
+
+  function handleSkillToggle(skillIndex) {
+    persistSheet({
+      ...sheet,
+      skills: toggleSkillProficiency(sheet.skills, skillIndex),
+    });
+  }
+
   function handleResourceAdd(values) {
     const resource = createResource({
       name: values.name.trim(),
@@ -580,7 +607,7 @@ function CharacterSheetPage() {
     getSpellSlots(sheet.spellcasting).some((slot) => slot.max > 0);
 
   return (
-    <main className="character-sheet">
+    <main className="character-sheet" onChange={stripLeadingZeros}>
       <div className="character-sheet__content">
         {isLevelingUp && (
           <LevelUpWizard
@@ -663,9 +690,20 @@ function CharacterSheetPage() {
                           <span className="character-sheet__skill-ability">
                             {ABILITY_ABBREVIATIONS[skill.ability]}
                           </span>
-                          <span className="character-sheet__skill-prof-badge">
+                          <button
+                            type="button"
+                            className="character-sheet__skill-prof-badge"
+                            aria-pressed={isProficient}
+                            aria-label={`${skill.name} proficiency`}
+                            title={
+                              isProficient
+                                ? "Proficient - click to remove"
+                                : "Not proficient - click to add"
+                            }
+                            onClick={() => handleSkillToggle(skill.index)}
+                          >
                             {isProficient ? "P" : ""}
-                          </span>
+                          </button>
                           <span className="character-sheet__skill-modifier">
                             {formatModifier(modifier)}
                           </span>
@@ -936,6 +974,9 @@ function CharacterSheetPage() {
                       onEquipmentUpdate={handleEquipmentUpdate}
                       onEquipmentRemove={handleEquipmentRemove}
                       onEquipmentAttuneToggle={handleEquipmentAttuneToggle}
+                      onEquipmentProficientToggle={
+                        handleEquipmentProficientToggle
+                      }
                     />
                   )}
 

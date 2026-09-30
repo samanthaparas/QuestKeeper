@@ -656,6 +656,10 @@ export function getAttunedCount(equipment) {
   return (equipment ?? []).filter((item) => item.attuned).length;
 }
 
+export function toggleSkillProficiency(skills, skillIndex) {
+  return { ...(skills ?? {}), [skillIndex]: !skills?.[skillIndex] };
+}
+
 export function createAttack({ name, toHit, damage, damageType, notes }) {
   return {
     index: crypto.randomUUID(),
