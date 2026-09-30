@@ -24,6 +24,7 @@ import {
   removeEquipmentItem,
   getAttunedCount,
   toggleSkillProficiency,
+  setTemporaryHp,
   createAttack,
   removeAttack,
   updateAttack,
@@ -247,6 +248,19 @@ function CharacterSheetPage() {
       combat: {
         ...sheet.combat,
         hitPoints: { ...sheet.combat.hitPoints, max: numeric },
+      },
+    });
+  }
+
+  function handleTempHpChange(value) {
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) return;
+
+    persistSheet({
+      ...sheet,
+      combat: {
+        ...sheet.combat,
+        hitPoints: setTemporaryHp(sheet.combat.hitPoints, numeric),
       },
     });
   }
@@ -731,6 +745,14 @@ function CharacterSheetPage() {
                   <div className="character-sheet__vital character-sheet__vital--hp">
                     <span className="character-sheet__vital-label">
                       Hit Points
+                      {combat.hitPoints.temporary > 0 && (
+                        <span className="character-sheet__vital-total">
+                          {" "}
+                          +{combat.hitPoints.temporary} ={" "}
+                          {combat.hitPoints.current +
+                            combat.hitPoints.temporary}
+                        </span>
+                      )}
                     </span>
                     <span className="character-sheet__vital-value">
                       <input
@@ -749,9 +771,18 @@ function CharacterSheetPage() {
                         onChange={(e) => handleMaxHpChange(e.target.value)}
                         min={0}
                       />
-                      {combat.hitPoints.temporary > 0 &&
-                        ` (+${combat.hitPoints.temporary})`}
                     </span>
+                  </div>
+
+                  <div className="character-sheet__vital">
+                    <span className="character-sheet__vital-label">Temp</span>
+                    <input
+                      type="number"
+                      className="character-sheet__vital-input"
+                      value={combat.hitPoints.temporary ?? 0}
+                      onChange={(e) => handleTempHpChange(e.target.value)}
+                      min={0}
+                    />
                   </div>
 
                   <div className="character-sheet__vital">
@@ -836,32 +867,17 @@ function CharacterSheetPage() {
                     </span>
                   </div>
 
-                  <div className="character-sheet__vital-stack">
-                    <label className="character-sheet__vital-row">
-                      <span className="character-sheet__vital-label">
-                        Inspiration
-                      </span>
-                      <input
-                        type="number"
-                        className="character-sheet__vital-input"
-                        value={sheet.inspiration ?? 0}
-                        onChange={(e) =>
-                          handleInspirationChange(e.target.value)
-                        }
-                        min={0}
-                      />
-                    </label>
-                    <label className="character-sheet__vital-row">
-                      <span className="character-sheet__vital-label">Gold</span>
-                      <input
-                        type="number"
-                        className="character-sheet__vital-input"
-                        value={sheet.gold ?? 0}
-                        onChange={(e) => handleGoldChange(e.target.value)}
-                        min={0}
-                      />
-                    </label>
+                  <div className="character-sheet__vital">
+                    <span className="character-sheet__vital-label">Gold</span>
+                    <input
+                      type="number"
+                      className="character-sheet__vital-input character-sheet__vital-input--wide"
+                      value={sheet.gold ?? 0}
+                      onChange={(e) => handleGoldChange(e.target.value)}
+                      min={0}
+                    />
                   </div>
+
                   <div className="character-sheet__abilities">
                     {ABILITY_SCORES.map((ability) => {
                       const score = sheet.abilityScores[ability];
@@ -913,6 +929,20 @@ function CharacterSheetPage() {
                     hasSpellcasting={hasSpellcasting}
                   />
                   <div className="character-sheet__actions">
+                    <label className="character-sheet__inspiration">
+                      <span className="character-sheet__vital-label">
+                        Inspiration
+                      </span>
+                      <input
+                        type="number"
+                        className="character-sheet__vital-input"
+                        value={sheet.inspiration ?? 0}
+                        onChange={(e) =>
+                          handleInspirationChange(e.target.value)
+                        }
+                        min={0}
+                      />
+                    </label>
                     <Button onClick={() => setIsLevelingUp(true)}>
                       Level Up
                     </Button>

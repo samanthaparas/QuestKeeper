@@ -595,6 +595,10 @@ export function setCurrentHp(hitPoints, value) {
   };
 }
 
+export function setTemporaryHp(hitPoints, value) {
+  return { ...hitPoints, temporary: Math.max(0, value) };
+}
+
 export function applyRest(sheet, restType) {
   const resources = (sheet.resources ?? []).map((resource) => {
     const shouldReset = restType === "long" || resource.resetOn === "short";
@@ -603,7 +607,10 @@ export function applyRest(sheet, restType) {
 
   const hitPoints =
     restType === "long"
-      ? setCurrentHp(sheet.combat.hitPoints, sheet.combat.hitPoints.max)
+      ? setTemporaryHp(
+          setCurrentHp(sheet.combat.hitPoints, sheet.combat.hitPoints.max),
+          0,
+        )
       : sheet.combat.hitPoints;
 
   const isWarlock = sheet.class?.id === "warlock";
