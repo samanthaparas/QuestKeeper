@@ -150,12 +150,27 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
   flex-shrink: 0;
+  border: 1px solid var(--qk-border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
   font-size: 10px;
   font-weight: 700;
   border-radius: 999px;
+  cursor: pointer;
+}
+
+.character-sheet__skill-prof-badge:hover {
+  border-color: var(--qk-terracotta);
+}
+
+.character-sheet__skill-prof-badge:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
 }
 
 .character-sheet__skill-row--proficient .character-sheet__skill-prof-badge {

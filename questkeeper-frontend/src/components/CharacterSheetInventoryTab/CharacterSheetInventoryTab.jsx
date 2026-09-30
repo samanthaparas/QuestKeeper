@@ -10,6 +10,7 @@ function CharacterSheetInventoryTab({
   onEquipmentUpdate,
   onEquipmentRemove,
   onEquipmentAttuneToggle,
+  onEquipmentProficientToggle,
 }) {
   const equipmentLookup = useSrdEquipmentLookup();
   const detailView = useSrdDetailView();
@@ -63,15 +64,29 @@ function CharacterSheetInventoryTab({
         }
         onNameClick={openItemDetails}
         extraRowContent={(item) => (
-          <button
-            type="button"
-            className={`character-sheet__attune-toggle${
-              item.attuned ? " character-sheet__attune-toggle--active" : ""
-            }`}
-            onClick={() => onEquipmentAttuneToggle(item.index, item.attuned)}
-          >
-            {item.attuned ? "★ Attuned" : "☆ Attune"}
-          </button>
+          <>
+            <button
+              type="button"
+              className={`character-sheet__attune-toggle${
+                item.proficient ? " character-sheet__attune-toggle--active" : ""
+              }`}
+              aria-pressed={Boolean(item.proficient)}
+              onClick={() =>
+                onEquipmentProficientToggle(item.index, item.proficient)
+              }
+            >
+              {item.proficient ? "✓ Proficient" : "Proficient?"}
+            </button>
+            <button
+              type="button"
+              className={`character-sheet__attune-toggle${
+                item.attuned ? " character-sheet__attune-toggle--active" : ""
+              }`}
+              onClick={() => onEquipmentAttuneToggle(item.index, item.attuned)}
+            >
+              {item.attuned ? "★ Attuned" : "☆ Attune"}
+            </button>
+          </>
         )}
       />
       <SrdDetailDialog view={detailView.view} onClose={detailView.close} />
