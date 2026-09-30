@@ -871,7 +871,7 @@
 }
 
 .character-sheet__vital--hp {
-  min-width: 132px;
+  min-width: 120px;
   border-color: var(--qk-terracotta);
   background-color: var(--qk-terracotta-soft);
 }
@@ -897,7 +897,7 @@
 }
 
 .character-sheet__vital-input {
-  width: 46px;
+  width: 40px;
   min-height: 28px;
   padding: 0 4px;
   border: 1px solid var(--qk-border);
@@ -911,7 +911,7 @@
 }
 
 .character-sheet__vital-input--hp {
-  width: 54px;
+  width: 48px;
   font-size: 19px;
 }
 
@@ -921,35 +921,21 @@
   color: var(--qk-text-muted);
 }
 
+.character-sheet__vital-input--wide {
+  width: 56px;
+}
+
+/* Running total shown next to the HP label while temp HP is active */
+.character-sheet__vital-total {
+  color: var(--qk-moss);
+  font-weight: 700;
+}
+
 .character-sheet__vital-static {
   font-size: 17px;
   font-weight: 700;
   line-height: 28px;
   color: var(--qk-text);
-}
-
-/* Inspiration and Gold share one tile, stacked */
-.character-sheet__vital-stack {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 3px;
-  padding: 4px 8px;
-  border: 1px solid var(--qk-border);
-  border-radius: var(--qk-radius-control);
-  background-color: var(--qk-surface-muted);
-}
-
-.character-sheet__vital-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.character-sheet__vital-row .character-sheet__vital-input {
-  min-height: 22px;
-  font-size: 14px;
 }
 
 /* Tab bar: tabs on the left, Level Up / rests on the right */
@@ -976,6 +962,17 @@
   display: flex;
   gap: 6px;
   margin-bottom: 4px;
+}
+
+.character-sheet__inspiration {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+}
+
+.character-sheet__inspiration .character-sheet__vital-input {
+  min-height: 26px;
 }
 
 .character-sheet__tabbar .qk-button {

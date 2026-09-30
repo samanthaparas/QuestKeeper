@@ -18,6 +18,7 @@ import {
   removeResource,
   updateResource,
   setCurrentHp,
+  setTemporaryHp,
   applyRest,
   createEquipmentItem,
   updateEquipmentItem,
@@ -278,6 +279,22 @@ describe("setCurrentHp", () => {
   });
 });
 
+describe("setTemporaryHp", () => {
+  it("sets temporary HP without touching current or max", () => {
+    const hitPoints = { max: 20, current: 5, temporary: 0 };
+    const result = setTemporaryHp(hitPoints, 8);
+
+    expect(result).toEqual({ max: 20, current: 5, temporary: 8 });
+  });
+
+  it("never goes below zero and is not capped by max HP", () => {
+    const hitPoints = { max: 20, current: 5, temporary: 3 };
+
+    expect(setTemporaryHp(hitPoints, -4).temporary).toBe(0);
+    expect(setTemporaryHp(hitPoints, 50).temporary).toBe(50);
+  });
+});
+
 describe("applyRest", () => {
   function makeSheet() {
     return {
@@ -300,6 +317,14 @@ describe("applyRest", () => {
 
     expect(result.combat.hitPoints.current).toBe(20);
     expect(result.resources.every((r) => r.current === r.max)).toBe(true);
+  });
+
+  it("a long rest clears temporary HP, but a short rest keeps it", () => {
+    const sheet = makeSheet();
+    sheet.combat.hitPoints.temporary = 7;
+
+    expect(applyRest(sheet, "long").combat.hitPoints.temporary).toBe(0);
+    expect(applyRest(sheet, "short").combat.hitPoints.temporary).toBe(7);
   });
 
   it("a short rest only restores short-rest resources and leaves HP alone", () => {
