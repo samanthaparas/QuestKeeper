@@ -759,6 +759,7 @@ function CharacterSheetPage() {
                         type="number"
                         className="character-sheet__vital-input character-sheet__vital-input--hp"
                         value={combat.hitPoints.current}
+                        aria-label="Current HP"
                         onChange={(e) => handleHpChange(e.target.value)}
                         min={0}
                         max={combat.hitPoints.max}
@@ -768,13 +769,14 @@ function CharacterSheetPage() {
                         type="number"
                         className="character-sheet__vital-input character-sheet__vital-input--hp"
                         value={combat.hitPoints.max}
+                        aria-label="Max HP"
                         onChange={(e) => handleMaxHpChange(e.target.value)}
                         min={0}
                       />
                     </span>
                   </div>
 
-                  <div className="character-sheet__vital">
+                  <label className="character-sheet__vital">
                     <span className="character-sheet__vital-label">Temp</span>
                     <input
                       type="number"
@@ -783,9 +785,9 @@ function CharacterSheetPage() {
                       onChange={(e) => handleTempHpChange(e.target.value)}
                       min={0}
                     />
-                  </div>
+                  </label>
 
-                  <div className="character-sheet__vital">
+                  <label className="character-sheet__vital">
                     <span className="character-sheet__vital-label">AC</span>
                     <input
                       type="number"
@@ -794,9 +796,9 @@ function CharacterSheetPage() {
                       onChange={(e) => handleArmorClassChange(e.target.value)}
                       min={0}
                     />
-                  </div>
+                  </label>
 
-                  <div className="character-sheet__vital">
+                  <label className="character-sheet__vital">
                     <span className="character-sheet__vital-label">Init</span>
                     <input
                       type="number"
@@ -804,7 +806,7 @@ function CharacterSheetPage() {
                       value={combat.initiative}
                       onChange={(e) => handleInitiativeChange(e.target.value)}
                     />
-                  </div>
+                  </label>
 
                   <div className="character-sheet__vital">
                     <span className="character-sheet__vital-label">Speed</span>
@@ -813,6 +815,7 @@ function CharacterSheetPage() {
                         type="number"
                         className="character-sheet__vital-input"
                         value={combat.speed}
+                        aria-label="Speed"
                         onChange={(e) => handleSpeedChange(e.target.value)}
                         min={0}
                       />
@@ -827,7 +830,7 @@ function CharacterSheetPage() {
                     </span>
                   </div>
 
-                  <div className="character-sheet__vital">
+                  <label className="character-sheet__vital">
                     <span className="character-sheet__vital-label">Level</span>
                     <input
                       type="number"
@@ -837,7 +840,7 @@ function CharacterSheetPage() {
                       min={1}
                       max={20}
                     />
-                  </div>
+                  </label>
 
                   <div className="character-sheet__vital">
                     <span className="character-sheet__vital-label">
@@ -848,6 +851,7 @@ function CharacterSheetPage() {
                         type="number"
                         className="character-sheet__vital-input"
                         value={combat.hitDice.total}
+                        aria-label="Hit dice total"
                         onChange={(e) =>
                           handleHitDiceChange("total", e.target.value)
                         }
@@ -859,6 +863,7 @@ function CharacterSheetPage() {
                         type="number"
                         className="character-sheet__vital-input"
                         value={combat.hitDice.die ?? ""}
+                        aria-label="Hit die size"
                         onChange={(e) =>
                           handleHitDiceChange("die", e.target.value)
                         }
@@ -867,7 +872,7 @@ function CharacterSheetPage() {
                     </span>
                   </div>
 
-                  <div className="character-sheet__vital">
+                  <label className="character-sheet__vital">
                     <span className="character-sheet__vital-label">Gold</span>
                     <input
                       type="number"
@@ -876,7 +881,7 @@ function CharacterSheetPage() {
                       onChange={(e) => handleGoldChange(e.target.value)}
                       min={0}
                     />
-                  </div>
+                  </label>
 
                   <div className="character-sheet__abilities">
                     {ABILITY_SCORES.map((ability) => {
@@ -898,6 +903,7 @@ function CharacterSheetPage() {
                             type="number"
                             className="character-sheet__ability-input"
                             value={score}
+                            aria-label={`${ability} score`}
                             onChange={(e) =>
                               handleAbilityScoreChange(ability, e.target.value)
                             }
