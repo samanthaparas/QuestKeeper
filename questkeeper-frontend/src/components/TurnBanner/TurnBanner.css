@@ -74,3 +74,37 @@
   background-color: rgba(255, 255, 255, 0.35);
   font-size: 14px;
 }
+
+.turn-banner__applied {
+  margin: 0;
+  padding: var(--qk-space-2) var(--qk-space-4);
+  background-color: var(--qk-moss-soft);
+  color: var(--qk-moss);
+  font-weight: 700;
+  text-align: center;
+}
+
+.turn-banner__table {
+  flex-basis: 100%;
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  opacity: 0.9;
+}
+
+.turn-banner__switch {
+  display: flex;
+  align-items: center;
+  gap: var(--qk-space-2);
+  font-size: 13px;
+}
+
+.turn-banner__switch select {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: #fff;
+  color: var(--qk-text);
+  font: inherit;
+}

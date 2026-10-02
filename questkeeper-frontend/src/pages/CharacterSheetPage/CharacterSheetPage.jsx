@@ -235,13 +235,21 @@ function CharacterSheetPage() {
   // Damage the DM posted for this character ("Kobold hits you for 5").
   // Temporary HP absorbs it first.
   function handleApplyIncomingDamage(amount) {
+    const before = sheet.combat.hitPoints;
+    const after = applyDamageToHitPoints(before, amount);
+
     persistSheet({
       ...sheet,
-      combat: {
-        ...sheet.combat,
-        hitPoints: applyDamageToHitPoints(sheet.combat.hitPoints, amount),
-      },
+      combat: { ...sheet.combat, hitPoints: after },
     });
+
+    // Tell the player where it went, so "my HP didn't change" is never a mystery.
+    const fromTemp = (before.temporary ?? 0) - (after.temporary ?? 0);
+    const fromHp = before.current - after.current;
+    const parts = [];
+    if (fromTemp > 0) parts.push(`${fromTemp} from temporary HP`);
+    if (fromHp > 0) parts.push(`${fromHp} from HP`);
+    return `Applied ${amount} damage: ${parts.join(" and ") || "nothing left to lose"}.`;
   }
 
   function handleHpChange(value) {

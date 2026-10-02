@@ -8,6 +8,24 @@ import { getNowAndNext } from "../utils/initiative";
 
 const POLL_MS = 5000;
 
+// Which table a player is following is remembered per character, so a
+// character at several tables keeps showing the one they chose.
+function readChoice(characterId) {
+  try {
+    return window.localStorage.getItem(`qk-active-table-${characterId}`);
+  } catch {
+    return null;
+  }
+}
+
+function writeChoice(characterId, tableId) {
+  try {
+    window.localStorage.setItem(`qk-active-table-${characterId}`, tableId);
+  } catch {
+    // Remembering is a convenience; the choice still works for this visit.
+  }
+}
+
 // For a player's character sheet: if this character's table is in combat,
 // returns whose turn it is, the latest log message, the player's own combatant
 // (for attacks), and any damage the DM has posted for them. Returns null when
@@ -17,6 +35,18 @@ export function useTableTurn(characterId) {
   const userId = user?.id;
   const [combat, setCombat] = useState(null);
   const [tick, setTick] = useState(0);
+  const [choice, setChoice] = useState({ characterId: null, tableId: null });
+
+  const preferredTableId =
+    choice.characterId === characterId ? choice.tableId : readChoice(characterId);
+
+  const switchTable = useCallback(
+    (tableId) => {
+      writeChoice(characterId, tableId);
+      setChoice({ characterId, tableId });
+    },
+    [characterId],
+  );
 
   // Lets the page ask for an immediate refresh after the player acts.
   const refresh = useCallback(() => setTick((value) => value + 1), []);
@@ -30,7 +60,11 @@ export function useTableTurn(characterId) {
 
     async function load() {
       try {
-        const result = await getActiveCombatForCharacter(characterId, userId);
+        const result = await getActiveCombatForCharacter(
+          characterId,
+          userId,
+          preferredTableId,
+        );
         if (cancelled) return;
 
         setCombat(result);
@@ -53,7 +87,7 @@ export function useTableTurn(characterId) {
       clearInterval(timer);
       stopListening();
     };
-  }, [characterId, userId, tick]);
+  }, [characterId, userId, preferredTableId, tick]);
 
   if (!combat) return null;
 
@@ -68,6 +102,9 @@ export function useTableTurn(characterId) {
 
   return {
     table: combat.table,
+    tableName: combat.table.name,
+    activeTables: combat.activeTables ?? [],
+    switchTable,
     round: combat.table.round,
     combatants: combat.combatants,
     now,

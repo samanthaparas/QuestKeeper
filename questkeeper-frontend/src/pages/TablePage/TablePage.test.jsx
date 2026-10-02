@@ -4,11 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import TablePage from "./TablePage";
 import { useTable } from "../../hooks/useTable";
+import { getCharactersByIds } from "../../utils/characterStore";
 import {
   setMyInitiative,
   applyDamage,
   postPlayerDamage,
   dmDenyAttack,
+  dmResolveAttack,
 } from "../../utils/tableStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -65,14 +67,14 @@ const combatants = [
   },
 ];
 
-function mockTable({ isDm }) {
+function mockTable({ isDm, combatActive = true }) {
   useTable.mockReturnValue({
     table: {
       id: "t1",
       name: "Final Fight",
       dm_id: isDm ? "player-1" : "dm-1",
       join_code: "ABC123",
-      combat_active: true,
+      combat_active: combatActive,
       round: 2,
       current_combatant_id: "c-kobold",
     },
@@ -129,6 +131,14 @@ describe("TablePage", () => {
       expect(screen.queryByRole("button", { name: "Deny last attack" })).not.toBeInTheDocument();
     });
 
+    it("gives the player a button straight to their character sheet", () => {
+      renderPage();
+
+      expect(
+        screen.getByRole("link", { name: "Open my character sheet" }),
+      ).toHaveAttribute("href", "/characters/char-1");
+    });
+
     it("has no DM controls", () => {
       renderPage();
 
@@ -136,6 +146,23 @@ describe("TablePage", () => {
       expect(screen.queryByText("Add a monster")).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Damage" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Start combat" })).not.toBeInTheDocument();
+    });
+
+    it("locks a player's initiative once combat started and they have one", () => {
+      useTable.mockReturnValue({
+        ...useTable(),
+        combatants: combatants.map((c) => (c.id === "c-billie" ? { ...c, initiative: 15 } : c)),
+      });
+      renderPage();
+
+      expect(screen.queryByRole("button", { name: "Roll d20" })).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Initiative for Billie")).not.toBeInTheDocument();
+    });
+
+    it("has no Attack button on enemies for a player", () => {
+      renderPage();
+
+      expect(screen.queryByRole("button", { name: "Attack" })).not.toBeInTheDocument();
     });
 
     it("lets the player roll their own initiative", async () => {
@@ -178,7 +205,158 @@ describe("TablePage", () => {
       expect(screen.getByText("ABC123")).toBeInTheDocument();
       expect(screen.getByText(/DM only: 9\/20 HP · AC 12/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Next turn" })).toBeInTheDocument();
+    });
+
+    it("shows the initiative order under its own heading", () => {
+      renderPage();
+
+      expect(screen.getByRole("heading", { name: "Initiative order" })).toBeInTheDocument();
+    });
+
+    it("hides the Set initiative controls once combat has started", () => {
+      renderPage();
+
+      // Kobold already has an initiative, so it is locked during combat.
+      expect(screen.queryByLabelText("Initiative for Kobold")).not.toBeInTheDocument();
+      // Billie has none yet (joined late), so she can still be given one.
+      expect(screen.getByLabelText("Initiative for Billie")).toBeInTheDocument();
+    });
+
+    it("keeps the Set initiative controls before combat starts", () => {
+      mockTable({ isDm: true, combatActive: false });
+      renderPage();
+
+      expect(screen.getByLabelText("Initiative for Kobold")).toBeInTheDocument();
+    });
+
+    it("lets the DM attack with an enemy during combat, and not before", async () => {
+      renderPage();
+
+      await userEvent.click(screen.getByRole("button", { name: "Attack" }));
+      expect(screen.getByRole("region", { name: "Kobold attacks" })).toBeInTheDocument();
+    });
+
+    it("has no Attack button for enemies when no fight is running", () => {
+      mockTable({ isDm: true, combatActive: false });
+      renderPage();
+
+      expect(screen.queryByRole("button", { name: "Attack" })).not.toBeInTheDocument();
+    });
+
+    it("shows what the player rolled in the call strip", () => {
+      useTable.mockReturnValue({
+        ...useTable(),
+        combatants: combatants.map((c) =>
+          c.id === "c-billie"
+            ? {
+                ...c,
+                attack_state: "awaiting_dm",
+                attack_target: "c-kobold",
+                attack_name: "Dagger",
+                attack_natural: 9,
+                attack_bonus: 5,
+              }
+            : c,
+        ),
+      });
+      renderPage();
+
+      const row = screen.getByText(/Does it hit\?/).closest("li");
+      expect(row).toHaveTextContent("rolled 14 (9 + 5)");
+    });
+
+    it("shows a waiting attack inside the enemy's own row, not in a separate box", async () => {
+      useTable.mockReturnValue({
+        ...useTable(),
+        combatants: combatants.map((c) =>
+          c.id === "c-billie"
+            ? { ...c, attack_state: "awaiting_dm", attack_target: "c-kobold", attack_name: "Dagger" }
+            : c,
+        ),
+      });
+      renderPage();
+
+      const prompt = screen.getByText(/Does it hit\?/);
+      const row = prompt.closest("li");
+      expect(row).toHaveClass("table-page__row--awaiting");
+      expect(row).toHaveTextContent("Kobold");
+      expect(screen.queryByText("Waiting for your call")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Hit" }));
+      expect(dmResolveAttack).toHaveBeenCalledWith("c-billie", true);
+    });
+
+    it("still shows a waiting attack if its target cannot be found", () => {
+      useTable.mockReturnValue({
+        ...useTable(),
+        combatants: combatants.map((c) =>
+          c.id === "c-billie"
+            ? { ...c, attack_state: "awaiting_dm", attack_target: "gone", attack_name: "Dagger" }
+            : c,
+        ),
+      });
+      renderPage();
+
+      expect(screen.getByText("Waiting for your call")).toBeInTheDocument();
+    });
+
+    it("shows only the 5 newest activity lines, with a button for the rest", async () => {
+      useTable.mockReturnValue({
+        ...useTable(),
+        events: Array.from({ length: 8 }, (_, index) => ({
+          id: `e${index}`,
+          message: `Event number ${index}`,
+        })),
+      });
+      renderPage();
+
+      expect(screen.getByText("Event number 4")).toBeInTheDocument();
+      expect(screen.queryByText("Event number 5")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Show all 8" }));
+      expect(screen.getByText("Event number 7")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Show fewer" }));
+      expect(screen.queryByText("Event number 7")).not.toBeInTheDocument();
+    });
+
+    it("folds the monster form away during combat and opens it on request", async () => {
+      renderPage();
+
+      expect(screen.queryByText("Add a monster")).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "+ Add monster" }));
       expect(screen.getByText("Add a monster")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Hide monster form" }));
+      expect(screen.queryByText("Add a monster")).not.toBeInTheDocument();
+    });
+
+    it("shows the monster form right away when no fight is running", () => {
+      mockTable({ isDm: true, combatActive: false });
+      renderPage();
+
+      expect(screen.getByText("Add a monster")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "+ Add monster" })).not.toBeInTheDocument();
+    });
+
+    it("lets the DM switch between player character cards", async () => {
+      getCharactersByIds.mockResolvedValue([
+        { id: "ch1", name: "Billie", level: 5, abilityScores: {}, combat: {} },
+        { id: "ch2", name: "Thorn", level: 3, abilityScores: {}, combat: {} },
+      ]);
+      renderPage();
+
+      expect(await screen.findByRole("tab", { name: "Billie" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByText("Level 5 · No race · No class")).toBeInTheDocument();
+      expect(screen.queryByText("Level 3 · No race · No class")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("tab", { name: "Thorn" }));
+      expect(screen.getByText("Level 3 · No race · No class")).toBeInTheDocument();
+      expect(screen.queryByText("Level 5 · No race · No class")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("tab", { name: "Show all" }));
+      expect(screen.getByText("Level 5 · No race · No class")).toBeInTheDocument();
+      expect(screen.getByText("Level 3 · No race · No class")).toBeInTheDocument();
     });
 
     it("shows each player's attack count and lets the DM deny the last attack", async () => {

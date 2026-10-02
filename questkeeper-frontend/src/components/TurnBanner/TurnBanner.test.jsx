@@ -68,6 +68,40 @@ describe("TurnBanner", () => {
     expect(screen.queryByText(/attacked/)).not.toBeInTheDocument();
   });
 
+  it("says which table the fight is at", () => {
+    render(
+      <TurnBanner
+        combat={makeCombat({ tableName: "Final Fight Practice", table: { id: "t-new" } })}
+        onApplyDamage={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Final Fight Practice")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Switch table")).not.toBeInTheDocument();
+  });
+
+  it("lets a player in combat at two tables switch between them", async () => {
+    const switchTable = vi.fn();
+    render(
+      <TurnBanner
+        combat={makeCombat({
+          tableName: "Final Fight Practice",
+          table: { id: "t-new" },
+          switchTable,
+          activeTables: [
+            { id: "t-new", name: "Final Fight Practice" },
+            { id: "t-old", name: "Sam's Silly Garden Chase" },
+          ],
+        })}
+        onApplyDamage={vi.fn()}
+      />,
+    );
+
+    await userEvent.selectOptions(screen.getByLabelText("Switch table"), "t-old");
+
+    expect(switchTable).toHaveBeenCalledWith("t-old");
+  });
+
   it("celebrates your own turn", () => {
     render(<TurnBanner combat={makeCombat({ isMyTurn: true })} onApplyDamage={vi.fn()} />);
 
@@ -88,6 +122,21 @@ describe("TurnBanner", () => {
     expect(resolveDamageRequest).toHaveBeenCalledWith("r1", true);
     expect(onApplyDamage).toHaveBeenCalledWith(5);
     expect(combat.refresh).toHaveBeenCalled();
+  });
+
+  it("tells the player where the applied damage went", async () => {
+    resolveDamageRequest.mockResolvedValue(5);
+    const onApplyDamage = vi.fn().mockReturnValue("Applied 5 damage: 5 from temporary HP.");
+    render(
+      <TurnBanner
+        combat={makeCombat({ damageRequests: [{ id: "r1", source: "Kobold", amount: 5 }] })}
+        onApplyDamage={onApplyDamage}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Apply 5 damage" }));
+
+    expect(await screen.findByText("Applied 5 damage: 5 from temporary HP.")).toBeInTheDocument();
   });
 
   it("dismisses damage without changing HP", async () => {

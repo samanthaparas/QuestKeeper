@@ -86,8 +86,39 @@ describe("AttackPanel", () => {
       natural: 11,
       bonus: 5,
     });
-    expect(await screen.findByText(/Rolled 11 \+ 5 = 16\. That hits!/)).toBeInTheDocument();
+    expect(await screen.findByText(/Rolled 11 \+ 5 = 16\./)).toBeInTheDocument();
     expect(combat.refresh).toHaveBeenCalled();
+  });
+
+  it("shows 'That misses!' after a miss", async () => {
+    attackRoll.mockResolvedValue("miss");
+    render(<AttackPanel attack={dagger} combat={makeCombat()} onClose={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Roll d20/ }));
+
+    expect(await screen.findByText(/That misses!/)).toBeInTheDocument();
+  });
+
+  it("moves on from 'waiting' to the damage step once the DM calls it a hit", () => {
+    const { rerender } = render(
+      <AttackPanel
+        attack={dagger}
+        combat={makeCombat({ attack_state: "awaiting_dm", attacks_this_turn: 1 })}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/The DM is deciding/)).toBeInTheDocument();
+
+    rerender(
+      <AttackPanel
+        attack={dagger}
+        combat={makeCombat({ attack_state: "hit", attacks_this_turn: 1 })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(/Waiting for the DM to call it/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Now roll damage/)).toBeInTheDocument();
   });
 
   it("accepts a physical d20 roll and rejects numbers outside 1-20", async () => {

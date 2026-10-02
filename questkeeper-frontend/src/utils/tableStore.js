@@ -178,6 +178,21 @@ export async function dmResolveAttack(attackerId, hit) {
   );
 }
 
+// The DM rolls for an enemy attacking a player. `natural` is the d20; the
+// server compares it to the player's AC. Returns { result, ac } where result is
+// "hit", "crit", or "miss".
+export async function monsterAttackRoll({ attackerId, targetUserId, attackName, natural, bonus }) {
+  return unwrap(
+    await supabase.rpc("monster_attack_roll", {
+      p_attacker_id: attackerId,
+      p_target_user_id: targetUserId,
+      p_attack_name: attackName,
+      p_natural: natural,
+      p_bonus: bonus,
+    }),
+  );
+}
+
 // Cancels a player's latest attack; any damage it dealt is put back.
 export async function dmDenyAttack(attackerId) {
   unwrap(
@@ -320,14 +335,30 @@ export function subscribeToTable(tableId, onChange) {
   };
 }
 
+// A character can sit at several tables. Newest join comes first, unless the
+// player picked a different table to follow. `recencyIds` lists table ids from
+// newest membership to oldest.
+export function pickActiveTable(tables, recencyIds, preferredTableId = null) {
+  const sorted = [...tables].sort(
+    (a, b) => recencyIds.indexOf(a.id) - recencyIds.indexOf(b.id),
+  );
+  const table = sorted.find((candidate) => candidate.id === preferredTableId) ?? sorted[0];
+  return { table, sorted };
+}
+
 // The table this character is playing at, if a fight is running. Used by the
 // turn banner on a player's own character sheet.
-export async function getActiveCombatForCharacter(characterId, userId) {
+export async function getActiveCombatForCharacter(
+  characterId,
+  userId,
+  preferredTableId = null,
+) {
   const memberships = unwrap(
     await supabase
       .from("table_members")
-      .select("table_id")
-      .eq("character_id", characterId),
+      .select("table_id, joined_at")
+      .eq("character_id", characterId)
+      .order("joined_at", { ascending: false }),
   );
 
   if (memberships.length === 0) return null;
@@ -345,12 +376,23 @@ export async function getActiveCombatForCharacter(characterId, userId) {
 
   if (tables.length === 0) return null;
 
-  const table = tables[0];
+  const { table, sorted } = pickActiveTable(
+    tables,
+    memberships.map((membership) => membership.table_id),
+    preferredTableId,
+  );
+
   const [combatants, events, damageRequests] = await Promise.all([
     listCombatants(table.id),
     listEvents(table.id, 5),
     userId ? listMyDamageRequests(table.id, userId) : [],
   ]);
 
-  return { table, combatants, events, damageRequests };
+  return {
+    table,
+    combatants,
+    events,
+    damageRequests,
+    activeTables: sorted.map((entry) => ({ id: entry.id, name: entry.name })),
+  };
 }
