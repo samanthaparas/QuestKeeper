@@ -88,6 +88,7 @@ function EditableItemList({
   columns,
   isNameClickable,
   onNameClick,
+  rowAction = null,
 }) {
   const primaryField = fields[0];
   const textareaField = fields.find((field) => field.type === "textarea");
@@ -291,6 +292,15 @@ function EditableItemList({
                   </span>
                 ))}
                 <span className="character-sheet__attacks-actions">
+                  {rowAction && (
+                    <button
+                      type="button"
+                      className="character-sheet__resource-add-button"
+                      onClick={() => rowAction.onClick(item)}
+                    >
+                      {rowAction.label}
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="character-sheet__resource-remove"

@@ -1,6 +1,6 @@
 # QuestKeeper
 
-QuestKeeper is a full-stack companion for the **2014 version of Dungeons & Dragons Fifth Edition**. It gives players one searchable interface for classes, races, spells, and backgrounds instead of making them jump between reference pages, and it pairs that reference lookup with a guided character sheet builder — creation, leveling, and full manual editing — so a character's stats stay one click away during actual play.
+QuestKeeper is a full-stack companion for **Dungeons & Dragons Fifth Edition**, built on the freely licensed 2014 SRD with select 2024 SRD content. It gives players one searchable interface for classes, races, spells, and backgrounds instead of making them jump between reference pages, and it pairs that reference lookup with a guided character sheet builder — creation, leveling, and full manual editing, saved to your account — so a character's stats stay one click away during actual play.
 
 [Live Demo](https://questkeeper-it0i.onrender.com) · [Source Code](https://github.com/samanthaparas/QuestKeeper)
 
@@ -39,20 +39,27 @@ QuestKeeper is a full-stack companion for the **2014 version of Dungeons & Drago
 - Spell name autocomplete when adding a spell, with Level and Components auto-filled from the SRD the moment you pick or type an exact match; homebrew spells still work as plain freeform entries.
 - A trackable Companion mini stat block (name, AC, speed, HP, notes) as an alternative to freeform text, toggleable per-character without losing whichever mode you're not currently using.
 - A show/hide toggle for the Backstory section, for characters that don't need it visible.
+- Accounts (sign up, log in, session persistence) with character sheets saved to your account and a portrait upload for each character.
+- Spell slots computed from class and level at creation and level-up, temporary HP tracking, and tap-to-toggle skill and item proficiencies.
+- Weapon autocomplete with damage autofill and a to-hit ability hint, alongside spell autocomplete.
+- Tap any spell, feat, weapon, magic item, class feature, or racial trait for its full SRD details in a popup, including real tables.
+- The 2024 SRD's backgrounds and feats in browsing and the level-up flow, labeled by edition, with a full SRD attribution on the About page.
+- A "Learn the Basics" guide with an interactive dice roller, and ability score explanations plus a 4d6 roll-for-stats option in character creation.
 - A warm, parchment-and-terracotta visual design ("Wayfarer") applied consistently across the whole app, built on a shared CSS token system and a shared `Button` component.
 - Loading, empty, and error feedback for API-driven views, and a responsive/mobile result-to-detail flow on every reference page.
 
 ## Tech stack
 
-| Area       | Technology                        |
-| ---------- | --------------------------------- |
-| Frontend   | React 19, React Router, Vite, CSS |
-| Backend    | Node.js, Express, REST routes     |
-| Testing    | Vitest                            |
-| Data       | D&D 5e SRD API (2014 endpoints)   |
-| Repository | npm workspaces monorepo           |
+| Area       | Technology                         |
+| ---------- | ---------------------------------- |
+| Frontend   | React 19, React Router, Vite, CSS  |
+| Backend    | Node.js, Express, REST routes      |
+| Auth/Data  | Supabase (Auth, Postgres, Storage) |
+| Testing    | Vitest, React Testing Library      |
+| Data       | D&D 5e SRD API (2014 and 2024)     |
+| Repository | npm workspaces monorepo            |
 
-The project is being developed incrementally toward accounts, saved content, and further gameplay tracking. Character sheets (creation, leveling, and full manual editing) are already built and stored locally per browser. For the complete product direction, content policy, and development milestones, see [QuestKeeper Project Vision](docs/QUESTKEEPER_VISION.md).
+The project is being developed incrementally toward favorites and richer gameplay tracking. Character sheets (creation, leveling, and full manual editing) are already built and saved to your account in Supabase. For the complete product direction, content policy, and development milestones, see [QuestKeeper Project Vision](docs/QUESTKEEPER_VISION.md).
 
 ## Current implementation
 
@@ -64,9 +71,10 @@ QuestKeeper currently includes:
 - Global search across the available categories.
 - A guided character creation wizard (with subraces and level-1 subclasses where applicable) and a tabbed character sheet page covering stats, skills, spellcasting (including a spell slot tracker and spell autocomplete), attacks, equipment, feats, features, proficiencies, resources, and a Story tab (backstory, appearance, companion, notes) — all directly editable after creation.
 - A level-up flow for existing characters (hit points, ability score improvements or feats, subclass selection, new spells).
-- A backend connection to the D&D 5e SRD API's 2014 endpoints.
+- Supabase-backed sign up and login; the character pages require an account, while reference pages and search are open to everyone.
+- A backend connection to the D&D 5e SRD API's 2014 endpoints, plus an opt-in 2024 edition for backgrounds, feats, and magic items.
 - Root npm workspace commands for running both applications from the monorepo.
-- A growing Vitest suite covering the character sheet's pure game-logic functions.
+- A Vitest suite for the character sheet's pure game-logic functions and React Testing Library tests for sheet components.
 
 QuestKeeper is actively developed, with features added incrementally so the architecture, data sources, and user experience can evolve deliberately.
 
@@ -100,12 +108,17 @@ The applications originally lived in separate repositories. They were combined i
 ```text
 React frontend
     -> QuestKeeper Express backend
-    -> D&D 5e SRD API (2014)
+    -> D&D 5e SRD API (2014 and 2024)
+
+React frontend
+    -> Supabase (Auth, saved characters, portraits)
 ```
 
-The frontend normally requests data from `http://localhost:3001/api`. The Express backend then requests the appropriate 2014 resource from `https://www.dnd5eapi.co/api/2014` and returns it in a consistent `{ data: ... }` response.
+The frontend normally requests reference data from `http://localhost:3001/api`. The Express backend then requests the appropriate resource from `https://www.dnd5eapi.co/api/2014` (or `/2024` when requested) and returns it in a consistent `{ data: ... }` response.
 
-Keeping the external API behind the QuestKeeper backend creates a place to add validation, caching, source information, normalized data, accounts, and character data later.
+Accounts, saved characters, and portrait uploads go directly from the frontend to Supabase. Row-level security on the `characters` table limits every select, insert, update, and delete to the signed-in user's own rows.
+
+Keeping the external SRD API behind the QuestKeeper backend creates a place to add validation, caching, source information, and normalized data later.
 
 ## Local setup
 
@@ -155,13 +168,15 @@ The frontend defaults to the local backend at `http://localhost:3001/api`. To us
 questkeeper-frontend/.env.example
 ```
 
-Environment variable:
+Environment variables:
 
 ```text
 VITE_API_BASE_URL=http://localhost:3001/api
+VITE_SUPABASE_URL=<your Supabase project URL>
+VITE_SUPABASE_ANON_KEY=<your Supabase publishable key>
 ```
 
-Restart the Vite development server after changing an environment variable.
+The Supabase values are needed for login and saved characters. Restart the Vite development server after changing an environment variable.
 
 ## Deployment
 
@@ -190,7 +205,7 @@ Run these commands from the repository root:
 | `npm run lint`                                         | Check the frontend source with ESLint             |
 | `npm run test --workspace questkeeper-frontend -- run` | Run the Vitest suite once                         |
 
-Automated tests cover the character sheet's pure functions (ability scores, hit points, level-up, resources, rests, companion creatures). Backend and component-level tests have not been added yet. A GitHub Actions workflow (`.github/workflows/ci.yml`) runs lint, test, and build on every push and pull request to `main`.
+Automated tests cover the character sheet's pure functions (ability scores, hit points, level-up, resources, rests, companion creatures) and, with React Testing Library, the character sheet page's components. Backend tests have not been added yet. A GitHub Actions workflow (`.github/workflows/ci.yml`) runs lint, test, and build on every push and pull request to `main`.
 
 ## Engineering decisions and challenges
 
@@ -210,7 +225,7 @@ Automated tests cover the character sheet's pure functions (ability scores, hit 
 
 **Problem:** The backgrounds page displays only Acolyte, which can look like an application or filtering error.
 
-**Current solution:** The data path was audited. QuestKeeper does not remove any background results; the upstream 2014 SRD source contains only Acolyte. Adding other backgrounds is therefore a content-source and licensing decision rather than a frontend bug fix. The backend already supports an opt-in `?edition=2024` query for backgrounds and feats (4 backgrounds, 17 feats), scaffolded for a future licensing-verified expansion, but it isn't wired into the frontend yet.
+**Current solution:** The data path was audited. QuestKeeper does not remove any background results; the upstream 2014 SRD source contains only Acolyte. Adding other backgrounds is therefore a content-source and licensing decision rather than a frontend bug fix. The backend supports an opt-in `?edition=2024` query for backgrounds and feats (4 backgrounds, 17 feats), and the frontend now shows the 2024 backgrounds when browsing and the 2024 feats in the level-up flow, each labeled by edition. Other books' material (Xanathar's, Tasha's, and so on) isn't part of either SRD, so it isn't included.
 
 ### The character sheet needed to support real, messy, homebrew characters
 
@@ -238,16 +253,16 @@ Automated tests cover the character sheet's pure functions (ability scores, hit 
 
 ## Known limitations
 
-- Content is limited to what the current 2014 SRD API provides by default.
-- Background coverage currently includes only Acolyte in the default (2014) view; the backend can serve 4 backgrounds and 17 feats from the 2024 SRD via an opt-in query parameter, but the frontend doesn't expose that yet.
-- Source, edition, license, and attribution metadata are not yet shown for individual entries.
+- Content is limited to what the 2014 and 2024 SRDs provide. Material from other books (Xanathar's, Tasha's, Sword Coast, and so on) isn't included, because it isn't released for reuse.
+- Source, edition, license, and attribution metadata are shown for 2014/2024 edition labels and on the About page, but not yet as full per-entry provenance.
 - Global search depends on all category requests succeeding together.
 - Upstream requests do not yet use application-level caching or explicit timeouts.
-- Character sheets are stored in the browser's local storage only — there are no accounts or cross-device sync yet.
 - Equipment/proficiency _choices_ (e.g. "a martial weapon or two simple weapons") aren't modeled during guided creation; only guaranteed starting gear is, plus freeform manual entry for anything else.
-- Spell slots are a manual max/current tracker, not auto-computed from class and level — the level-up flow adds a learned spell to your known list but doesn't update slot counts, since that needs real per-class (and per-Warlock-Pact-Magic) progression tables.
-- Weapon/equipment autocomplete doesn't exist yet — spell autocomplete does, since spell data was already available; weapons would need a new backend endpoint.
-- Test coverage is limited to the frontend's pure game-logic functions — no backend or component/UI tests yet.
+- Only races with a choice in the SRD data (Half-Elf) get to choose their ability score bonuses; other races apply fixed bonuses.
+- Level-up ability score improvements aren't capped at 20, so a +2 can push a score past the maximum.
+- Cantrips and spells granted by a race, class, or background can still be swapped on the sheet.
+- Sheet sections can't yet be sorted, filtered, or favorited, and there is no sheet-wide Beginner Mode toggle for hiding hints.
+- Test coverage doesn't include the backend or end-to-end flows.
 - The free backend service may take approximately a minute to wake after a period of inactivity.
 
 ## Planned development
@@ -255,13 +270,12 @@ Automated tests cover the character sheet's pure functions (ability scores, hit 
 The current high-level sequence is:
 
 1. Keep the architecture, vision, setup, and content policies documented.
-2. Model equipment/proficiency choices during guided creation (currently requires a manual workaround), and build real per-class spell slot progression so leveling up updates slot counts automatically.
-3. Wire the existing 2024-SRD background/feat support into the frontend, and add more legally-sourced content as it's reviewed.
-4. Add normalized backend models, source provenance, response validation, caching, and timeouts.
-5. Expand automated test coverage to the backend and to UI components, not just pure functions.
-6. Add accounts, favorites, and cross-device saved content (character sheets currently live in localStorage only).
-7. Extend the Companion mini stat block toward richer tracking (attacks/spells of its own) if that turns out to be worth the complexity versus the current lightweight stat block, and build weapon autocomplete alongside a dedicated equipment/weapons backend endpoint.
-8. Explore AI-assisted character recommendations after the underlying rules and character data are reliable.
+2. Fix the known sheet gaps: cap level-up ability score improvements at 20, let every race choose its ability score bonuses, lock race/class/background-granted spells, and model equipment/proficiency choices during guided creation.
+3. Add sheet quality-of-life features: sorting, filtering, and favorites for long lists, and a Beginner Mode toggle for hiding hints.
+4. Add normalized backend models, source provenance, response validation, caching, and timeouts, and make global search tolerate a failing category.
+5. Expand automated test coverage to the backend and to the remaining UI components.
+6. Add richer Companion tracking (attacks/spells of its own), if that turns out to be worth the complexity versus the current lightweight stat block.
+7. Explore AI-assisted features after the underlying rules and character data are reliable, such as a backstory generator and "describe the vibe" character suggestions.
 
 The roadmap is intentionally incremental. Each feature should be small enough to understand, implement, test, and review before moving to the next one.
 

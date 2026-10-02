@@ -7,6 +7,7 @@ import { getWeapons, getWeaponDetails } from "../../utils/api";
 import { formatModifier } from "../../utils/characterSheet";
 
 function CharacterSheetActionsTab({
+  onAttack,
   attacks,
   onAttackAdd,
   onAttackUpdate,
@@ -107,6 +108,7 @@ function CharacterSheetActionsTab({
         ]}
         emptyText="No attacks recorded yet."
         addButtonLabel="Add Weapon"
+        rowAction={onAttack ? { label: "Attack", onClick: onAttack } : null}
         onAdd={onAttackAdd}
         onUpdate={onAttackUpdate}
         onRemove={onAttackRemove}
