@@ -10,6 +10,8 @@ import BackgroundsPage from "./pages/BackgroundsPage";
 import CharacterCreationPage from "./pages/CharacterCreationPage/CharacterCreationPage";
 import CharactersPage from "./pages/CharactersPage/CharactersPage";
 import CharacterSheetPage from "./pages/CharacterSheetPage/CharacterSheetPage";
+import TablesPage from "./pages/TablesPage/TablesPage";
+import TablePage from "./pages/TablePage/TablePage";
 import Guide from "./pages/Guide/Guide";
 import AuthPage from "./pages/AuthPage/AuthPage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
@@ -47,6 +49,22 @@ function App() {
           element={
             <ProtectedRoute>
               <CharacterSheetPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tables"
+          element={
+            <ProtectedRoute>
+              <TablesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tables/:id"
+          element={
+            <ProtectedRoute>
+              <TablePage />
             </ProtectedRoute>
           }
         />

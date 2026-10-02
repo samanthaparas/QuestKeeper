@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
+import { useTableTurn } from "../../hooks/useTableTurn";
+import { applyDamageToHitPoints } from "../../utils/attacks";
 import { getCharacter, saveCharacter } from "../../utils/characterStore";
 import {
   ABILITY_SCORES,
@@ -39,6 +41,8 @@ import {
 } from "../../utils/characterSheet";
 import LevelUpWizard from "../../components/LevelUpWizard/LevelUpWizard";
 import Button from "../../components/Button/Button";
+import TurnBanner from "../../components/TurnBanner/TurnBanner";
+import AttackPanel from "../../components/AttackPanel/AttackPanel";
 import CharacterSheetTabs from "../../components/CharacterSheetTabs/CharacterSheetTabs";
 import CharacterSheetActionsTab from "../../components/CharacterSheetActionsTab/CharacterSheetActionsTab";
 import CharacterSheetSpellsTab from "../../components/CharacterSheetSpellsTab/CharacterSheetSpellsTab";
@@ -67,6 +71,8 @@ function CharacterSheetPage() {
   const [levelUpSummary, setLevelUpSummary] = useState(null);
   const [activeTab, setActiveTab] = useState("actions");
   const [activeSlotLevels, setActiveSlotLevels] = useState(() => new Set());
+  const [attackWith, setAttackWith] = useState(null);
+  const tableCombat = useTableTurn(sheet?.id);
 
   const saveTimeoutRef = useRef(null);
   const pendingUpdateRef = useRef(null);
@@ -224,6 +230,18 @@ function CharacterSheetPage() {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) return;
     persistSheet({ ...sheet, gold: numeric });
+  }
+
+  // Damage the DM posted for this character ("Kobold hits you for 5").
+  // Temporary HP absorbs it first.
+  function handleApplyIncomingDamage(amount) {
+    persistSheet({
+      ...sheet,
+      combat: {
+        ...sheet.combat,
+        hitPoints: applyDamageToHitPoints(sheet.combat.hitPoints, amount),
+      },
+    });
   }
 
   function handleHpChange(value) {
@@ -622,6 +640,8 @@ function CharacterSheetPage() {
 
   return (
     <main className="character-sheet" onChange={stripLeadingZeros}>
+      <TurnBanner combat={tableCombat} onApplyDamage={handleApplyIncomingDamage} />
+
       <div className="character-sheet__content">
         {isLevelingUp && (
           <LevelUpWizard
@@ -968,8 +988,17 @@ function CharacterSheetPage() {
                 </div>
 
                 <div className="character-sheet__main">
+                  {activeTab === "actions" && attackWith && tableCombat?.isMyTurn && (
+                    <AttackPanel
+                      attack={attackWith}
+                      combat={tableCombat}
+                      onClose={() => setAttackWith(null)}
+                    />
+                  )}
+
                   {activeTab === "actions" && (
                     <CharacterSheetActionsTab
+                      onAttack={tableCombat?.isMyTurn ? setAttackWith : null}
                       attacks={sheet.attacks ?? []}
                       onAttackAdd={handleAttackAdd}
                       onAttackUpdate={handleAttackUpdate}

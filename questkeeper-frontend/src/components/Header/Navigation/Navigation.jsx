@@ -32,6 +32,10 @@ function Navigation() {
         My Characters
       </NavLink>
 
+      <NavLink className={linkClass} to="/tables">
+        Tables
+      </NavLink>
+
       <NavLink className={linkClass} to="/about">
         About
       </NavLink>

@@ -14,6 +14,9 @@ vi.mock("../../utils/characterStore", () => ({
   saveCharacter: vi.fn().mockResolvedValue({}),
 }));
 
+// Combat turns come from Supabase and have their own tests; no fight here.
+vi.mock("../../hooks/useTableTurn", () => ({ useTableTurn: () => null }));
+
 vi.mock("../../context/useAuth", () => ({
   useAuth: () => ({ user: { id: "user-1" } }),
 }));
