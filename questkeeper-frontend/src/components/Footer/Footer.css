@@ -23,3 +23,13 @@
   margin-top: 16px;
   opacity: 0.75;
 }
+
+.footer__feedback {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.footer__link {
+  color: var(--qk-terracotta-hover);
+  font-weight: 600;
+}

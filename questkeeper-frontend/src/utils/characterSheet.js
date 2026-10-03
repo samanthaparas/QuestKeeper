@@ -28,6 +28,28 @@ export const SKILLS = [
   { index: "survival", name: "Survival", ability: "wisdom" },
 ];
 
+// One-line plain-language examples so new players know what each skill is for.
+export const SKILL_DESCRIPTIONS = {
+  acrobatics: "Balance, tumble, and stay on your feet on tricky ground.",
+  "animal-handling": "Calm, train, or read the mood of animals.",
+  arcana: "Know about magic, spells, and magical creatures.",
+  athletics: "Climb, jump, swim, and shove or grapple things.",
+  deception: "Lie convincingly or disguise the truth.",
+  history: "Recall past events, kingdoms, and legends.",
+  insight: "Tell when someone is lying or what they really want.",
+  intimidation: "Frighten or pressure someone into doing what you want.",
+  investigation: "Search for clues and work out how things fit together.",
+  medicine: "Stabilize a dying friend or diagnose an illness.",
+  nature: "Know about plants, animals, weather, and the wilds.",
+  perception: "Notice hidden things, sounds, and danger. Comes up the most.",
+  performance: "Sing, act, play music, or tell a story to an audience.",
+  persuasion: "Convince people kindly and honestly, or bargain with them.",
+  religion: "Know about gods, rites, and holy symbols.",
+  "sleight-of-hand": "Pick pockets, palm objects, and do quick tricks.",
+  stealth: "Sneak past guards and hide from enemies.",
+  survival: "Track, hunt, forage, and find your way outdoors.",
+};
+
 export const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 
 export function rollAbilityScore() {
@@ -117,6 +139,16 @@ export function getSubclassLevel(classId) {
 export const SUBRACE_CANTRIP_TRAITS = {
   "high-elf": "high-elf-cantrip",
 };
+
+// Races whose trait always grants one specific cantrip, so there is nothing
+// to choose (Tiefling's Infernal Legacy gives Thaumaturgy).
+export const RACE_FIXED_CANTRIPS = {
+  tiefling: { index: "thaumaturgy", name: "Thaumaturgy", level: 0 },
+};
+
+export function getRaceFixedCantrip(raceId) {
+  return RACE_FIXED_CANTRIPS[raceId] ?? null;
+}
 
 export function getSubraceCantripTraitId(subraceId) {
   return SUBRACE_CANTRIP_TRAITS[subraceId] ?? null;

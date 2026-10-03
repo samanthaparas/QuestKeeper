@@ -14,14 +14,14 @@
 
 .class-skill-choice-step__checklist {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
   gap: 10px;
   max-width: 640px;
 }
 
 .class-skill-choice-step__checkbox {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 8px 12px;
   border: 1px solid var(--qk-border);
@@ -30,6 +30,27 @@
   color: var(--qk-text);
   font-size: 14px;
   cursor: pointer;
+}
+
+.class-skill-choice-step__hint {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 640px;
+  margin: -12px 0 16px;
+}
+
+.class-skill-choice-step__ability {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+}
+
+.class-skill-choice-step__note {
+  display: block;
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 2px;
 }
 
 .class-skill-choice-step__nav {

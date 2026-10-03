@@ -1049,3 +1049,49 @@
     gap: 24px;
   }
 }
+
+.character-sheet__glossary {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  font-size: 13px;
+}
+
+.character-sheet__glossary summary {
+  cursor: pointer;
+  color: var(--qk-terracotta-hover);
+  font-weight: 600;
+}
+
+.character-sheet__glossary dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 8px 16px;
+  margin: 10px 0 2px;
+}
+
+.character-sheet__glossary dt {
+  font-weight: 700;
+}
+
+.character-sheet__glossary dd {
+  margin: 0;
+  color: var(--qk-text-muted);
+  line-height: 1.4;
+}
+
+/* Phones: three ability tiles per row so the Save badge fits, and the vitals
+   come before the long skills list. */
+@media (max-width: 600px) {
+  .character-sheet__vitals .character-sheet__abilities {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1023px) {
+  .character-sheet__body {
+    order: -1;
+  }
+}

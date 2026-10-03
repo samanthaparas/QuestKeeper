@@ -1,9 +1,16 @@
 import { useState } from "react";
+import {
+  SKILLS,
+  SKILL_DESCRIPTIONS,
+  ABILITY_ABBREVIATIONS,
+} from "../../utils/characterSheet";
 import "./ClassSkillChoiceStep.css";
 import Button from "../Button/Button";
 
 function ClassSkillChoiceStep({
   characterClass,
+  grantedSkills = [],
+  grantedFrom,
   initialSelected,
   onNext,
   onBack,
@@ -12,6 +19,7 @@ function ClassSkillChoiceStep({
   const [chosenSkills, setChosenSkills] = useState(() => initialSelected ?? []);
 
   const maxChoices = skillChoice?.choose ?? 0;
+  const grantedIndexes = new Set(grantedSkills.map((skill) => skill.index));
   const isComplete = chosenSkills.length === maxChoices;
 
   function toggleSkill(skillIndex) {
@@ -43,24 +51,54 @@ function ClassSkillChoiceStep({
             {skillChoice.choose === 1 ? "" : "s"} to be proficient in:
           </p>
 
+          <p className="class-skill-choice-step__hint">
+            Not sure? Perception and Stealth come up in almost every adventure.
+            The letters show which ability a skill uses.
+          </p>
+
           <div className="class-skill-choice-step__checklist">
-            {skillChoice.options.map((skill) => (
-              <label
-                className="class-skill-choice-step__checkbox"
-                key={skill.index}
-              >
-                <input
-                  type="checkbox"
-                  checked={chosenSkills.includes(skill.index)}
-                  disabled={
-                    !chosenSkills.includes(skill.index) &&
-                    chosenSkills.length >= maxChoices
-                  }
-                  onChange={() => toggleSkill(skill.index)}
-                />
-                {skill.name}
-              </label>
-            ))}
+            {skillChoice.options.map((skill) => {
+              const isGranted = grantedIndexes.has(skill.index);
+              const details = SKILLS.find((item) => item.index === skill.index);
+
+              return (
+                <label
+                  className="class-skill-choice-step__checkbox"
+                  key={skill.index}
+                >
+                  <input
+                    type="checkbox"
+                    checked={chosenSkills.includes(skill.index)}
+                    disabled={
+                      isGranted ||
+                      (!chosenSkills.includes(skill.index) &&
+                        chosenSkills.length >= maxChoices)
+                    }
+                    onChange={() => toggleSkill(skill.index)}
+                  />
+                  <span>
+                    {skill.name}
+                    {details && (
+                      <span className="class-skill-choice-step__ability">
+                        {" "}
+                        ({ABILITY_ABBREVIATIONS[details.ability]})
+                      </span>
+                    )}
+                    {isGranted ? (
+                      <span className="class-skill-choice-step__note">
+                        Already from {grantedFrom ?? "your background"}
+                      </span>
+                    ) : (
+                      SKILL_DESCRIPTIONS[skill.index] && (
+                        <span className="class-skill-choice-step__note">
+                          {SKILL_DESCRIPTIONS[skill.index]}
+                        </span>
+                      )
+                    )}
+                  </span>
+                </label>
+              );
+            })}
           </div>
         </>
       ) : (

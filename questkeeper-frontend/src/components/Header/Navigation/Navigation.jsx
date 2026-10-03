@@ -12,6 +12,10 @@ function Navigation() {
         Home
       </NavLink>
 
+      <NavLink className={linkClass} to="/guide">
+        Guide
+      </NavLink>
+
       <NavLink className={linkClass} to="/races">
         Races
       </NavLink>

@@ -89,7 +89,8 @@
   outline-offset: 3px;
 }
 
-@media (max-width: 900px) {
+/* The ten links no longer fit in one row below ~1200px, so collapse early. */
+@media (max-width: 1200px) {
   .header {
     display: grid;
     grid-template-columns: 64px 1fr 64px;
