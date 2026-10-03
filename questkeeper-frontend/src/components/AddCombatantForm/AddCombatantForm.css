@@ -39,3 +39,36 @@
   width: 92px;
   text-align: center;
 }
+
+.add-combatant__tip {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.add-combatant__pieces {
+  display: grid;
+  gap: var(--qk-space-2);
+  margin: 0;
+  padding: var(--qk-space-3);
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+}
+
+.add-combatant__pieces legend {
+  padding: 0 var(--qk-space-2);
+  font-weight: 700;
+}
+
+.add-combatant__piece {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qk-space-2);
+}
+
+.add-combatant__preview {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}

@@ -55,6 +55,7 @@ describe("AddCombatantForm", () => {
       initiative: 12,
       statBlock: { attacks: [{ name: "Scimitar", toHit: 4, damage: "1d6+2" }], notes: "" },
       saveToLibrary: false,
+      pieces: [],
     });
   });
 
@@ -123,5 +124,36 @@ describe("AddCombatantForm", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
     expect(screen.getByLabelText("Name")).toHaveValue("");
+  });
+
+  it("lets the DM nickname and tag each of several monsters", async () => {
+    const onAdd = vi.fn().mockResolvedValue(true);
+    render(<AddCombatantForm onAdd={onAdd} />);
+
+    await fill("Name", "Goblin");
+    await userEvent.clear(screen.getByLabelText("How many"));
+    await fill("How many", "2");
+    await fill("HP", "7");
+    await userEvent.click(screen.getByRole("button", { name: "Tell them apart" }));
+    await userEvent.selectOptions(screen.getByLabelText("Icon for monster 1"), "🦆");
+    await userEvent.type(screen.getByLabelText("Nickname for monster 1"), "red duck");
+
+    expect(screen.getByText("🦆 Goblin (red duck)")).toBeInTheDocument();
+    expect(screen.getByText("Goblin 2")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Add 2" }));
+
+    expect(onAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        count: 2,
+        pieces: [{ icon: "🦆", label: "red duck" }],
+      }),
+    );
+  });
+
+  it("explains how to add several of the same monster", () => {
+    render(<AddCombatantForm onAdd={vi.fn()} />);
+
+    expect(screen.getByText(/Adding several of the same monster\?/)).toBeInTheDocument();
   });
 });

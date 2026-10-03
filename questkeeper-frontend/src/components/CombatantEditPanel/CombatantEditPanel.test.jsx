@@ -99,4 +99,28 @@ describe("CombatantEditPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(props.onCancel).toHaveBeenCalled();
   });
+
+  it("lets the DM tag a monster with an icon, keeping the name", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<CombatantEditPanel combatant={combatant} secret={secret} onSave={onSave} onCancel={() => {}} />);
+
+    await userEvent.selectOptions(screen.getByLabelText("Edit icon"), "🦆");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: "🦆 Goblin" }));
+  });
+
+  it("shows an existing icon in the icon box, not in the name box", () => {
+    render(
+      <CombatantEditPanel
+        combatant={{ id: "c1", name: "🐧 Goblin 2" }}
+        secret={secret}
+        onSave={vi.fn()}
+        onCancel={() => {}}
+      />,
+    );
+
+    expect(screen.getByLabelText("Edit icon")).toHaveValue("🐧");
+    expect(screen.getByLabelText("Edit name")).toHaveValue("Goblin 2");
+  });
 });
