@@ -1123,3 +1123,41 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   font-size: 12px;
   line-height: 1.4;
 }
+
+.character-sheet__skill-bonus-input {
+  width: 38px;
+  min-height: 20px;
+  padding: 0 2px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 12px;
+  text-align: center;
+}
+
+.character-sheet__ability-extras {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.character-sheet__save-bonus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--qk-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.character-sheet__save-bonus .character-sheet__vital-input {
+  width: 44px;
+}
+
+.character-sheet__ability-extras .character-sheet__ability-hint {
+  flex: 1 1 220px;
+}

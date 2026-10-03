@@ -24,6 +24,9 @@ import {
   updateEquipmentItem,
   getAttunedCount,
   toggleSkillProficiency,
+  cycleSkillProficiency,
+  getSaveModifier,
+  getSkillModifier,
   createAttack,
   updateAttack,
   createFeat,
@@ -1045,5 +1048,62 @@ describe("toggleSkillProficiency", () => {
 
     expect(result).toEqual({ stealth: true, arcana: true, history: true });
     expect(skills).toEqual({ stealth: true, arcana: true });
+  });
+});
+
+describe("getSkillModifier with expertise and bonuses", () => {
+  it("doubles the proficiency bonus for expertise", () => {
+    // DEX 14 (+2), proficiency +3, expertise = +2 + 6
+    expect(getSkillModifier(14, true, 3, { expertise: true })).toBe(8);
+  });
+
+  it("ignores expertise on a skill that is not proficient", () => {
+    expect(getSkillModifier(14, false, 3, { expertise: true })).toBe(2);
+  });
+
+  it("adds a flat bonus, such as Jack of All Trades", () => {
+    expect(getSkillModifier(10, false, 4, { bonus: 2 })).toBe(2);
+    expect(getSkillModifier(10, true, 4, { bonus: -1 })).toBe(3);
+  });
+});
+
+describe("getSaveModifier", () => {
+  it("adds proficiency and a flat extra to the ability modifier", () => {
+    // WIS 14 (+2) + proficiency 5 + Aura of Protection +3
+    expect(getSaveModifier(14, true, 5, 3)).toBe(10);
+    expect(getSaveModifier(10, false, 5, 3)).toBe(3);
+    expect(getSaveModifier(10, false, 5)).toBe(0);
+  });
+});
+
+describe("cycleSkillProficiency", () => {
+  it("steps from none to proficient to expertise and back to none", () => {
+    const first = cycleSkillProficiency({}, {}, "stealth");
+    expect(first.skills.stealth).toBe(true);
+    expect(first.skillExpertise.stealth).toBeUndefined();
+
+    const second = cycleSkillProficiency(
+      first.skills,
+      first.skillExpertise,
+      "stealth",
+    );
+    expect(second.skills.stealth).toBe(true);
+    expect(second.skillExpertise.stealth).toBe(true);
+
+    const third = cycleSkillProficiency(
+      second.skills,
+      second.skillExpertise,
+      "stealth",
+    );
+    expect(third.skills.stealth).toBe(false);
+    expect(third.skillExpertise.stealth).toBeUndefined();
+  });
+
+  it("handles sheets saved before expertise existed", () => {
+    expect(
+      cycleSkillProficiency(undefined, undefined, "arcana").skills,
+    ).toEqual({
+      arcana: true,
+    });
   });
 });

@@ -10,6 +10,7 @@ import {
   SKILLS,
   getAbilityModifier,
   getSkillModifier,
+  getSaveModifier,
   getProficiencyBonus,
   getSpellcastingAbility,
   formatModifier,
@@ -25,7 +26,7 @@ import {
   updateEquipmentItem,
   removeEquipmentItem,
   getAttunedCount,
-  toggleSkillProficiency,
+  cycleSkillProficiency,
   setTemporaryHp,
   createAttack,
   removeAttack,
@@ -75,9 +76,12 @@ const SHEET_TERMS = [
   ["Hit Dice", "Dice you can spend on a short rest to heal."],
   [
     "Save",
-    "Saving throw bonus, used to resist spells and effects. Click it to mark a save as proficient.",
+    "Saving throw bonus, used to resist spells and effects. Click it to mark a save as proficient, and use the bonus box for flat extras.",
   ],
-  ["P (skills)", "You are proficient, so you add your proficiency bonus."],
+  [
+    "P / E (skills)",
+    "P: proficient, you add your proficiency bonus. E: expertise, you add it twice. Click the badge to step through them.",
+  ],
   [
     "Inspiration",
     "A reward from your DM for great roleplay. Spend it for advantage.",
@@ -93,6 +97,7 @@ function CharacterSheetPage() {
   const { user } = useAuth();
   const [sheet, setSheet] = useState(null);
   const [loadedId, setLoadedId] = useState(null);
+  const [showSkillBonuses, setShowSkillBonuses] = useState(false);
   const [isLevelingUp, setIsLevelingUp] = useState(false);
   const [levelUpSummary, setLevelUpSummary] = useState(null);
   const [activeTab, setActiveTab] = useState("actions");
@@ -503,11 +508,26 @@ function CharacterSheetPage() {
     });
   }
 
-  function handleSkillToggle(skillIndex) {
+  function handleSkillCycle(skillIndex) {
     persistSheet({
       ...sheet,
-      skills: toggleSkillProficiency(sheet.skills, skillIndex),
+      ...cycleSkillProficiency(sheet.skills, sheet.skillExpertise, skillIndex),
     });
+  }
+
+  function handleSkillBonusChange(skillIndex, value) {
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) return;
+    persistSheet({
+      ...sheet,
+      skillBonuses: { ...(sheet.skillBonuses ?? {}), [skillIndex]: numeric },
+    });
+  }
+
+  function handleSaveBonusChange(value) {
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) return;
+    persistSheet({ ...sheet, saveBonus: numeric });
   }
 
   function handleResourceAdd(values) {
@@ -781,14 +801,30 @@ function CharacterSheetPage() {
             <div className="character-sheet__shell">
               <aside className="character-sheet__rail">
                 <section className="character-sheet__section character-sheet__skills">
-                  <h2 className="character-sheet__section-title">Skills</h2>
+                  <div className="character-sheet__section-header-row">
+                    <h2 className="character-sheet__section-title">Skills</h2>
+                    <button
+                      type="button"
+                      className="character-sheet__resource-remove"
+                      aria-pressed={showSkillBonuses}
+                      title="Show boxes to add flat bonuses to individual skills"
+                      onClick={() => setShowSkillBonuses((shown) => !shown)}
+                    >
+                      {showSkillBonuses ? "Done" : "Bonuses"}
+                    </button>
+                  </div>
                   <ul className="character-sheet__skills-list">
                     {SKILLS.map((skill) => {
                       const isProficient = Boolean(sheet.skills?.[skill.index]);
+                      const hasExpertise =
+                        isProficient &&
+                        Boolean(sheet.skillExpertise?.[skill.index]);
+                      const bonus = sheet.skillBonuses?.[skill.index] ?? 0;
                       const modifier = getSkillModifier(
                         sheet.abilityScores[skill.ability],
                         isProficient,
                         proficiencyBonus,
+                        { expertise: hasExpertise, bonus },
                       );
 
                       return (
@@ -812,14 +848,30 @@ function CharacterSheetPage() {
                             aria-pressed={isProficient}
                             aria-label={`${skill.name} proficiency`}
                             title={
-                              isProficient
-                                ? "Proficient - click to remove"
-                                : "Not proficient - click to add"
+                              hasExpertise
+                                ? "Expertise (double proficiency) - click to remove"
+                                : isProficient
+                                  ? "Proficient - click for expertise"
+                                  : "Not proficient - click to add"
                             }
-                            onClick={() => handleSkillToggle(skill.index)}
+                            onClick={() => handleSkillCycle(skill.index)}
                           >
-                            {isProficient ? "P" : ""}
+                            {hasExpertise ? "E" : isProficient ? "P" : ""}
                           </button>
+                          {showSkillBonuses && (
+                            <input
+                              type="number"
+                              className="character-sheet__skill-bonus-input"
+                              value={bonus}
+                              aria-label={`${skill.name} bonus`}
+                              onChange={(e) =>
+                                handleSkillBonusChange(
+                                  skill.index,
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          )}
                           <span className="character-sheet__skill-modifier">
                             {formatModifier(modifier)}
                           </span>
@@ -1015,8 +1067,12 @@ function CharacterSheetPage() {
                       const score = sheet.abilityScores[ability];
                       const modifier = getAbilityModifier(score);
                       const isSaveProficient = sheet.savingThrows[ability];
-                      const saveBonus =
-                        modifier + (isSaveProficient ? proficiencyBonus : 0);
+                      const saveBonus = getSaveModifier(
+                        score,
+                        isSaveProficient,
+                        proficiencyBonus,
+                        sheet.saveBonus ?? 0,
+                      );
 
                       return (
                         <div
@@ -1062,10 +1118,24 @@ function CharacterSheetPage() {
                     })}
                   </div>
 
-                  <p className="character-sheet__ability-hint">
-                    Tip: click a Save badge to mark that saving throw as
-                    proficient. It turns a solid color when it is on.
-                  </p>
+                  <div className="character-sheet__ability-extras">
+                    <label className="character-sheet__save-bonus">
+                      Bonus to all saves
+                      <input
+                        type="number"
+                        className="character-sheet__vital-input"
+                        value={sheet.saveBonus ?? 0}
+                        aria-label="Bonus to all saves"
+                        title="A flat extra added to every saving throw, like a Paladin's Aura of Protection"
+                        onChange={(e) => handleSaveBonusChange(e.target.value)}
+                      />
+                    </label>
+                    <p className="character-sheet__ability-hint">
+                      Tip: click a Save badge to mark that saving throw as
+                      proficient. Use the bonus box for extras like a Paladin's
+                      Aura of Protection.
+                    </p>
+                  </div>
                 </section>
 
                 <details className="character-sheet__glossary">
