@@ -44,30 +44,39 @@ function StatBlockFields({ value, onChange, idPrefix = "stat" }) {
 
       {value.attacks.map((attack, index) => (
         <div className="stat-block-fields__row" key={`${idPrefix}-${index}`}>
-          <input
-            className="stat-block-fields__field"
-            aria-label={`Attack ${index + 1} name`}
-            placeholder="Attack (e.g. Claw)"
-            maxLength={60}
-            value={attack.name}
-            onChange={(event) => updateAttack(index, "name", event.target.value)}
-          />
-          <input
-            className="stat-block-fields__number"
-            type="number"
-            aria-label={`Attack ${index + 1} to hit`}
-            placeholder="+ hit"
-            value={attack.toHit}
-            onChange={(event) => updateAttack(index, "toHit", event.target.value)}
-          />
-          <input
-            className="stat-block-fields__field stat-block-fields__field--damage"
-            aria-label={`Attack ${index + 1} damage`}
-            placeholder="Damage (1d6+2)"
-            maxLength={40}
-            value={attack.damage}
-            onChange={(event) => updateAttack(index, "damage", event.target.value)}
-          />
+          <label className="stat-block-fields__labeled stat-block-fields__labeled--grow">
+            <span className="stat-block-fields__caption">Attack</span>
+            <input
+              className="stat-block-fields__field"
+              aria-label={`Attack ${index + 1} name`}
+              placeholder="Attack (e.g. Claw)"
+              maxLength={60}
+              value={attack.name}
+              onChange={(event) => updateAttack(index, "name", event.target.value)}
+            />
+          </label>
+          <label className="stat-block-fields__labeled">
+            <span className="stat-block-fields__caption">To hit (+)</span>
+            <input
+              className="stat-block-fields__number"
+              type="number"
+              aria-label={`Attack ${index + 1} to hit`}
+              placeholder="+ hit"
+              value={attack.toHit}
+              onChange={(event) => updateAttack(index, "toHit", event.target.value)}
+            />
+          </label>
+          <label className="stat-block-fields__labeled">
+            <span className="stat-block-fields__caption">Damage</span>
+            <input
+              className="stat-block-fields__field stat-block-fields__field--damage"
+              aria-label={`Attack ${index + 1} damage`}
+              placeholder="Damage (1d6+2)"
+              maxLength={40}
+              value={attack.damage}
+              onChange={(event) => updateAttack(index, "damage", event.target.value)}
+            />
+          </label>
           <Button type="button" variant="secondary" onClick={() => removeAttack(index)}>
             Remove
           </Button>

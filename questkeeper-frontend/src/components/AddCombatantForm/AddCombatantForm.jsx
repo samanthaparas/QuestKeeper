@@ -136,49 +136,64 @@ function AddCombatantForm({ onAdd, templates = [] }) {
         nickname or icon under <em>Tell them apart</em>.
       </p>
 
-      <div className="add-combatant__row">
-        <input
-          className="add-combatant__field add-combatant__field--name"
-          aria-label="Name"
-          placeholder={kind === "ally" ? "Name (e.g. Sir Pip)" : "Name (e.g. Goblin)"}
-          maxLength={70}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-        <input
-          className="add-combatant__number"
-          type="number"
-          aria-label="How many"
-          placeholder="How many?"
-          min="1"
-          max="20"
-          value={count}
-          onChange={(event) => setCount(event.target.value)}
-        />
-        <input
-          className="add-combatant__number"
-          type="number"
-          aria-label="HP"
-          placeholder="HP"
-          value={maxHp}
-          onChange={(event) => setMaxHp(event.target.value)}
-        />
-        <input
-          className="add-combatant__number"
-          type="number"
-          aria-label="AC"
-          placeholder="AC"
-          value={armorClass}
-          onChange={(event) => setArmorClass(event.target.value)}
-        />
-        <input
-          className="add-combatant__number"
-          type="number"
-          aria-label="Initiative"
-          placeholder="Init"
-          value={initiative}
-          onChange={(event) => setInitiative(event.target.value)}
-        />
+      <div className="add-combatant__row add-combatant__row--fields">
+        <label className="add-combatant__labeled add-combatant__labeled--name">
+          <span className="add-combatant__caption">Name</span>
+          <input
+            className="add-combatant__field add-combatant__field--name"
+            aria-label="Name"
+            placeholder={kind === "ally" ? "Name (e.g. Sir Pip)" : "Name (e.g. Goblin)"}
+            maxLength={70}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+        <label className="add-combatant__labeled">
+          <span className="add-combatant__caption">How many?</span>
+          <input
+            className="add-combatant__number"
+            type="number"
+            aria-label="How many"
+            placeholder="How many?"
+            min="1"
+            max="20"
+            value={count}
+            onChange={(event) => setCount(event.target.value)}
+          />
+        </label>
+        <label className="add-combatant__labeled">
+          <span className="add-combatant__caption">HP</span>
+          <input
+            className="add-combatant__number"
+            type="number"
+            aria-label="HP"
+            placeholder="HP"
+            value={maxHp}
+            onChange={(event) => setMaxHp(event.target.value)}
+          />
+        </label>
+        <label className="add-combatant__labeled">
+          <span className="add-combatant__caption">AC</span>
+          <input
+            className="add-combatant__number"
+            type="number"
+            aria-label="AC"
+            placeholder="AC"
+            value={armorClass}
+            onChange={(event) => setArmorClass(event.target.value)}
+          />
+        </label>
+        <label className="add-combatant__labeled">
+          <span className="add-combatant__caption">Initiative (optional)</span>
+          <input
+            className="add-combatant__number"
+            type="number"
+            aria-label="Initiative"
+            placeholder="Init"
+            value={initiative}
+            onChange={(event) => setInitiative(event.target.value)}
+          />
+        </label>
       </div>
 
       <div className="add-combatant__row">
