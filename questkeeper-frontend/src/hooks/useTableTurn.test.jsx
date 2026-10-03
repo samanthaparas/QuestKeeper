@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useTableTurn } from "./useTableTurn";
 import { getActiveCombatForCharacter } from "../utils/tableStore";
@@ -9,6 +9,30 @@ vi.mock("../utils/tableStore", () => ({
   getActiveCombatForCharacter: vi.fn(),
   subscribeToTable: vi.fn(() => () => {}),
 }));
+
+// Newer Node versions ship their own incomplete localStorage that can shadow the
+// test environment's, so this test brings a tiny in-memory one. That keeps it
+// passing on any Node version (CI runs a newer Node than a laptop might).
+function installFakeStorage() {
+  const data = new Map();
+  const fake = {
+    getItem: (key) => (data.has(key) ? data.get(key) : null),
+    setItem: (key, value) => {
+      data.set(key, String(value));
+    },
+    removeItem: (key) => {
+      data.delete(key);
+    },
+    clear: () => data.clear(),
+  };
+
+  vi.stubGlobal("localStorage", fake);
+  try {
+    Object.defineProperty(window, "localStorage", { value: fake, configurable: true });
+  } catch {
+    // The stubbed global above is enough where window is the global object.
+  }
+}
 
 function combatFor(tableId, tableName) {
   return {
@@ -24,9 +48,13 @@ function combatFor(tableId, tableName) {
 }
 
 describe("useTableTurn", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
-    window.localStorage.clear();
+    installFakeStorage();
     getActiveCombatForCharacter.mockImplementation(async (characterId, userId, preferred) =>
       preferred === "t-old" ? combatFor("t-old", "Sam's Silly Garden Chase") : combatFor("t-new", "Final Fight Practice"),
     );
