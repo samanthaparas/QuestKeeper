@@ -1,10 +1,10 @@
 // A monster's or ally's stat block lives in the database as
-//   { attacks: [{ name, toHit, damage }], notes: "..." }
+//   { attacks: [{ name, toHit, damage }], notes: "...", initiativeBonus: 2 }
 // and is only ever visible to the DM. These helpers keep the form state and the
 // saved shape in step.
 
 export function emptyStatBlock() {
-  return { attacks: [], notes: "" };
+  return { attacks: [], notes: "", initiativeBonus: "" };
 }
 
 // Turns whatever is saved (possibly empty or partial) into form-friendly values.
@@ -18,6 +18,10 @@ export function readStatBlock(raw) {
       damage: String(attack?.damage ?? ""),
     })),
     notes: String(raw?.notes ?? ""),
+    initiativeBonus:
+      raw?.initiativeBonus === undefined || raw?.initiativeBonus === null
+        ? ""
+        : String(raw.initiativeBonus),
   };
 }
 
@@ -31,7 +35,13 @@ export function cleanStatBlock(form) {
     }))
     .filter((attack) => attack.name !== "");
 
-  return { attacks, notes: String(form?.notes ?? "").trim() };
+  const initiativeBonus = Number(form?.initiativeBonus) || 0;
+
+  return {
+    attacks,
+    notes: String(form?.notes ?? "").trim(),
+    ...(initiativeBonus ? { initiativeBonus } : {}),
+  };
 }
 
 // "Goblin" x3 -> Goblin 1, Goblin 2, Goblin 3. A single one keeps its plain name.

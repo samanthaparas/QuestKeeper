@@ -21,6 +21,21 @@ function StatBlockFields({ value, onChange, idPrefix = "stat" }) {
 
   return (
     <div className="stat-block-fields">
+      <label className="stat-block-fields__initiative">
+        Initiative bonus
+        <input
+          className="stat-block-fields__number"
+          type="number"
+          aria-label="Initiative bonus"
+          placeholder="+0"
+          value={value.initiativeBonus ?? ""}
+          onChange={(event) => onChange({ ...value, initiativeBonus: event.target.value })}
+        />
+        <span className="stat-block-fields__hint">
+          Added to the d20 when you roll this monster's initiative (usually its Dex modifier).
+        </span>
+      </label>
+
       {value.attacks.length === 0 && (
         <p className="stat-block-fields__hint">
           No attacks yet. Add one so an attack is a single click during the fight.

@@ -24,6 +24,15 @@ describe("StatBlockFields", () => {
     expect(screen.getByText(/No attacks yet/)).toBeInTheDocument();
   });
 
+  it("lets the DM set an initiative bonus", async () => {
+    const onChange = vi.fn();
+    render(<Harness initial={{ attacks: [], notes: "" }} onChange={onChange} />);
+
+    await userEvent.type(screen.getByLabelText("Initiative bonus"), "3");
+
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ initiativeBonus: "3" }));
+  });
+
   it("adds, fills in, and removes attacks", async () => {
     const onChange = vi.fn();
     render(<Harness initial={{ attacks: [], notes: "" }} onChange={onChange} />);

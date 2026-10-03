@@ -5,6 +5,7 @@ import {
   getNowAndNext,
   getNextTurn,
   rollInitiative,
+  rollMonsterInitiative,
 } from "./initiative";
 
 function makeCombatant(overrides) {
@@ -117,6 +118,22 @@ describe("rollInitiative", () => {
   it("treats a missing Dexterity as 10", () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     expect(rollInitiative(undefined)).toEqual({ roll: 1, modifier: 0, total: 1 });
+    vi.restoreAllMocks();
+  });
+});
+
+describe("rollMonsterInitiative", () => {
+  it("adds the stat block bonus to a d20", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // d20 -> 11
+    expect(rollMonsterInitiative(2)).toEqual({ roll: 11, modifier: 2, total: 13 });
+    expect(rollMonsterInitiative(-1).total).toBe(10);
+    vi.restoreAllMocks();
+  });
+
+  it("treats a missing or blank bonus as 0", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    expect(rollMonsterInitiative().total).toBe(11);
+    expect(rollMonsterInitiative("").total).toBe(11);
     vi.restoreAllMocks();
   });
 });
