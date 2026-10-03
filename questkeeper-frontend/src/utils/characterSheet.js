@@ -228,8 +228,31 @@ export function getAbilityModifier(score) {
   return Math.floor((score - 10) / 2);
 }
 
-export function getSkillModifier(score, isProficient, proficiencyBonus) {
-  return getAbilityModifier(score) + (isProficient ? proficiencyBonus : 0);
+// `expertise` doubles the proficiency bonus (Rogue, Bard); `bonus` is any flat
+// extra, like Jack of All Trades or a magic item.
+export function getSkillModifier(
+  score,
+  isProficient,
+  proficiencyBonus,
+  { expertise = false, bonus = 0 } = {},
+) {
+  const proficiency = isProficient ? proficiencyBonus * (expertise ? 2 : 1) : 0;
+  return getAbilityModifier(score) + proficiency + bonus;
+}
+
+// A saving throw: ability modifier, plus proficiency, plus any flat extra that
+// applies to every save (Paladin's Aura of Protection, Cloak of Protection).
+export function getSaveModifier(
+  score,
+  isProficient,
+  proficiencyBonus,
+  extraBonus = 0,
+) {
+  return (
+    getAbilityModifier(score) +
+    (isProficient ? proficiencyBonus : 0) +
+    extraBonus
+  );
 }
 
 export function getSpellSaveDC(abilityScore, proficiencyBonus) {
@@ -539,6 +562,9 @@ export function createCharacterSheet(overrides = {}) {
     abilityScores: createDefaultAbilityScores(),
     savingThrows: createDefaultSavingThrows(),
     skills: {},
+    skillExpertise: {},
+    skillBonuses: {},
+    saveBonus: 0,
 
     combat: {
       armorClass: 10,
@@ -693,6 +719,32 @@ export function updateEquipmentItem(equipment, index, updates) {
 
 export function getAttunedCount(equipment) {
   return (equipment ?? []).filter((item) => item.attuned).length;
+}
+
+// Clicking a skill's badge steps through: not proficient -> proficient ->
+// expertise -> not proficient.
+export function cycleSkillProficiency(skills, expertise, skillIndex) {
+  const isProficient = Boolean(skills?.[skillIndex]);
+  const hasExpertise = Boolean(expertise?.[skillIndex]);
+  const nextExpertise = { ...(expertise ?? {}) };
+
+  if (!isProficient) {
+    return {
+      skills: { ...(skills ?? {}), [skillIndex]: true },
+      skillExpertise: nextExpertise,
+    };
+  }
+
+  if (!hasExpertise) {
+    nextExpertise[skillIndex] = true;
+    return { skills: { ...skills }, skillExpertise: nextExpertise };
+  }
+
+  delete nextExpertise[skillIndex];
+  return {
+    skills: { ...skills, [skillIndex]: false },
+    skillExpertise: nextExpertise,
+  };
 }
 
 export function toggleSkillProficiency(skills, skillIndex) {

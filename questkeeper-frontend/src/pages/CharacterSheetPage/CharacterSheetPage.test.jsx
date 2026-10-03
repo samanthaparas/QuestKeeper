@@ -166,3 +166,54 @@ it("lets a homebrew class choose its own spellcasting ability", async () => {
 
   expect(screen.getByRole("tab", { name: "Spells" })).toBeInTheDocument();
 });
+
+it("adds a bonus to all saves, like a Paladin's Aura of Protection", async () => {
+  const user = userEvent.setup();
+  renderSheet(makeSheet());
+
+  const saves = await screen.findAllByRole("button", { name: /^Save/ });
+  expect(saves[0]).toHaveTextContent("Save +0");
+
+  const bonus = screen.getByLabelText("Bonus to all saves");
+  await user.clear(bonus);
+  await user.type(bonus, "3");
+
+  for (const save of screen.getAllByRole("button", { name: /^Save/ })) {
+    expect(save).toHaveTextContent("Save +3");
+  }
+});
+
+it("clicking a skill badge steps through proficient and expertise", async () => {
+  const user = userEvent.setup();
+  renderSheet(makeSheet());
+
+  const badge = await screen.findByRole("button", {
+    name: "Stealth proficiency",
+  });
+  const row = badge.closest("li");
+
+  await user.click(badge);
+  expect(badge).toHaveTextContent("P");
+  expect(within(row).getByText("+2")).toBeInTheDocument();
+
+  await user.click(badge);
+  expect(badge).toHaveTextContent("E");
+  expect(within(row).getByText("+4")).toBeInTheDocument();
+
+  await user.click(badge);
+  expect(badge).toHaveAttribute("aria-pressed", "false");
+  expect(within(row).getByText("+0")).toBeInTheDocument();
+});
+
+it("lets a player add a flat bonus to one skill", async () => {
+  const user = userEvent.setup();
+  renderSheet(makeSheet());
+
+  await user.click(await screen.findByRole("button", { name: "Bonuses" }));
+  const bonus = screen.getByLabelText("Perception bonus");
+  await user.clear(bonus);
+  await user.type(bonus, "2");
+
+  const row = bonus.closest("li");
+  expect(within(row).getByText("+2", { selector: "span" })).toBeInTheDocument();
+});
