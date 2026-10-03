@@ -46,6 +46,7 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 24 | Confirm step before deleting a table, character or library entry | Tables, Library | Small | Open |
 | 25 | Show join errors next to the Join form | Tables | Small | Open |
 | 26 | Default monster attack targets to the opposite side | Tables | Small | Open |
+| 27 | Let players retype name, race, class, subclass, background and spellcasting ability, and toggle saving throw proficiency, so homebrew and non-SRD characters match a paper sheet (Story tab and Save badges) | Sheet | Small | Done (2026-10-04, pending merge) |
 
 ## Reference pages (logged out)
 

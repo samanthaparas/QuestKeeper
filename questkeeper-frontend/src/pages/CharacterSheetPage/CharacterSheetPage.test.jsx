@@ -111,3 +111,58 @@ it("a Long Rest clears temp HP", async () => {
   expect(screen.getByLabelText("Temp")).toHaveValue(0);
   expect(screen.queryByText(/\+7 =/)).not.toBeInTheDocument();
 });
+
+it("toggles saving throw proficiency and updates the save bonus", async () => {
+  const user = userEvent.setup();
+  renderSheet(makeSheet());
+
+  const strengthSave = (
+    await screen.findAllByRole("button", { name: /^Save/ })
+  )[0];
+  expect(strengthSave).toHaveAttribute("aria-pressed", "false");
+  expect(strengthSave).toHaveTextContent("Save +0");
+
+  await user.click(strengthSave);
+
+  expect(strengthSave).toHaveAttribute("aria-pressed", "true");
+  expect(strengthSave).toHaveTextContent("Save +2");
+});
+
+it("lets the player retype race, class and background to match a paper sheet", async () => {
+  const user = userEvent.setup();
+  renderSheet(
+    makeSheet({
+      race: { id: "human", name: "Human" },
+      class: { id: "wizard", name: "Wizard" },
+      background: { id: "acolyte", name: "Acolyte" },
+    }),
+  );
+
+  await user.click(await screen.findByRole("tab", { name: "Story" }));
+
+  const classInput = screen.getByLabelText("Class");
+  await user.clear(classInput);
+  await user.type(classInput, "Artificer");
+  const backgroundInput = screen.getByLabelText("Background");
+  await user.clear(backgroundInput);
+  await user.type(backgroundInput, "Guild Artisan");
+
+  expect(
+    screen.getByText(/Level 3 Human Artificer.*Guild Artisan/),
+  ).toBeInTheDocument();
+});
+
+it("lets a homebrew class choose its own spellcasting ability", async () => {
+  const user = userEvent.setup();
+  renderSheet(makeSheet({ class: { id: "fighter", name: "Artificer" } }));
+
+  expect(screen.queryByRole("tab", { name: "Spells" })).not.toBeInTheDocument();
+
+  await user.click(await screen.findByRole("tab", { name: "Story" }));
+  await user.selectOptions(
+    screen.getByLabelText("Spellcasting ability"),
+    "intelligence",
+  );
+
+  expect(screen.getByRole("tab", { name: "Spells" })).toBeInTheDocument();
+});

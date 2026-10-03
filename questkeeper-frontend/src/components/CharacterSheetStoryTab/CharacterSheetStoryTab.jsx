@@ -1,9 +1,12 @@
 import PortraitUpload from "../PortraitUpload/PortraitUpload";
+import { ABILITY_SCORES, ABILITY_LABELS } from "../../utils/characterSheet";
 
 function CharacterSheetStoryTab({
   userId,
   characterId,
   name,
+  details,
+  onDetailChange,
   portraitUrl,
   onPortraitUpload,
   backstory,
@@ -25,8 +28,59 @@ function CharacterSheetStoryTab({
 }) {
   const isTrackingCreature = companionMode === "creature";
 
+  const detailFields = [
+    ["name", "Character name", name, ""],
+    ["race", "Race", details.race, "e.g. Human, or your own"],
+    ["class", "Class", details.className, "e.g. Artificer"],
+    ["subclass", "Subclass", details.subclass, "Optional"],
+    ["background", "Background", details.background, "e.g. Sage"],
+  ];
+
   return (
     <>
+      <section className="character-sheet__section">
+        <h2 className="character-sheet__section-title">Character Details</h2>
+        <p className="character-sheet__empty-text">
+          Type anything here, including homebrew or non-SRD options, so the
+          sheet matches your paper one.
+        </p>
+        <div className="character-sheet__hero-row">
+          {detailFields.map(([field, label, value, placeholder]) => (
+            <label className="character-sheet__stat-box" key={field}>
+              <span className="character-sheet__stat-label">{label}</span>
+              <input
+                type="text"
+                className="character-sheet__stat-input"
+                value={value ?? ""}
+                placeholder={placeholder}
+                onChange={(e) => onDetailChange(field, e.target.value)}
+              />
+            </label>
+          ))}
+
+          <label className="character-sheet__stat-box">
+            <span className="character-sheet__stat-label">
+              Spellcasting ability
+            </span>
+            <select
+              className="character-sheet__stat-input"
+              value={details.spellcastingAbility}
+              onChange={(e) =>
+                onDetailChange("spellcastingAbility", e.target.value)
+              }
+            >
+              <option value="default">Class default</option>
+              <option value="none">None</option>
+              {ABILITY_SCORES.map((ability) => (
+                <option key={ability} value={ability}>
+                  {ABILITY_LABELS[ability]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </section>
+
       <section className="character-sheet__section">
         <h2 className="character-sheet__section-title">Portrait</h2>
         <PortraitUpload
