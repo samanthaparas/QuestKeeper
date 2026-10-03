@@ -29,6 +29,7 @@ import {
   mergeSubrace,
   getSubclassLevel,
   getSubraceCantripTraitId,
+  getRaceFixedCantrip,
   addRacialCantrip,
 } from "../../utils/characterSheet";
 
@@ -43,24 +44,11 @@ import SubraceCantripStep from "../../components/SubraceCantripStep/SubraceCantr
 import {
   CREATION_STEP_GROUPS,
   getGroupStatus,
+  getVisibleSteps,
 } from "../../utils/creationSteps";
 import CreationStepRail from "../../components/CreationStepRail/CreationStepRail";
 import CreationSummaryPanel from "../../components/CreationSummaryPanel/CreationSummaryPanel";
 import Button from "../../components/Button/Button";
-
-const STEPS = [
-  "name",
-  "race",
-  "subrace",
-  "subraceCantrip",
-  "class",
-  "subclass",
-  "classSkills",
-  "classSpells",
-  "background",
-  "abilities",
-  "review",
-];
 
 function mapRaceToDetailPanelResult(data) {
   const abilityBonuses = data.ability_bonuses
@@ -149,7 +137,7 @@ function mapBackgroundToDetailPanelResult(data) {
 
 function CharacterCreationPage() {
   const navigate = useNavigate();
-  const [stepIndex, setStepIndex] = useState(0);
+  const [stepKey, setStepKey] = useState("name");
   const [name, setName] = useState("");
   const [race, setRace] = useState(null);
   const [characterClass, setCharacterClass] = useState(null);
@@ -169,16 +157,33 @@ function CharacterCreationPage() {
 
   const finalRace = mergeSubrace(race, subrace);
 
-  const railGroups = CREATION_STEP_GROUPS.map((group) => ({
+  const steps = getVisibleSteps({ raceRaw, subrace, characterClass });
+  const step = stepKey;
+  const stepIndex = Math.max(0, steps.indexOf(stepKey));
+
+  const railGroups = CREATION_STEP_GROUPS.filter((group) =>
+    group.steps.some((key) => steps.includes(key)),
+  ).map((group) => ({
     label: group.label,
-    status: getGroupStatus(group, STEPS, stepIndex),
-    firstIndex: STEPS.indexOf(group.steps[0]),
+    status: getGroupStatus(group, steps, stepIndex),
+    firstIndex: steps.indexOf(group.steps.find((key) => steps.includes(key))),
   }));
 
-  const step = STEPS[stepIndex];
-
+  // Jump from the progress rail.
   function goToStep(index) {
-    setStepIndex(Math.max(0, Math.min(STEPS.length - 1, index)));
+    setStepKey(steps[Math.max(0, Math.min(steps.length - 1, index))]);
+  }
+
+  function goBack() {
+    goToStep(stepIndex - 1);
+  }
+
+  // The step list depends on the choice just made, so work out "next" from
+  // the state the character is about to have, not the one rendered now.
+  function goNext(fromKey, nextState = { raceRaw, subrace, characterClass }) {
+    const nextSteps = getVisibleSteps(nextState);
+    const next = nextSteps[nextSteps.indexOf(fromKey) + 1];
+    if (next) setStepKey(next);
   }
 
   async function handleCreate() {
@@ -273,10 +278,7 @@ function CharacterCreationPage() {
                   Cancel
                 </Button>
 
-                <Button
-                  disabled={!name.trim()}
-                  onClick={() => goToStep(stepIndex + 1)}
-                >
+                <Button disabled={!name.trim()} onClick={() => goNext("name")}>
                   Next
                 </Button>
               </div>
@@ -298,10 +300,14 @@ function CharacterCreationPage() {
                 setRaceRaw(raw);
                 setSubrace(null);
                 setSubraceRaw(null);
-                setSubraceCantrip(null);
-                goToStep(stepIndex + 1);
+                setSubraceCantrip(getRaceFixedCantrip(snapshot.id));
+                goNext("race", {
+                  raceRaw: raw,
+                  subrace: null,
+                  characterClass,
+                });
               }}
-              onBack={() => goToStep(stepIndex - 1)}
+              onBack={goBack}
               backLabel="Back"
             />
           )}
@@ -320,11 +326,15 @@ function CharacterCreationPage() {
               onChoose={(snapshot, raw) => {
                 setSubrace(snapshot);
                 setSubraceRaw(raw);
-                setSubraceCantrip(null);
-                goToStep(stepIndex + 1);
+                setSubraceCantrip(getRaceFixedCantrip(race?.id));
+                goNext("subrace", {
+                  raceRaw,
+                  subrace: snapshot,
+                  characterClass,
+                });
               }}
-              onSkip={() => goToStep(stepIndex + 1)}
-              onBack={() => goToStep(stepIndex - 1)}
+              onSkip={() => goNext("subrace")}
+              onBack={goBack}
               backLabel="Back"
             />
           )}
@@ -336,9 +346,9 @@ function CharacterCreationPage() {
               initialSelected={subraceCantrip ? [subraceCantrip.index] : []}
               onNext={(selected) => {
                 setSubraceCantrip(selected[0] ?? null);
-                goToStep(stepIndex + 1);
+                goNext("subraceCantrip");
               }}
-              onBack={() => goToStep(stepIndex - 1)}
+              onBack={goBack}
             />
           )}
 
@@ -359,9 +369,9 @@ function CharacterCreationPage() {
                 setSpellChoices(null);
                 setSubclass(null);
                 setSubclassRaw(null);
-                goToStep(stepIndex + 1);
+                goNext("class", { raceRaw, subrace, characterClass: snapshot });
               }}
-              onBack={() => goToStep(stepIndex - 1)}
+              onBack={goBack}
               backLabel="Back"
             />
           )}
@@ -390,10 +400,10 @@ function CharacterCreationPage() {
               onChoose={(snapshot, raw) => {
                 setSubclass(snapshot);
                 setSubclassRaw(raw);
-                goToStep(stepIndex + 1);
+                goNext("subclass");
               }}
-              onSkip={() => goToStep(stepIndex + 1)}
-              onBack={() => goToStep(stepIndex - 1)}
+              onSkip={() => goNext("subclass")}
+              onBack={goBack}
               backLabel="Back"
             />
           )}
@@ -401,12 +411,14 @@ function CharacterCreationPage() {
           {step === "classSkills" && (
             <ClassSkillChoiceStep
               characterClass={characterClass}
+              grantedSkills={background?.skillProficiencies ?? []}
+              grantedFrom={background?.name}
               initialSelected={classSkills.map((s) => s.index)}
               onNext={(selected) => {
                 setClassSkills(selected);
-                goToStep(stepIndex + 1);
+                goNext("classSkills");
               }}
-              onBack={() => goToStep(stepIndex - 1)}
+              onBack={goBack}
             />
           )}
 
@@ -414,16 +426,16 @@ function CharacterCreationPage() {
             <ClassSpellChoiceStep
               characterClass={characterClass}
               knownCantrip={subraceCantrip}
-              knownCantripSource={subrace?.name}
+              knownCantripSource={subrace?.name ?? race?.name}
               initialCantrips={(spellChoices?.cantrips ?? []).map(
                 (s) => s.index,
               )}
               initialSpells={(spellChoices?.spells ?? []).map((s) => s.index)}
               onNext={(choices) => {
                 setSpellChoices(choices);
-                goToStep(stepIndex + 1);
+                goNext("classSpells");
               }}
-              onBack={() => goToStep(stepIndex - 1)}
+              onBack={goBack}
             />
           )}
 
@@ -440,9 +452,17 @@ function CharacterCreationPage() {
               onChoose={(snapshot, raw) => {
                 setBackground(snapshot);
                 setBackgroundRaw(raw);
-                goToStep(stepIndex + 1);
+                const granted = new Set(
+                  (snapshot.skillProficiencies ?? []).map(
+                    (skill) => skill.index,
+                  ),
+                );
+                setClassSkills((chosen) =>
+                  chosen.filter((skill) => !granted.has(skill.index)),
+                );
+                goNext("background");
               }}
-              onBack={() => goToStep(stepIndex - 1)}
+              onBack={goBack}
               backLabel="Back"
             />
           )}
@@ -459,9 +479,9 @@ function CharacterCreationPage() {
               onNext={(scores, raw) => {
                 setAbilityScores(scores);
                 setAbilityAssignments(raw);
-                goToStep(stepIndex + 1);
+                goNext("abilities");
               }}
-              onBack={() => goToStep(stepIndex - 1)}
+              onBack={goBack}
             />
           )}
 
@@ -483,6 +503,9 @@ function CharacterCreationPage() {
                 <li>
                   <strong>Class:</strong> {characterClass?.name ?? "Not chosen"}
                   {subclass ? ` (${subclass.name})` : ""}
+                  {!subclass && getSubclassLevel(characterClass?.id) > 1
+                    ? ` (subclass chosen at level ${getSubclassLevel(characterClass.id)})`
+                    : ""}
                 </li>
 
                 <li>
@@ -532,10 +555,7 @@ function CharacterCreationPage() {
               </ul>
 
               <div className="character-creation__nav">
-                <Button
-                  variant="secondary"
-                  onClick={() => goToStep(stepIndex - 1)}
-                >
+                <Button variant="secondary" onClick={goBack}>
                   Back
                 </Button>
 

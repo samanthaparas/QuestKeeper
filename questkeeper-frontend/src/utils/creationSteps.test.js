@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { getGroupStatus } from "./creationSteps";
+import { getGroupStatus, getVisibleSteps } from "./creationSteps";
+import { getRaceFixedCantrip } from "./characterSheet";
 
 const ALL_STEPS = ["name", "race", "subrace", "class", "review"];
 
@@ -29,5 +30,78 @@ describe("getGroupStatus", () => {
   it("returns upcoming if none of the group's steps exist in allSteps", () => {
     const group = { label: "Ghost", steps: ["notAStep"] };
     expect(getGroupStatus(group, ALL_STEPS, 2)).toBe("upcoming");
+  });
+});
+
+describe("getVisibleSteps", () => {
+  const withSubraces = { subraces: [{ index: "high-elf" }] };
+
+  it("hides every optional step for a plain race and a non-caster", () => {
+    expect(
+      getVisibleSteps({
+        raceRaw: { subraces: [] },
+        subrace: null,
+        characterClass: { id: "fighter" },
+      }),
+    ).toEqual([
+      "name",
+      "race",
+      "class",
+      "background",
+      "classSkills",
+      "abilities",
+      "review",
+    ]);
+  });
+
+  it("shows the subrace step only when the race has subraces", () => {
+    expect(getVisibleSteps({ raceRaw: withSubraces })).toContain("subrace");
+    expect(getVisibleSteps({ raceRaw: { subraces: [] } })).not.toContain(
+      "subrace",
+    );
+  });
+
+  it("shows the free cantrip step only for High Elf", () => {
+    expect(
+      getVisibleSteps({ raceRaw: withSubraces, subrace: { id: "high-elf" } }),
+    ).toContain("subraceCantrip");
+    expect(
+      getVisibleSteps({ raceRaw: withSubraces, subrace: { id: "hill-dwarf" } }),
+    ).not.toContain("subraceCantrip");
+  });
+
+  it("shows the subclass step only for classes that pick one at level 1", () => {
+    expect(getVisibleSteps({ characterClass: { id: "cleric" } })).toContain(
+      "subclass",
+    );
+    expect(getVisibleSteps({ characterClass: { id: "bard" } })).not.toContain(
+      "subclass",
+    );
+  });
+
+  it("shows the spells step only for classes with level 1 spells", () => {
+    expect(getVisibleSteps({ characterClass: { id: "wizard" } })).toContain(
+      "classSpells",
+    );
+    expect(
+      getVisibleSteps({ characterClass: { id: "paladin" } }),
+    ).not.toContain("classSpells");
+    expect(getVisibleSteps({ characterClass: { id: "rogue" } })).not.toContain(
+      "classSpells",
+    );
+  });
+
+  it("puts background before skills so granted skills can be greyed out", () => {
+    const steps = getVisibleSteps({ characterClass: { id: "bard" } });
+    expect(steps.indexOf("background")).toBeLessThan(
+      steps.indexOf("classSkills"),
+    );
+  });
+});
+
+describe("getRaceFixedCantrip", () => {
+  it("gives Tiefling Thaumaturgy and nobody else a fixed cantrip", () => {
+    expect(getRaceFixedCantrip("tiefling")?.index).toBe("thaumaturgy");
+    expect(getRaceFixedCantrip("human")).toBeNull();
   });
 });

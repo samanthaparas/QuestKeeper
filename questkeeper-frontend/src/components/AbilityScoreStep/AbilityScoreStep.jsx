@@ -142,7 +142,7 @@ function AbilityScoreStep({
           }`}
           onClick={() => handleScoreMethodChange("standard")}
         >
-          Standard Array
+          Balanced set
         </button>
         <button
           type="button"
@@ -153,13 +153,13 @@ function AbilityScoreStep({
           }`}
           onClick={() => handleScoreMethodChange("roll")}
         >
-          Roll for Stats
+          Roll dice
         </button>
       </div>
 
       {scoreMethod === "standard" && (
         <p className="ability-score-step__description">
-          Assign each value from the standard array (15, 14, 13, 12, 10, 8) to
+          Assign each value from the balanced set (15, 14, 13, 12, 10, 8, also called the standard array) to
           one ability. {race?.name ?? "Your race"}'s bonuses are applied
           automatically below.
         </p>
