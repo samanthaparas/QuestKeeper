@@ -72,3 +72,30 @@
   color: var(--qk-text-muted);
   font-size: 13px;
 }
+
+.add-combatant__labeled {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.add-combatant__labeled--name {
+  flex: 1;
+  min-width: 200px;
+}
+
+.add-combatant__labeled--name .add-combatant__field--name {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.add-combatant__caption {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.add-combatant__row--fields {
+  align-items: flex-end;
+}

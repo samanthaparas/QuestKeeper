@@ -51,6 +51,7 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 29 | Temporary AC bonus box (Haste and similar) that shows "+2 = 23" next to AC without overwriting the base AC; the DM's view of a player sheet uses the total | Sheet | Small | Merged (2026-10-04) |
 | 30 | DM: nicknames and animal icons for identical monsters ("Tell them apart": e.g. "Goblin (red duck)"), an icon picker in Edit, and a visible tip that the How many box adds several of the same monster at once | Tables | Small | Done (2026-10-05, pending merge) |
 | 31 | DM: roll initiative for monsters. A per-monster Roll d20 button, a "Roll initiative for N monsters" button that skips any monster that already has an initiative (so a boss can be rolled with real dice), and an Initiative bonus field on the stat block | Tables | Small | Done (2026-10-05, pending merge) |
+| 32 | DM add-monster form: visible labels above Name, How many, HP, AC and Initiative, and above each attack's name, to-hit and damage, so values filled in from a library entry can still be read (found while using the library autofill) | Tables | Small | Done (2026-10-05, pending merge) |
 
 ## Reference pages (logged out)
 

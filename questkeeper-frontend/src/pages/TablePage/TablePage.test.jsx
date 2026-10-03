@@ -684,6 +684,44 @@ describe("rolling initiative for monsters", () => {
     expect(within(rowFor("Goblin 1")).getByText("Rolled 11 + 2 = 13")).toBeInTheDocument();
   });
 
+  it("names friendly NPCs separately from monsters on the roll-all button", async () => {
+    setupFight();
+    currentTable.combatants = [
+      goblin(1),
+      goblin(2),
+      goblin(0, { id: "c-maccath", kind: "ally", name: "Maccath the Crimson" }),
+    ];
+    render(
+      <MemoryRouter initialEntries={["/tables/t1"]}>
+        <Routes>
+          <Route path="/tables/:id" element={<TablePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Roll initiative for 2 monsters and 1 NPC" }),
+    ).toBeInTheDocument();
+  });
+
+  it("calls a lone friendly NPC an NPC, not a monster", async () => {
+    setupFight();
+    currentTable.combatants = [
+      goblin(0, { id: "c-maccath", kind: "ally", name: "Maccath the Crimson" }),
+    ];
+    render(
+      <MemoryRouter initialEntries={["/tables/t1"]}>
+        <Routes>
+          <Route path="/tables/:id" element={<TablePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Roll initiative for 1 NPC" }),
+    ).toBeInTheDocument();
+  });
+
   it("hides the roll-all button when every monster already has an initiative", async () => {
     mockTable({ isDm: true, combatActive: false, currentId: null });
     render(

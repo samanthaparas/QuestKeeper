@@ -405,7 +405,18 @@ function TablePage() {
   );
   const { now, next } = getNowAndNext(combatants, table.current_combatant_id);
   const canStart = ordered.length > 0;
-  const unrolledNpcCount = waiting.filter((combatant) => combatant.kind !== "player").length;
+  const unrolledNpcs = waiting.filter((combatant) => combatant.kind !== "player");
+  const unrolledNpcCount = unrolledNpcs.length;
+  // "2 monsters and 1 NPC", so friendly NPCs are not called monsters.
+  const unrolledMonsterCount = unrolledNpcs.filter((combatant) => combatant.kind === "monster").length;
+  const unrolledAllyCount = unrolledNpcCount - unrolledMonsterCount;
+  const unrolledLabel = [
+    unrolledMonsterCount > 0 &&
+      `${unrolledMonsterCount} ${unrolledMonsterCount === 1 ? "monster" : "monsters"}`,
+    unrolledAllyCount > 0 && `${unrolledAllyCount} ${unrolledAllyCount === 1 ? "NPC" : "NPCs"}`,
+  ]
+    .filter(Boolean)
+    .join(" and ");
   const myMember = members.find((member) => member.user_id === user?.id);
   const players = combatants.filter((combatant) => combatant.kind === "player");
   const monsters = combatants.filter((combatant) => combatant.kind === "monster");
@@ -635,9 +646,7 @@ function TablePage() {
                 )}
                 {unrolledNpcCount > 0 && (
                   <Button variant="secondary" onClick={rollForAllNpcs}>
-                    {`Roll initiative for ${unrolledNpcCount} ${
-                      unrolledNpcCount === 1 ? "monster" : "monsters"
-                    }`}
+                    {`Roll initiative for ${unrolledLabel}`}
                   </Button>
                 )}
                 <Button
@@ -667,7 +676,7 @@ function TablePage() {
           {isDm && unrolledNpcCount > 0 && (
             <p className="table-page__hint">
               Rolling for a boss yourself? Set its initiative first, then use the roll button
-              for the rest. Monsters that already have an initiative are left alone.
+              for the rest. Anyone who already has an initiative is left alone.
             </p>
           )}
 
