@@ -50,3 +50,11 @@
   padding: 10px;
   resize: vertical;
 }
+
+.stat-block-fields__initiative {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qk-space-2) var(--qk-space-3);
+  font-weight: 700;
+}

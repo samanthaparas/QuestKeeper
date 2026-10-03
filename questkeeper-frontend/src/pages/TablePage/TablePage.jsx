@@ -8,6 +8,7 @@ import {
   getNowAndNext,
   rollInitiative,
   sortCombatants,
+  rollMonsterInitiative,
 } from "../../utils/initiative";
 import {
   addCombatant,
@@ -30,7 +31,7 @@ import {
   setMyInitiative,
   startCombat,
 } from "../../utils/tableStore";
-import { pieceNames, recentEventsFor } from "../../utils/statBlock";
+import { pieceNames, readStatBlock, recentEventsFor } from "../../utils/statBlock";
 import Button from "../../components/Button/Button";
 import CharacterSummaryCard from "../../components/CharacterSummaryCard/CharacterSummaryCard";
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
@@ -63,6 +64,7 @@ function CombatantRow({
   const [amount, setAmount] = useState("");
   const [initiativeInput, setInitiativeInput] = useState("");
   const [rollNote, setRollNote] = useState("");
+  const initiativeBonus = Number(readStatBlock(hp?.stat_block).initiativeBonus) || 0;
   const [showAttack, setShowAttack] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
 
@@ -86,6 +88,13 @@ function CombatantRow({
 
   function rollForMe() {
     const { roll, modifier, total } = rollInitiative(myDexterity);
+    setRollNote(`Rolled ${roll} ${modifier >= 0 ? "+" : "-"} ${Math.abs(modifier)} = ${total}`);
+    onSetInitiative(combatant, total);
+  }
+
+  // The DM rolls for a monster or ally with its stat block's initiative bonus.
+  function rollForNpc() {
+    const { roll, modifier, total } = rollMonsterInitiative(initiativeBonus);
     setRollNote(`Rolled ${roll} ${modifier >= 0 ? "+" : "-"} ${Math.abs(modifier)} = ${total}`);
     onSetInitiative(combatant, total);
   }
@@ -164,10 +173,17 @@ function CombatantRow({
                 Roll d20
               </Button>
             )}
+            {isDm && isNpc && (
+              <Button type="button" onClick={rollForNpc}>
+                Roll d20
+              </Button>
+            )}
           </form>
         )}
 
-        {isMe && rollNote && <span className="table-page__roll-note">{rollNote}</span>}
+        {(isMe || (isDm && isNpc)) && rollNote && (
+          <span className="table-page__roll-note">{rollNote}</span>
+        )}
 
         {isDm && isNpc && (
           <div className="table-page__inline-form">
@@ -389,6 +405,7 @@ function TablePage() {
   );
   const { now, next } = getNowAndNext(combatants, table.current_combatant_id);
   const canStart = ordered.length > 0;
+  const unrolledNpcCount = waiting.filter((combatant) => combatant.kind !== "player").length;
   const myMember = members.find((member) => member.user_id === user?.id);
   const players = combatants.filter((combatant) => combatant.kind === "player");
   const monsters = combatants.filter((combatant) => combatant.kind === "monster");
@@ -455,6 +472,25 @@ function TablePage() {
 
     await run(() => postPlayerDamage(table.id, userId, amount, hitSource.trim()));
     setHitAmount("");
+  }
+
+  // Rolls initiative for every monster and ally that has none yet. Anyone who
+  // already has one (a boss the DM rolled with real dice) is left alone.
+  async function rollForAllNpcs() {
+    const unrolled = combatants.filter(
+      (combatant) =>
+        combatant.kind !== "player" &&
+        (combatant.initiative === null || combatant.initiative === undefined),
+    );
+    if (unrolled.length === 0) return;
+
+    await run(async () => {
+      for (const combatant of unrolled) {
+        const bonus = readStatBlock(enemyHp[combatant.id]?.stat_block).initiativeBonus;
+        const { total } = rollMonsterInitiative(bonus);
+        await setCombatantInitiative(combatant.id, total);
+      }
+    });
   }
 
   function denyAttack(player) {
@@ -597,6 +633,13 @@ function TablePage() {
                     </Button>
                   </>
                 )}
+                {unrolledNpcCount > 0 && (
+                  <Button variant="secondary" onClick={rollForAllNpcs}>
+                    {`Roll initiative for ${unrolledNpcCount} ${
+                      unrolledNpcCount === 1 ? "monster" : "monsters"
+                    }`}
+                  </Button>
+                )}
                 <Button
                   variant="secondary"
                   onClick={() => {
@@ -618,6 +661,13 @@ function TablePage() {
           {isDm && !canStart && (
             <p className="table-page__hint">
               Set at least one initiative (yours, a player's, or a monster's) to start combat.
+            </p>
+          )}
+
+          {isDm && unrolledNpcCount > 0 && (
+            <p className="table-page__hint">
+              Rolling for a boss yourself? Set its initiative first, then use the roll button
+              for the rest. Monsters that already have an initiative are left alone.
             </p>
           )}
 

@@ -70,6 +70,14 @@ export function getNextTurn(combatants, currentId, round) {
   return { currentId: null, round };
 }
 
+// A monster's initiative: a d20 plus the bonus on its stat block (its Dexterity
+// modifier, usually).
+export function rollMonsterInitiative(bonus = 0) {
+  const roll = rollDie(20);
+  const modifier = Number(bonus) || 0;
+  return { roll, modifier, total: roll + modifier };
+}
+
 export function rollInitiative(dexterityScore) {
   const roll = rollDie(20);
   const modifier = getAbilityModifier(dexterityScore ?? 10);

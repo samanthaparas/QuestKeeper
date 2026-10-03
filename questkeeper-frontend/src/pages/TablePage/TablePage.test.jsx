@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
@@ -7,6 +7,7 @@ import { useTable } from "../../hooks/useTable";
 import { getCharactersByIds } from "../../utils/characterStore";
 import {
   setMyInitiative,
+  setCombatantInitiative,
   applyDamage,
   postPlayerDamage,
   dmDenyAttack,
@@ -607,5 +608,93 @@ describe("TablePage", () => {
 
       expect(applyDamage).toHaveBeenCalledWith("c-kobold", 4);
     });
+  });
+});
+
+describe("rolling initiative for monsters", () => {
+  const goblin = (n, extra = {}) => ({
+    id: `c-g${n}`,
+    kind: "monster",
+    user_id: null,
+    name: `Goblin ${n}`,
+    initiative: null,
+    status: "healthy",
+    damage_taken: 0,
+    created_at: `2026-10-03T00:00:0${n}Z`,
+    ...extra,
+  });
+
+  function setupFight() {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    currentTable.combatants = [
+      goblin(1),
+      goblin(2),
+      goblin(3),
+      goblin(0, { id: "c-dragon", name: "Red Dragon", initiative: 22 }),
+    ];
+    currentTable.enemyHp = {
+      "c-g1": { current_hp: 7, max_hp: 7, armor_class: 13, stat_block: { initiativeBonus: 2 } },
+      "c-g2": { current_hp: 7, max_hp: 7, armor_class: 13, stat_block: {} },
+      "c-g3": { current_hp: 7, max_hp: 7, armor_class: 13, stat_block: {} },
+    };
+  }
+
+  beforeEach(() => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // every d20 is an 11
+    setCombatantInitiative.mockClear();
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("rolls for every monster without an initiative and leaves the boss alone", async () => {
+    setupFight();
+    render(
+      <MemoryRouter initialEntries={["/tables/t1"]}>
+        <Routes>
+          <Route path="/tables/:id" element={<TablePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Roll initiative for 3 monsters" }),
+    );
+
+    await waitFor(() => expect(setCombatantInitiative).toHaveBeenCalledTimes(3));
+    expect(setCombatantInitiative).toHaveBeenCalledWith("c-g1", 13);
+    expect(setCombatantInitiative).toHaveBeenCalledWith("c-g2", 11);
+    expect(setCombatantInitiative).toHaveBeenCalledWith("c-g3", 11);
+    expect(setCombatantInitiative).not.toHaveBeenCalledWith("c-dragon", expect.anything());
+  });
+
+  it("rolls for a single monster with its bonus and shows the roll", async () => {
+    setupFight();
+    render(
+      <MemoryRouter initialEntries={["/tables/t1"]}>
+        <Routes>
+          <Route path="/tables/:id" element={<TablePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Goblin 1");
+    await userEvent.click(within(rowFor("Goblin 1")).getByRole("button", { name: "Roll d20" }));
+
+    await waitFor(() => expect(setCombatantInitiative).toHaveBeenCalledWith("c-g1", 13));
+    expect(within(rowFor("Goblin 1")).getByText("Rolled 11 + 2 = 13")).toBeInTheDocument();
+  });
+
+  it("hides the roll-all button when every monster already has an initiative", async () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    render(
+      <MemoryRouter initialEntries={["/tables/t1"]}>
+        <Routes>
+          <Route path="/tables/:id" element={<TablePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Kobold");
+    expect(screen.queryByRole("button", { name: /Roll initiative for/ })).not.toBeInTheDocument();
   });
 });

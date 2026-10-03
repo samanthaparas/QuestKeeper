@@ -12,7 +12,7 @@ import {
 
 describe("readStatBlock", () => {
   it("handles an empty or missing stat block", () => {
-    expect(readStatBlock(undefined)).toEqual({ attacks: [], notes: "" });
+    expect(readStatBlock(undefined)).toEqual({ attacks: [], notes: "", initiativeBonus: "" });
     expect(readStatBlock({})).toEqual(emptyStatBlock());
   });
 
@@ -25,7 +25,12 @@ describe("readStatBlock", () => {
     expect(form).toEqual({
       attacks: [{ name: "Claw", toHit: "4", damage: "1d6+2" }],
       notes: "Fast",
+      initiativeBonus: "",
     });
+  });
+
+  it("reads a saved initiative bonus as form text", () => {
+    expect(readStatBlock({ initiativeBonus: 2 }).initiativeBonus).toBe("2");
   });
 });
 
@@ -43,6 +48,12 @@ describe("cleanStatBlock", () => {
       attacks: [{ name: "Claw", toHit: 4, damage: "1d6+2" }],
       notes: "Fast",
     });
+  });
+
+  it("saves an initiative bonus only when there is one", () => {
+    expect(cleanStatBlock({ attacks: [], initiativeBonus: "3" }).initiativeBonus).toBe(3);
+    expect(cleanStatBlock({ attacks: [], initiativeBonus: "" })).not.toHaveProperty("initiativeBonus");
+    expect(cleanStatBlock({ attacks: [], initiativeBonus: "0" })).not.toHaveProperty("initiativeBonus");
   });
 
   it("treats a blank or invalid to-hit as 0", () => {
