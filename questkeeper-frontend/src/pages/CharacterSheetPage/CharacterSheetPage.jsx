@@ -1055,15 +1055,17 @@ function CharacterSheetPage() {
                             }
                             onClick={() => handleSaveToggle(ability)}
                           >
-                            <span aria-hidden="true">
-                              {isSaveProficient ? "● " : "○ "}
-                            </span>
                             Save {formatModifier(saveBonus)}
                           </button>
                         </div>
                       );
                     })}
                   </div>
+
+                  <p className="character-sheet__ability-hint">
+                    Tip: click a Save badge to mark that saving throw as
+                    proficient. It turns a solid color when it is on.
+                  </p>
                 </section>
 
                 <details className="character-sheet__glossary">

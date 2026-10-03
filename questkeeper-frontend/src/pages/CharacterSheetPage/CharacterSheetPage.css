@@ -1108,10 +1108,18 @@ button.character-sheet__ability-save-badge:focus-visible {
   outline-offset: 2px;
 }
 
-/* Proficient saves stand out as solid, filled badges; the rest stay muted
-   with an empty circle, so an accidental click is easy to spot. */
+/* Proficient saves stand out as solid, filled badges; the rest stay muted,
+   so an accidental click is easy to spot. */
 button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-badge--plain) {
   background-color: var(--qk-terracotta);
   color: #fff;
   font-weight: 700;
+}
+
+.character-sheet__ability-hint {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
