@@ -108,3 +108,7 @@
   color: var(--qk-text);
   font: inherit;
 }
+
+.turn-banner__end {
+  min-height: 36px;
+}

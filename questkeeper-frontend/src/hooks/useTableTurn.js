@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/useAuth";
 import {
+  endMyTurn,
   getActiveCombatForCharacter,
   subscribeToTable,
 } from "../utils/tableStore";
@@ -89,6 +90,13 @@ export function useTableTurn(characterId) {
     };
   }, [characterId, userId, preferredTableId, tick]);
 
+  // Pass the turn on. Not every turn is an attack: moving, drinking a potion, or
+  // casting a support spell all end the same way.
+  async function endTurn() {
+    await endMyTurn(combat.table.id);
+    refresh();
+  }
+
   if (!combat) return null;
 
   const { now, next } = getNowAndNext(
@@ -105,6 +113,7 @@ export function useTableTurn(characterId) {
     tableName: combat.table.name,
     activeTables: combat.activeTables ?? [],
     switchTable,
+    endTurn,
     round: combat.table.round,
     combatants: combat.combatants,
     now,
