@@ -4,6 +4,9 @@ import {
   readStatBlock,
   cleanStatBlock,
   numberedNames,
+  pieceNames,
+  splitIcon,
+  withIcon,
   recentEventsFor,
 } from "./statBlock";
 
@@ -86,5 +89,43 @@ describe("recentEventsFor", () => {
   it("is safe with special characters and blank names", () => {
     expect(recentEventsFor(events, "(Ogre?)")).toEqual([]);
     expect(recentEventsFor(events, "   ")).toEqual([]);
+  });
+});
+
+describe("pieceNames", () => {
+  it("falls back to numbers when no piece details are given", () => {
+    expect(pieceNames("Goblin", 2)).toEqual(["Goblin 1", "Goblin 2"]);
+  });
+
+  it("adds a nickname and an icon to the pieces that have them", () => {
+    expect(
+      pieceNames("Goblin", 3, [
+        { icon: "🦆", label: "red duck" },
+        { icon: "", label: "" },
+        { icon: "🐧", label: "" },
+      ]),
+    ).toEqual(["🦆 Goblin (red duck)", "Goblin 2", "🐧 Goblin 3"]);
+  });
+
+  it("keeps a single monster's plain name unless it has an icon or nickname", () => {
+    expect(pieceNames("Ogre", 1)).toEqual(["Ogre"]);
+    expect(pieceNames("Ogre", 1, [{ icon: "🐻", label: "" }])).toEqual(["🐻 Ogre"]);
+  });
+
+  it("never goes over the 80 character name limit", () => {
+    const [name] = pieceNames("G".repeat(70), 1, [{ icon: "🦆", label: "x".repeat(30) }]);
+    expect(Array.from(name).length).toBeLessThanOrEqual(80);
+  });
+});
+
+describe("splitIcon and withIcon", () => {
+  it("separates a leading icon from the name and puts it back", () => {
+    expect(splitIcon("🦆 Goblin (red duck)")).toEqual({ icon: "🦆", text: "Goblin (red duck)" });
+    expect(withIcon("Goblin (red duck)", "🦆")).toBe("🦆 Goblin (red duck)");
+  });
+
+  it("leaves a plain name alone", () => {
+    expect(splitIcon("Goblin 2")).toEqual({ icon: "", text: "Goblin 2" });
+    expect(withIcon("Goblin 2", "")).toBe("Goblin 2");
   });
 });

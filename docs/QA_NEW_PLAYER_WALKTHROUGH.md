@@ -49,6 +49,7 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 27 | Let players retype name, race, class, subclass, background and spellcasting ability, and toggle saving throw proficiency, so homebrew and non-SRD characters match a paper sheet (Story tab and Save badges) | Sheet | Small | Merged (2026-10-04) |
 | 28 | Flat bonus fields and expertise: a "Bonus to all saves" box (Aura of Protection, Cloak of Protection), per-skill bonus boxes behind a Bonuses button (Jack of All Trades), and skill expertise (click the badge: P, then E). Found by comparing a real Google Sheet to a QuestKeeper sheet | Sheet | Small | Merged (2026-10-04) |
 | 29 | Temporary AC bonus box (Haste and similar) that shows "+2 = 23" next to AC without overwriting the base AC; the DM's view of a player sheet uses the total | Sheet | Small | Merged (2026-10-04) |
+| 30 | DM: nicknames and animal icons for identical monsters ("Tell them apart": e.g. "Goblin (red duck)"), an icon picker in Edit, and a visible tip that the How many box adds several of the same monster at once | Tables | Small | Done (2026-10-05, pending merge) |
 
 ## Reference pages (logged out)
 

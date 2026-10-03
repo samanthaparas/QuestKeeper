@@ -30,7 +30,7 @@ import {
   setMyInitiative,
   startCombat,
 } from "../../utils/tableStore";
-import { numberedNames, recentEventsFor } from "../../utils/statBlock";
+import { pieceNames, recentEventsFor } from "../../utils/statBlock";
 import Button from "../../components/Button/Button";
 import CharacterSummaryCard from "../../components/CharacterSummaryCard/CharacterSummaryCard";
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
@@ -412,7 +412,7 @@ function TablePage() {
   async function handleAddCombatants(entry) {
     setActionError("");
     try {
-      for (const name of numberedNames(entry.name, entry.count)) {
+      for (const name of pieceNames(entry.name, entry.count, entry.pieces)) {
         await addCombatant({
           tableId: table.id,
           name,

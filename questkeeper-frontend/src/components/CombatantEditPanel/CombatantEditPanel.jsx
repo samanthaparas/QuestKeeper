@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { cleanStatBlock, readStatBlock } from "../../utils/statBlock";
+import {
+  PIECE_ICONS,
+  cleanStatBlock,
+  readStatBlock,
+  splitIcon,
+  withIcon,
+} from "../../utils/statBlock";
 import Button from "../Button/Button";
 import StatBlockFields from "../StatBlockFields/StatBlockFields";
 import "./CombatantEditPanel.css";
@@ -7,7 +13,8 @@ import "./CombatantEditPanel.css";
 // The DM edits a monster or ally: name, HP (max and current), AC, and stat block.
 // `secret` is the DM-only row from combatant_secrets.
 function CombatantEditPanel({ combatant, secret, onSave, onCancel }) {
-  const [name, setName] = useState(combatant.name);
+  const [icon, setIcon] = useState(() => splitIcon(combatant.name).icon);
+  const [name, setName] = useState(() => splitIcon(combatant.name).text);
   const [maxHp, setMaxHp] = useState(String(secret?.max_hp ?? ""));
   const [currentHp, setCurrentHp] = useState(String(secret?.current_hp ?? ""));
   const [armorClass, setArmorClass] = useState(
@@ -33,7 +40,7 @@ function CombatantEditPanel({ combatant, secret, onSave, onCancel }) {
     try {
       await onSave({
         id: combatant.id,
-        name: name.trim(),
+        name: withIcon(name.trim(), icon),
         maxHp: max,
         currentHp: current,
         armorClass: armorClass === "" ? null : Number(armorClass),
@@ -55,6 +62,19 @@ function CombatantEditPanel({ combatant, secret, onSave, onCancel }) {
       )}
 
       <div className="combatant-edit__row">
+        <select
+          className="combatant-edit__field"
+          aria-label="Edit icon"
+          value={icon}
+          onChange={(event) => setIcon(event.target.value)}
+        >
+          <option value="">No icon</option>
+          {PIECE_ICONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
         <input
           className="combatant-edit__field"
           aria-label="Edit name"

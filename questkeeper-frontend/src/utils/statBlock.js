@@ -43,6 +43,54 @@ export function numberedNames(name, count) {
   return Array.from({ length: total }, (_, index) => `${base} ${index + 1}`);
 }
 
+// Little icons a DM can tag a monster with, to match the resin animal (or
+// whatever stands in for it) on the table.
+export const PIECE_ICONS = [
+  "🦆",
+  "🐧",
+  "🐙",
+  "🦀",
+  "🐢",
+  "🦊",
+  "🐸",
+  "🦉",
+  "🐝",
+  "🐞",
+  "🦄",
+  "🐲",
+  "🦈",
+  "🐻",
+  "🐰",
+  "🦇",
+];
+
+const MAX_NAME_LENGTH = 80;
+
+// Names for a batch of identical monsters. Each piece can have an icon and a
+// short description ("red duck"). Pieces with neither keep the plain number:
+//   ("Goblin", 3, [{ icon: "🦆", label: "red duck" }]) ->
+//   ["🦆 Goblin (red duck)", "Goblin 2", "Goblin 3"]
+export function pieceNames(name, count, pieces = []) {
+  return numberedNames(name, count).map((numbered, index) => {
+    const label = String(pieces[index]?.label ?? "").trim();
+    const icon = String(pieces[index]?.icon ?? "");
+    const core = label ? `${name.trim()} (${label})` : numbered;
+    const full = icon ? `${icon} ${core}` : core;
+    return Array.from(full).slice(0, MAX_NAME_LENGTH).join("");
+  });
+}
+
+// A name may start with one of the icons; pull it apart for the edit form.
+export function splitIcon(name) {
+  const text = String(name ?? "");
+  const icon = PIECE_ICONS.find((candidate) => text.startsWith(`${candidate} `));
+  return icon ? { icon, text: text.slice(icon.length + 1) } : { icon: "", text };
+}
+
+export function withIcon(text, icon) {
+  return icon ? `${icon} ${text}` : text;
+}
+
 // The newest activity lines that mention this fighter by name, so a monster's
 // row can show what just happened to it. A name does not match inside a longer
 // one ("Goblin" does not match "Goblin 2" or "Goblins").
