@@ -26,6 +26,7 @@ import {
   toggleSkillProficiency,
   cycleSkillProficiency,
   getSaveModifier,
+  getEffectiveArmorClass,
   getSkillModifier,
   createAttack,
   updateAttack,
@@ -1105,5 +1106,18 @@ describe("cycleSkillProficiency", () => {
     ).toEqual({
       arcana: true,
     });
+  });
+});
+
+describe("getEffectiveArmorClass", () => {
+  it("adds the temporary AC bonus to the base AC", () => {
+    expect(
+      getEffectiveArmorClass({ combat: { armorClass: 21 }, acBonus: 2 }),
+    ).toBe(23);
+  });
+
+  it("works for sheets saved before the bonus existed", () => {
+    expect(getEffectiveArmorClass({ combat: { armorClass: 14 } })).toBe(14);
+    expect(getEffectiveArmorClass({})).toBe(10);
   });
 });
