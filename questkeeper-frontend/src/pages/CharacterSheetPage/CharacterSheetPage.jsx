@@ -11,6 +11,7 @@ import {
   getAbilityModifier,
   getSkillModifier,
   getSaveModifier,
+  getEffectiveArmorClass,
   getProficiencyBonus,
   getSpellcastingAbility,
   formatModifier,
@@ -66,7 +67,10 @@ function stripLeadingZeros(event) {
 const SHEET_TERMS = [
   ["Hit Points", "Your health. At 0 you fall unconscious."],
   ["Temp", "Temporary Hit Points. They absorb damage first and do not heal."],
-  ["AC", "Armor Class. An attack must roll this or higher to hit you."],
+  [
+    "AC",
+    "Armor Class. An attack must roll this or higher to hit you. Use the Temporary AC bonus box for effects like Haste.",
+  ],
   [
     "Init",
     "Initiative bonus. Added to your d20 roll to decide who goes first.",
@@ -524,6 +528,12 @@ function CharacterSheetPage() {
     });
   }
 
+  function handleAcBonusChange(value) {
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) return;
+    persistSheet({ ...sheet, acBonus: numeric });
+  }
+
   function handleSaveBonusChange(value) {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) return;
@@ -952,6 +962,13 @@ function CharacterSheetPage() {
                       title="Armor Class: an attack has to roll this number or higher to hit you."
                     >
                       AC
+                      {(sheet.acBonus ?? 0) !== 0 && (
+                        <span className="character-sheet__vital-total">
+                          {" "}
+                          {formatModifier(sheet.acBonus)} ={" "}
+                          {getEffectiveArmorClass(sheet)}
+                        </span>
+                      )}
                     </span>
                     <input
                       type="number"
@@ -1119,6 +1136,17 @@ function CharacterSheetPage() {
                   </div>
 
                   <div className="character-sheet__ability-extras">
+                    <label className="character-sheet__save-bonus">
+                      Temporary AC bonus
+                      <input
+                        type="number"
+                        className="character-sheet__vital-input"
+                        value={sheet.acBonus ?? 0}
+                        aria-label="Temporary AC bonus"
+                        title="A flat extra added to your AC for now, like +2 from Haste. Set it back to 0 when it ends."
+                        onChange={(e) => handleAcBonusChange(e.target.value)}
+                      />
+                    </label>
                     <label className="character-sheet__save-bonus">
                       Bonus to all saves
                       <input

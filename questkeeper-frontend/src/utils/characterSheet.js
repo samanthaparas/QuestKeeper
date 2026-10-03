@@ -224,6 +224,12 @@ export function addRacialCantrip(spellcasting, cantrip) {
   return { ...base, cantripsKnown: [...base.cantripsKnown, entry] };
 }
 
+// The AC the sheet shows: the base number plus any temporary bonus, like the
+// +2 from the Haste spell, so the real AC never has to be overwritten.
+export function getEffectiveArmorClass(sheet) {
+  return (sheet?.combat?.armorClass ?? 10) + (sheet?.acBonus ?? 0);
+}
+
 export function getAbilityModifier(score) {
   return Math.floor((score - 10) / 2);
 }
@@ -565,6 +571,7 @@ export function createCharacterSheet(overrides = {}) {
     skillExpertise: {},
     skillBonuses: {},
     saveBonus: 0,
+    acBonus: 0,
 
     combat: {
       armorClass: 10,

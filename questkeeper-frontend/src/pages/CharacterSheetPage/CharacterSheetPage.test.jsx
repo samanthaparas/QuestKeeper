@@ -217,3 +217,17 @@ it("lets a player add a flat bonus to one skill", async () => {
   const row = bonus.closest("li");
   expect(within(row).getByText("+2", { selector: "span" })).toBeInTheDocument();
 });
+
+it("shows the AC with a temporary bonus without changing the base AC", async () => {
+  const user = userEvent.setup();
+  const sheet = makeSheet();
+  sheet.combat.armorClass = 21;
+  renderSheet(sheet);
+
+  const bonus = await screen.findByLabelText("Temporary AC bonus");
+  await user.clear(bonus);
+  await user.type(bonus, "2");
+
+  expect(screen.getByText(/\+2 = 23/)).toBeInTheDocument();
+  expect(screen.getByLabelText(/^AC/)).toHaveValue(21);
+});

@@ -3,6 +3,7 @@ import {
   ABILITY_ABBREVIATIONS,
   getAbilityModifier,
   formatModifier,
+  getEffectiveArmorClass,
 } from "../../utils/characterSheet";
 import "./CharacterSummaryCard.css";
 
@@ -32,7 +33,11 @@ function NameList({ title, items }) {
 // A READ-ONLY summary of a player's character for the DM. There is nothing
 // editable here on purpose; DMs can see everything but never change a sheet.
 function CharacterSummaryCard({ sheet, playerName }) {
-  const hitPoints = sheet.combat?.hitPoints ?? { current: 0, max: 0, temporary: 0 };
+  const hitPoints = sheet.combat?.hitPoints ?? {
+    current: 0,
+    max: 0,
+    temporary: 0,
+  };
   const spellcasting = sheet.spellcasting;
 
   return (
@@ -63,7 +68,7 @@ function CharacterSummaryCard({ sheet, playerName }) {
         <div className="character-summary__stat">
           <span className="character-summary__stat-label">AC</span>
           <span className="character-summary__stat-value">
-            {sheet.combat?.armorClass ?? 10}
+            {getEffectiveArmorClass(sheet)}
           </span>
         </div>
         <div className="character-summary__stat">
@@ -109,7 +114,8 @@ function CharacterSummaryCard({ sheet, playerName }) {
           <ul className="character-summary__list">
             {sheet.attacks.map((attack) => (
               <li key={attack.id ?? attack.name}>
-                {attack.name}: {formatModifier(Number(attack.toHit) || 0)} to hit
+                {attack.name}: {formatModifier(Number(attack.toHit) || 0)} to
+                hit
                 {attack.damage ? `, ${attack.damage}` : ""}
                 {attack.type ? ` ${attack.type}` : ""}
               </li>
@@ -160,7 +166,9 @@ function CharacterSummaryCard({ sheet, playerName }) {
         {sheet.appearance && (
           <p className="character-summary__text">{sheet.appearance}</p>
         )}
-        {sheet.notes && <p className="character-summary__text">{sheet.notes}</p>}
+        {sheet.notes && (
+          <p className="character-summary__text">{sheet.notes}</p>
+        )}
       </details>
     </article>
   );
