@@ -1,30 +1,64 @@
 import { useState } from "react";
 import { rollDie, formatModifier } from "../../utils/characterSheet";
 import { rollDamage, parseDamage } from "../../utils/attacks";
-import { monsterAttackRoll, postPlayerDamage } from "../../utils/tableStore";
+import { readStatBlock } from "../../utils/statBlock";
+import {
+  applyDamage,
+  dmAttackRoll,
+  dmLog,
+  postPlayerDamage,
+} from "../../utils/tableStore";
 import Button from "../Button/Button";
 import "./MonsterAttackPanel.css";
 
-// The DM's version of the player attack panel: an enemy rolls to hit a player,
-// either virtually or from a physical d20. The server compares the roll to the
-// player's AC. After a hit the DM rolls damage, and the player taps Apply on
-// their own sheet.
-function MonsterAttackPanel({ attacker, players, tableId, onChanged, onClose }) {
-  const [targetUserId, setTargetUserId] = useState(players[0]?.user_id ?? "");
-  const [attackName, setAttackName] = useState("");
-  const [bonusText, setBonusText] = useState("");
+const KIND_NOTE = { player: " (player)", ally: " (ally)", monster: "" };
+
+// Puts the opposite side first: enemies usually attack players and allies,
+// allies usually attack enemies.
+function orderTargets(attacker, targets) {
+  const rank = (target) => {
+    if (attacker.kind === "ally") return target.kind === "monster" ? 0 : target.kind === "player" ? 1 : 2;
+    return target.kind === "player" ? 0 : target.kind === "ally" ? 1 : 2;
+  };
+  return [...targets].sort((a, b) => rank(a) - rank(b));
+}
+
+// The DM's attack panel: a monster or ally rolls to hit any other fighter, with
+// the attack filled in from its stat block. Damage on a player goes to that
+// player as an Apply button; damage on a monster or ally is applied directly.
+function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, onClose }) {
+  const attacks = readStatBlock(statBlock).attacks;
+  const choices = orderTargets(
+    attacker,
+    targets.filter((target) => !(target.kind !== "player" && target.status === "down")),
+  );
+
+  const [targetId, setTargetId] = useState(choices[0]?.id ?? "");
+  const [pickedAttack, setPickedAttack] = useState(attacks.length > 0 ? "0" : "custom");
+  const [attackName, setAttackName] = useState(attacks[0]?.name ?? "");
+  const [bonusText, setBonusText] = useState(attacks[0]?.toHit ?? "");
+  const [damageText, setDamageText] = useState(attacks[0]?.damage ?? "");
   const [physicalRoll, setPhysicalRoll] = useState("");
-  const [outcome, setOutcome] = useState(null); // { result, ac, summary }
-  const [damageText, setDamageText] = useState("");
+  const [outcome, setOutcome] = useState(null); // { result, summary }
   const [damageRolled, setDamageRolled] = useState(null);
   const [physicalDamage, setPhysicalDamage] = useState("");
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
 
   const bonus = Number(bonusText) || 0;
-  const target = players.find((player) => player.user_id === targetUserId) ?? players[0];
-  const hasHit = outcome && outcome.result !== "miss";
+  const target = choices.find((entry) => entry.id === targetId) ?? choices[0];
+  const hasHit = outcome && (outcome.result === "hit" || outcome.result === "crit");
   const isCrit = outcome?.result === "crit";
+
+  function pickAttack(value) {
+    setPickedAttack(value);
+    if (value === "custom") return;
+
+    const attack = attacks[Number(value)];
+    setAttackName(attack.name);
+    setBonusText(attack.toHit);
+    setDamageText(attack.damage);
+  }
 
   async function run(action) {
     setError("");
@@ -40,16 +74,17 @@ function MonsterAttackPanel({ attacker, players, tableId, onChanged, onClose }) 
 
   async function submitAttack(natural) {
     await run(async () => {
-      const result = await monsterAttackRoll({
+      const result = await dmAttackRoll({
         attackerId: attacker.id,
-        targetUserId: target.user_id,
+        targetId: target.id,
         attackName,
         natural,
         bonus,
       });
+      const against = result.ac !== null && result.ac !== undefined ? ` against AC ${result.ac}` : "";
       setOutcome({
         result: result.result,
-        summary: `Rolled ${natural} ${bonus >= 0 ? "+" : "-"} ${Math.abs(bonus)} = ${natural + bonus} against AC ${result.ac}.`,
+        summary: `Rolled ${natural} ${bonus >= 0 ? "+" : "-"} ${Math.abs(bonus)} = ${natural + bonus}${against}.`,
       });
       setPhysicalRoll("");
       onChanged();
@@ -66,13 +101,32 @@ function MonsterAttackPanel({ attacker, players, tableId, onChanged, onClose }) 
     submitAttack(natural);
   }
 
+  // The target has no AC on file, so the DM decides.
+  async function callIt(isHit) {
+    await run(async () => {
+      await dmLog(
+        tableId,
+        `${attacker.name} vs ${target.name}: ${isHit ? "That hits!" : "That misses!"}`,
+      );
+      setOutcome((previous) => ({
+        result: isHit ? "hit" : "miss",
+        summary: previous.summary,
+      }));
+      onChanged();
+    });
+  }
+
   async function sendDamage(amount) {
     if (!Number.isInteger(amount) || amount < 1) {
       setError("Damage must be a whole number of at least 1.");
       return;
     }
     await run(async () => {
-      await postPlayerDamage(tableId, target.user_id, amount, attacker.name);
+      if (target.kind === "player") {
+        await postPlayerDamage(tableId, target.user_id, amount, attacker.name);
+      } else {
+        await applyDamage(target.id, amount);
+      }
       onChanged();
       onClose();
     });
@@ -91,28 +145,53 @@ function MonsterAttackPanel({ attacker, players, tableId, onChanged, onClose }) 
         </p>
       )}
 
-      {!outcome && (
+      {choices.length === 0 && <p className="monster-attack__note">There is nobody to attack.</p>}
+
+      {choices.length > 0 && !outcome && (
         <>
           <div className="monster-attack__row">
             <select
               className="monster-attack__field"
               aria-label="Who is being attacked"
-              value={target?.user_id ?? ""}
-              onChange={(event) => setTargetUserId(event.target.value)}
+              value={target?.id ?? ""}
+              onChange={(event) => setTargetId(event.target.value)}
             >
-              {players.map((player) => (
-                <option key={player.id} value={player.user_id}>
-                  {player.name}
+              {choices.map((choice) => (
+                <option key={choice.id} value={choice.id}>
+                  {choice.name}
+                  {KIND_NOTE[choice.kind]}
                 </option>
               ))}
             </select>
+
+            {attacks.length > 0 && (
+              <select
+                className="monster-attack__field"
+                aria-label="Which attack"
+                value={pickedAttack}
+                onChange={(event) => pickAttack(event.target.value)}
+              >
+                {attacks.map((attack, index) => (
+                  <option key={`${attack.name}-${index}`} value={String(index)}>
+                    {attack.name} ({formatModifier(Number(attack.toHit) || 0)}, {attack.damage || "no damage set"})
+                  </option>
+                ))}
+                <option value="custom">Something else...</option>
+              </select>
+            )}
+          </div>
+
+          <div className="monster-attack__row">
             <input
               className="monster-attack__field"
               aria-label="Attack name"
               placeholder="Attack (e.g. Claw)"
               maxLength={60}
               value={attackName}
-              onChange={(event) => setAttackName(event.target.value)}
+              onChange={(event) => {
+                setAttackName(event.target.value);
+                setPickedAttack("custom");
+              }}
             />
             <input
               className="monster-attack__number"
@@ -120,15 +199,15 @@ function MonsterAttackPanel({ attacker, players, tableId, onChanged, onClose }) 
               aria-label="Attack bonus"
               placeholder="+ hit"
               value={bonusText}
-              onChange={(event) => setBonusText(event.target.value)}
+              onChange={(event) => {
+                setBonusText(event.target.value);
+                setPickedAttack("custom");
+              }}
             />
           </div>
 
           <div className="monster-attack__row">
-            <Button
-              disabled={isBusy || !target}
-              onClick={() => submitAttack(rollDie(20))}
-            >
+            <Button disabled={isBusy || !target} onClick={() => submitAttack(rollDie(20))}>
               Roll d20 ({formatModifier(bonus)})
             </Button>
             <span className="monster-attack__or">or</span>
@@ -155,11 +234,25 @@ function MonsterAttackPanel({ attacker, players, tableId, onChanged, onClose }) 
       {outcome && (
         <p className="monster-attack__result">
           {outcome.summary}{" "}
-          {isCrit ? "Critical hit!" : hasHit ? "That hits!" : "That misses!"}
+          {outcome.result === "crit" && "Critical hit!"}
+          {outcome.result === "hit" && "That hits!"}
+          {outcome.result === "miss" && "That misses!"}
+          {outcome.result === "unknown" && `${target.name} has no AC saved. Does it hit?`}
         </p>
       )}
 
-      {outcome && !hasHit && (
+      {outcome?.result === "unknown" && (
+        <div className="monster-attack__row">
+          <Button disabled={isBusy} onClick={() => callIt(true)}>
+            Hit
+          </Button>
+          <Button variant="secondary" disabled={isBusy} onClick={() => callIt(false)}>
+            Miss
+          </Button>
+        </div>
+      )}
+
+      {outcome?.result === "miss" && (
         <Button variant="secondary" onClick={onClose}>
           Done
         </Button>
@@ -168,7 +261,7 @@ function MonsterAttackPanel({ attacker, players, tableId, onChanged, onClose }) 
       {hasHit && (
         <>
           <p className="monster-attack__note">
-            Now the damage. Type the damage dice (like 1d6+2) to roll it
+            Now the damage. Roll the dice below
             {isCrit ? " (dice doubled for the critical hit)" : ""}, or enter a physical total.
           </p>
           <div className="monster-attack__row">

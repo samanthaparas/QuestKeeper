@@ -10,14 +10,18 @@ import {
   sortCombatants,
 } from "../../utils/initiative";
 import {
-  addMonster,
+  addCombatant,
   advanceTurn,
   applyDamage,
+  createTemplate,
   deleteTable,
   dmDenyAttack,
   dmResolveAttack,
+  editCombatant,
   endCombat,
+  endMyTurn,
   leaveTable,
+  listTemplates,
   postPlayerDamage,
   removeCombatant,
   removeMember,
@@ -26,9 +30,12 @@ import {
   setMyInitiative,
   startCombat,
 } from "../../utils/tableStore";
+import { numberedNames, recentEventsFor } from "../../utils/statBlock";
 import Button from "../../components/Button/Button";
 import CharacterSummaryCard from "../../components/CharacterSummaryCard/CharacterSummaryCard";
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
+import AddCombatantForm from "../../components/AddCombatantForm/AddCombatantForm";
+import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEditPanel";
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
@@ -46,23 +53,28 @@ function CombatantRow({
   onResolve,
   pendingCalls = [],
   combatActive = false,
-  players = [],
+  targets = [],
+  recentEvents = [],
   tableId,
   onChanged,
+  onEdit,
   onRemove,
 }) {
   const [amount, setAmount] = useState("");
   const [initiativeInput, setInitiativeInput] = useState("");
   const [rollNote, setRollNote] = useState("");
   const [showAttack, setShowAttack] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
+  // Monsters and allies are run by the DM and have hidden HP; players run themselves.
   const isMonster = combatant.kind === "monster";
+  const isNpc = combatant.kind !== "player";
   // Initiative is locked once combat starts. The one exception is someone who
   // joined mid-fight and has none yet, otherwise they would never get a turn.
   const canEditInitiative =
     (isDm || isMe) && (!combatActive || combatant.initiative === null);
   const canAttack =
-    isDm && isMonster && combatActive && combatant.status !== "down" && players.length > 0;
+    isDm && isNpc && combatActive && combatant.status !== "down" && targets.length > 0;
 
   function submitInitiative(event) {
     event.preventDefault();
@@ -100,6 +112,7 @@ function CombatantRow({
             {combatant.name}
             {isMe && <span className="table-page__tag">You</span>}
             {isMonster && <span className="table-page__tag table-page__tag--monster">Enemy</span>}
+            {combatant.kind === "ally" && <span className="table-page__tag">Ally</span>}
           </span>
 
           {combatant.attacks_this_turn > 0 && (
@@ -109,19 +122,26 @@ function CombatantRow({
             </span>
           )}
 
-          {isMonster && (
+          {isNpc && (
             <span className={`table-page__status table-page__status--${combatant.status}`}>
               {STATUS_LABELS[combatant.status]}
               {combatant.damage_taken > 0 && ` · ${combatant.damage_taken} damage taken`}
             </span>
           )}
 
-          {isMonster && isDm && hp && (
+          {isNpc && isDm && hp && (
             <span className="table-page__secret-hp">
               DM only: {hp.current_hp}/{hp.max_hp} HP
               {hp.armor_class ? ` · AC ${hp.armor_class}` : " · no AC set"}
             </span>
           )}
+
+          {isNpc &&
+            recentEvents.map((entry) => (
+              <span className="table-page__last-action" key={entry.id}>
+                {entry.message}
+              </span>
+            ))}
         </div>
       </div>
 
@@ -149,7 +169,7 @@ function CombatantRow({
 
         {isMe && rollNote && <span className="table-page__roll-note">{rollNote}</span>}
 
-        {isDm && isMonster && (
+        {isDm && isNpc && (
           <div className="table-page__inline-form">
             <input
               className="table-page__number"
@@ -180,7 +200,18 @@ function CombatantRow({
           </Button>
         )}
 
-        {isDm && !isMonster && combatant.attacks_this_turn > 0 && combatant.last_attack_target && (
+        {isDm && isNpc && (
+          <Button
+            type="button"
+            variant="secondary"
+            aria-expanded={showEdit}
+            onClick={() => setShowEdit((open) => !open)}
+          >
+            Edit
+          </Button>
+        )}
+
+        {isDm && !isNpc && combatant.attacks_this_turn > 0 && combatant.last_attack_target && (
           <Button type="button" variant="secondary" onClick={() => onDeny(combatant)}>
             Deny last attack
           </Button>
@@ -196,10 +227,23 @@ function CombatantRow({
       {canAttack && showAttack && (
         <MonsterAttackPanel
           attacker={combatant}
-          players={players}
+          targets={targets}
+          statBlock={hp?.stat_block}
           tableId={tableId}
           onChanged={onChanged}
           onClose={() => setShowAttack(false)}
+        />
+      )}
+
+      {isDm && isNpc && showEdit && hp && (
+        <CombatantEditPanel
+          combatant={combatant}
+          secret={hp}
+          onCancel={() => setShowEdit(false)}
+          onSave={async (changes) => {
+            await onEdit(changes);
+            setShowEdit(false);
+          }}
         />
       )}
 
@@ -250,10 +294,7 @@ function TablePage() {
   const [characters, setCharacters] = useState([]);
   const [myDexterity, setMyDexterity] = useState(10);
 
-  const [monsterName, setMonsterName] = useState("");
-  const [monsterHp, setMonsterHp] = useState("");
-  const [monsterInitiative, setMonsterInitiative] = useState("");
-  const [monsterAc, setMonsterAc] = useState("");
+  const [templates, setTemplates] = useState([]);
   const [showMonsterForm, setShowMonsterForm] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [showAllEvents, setShowAllEvents] = useState(false);
@@ -290,6 +331,15 @@ function TablePage() {
       clearInterval(timer);
     };
   }, [isDm, characterIds]);
+
+  // DM: the saved monster library, for the "From my library" picker.
+  useEffect(() => {
+    if (!isDm) return;
+
+    listTemplates()
+      .then(setTemplates)
+      .catch(() => {});
+  }, [isDm]);
 
   // Player: read their own Dexterity so "Roll d20" adds the right modifier.
   const myCharacterId = members.find((member) => member.user_id === user?.id)?.character_id;
@@ -342,6 +392,8 @@ function TablePage() {
   const myMember = members.find((member) => member.user_id === user?.id);
   const players = combatants.filter((combatant) => combatant.kind === "player");
   const monsters = combatants.filter((combatant) => combatant.kind === "monster");
+  const npcs = combatants.filter((combatant) => combatant.kind !== "player");
+  const amUp = Boolean(now && now.kind === "player" && now.user_id === user?.id);
   const awaitingCall = players.filter((player) => player.attack_state === "awaiting_dm");
   // Calls normally show inside the monster's own row; this catches any attack
   // whose target is missing so it can never get stuck.
@@ -355,21 +407,44 @@ function TablePage() {
   const selectedSheet =
     characters.find((sheet) => sheet.id === selectedPlayerId) ?? characters[0];
 
-  async function handleAddMonster(event) {
-    event.preventDefault();
-    const hp = Number(monsterHp);
-    if (!monsterName.trim() || !hp || hp < 1) return;
+  // Adds one or several monsters or allies ("Goblin" x3 becomes Goblin 1, 2, 3).
+  // Returns true on success so the form knows it can clear itself.
+  async function handleAddCombatants(entry) {
+    setActionError("");
+    try {
+      for (const name of numberedNames(entry.name, entry.count)) {
+        await addCombatant({
+          tableId: table.id,
+          name,
+          maxHp: entry.maxHp,
+          kind: entry.kind,
+          initiative: entry.initiative,
+          armorClass: entry.armorClass,
+          statBlock: entry.statBlock,
+        });
+      }
 
-    const initiative = monsterInitiative === "" ? null : Number(monsterInitiative);
-    const armorClass = monsterAc === "" ? null : Number(monsterAc);
-    await run(() =>
-      addMonster(table.id, monsterName.trim(), hp, initiative, armorClass),
-    );
-    setMonsterName("");
-    setMonsterHp("");
-    setMonsterInitiative("");
-    setMonsterAc("");
-    setShowMonsterForm(false);
+      if (entry.saveToLibrary) {
+        const saved = await createTemplate({
+          name: entry.name,
+          kind: entry.kind,
+          maxHp: entry.maxHp,
+          armorClass: entry.armorClass,
+          statBlock: entry.statBlock,
+        });
+        setTemplates((previous) =>
+          [...previous, saved].sort((a, b) => a.name.localeCompare(b.name)),
+        );
+      }
+
+      await refresh();
+      setShowMonsterForm(false);
+      return true;
+    } catch (addError) {
+      setActionError(addError.message ?? "Could not add that.");
+      await refresh();
+      return false;
+    }
   }
 
   async function handleHitPlayer(event) {
@@ -413,9 +488,14 @@ function TablePage() {
         onDeny={denyAttack}
         pendingCalls={awaitingCall.filter((player) => player.attack_target === combatant.id)}
         combatActive={table.combat_active}
-        players={players}
+        targets={combatants.filter((other) => other.id !== combatant.id)}
+        recentEvents={recentEventsFor(events, combatant.name)}
         tableId={table.id}
         onChanged={refresh}
+        onEdit={async (changes) => {
+          await editCombatant(changes);
+          await refresh();
+        }}
         onResolve={(attacker, hit) => run(() => dmResolveAttack(attacker.id, hit))}
         onRemove={(target) => {
           if (target.kind === "player") {
@@ -481,6 +561,12 @@ function TablePage() {
               </p>
             ) : (
               <p className="table-page__turn-line">No fight in progress.</p>
+            )}
+
+            {!isDm && table.combat_active && amUp && (
+              <div className="table-page__combat-buttons">
+                <Button onClick={() => run(() => endMyTurn(table.id))}>End my turn</Button>
+              </div>
             )}
 
             {isDm && (
@@ -566,50 +652,13 @@ function TablePage() {
 
         {isDm && monsterFormOpen && (
           <section className="table-page__section">
-            <h2 className="table-page__section-title">Add a monster</h2>
+            <h2 className="table-page__section-title">Add monsters and NPCs</h2>
             <p className="table-page__hint">
-              Players see the name, a status like Bloodied, and damage taken. They never
-              see its HP or AC. Without an AC, you call hits yourself.
+              Players see a name, a status like Bloodied, and damage taken. They never see
+              HP, AC, or a stat block. Add several at once, or pick from your library.
+              Friendly NPCs and party members you track by hand are added the same way.
             </p>
-            <form className="table-page__monster-form" onSubmit={handleAddMonster}>
-              <input
-                className="table-page__input"
-                aria-label="Monster name"
-                placeholder="Name (e.g. Kobold)"
-                maxLength={80}
-                value={monsterName}
-                onChange={(event) => setMonsterName(event.target.value)}
-              />
-              <input
-                className="table-page__number"
-                type="number"
-                min="1"
-                aria-label="Monster HP"
-                placeholder="HP"
-                value={monsterHp}
-                onChange={(event) => setMonsterHp(event.target.value)}
-              />
-              <input
-                className="table-page__number"
-                type="number"
-                min="1"
-                aria-label="Monster AC"
-                placeholder="AC"
-                value={monsterAc}
-                onChange={(event) => setMonsterAc(event.target.value)}
-              />
-              <input
-                className="table-page__number"
-                type="number"
-                aria-label="Monster initiative"
-                placeholder="Init"
-                value={monsterInitiative}
-                onChange={(event) => setMonsterInitiative(event.target.value)}
-              />
-              <Button type="submit" disabled={!monsterName.trim() || !monsterHp}>
-                Add monster
-              </Button>
-            </form>
+            <AddCombatantForm onAdd={handleAddCombatants} templates={templates} />
           </section>
         )}
 
@@ -663,8 +712,8 @@ function TablePage() {
                 onChange={(event) => setHitSource(event.target.value)}
               />
               <datalist id="enemy-names">
-                {monsters.map((monster) => (
-                  <option key={monster.id} value={monster.name} />
+                {npcs.map((npc) => (
+                  <option key={npc.id} value={npc.name} />
                 ))}
               </datalist>
               <select

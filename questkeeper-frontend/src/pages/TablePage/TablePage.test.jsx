@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import TablePage from "./TablePage";
@@ -11,6 +11,10 @@ import {
   postPlayerDamage,
   dmDenyAttack,
   dmResolveAttack,
+  addCombatant,
+  createTemplate,
+  editCombatant,
+  endMyTurn,
 } from "../../utils/tableStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -27,8 +31,12 @@ vi.mock("../../utils/characterStore", () => ({
 }));
 
 vi.mock("../../utils/tableStore", () => ({
-  addMonster: vi.fn(),
+  addCombatant: vi.fn().mockResolvedValue("new-id"),
   advanceTurn: vi.fn(),
+  createTemplate: vi.fn(),
+  editCombatant: vi.fn().mockResolvedValue(undefined),
+  endMyTurn: vi.fn().mockResolvedValue(undefined),
+  listTemplates: vi.fn().mockResolvedValue([]),
   applyDamage: vi.fn().mockResolvedValue(undefined),
   deleteTable: vi.fn(),
   dmDenyAttack: vi.fn().mockResolvedValue(undefined),
@@ -67,8 +75,10 @@ const combatants = [
   },
 ];
 
-function mockTable({ isDm, combatActive = true }) {
-  useTable.mockReturnValue({
+let currentTable;
+
+function mockTable({ isDm, combatActive = true, currentId = "c-kobold" }) {
+  currentTable = {
     table: {
       id: "t1",
       name: "Final Fight",
@@ -76,7 +86,7 @@ function mockTable({ isDm, combatActive = true }) {
       join_code: "ABC123",
       combat_active: combatActive,
       round: 2,
-      current_combatant_id: "c-kobold",
+      current_combatant_id: currentId,
     },
     members: [{ user_id: "player-1", character_id: "char-1" }],
     combatants,
@@ -86,6 +96,42 @@ function mockTable({ isDm, combatActive = true }) {
     error: "",
     refresh: vi.fn().mockResolvedValue(undefined),
     isDm,
+  };
+  useTable.mockReturnValue(currentTable);
+}
+
+// A row in the initiative list, found by the fighter's name.
+function rowFor(name) {
+  return Array.from(document.querySelectorAll("li.table-page__row")).find(
+    (row) => row.querySelector(".table-page__row-name")?.firstChild?.textContent === name,
+  );
+}
+
+const ally = {
+  id: "c-pip",
+  kind: "ally",
+  user_id: null,
+  name: "Sir Pip",
+  initiative: 5,
+  status: "healthy",
+  damage_taken: 0,
+  created_at: "2026-10-03T00:00:03Z",
+};
+
+function withAlly(extra = {}) {
+  useTable.mockReturnValue({
+    ...currentTable,
+    combatants: [...combatants, ally],
+    enemyHp: {
+      ...currentTable.enemyHp,
+      "c-pip": {
+        current_hp: 18,
+        max_hp: 20,
+        armor_class: 16,
+        stat_block: { attacks: [{ name: "Sword", toHit: 5, damage: "1d8+3" }] },
+      },
+    },
+    ...extra,
   });
 }
 
@@ -118,7 +164,7 @@ describe("TablePage", () => {
 
     it("shows the attack count to players but no Deny button", () => {
       useTable.mockReturnValue({
-        ...useTable(),
+        ...currentTable,
         combatants: combatants.map((c) =>
           c.id === "c-billie"
             ? { ...c, attacks_this_turn: 3, last_attack_target: "c-kobold" }
@@ -143,20 +189,49 @@ describe("TablePage", () => {
       renderPage();
 
       expect(screen.queryByText("Join code")).not.toBeInTheDocument();
-      expect(screen.queryByText("Add a monster")).not.toBeInTheDocument();
+      expect(screen.queryByText("Add monsters and NPCs")).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Damage" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Start combat" })).not.toBeInTheDocument();
     });
 
     it("locks a player's initiative once combat started and they have one", () => {
       useTable.mockReturnValue({
-        ...useTable(),
+        ...currentTable,
         combatants: combatants.map((c) => (c.id === "c-billie" ? { ...c, initiative: 15 } : c)),
       });
       renderPage();
 
       expect(screen.queryByRole("button", { name: "Roll d20" })).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Initiative for Billie")).not.toBeInTheDocument();
+    });
+
+    it("shows allies to players but without any DM controls or HP", () => {
+      withAlly();
+      renderPage();
+
+      const row = rowFor("Sir Pip");
+      expect(row).toHaveTextContent("Ally");
+      expect(row).not.toHaveTextContent("DM only");
+      expect(within(row).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+      expect(within(row).queryByRole("button", { name: "Attack" })).not.toBeInTheDocument();
+    });
+
+    it("gives a player an End my turn button only on their own turn", async () => {
+      mockTable({ isDm: false, currentId: "c-billie" });
+      useTable.mockReturnValue({
+        ...currentTable,
+        combatants: combatants.map((c) => (c.id === "c-billie" ? { ...c, initiative: 15 } : c)),
+      });
+      renderPage();
+
+      await userEvent.click(screen.getByRole("button", { name: "End my turn" }));
+      expect(endMyTurn).toHaveBeenCalledWith("t1");
+    });
+
+    it("hides End my turn when it is someone else's turn", () => {
+      renderPage(); // the current turn belongs to the Kobold
+
+      expect(screen.queryByRole("button", { name: "End my turn" })).not.toBeInTheDocument();
     });
 
     it("has no Attack button on enemies for a player", () => {
@@ -178,7 +253,8 @@ describe("TablePage", () => {
     it("shows the shared activity log", () => {
       renderPage();
 
-      expect(screen.getByText(/That hits!/)).toBeInTheDocument();
+      // The line shows in the log and again under the enemy it happened to.
+      expect(screen.getAllByText(/That hits!/).length).toBeGreaterThan(0);
     });
 
     it("never shows an AC field or the call-a-hit controls", () => {
@@ -245,7 +321,7 @@ describe("TablePage", () => {
 
     it("shows what the player rolled in the call strip", () => {
       useTable.mockReturnValue({
-        ...useTable(),
+        ...currentTable,
         combatants: combatants.map((c) =>
           c.id === "c-billie"
             ? {
@@ -267,7 +343,7 @@ describe("TablePage", () => {
 
     it("shows a waiting attack inside the enemy's own row, not in a separate box", async () => {
       useTable.mockReturnValue({
-        ...useTable(),
+        ...currentTable,
         combatants: combatants.map((c) =>
           c.id === "c-billie"
             ? { ...c, attack_state: "awaiting_dm", attack_target: "c-kobold", attack_name: "Dagger" }
@@ -288,7 +364,7 @@ describe("TablePage", () => {
 
     it("still shows a waiting attack if its target cannot be found", () => {
       useTable.mockReturnValue({
-        ...useTable(),
+        ...currentTable,
         combatants: combatants.map((c) =>
           c.id === "c-billie"
             ? { ...c, attack_state: "awaiting_dm", attack_target: "gone", attack_name: "Dagger" }
@@ -302,7 +378,7 @@ describe("TablePage", () => {
 
     it("shows only the 5 newest activity lines, with a button for the rest", async () => {
       useTable.mockReturnValue({
-        ...useTable(),
+        ...currentTable,
         events: Array.from({ length: 8 }, (_, index) => ({
           id: `e${index}`,
           message: `Event number ${index}`,
@@ -323,19 +399,19 @@ describe("TablePage", () => {
     it("folds the monster form away during combat and opens it on request", async () => {
       renderPage();
 
-      expect(screen.queryByText("Add a monster")).not.toBeInTheDocument();
+      expect(screen.queryByText("Add monsters and NPCs")).not.toBeInTheDocument();
       await userEvent.click(screen.getByRole("button", { name: "+ Add monster" }));
-      expect(screen.getByText("Add a monster")).toBeInTheDocument();
+      expect(screen.getByText("Add monsters and NPCs")).toBeInTheDocument();
 
       await userEvent.click(screen.getByRole("button", { name: "Hide monster form" }));
-      expect(screen.queryByText("Add a monster")).not.toBeInTheDocument();
+      expect(screen.queryByText("Add monsters and NPCs")).not.toBeInTheDocument();
     });
 
     it("shows the monster form right away when no fight is running", () => {
       mockTable({ isDm: true, combatActive: false });
       renderPage();
 
-      expect(screen.getByText("Add a monster")).toBeInTheDocument();
+      expect(screen.getByText("Add monsters and NPCs")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "+ Add monster" })).not.toBeInTheDocument();
     });
 
@@ -361,7 +437,7 @@ describe("TablePage", () => {
 
     it("shows each player's attack count and lets the DM deny the last attack", async () => {
       useTable.mockReturnValue({
-        ...useTable(),
+        ...currentTable,
         combatants: combatants.map((c) =>
           c.id === "c-billie"
             ? { ...c, attacks_this_turn: 2, last_attack_target: "c-kobold" }
@@ -379,7 +455,7 @@ describe("TablePage", () => {
 
     it("does not deny when the DM cancels the confirmation", async () => {
       useTable.mockReturnValue({
-        ...useTable(),
+        ...currentTable,
         combatants: combatants.map((c) =>
           c.id === "c-billie"
             ? { ...c, attacks_this_turn: 1, last_attack_target: "c-kobold" }
@@ -402,6 +478,125 @@ describe("TablePage", () => {
       await userEvent.click(screen.getByRole("button", { name: "Send hit" }));
 
       expect(postPlayerDamage).toHaveBeenCalledWith("t1", "player-1", 5, "Kobold");
+    });
+
+    it("shows a friendly NPC with its hidden HP and the same controls as an enemy", () => {
+      withAlly();
+      renderPage();
+
+      const row = rowFor("Sir Pip");
+      expect(row).toHaveTextContent("Ally");
+      expect(row).toHaveTextContent("DM only: 18/20 HP · AC 16");
+      expect(row).toHaveTextContent("Healthy");
+      expect(screen.getByLabelText("Damage or healing for Sir Pip")).toBeInTheDocument();
+    });
+
+    it("lets the DM edit a monster's HP and AC", async () => {
+      renderPage();
+
+      const kobold = rowFor("Kobold");
+      await userEvent.click(within(kobold).getByRole("button", { name: "Edit" }));
+      await userEvent.clear(screen.getByLabelText("Edit max HP"));
+      await userEvent.type(screen.getByLabelText("Edit max HP"), "30");
+      await userEvent.clear(screen.getByLabelText("Edit AC"));
+      await userEvent.type(screen.getByLabelText("Edit AC"), "14");
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(editCombatant).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "c-kobold", maxHp: 30, currentHp: 9, armorClass: 14 }),
+      );
+    });
+
+    it("lets an ally attack, with its stat block attack filled in", async () => {
+      withAlly();
+      renderPage();
+
+      const row = rowFor("Sir Pip");
+      await userEvent.click(within(row).getByRole("button", { name: "Attack" }));
+
+      expect(screen.getByRole("region", { name: "Sir Pip attacks" })).toBeInTheDocument();
+      expect(screen.getByLabelText("Attack name")).toHaveValue("Sword");
+    });
+
+    it("shows what just happened to an enemy right in its row", () => {
+      useTable.mockReturnValue({
+        ...currentTable,
+        events: [
+          { id: "e2", message: "Dangit deals 4 damage to Kobold." },
+          { id: "e1", message: "Thorn ends their turn." },
+        ],
+      });
+      renderPage();
+
+      const kobold = rowFor("Kobold");
+      expect(kobold).toHaveTextContent("Dangit deals 4 damage to Kobold.");
+      expect(kobold).not.toHaveTextContent("Thorn ends their turn.");
+    });
+
+    it("adds several monsters at once with numbered names", async () => {
+      mockTable({ isDm: true, combatActive: false });
+      renderPage();
+
+      await userEvent.type(screen.getByLabelText("Name"), "Goblin");
+      await userEvent.clear(screen.getByLabelText("How many"));
+      await userEvent.type(screen.getByLabelText("How many"), "3");
+      await userEvent.type(screen.getByLabelText("HP"), "7");
+      await userEvent.type(screen.getByLabelText("AC"), "13");
+      await userEvent.click(screen.getByRole("button", { name: "Add 3" }));
+
+      await waitFor(() => expect(addCombatant).toHaveBeenCalledTimes(3));
+      expect(addCombatant.mock.calls.map(([entry]) => entry.name)).toEqual([
+        "Goblin 1",
+        "Goblin 2",
+        "Goblin 3",
+      ]);
+      expect(addCombatant).toHaveBeenCalledWith(
+        expect.objectContaining({ tableId: "t1", maxHp: 7, armorClass: 13, kind: "monster" }),
+      );
+    });
+
+    it("adds a friendly party member the DM tracks by hand", async () => {
+      mockTable({ isDm: true, combatActive: false });
+      renderPage();
+
+      await userEvent.click(screen.getByLabelText("Friendly NPC or party member"));
+      await userEvent.type(screen.getByLabelText("Name"), "Samantha");
+      await userEvent.type(screen.getByLabelText("HP"), "117");
+      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+      await waitFor(() =>
+        expect(addCombatant).toHaveBeenCalledWith(
+          expect.objectContaining({ name: "Samantha", kind: "ally", maxHp: 117 }),
+        ),
+      );
+    });
+
+    it("saves to the library when asked", async () => {
+      mockTable({ isDm: true, combatActive: false });
+      createTemplate.mockResolvedValue({ id: "tpl", name: "Ogre", kind: "monster", max_hp: 59 });
+      renderPage();
+
+      await userEvent.type(screen.getByLabelText("Name"), "Ogre");
+      await userEvent.type(screen.getByLabelText("HP"), "59");
+      await userEvent.click(screen.getByLabelText("Also save to my library"));
+      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+      await waitFor(() =>
+        expect(createTemplate).toHaveBeenCalledWith(expect.objectContaining({ name: "Ogre", maxHp: 59 })),
+      );
+    });
+
+    it("keeps what was typed and says why when adding fails", async () => {
+      mockTable({ isDm: true, combatActive: false });
+      addCombatant.mockRejectedValueOnce(new Error("Only the DM can add combatants"));
+      renderPage();
+
+      await userEvent.type(screen.getByLabelText("Name"), "Goblin");
+      await userEvent.type(screen.getByLabelText("HP"), "7");
+      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+      expect(await screen.findByText("Only the DM can add combatants")).toBeInTheDocument();
+      expect(screen.getByLabelText("Name")).toHaveValue("Goblin");
     });
 
     it("applies damage to an enemy", async () => {
