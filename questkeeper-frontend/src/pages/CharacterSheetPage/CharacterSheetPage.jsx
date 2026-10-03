@@ -73,7 +73,10 @@ const SHEET_TERMS = [
   ["Speed", "How far you can move on your turn, in feet."],
   ["Prof", "Proficiency bonus. Added to everything you are trained in."],
   ["Hit Dice", "Dice you can spend on a short rest to heal."],
-  ["Save", "Saving throw bonus, used to resist spells and effects."],
+  [
+    "Save",
+    "Saving throw bonus, used to resist spells and effects. Click it to mark a save as proficient.",
+  ],
   ["P (skills)", "You are proficient, so you add your proficiency bonus."],
   [
     "Inspiration",
@@ -203,6 +206,51 @@ function CharacterSheetPage() {
 
   function handlePortraitUpload(url) {
     persistSheet({ ...sheet, portraitUrl: url });
+  }
+
+  // Race, class, background and spellcasting can all be retyped, so homebrew
+  // or non-SRD options (an Artificer, a custom race) can match the paper sheet.
+  function handleDetailChange(field, value) {
+    if (field === "name") {
+      persistSheet({ ...sheet, name: value });
+    } else if (field === "race") {
+      persistSheet({ ...sheet, race: { ...(sheet.race ?? {}), name: value } });
+    } else if (field === "background") {
+      persistSheet({
+        ...sheet,
+        background: { ...(sheet.background ?? {}), name: value },
+      });
+    } else if (field === "class") {
+      persistSheet({
+        ...sheet,
+        class: { ...(sheet.class ?? {}), name: value },
+      });
+    } else if (field === "subclass") {
+      const { subclass: currentSubclass, ...rest } = sheet.class ?? {};
+      persistSheet({
+        ...sheet,
+        class: value
+          ? { ...rest, subclass: { ...(currentSubclass ?? {}), name: value } }
+          : rest,
+      });
+    } else if (field === "spellcastingAbility") {
+      const nextClass = { ...(sheet.class ?? {}) };
+      delete nextClass.spellcastingAbility;
+      if (value !== "default") {
+        nextClass.spellcastingAbility = value === "none" ? "" : value;
+      }
+      persistSheet({ ...sheet, class: nextClass });
+    }
+  }
+
+  function handleSaveToggle(ability) {
+    persistSheet({
+      ...sheet,
+      savingThrows: {
+        ...sheet.savingThrows,
+        [ability]: !sheet.savingThrows?.[ability],
+      },
+    });
   }
 
   function handleLevelChange(value) {
@@ -992,19 +1040,32 @@ function CharacterSheetPage() {
                           <span className="character-sheet__ability-modifier">
                             {formatModifier(modifier)}
                           </span>
-                          <span
+                          <button
+                            type="button"
                             className={`character-sheet__ability-save-badge${
                               isSaveProficient
                                 ? ""
                                 : " character-sheet__ability-save-badge--plain"
                             }`}
+                            aria-pressed={Boolean(isSaveProficient)}
+                            title={
+                              isSaveProficient
+                                ? "Proficient in this saving throw - click to remove"
+                                : "Not proficient - click to add"
+                            }
+                            onClick={() => handleSaveToggle(ability)}
                           >
                             Save {formatModifier(saveBonus)}
-                          </span>
+                          </button>
                         </div>
                       );
                     })}
                   </div>
+
+                  <p className="character-sheet__ability-hint">
+                    Tip: click a Save badge to mark that saving throw as
+                    proficient. It turns a solid color when it is on.
+                  </p>
                 </section>
 
                 <details className="character-sheet__glossary">
@@ -1148,6 +1209,19 @@ function CharacterSheetPage() {
                       userId={user.id}
                       characterId={sheet.id}
                       name={sheet.name}
+                      details={{
+                        race: sheet.race?.name ?? "",
+                        className: sheet.class?.name ?? "",
+                        subclass: sheet.class?.subclass?.name ?? "",
+                        background: sheet.background?.name ?? "",
+                        spellcastingAbility:
+                          sheet.class?.spellcastingAbility === undefined
+                            ? "default"
+                            : sheet.class.spellcastingAbility === ""
+                              ? "none"
+                              : sheet.class.spellcastingAbility,
+                      }}
+                      onDetailChange={handleDetailChange}
                       portraitUrl={sheet.portraitUrl}
                       onPortraitUpload={handlePortraitUpload}
                       backstory={sheet.backstory}

@@ -16,36 +16,37 @@ QuestKeeper looks warm and works well on a phone, but a first-time player hits d
 
 ## Fix tracker
 
-Status as of 2026-10-03. "Done" means changed in the working tree on branch `fix/new-player-quick-wins` (update to "Merged" when it ships).
+Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-player-quick-wins`, squash-merged 2026-10-03).
 
 | # | Change | Area | Effort | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Skip creation steps that don't apply (subrace, cantrip, subclass, spells); fix doubled subclass message | Creation | Small | Done |
-| 2 | Fix the Tiefling message and add Thaumaturgy to Tiefling sheets | Creation | Small | Done |
+| 1 | Skip creation steps that don't apply (subrace, cantrip, subclass, spells); fix doubled subclass message | Creation | Small | Merged |
+| 2 | Fix the Tiefling message and add Thaumaturgy to Tiefling sheets | Creation | Small | Merged |
 | 3 | Show racial traits on race details; class features and spellcasting on class details; split the glued "skill choices" sentence | Reference | Small | Open |
 | 4 | Show full spell details (components, school, classes, higher levels) by reusing the pop-up formatter | Reference | Small | Open |
-| 5 | Guide in the menu, 404 page, fix the 800-1100 px menu overflow | Navigation | Small | Done |
-| 6 | Tooltips and a glossary for AC, Init, Temp, Prof, Hit Dice, P, Save | Sheet | Small | Done (tooltips on Temp, AC, Init, Prof, Level; glossary panel covers the rest) |
+| 5 | Guide in the menu, 404 page, fix the 800-1100 px menu overflow | Navigation | Small | Merged |
+| 6 | Tooltips and a glossary for AC, Init, Temp, Prof, Hit Dice, P, Save | Sheet | Small | Merged (tooltips on Temp, AC, Init, Prof, Level; glossary panel covers the rest) |
 | 7 | Make Level read-only | Sheet | Small | Changed: kept editable (it is how people enter an existing character), added a tooltip pointing to Level Up |
-| 8 | Rename "Standard Array" to "Balanced set" and "Roll for Stats" to "Roll dice" | Creation | Small | Done |
+| 8 | Rename "Standard Array" to "Balanced set" and "Roll for Stats" to "Roll dice" | Creation | Small | Merged |
 | 9 | Edit links on the Review page that return to Review | Creation | Medium | Open |
-| 10 | Skill descriptions and a pick-these-if-unsure tip | Creation | Medium | Done (skills step now shows ability and a one-line description) |
+| 10 | Skill descriptions and a pick-these-if-unsure tip | Creation | Medium | Merged (skills step now shows ability and a one-line description) |
 | 11 | Tap-to-expand spell summaries on the starting spells step | Creation | Medium | Open |
 | 12 | Plain "good if you want..." blurbs on every race and class card | Creation, Reference | Medium | Open |
 | 13 | Spells page filters (level, class, school) and a scrolling or paged list | Reference | Medium | Open |
 | 14 | Set armor class from starting armor; add starting weapons to Actions; fill languages | Sheet | Medium | Open |
 | 15 | First-run prompts on each empty tab, with one-tap "add from inventory" | Sheet | Medium | Open |
-| 16 | Feedback link on detail pages | Reference | Small | Partly done (footer and About link to GitHub issues; not on each detail page) |
+| 16 | Feedback link on detail pages | Reference | Small | Partly merged (footer and About link to GitHub issues; not on each detail page) |
 | 17 | Table first-time hints, a DM prep checklist, a "How combat works" Guide page | Tables | Medium | Open |
 | 18 | Search by meaning ("sneak", "heal", "damage") | Search | Large | Open |
 | 19 | "Not sure?" class helper quiz | Creation | Large | Open |
 | 20 | Decide how to use the 2024 backgrounds in creation | Creation | Large (product decision) | Open |
-| 21 | Grey out skills the background already grants | Creation | Small | Done (background now comes before skills) |
-| 22 | Fix the 16 px sideways scroll on the phone sheet; show vitals before the skills list | Sheet | Small | Done |
+| 21 | Grey out skills the background already grants | Creation | Small | Merged (background now comes before skills) |
+| 22 | Fix the 16 px sideways scroll on the phone sheet; show vitals before the skills list | Sheet | Small | Merged |
 | 23 | Duplicate library entries: disable the button after the first click | Library | Small | Open |
 | 24 | Confirm step before deleting a table, character or library entry | Tables, Library | Small | Open |
 | 25 | Show join errors next to the Join form | Tables | Small | Open |
 | 26 | Default monster attack targets to the opposite side | Tables | Small | Open |
+| 27 | Let players retype name, race, class, subclass, background and spellcasting ability, and toggle saving throw proficiency, so homebrew and non-SRD characters match a paper sheet (Story tab and Save badges) | Sheet | Small | Done (2026-10-04, pending merge) |
 
 ## Reference pages (logged out)
 
