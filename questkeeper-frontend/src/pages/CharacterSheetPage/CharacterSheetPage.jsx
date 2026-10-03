@@ -62,6 +62,29 @@ function stripLeadingZeros(event) {
   }
 }
 
+const SHEET_TERMS = [
+  ["Hit Points", "Your health. At 0 you fall unconscious."],
+  ["Temp", "Temporary Hit Points. They absorb damage first and do not heal."],
+  ["AC", "Armor Class. An attack must roll this or higher to hit you."],
+  [
+    "Init",
+    "Initiative bonus. Added to your d20 roll to decide who goes first.",
+  ],
+  ["Speed", "How far you can move on your turn, in feet."],
+  ["Prof", "Proficiency bonus. Added to everything you are trained in."],
+  ["Hit Dice", "Dice you can spend on a short rest to heal."],
+  ["Save", "Saving throw bonus, used to resist spells and effects."],
+  ["P (skills)", "You are proficient, so you add your proficiency bonus."],
+  [
+    "Inspiration",
+    "A reward from your DM for great roleplay. Spend it for advantage.",
+  ],
+  [
+    "Long / Short Rest",
+    "A long rest restores HP and spell slots. A short rest lets you spend Hit Dice.",
+  ],
+];
+
 function CharacterSheetPage() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -648,7 +671,10 @@ function CharacterSheetPage() {
 
   return (
     <main className="character-sheet" onChange={stripLeadingZeros}>
-      <TurnBanner combat={tableCombat} onApplyDamage={handleApplyIncomingDamage} />
+      <TurnBanner
+        combat={tableCombat}
+        onApplyDamage={handleApplyIncomingDamage}
+      />
 
       <div className="character-sheet__content">
         {isLevelingUp && (
@@ -805,7 +831,12 @@ function CharacterSheetPage() {
                   </div>
 
                   <label className="character-sheet__vital">
-                    <span className="character-sheet__vital-label">Temp</span>
+                    <span
+                      className="character-sheet__vital-label"
+                      title="Temporary Hit Points: a buffer that soaks up damage first and does not heal."
+                    >
+                      Temp
+                    </span>
                     <input
                       type="number"
                       className="character-sheet__vital-input"
@@ -816,7 +847,12 @@ function CharacterSheetPage() {
                   </label>
 
                   <label className="character-sheet__vital">
-                    <span className="character-sheet__vital-label">AC</span>
+                    <span
+                      className="character-sheet__vital-label"
+                      title="Armor Class: an attack has to roll this number or higher to hit you."
+                    >
+                      AC
+                    </span>
                     <input
                       type="number"
                       className="character-sheet__vital-input"
@@ -827,7 +863,12 @@ function CharacterSheetPage() {
                   </label>
 
                   <label className="character-sheet__vital">
-                    <span className="character-sheet__vital-label">Init</span>
+                    <span
+                      className="character-sheet__vital-label"
+                      title="Initiative bonus: added to your d20 roll to decide who acts first."
+                    >
+                      Init
+                    </span>
                     <input
                       type="number"
                       className="character-sheet__vital-input"
@@ -852,14 +893,24 @@ function CharacterSheetPage() {
                   </div>
 
                   <div className="character-sheet__vital">
-                    <span className="character-sheet__vital-label">Prof</span>
+                    <span
+                      className="character-sheet__vital-label"
+                      title="Proficiency bonus: added to everything you are trained in. It grows as you level."
+                    >
+                      Prof
+                    </span>
                     <span className="character-sheet__vital-static">
                       +{proficiencyBonus}
                     </span>
                   </div>
 
                   <label className="character-sheet__vital">
-                    <span className="character-sheet__vital-label">Level</span>
+                    <span
+                      className="character-sheet__vital-label"
+                      title="Use the Level Up button to gain a level properly. This box is for fixing a mistake."
+                    >
+                      Level
+                    </span>
                     <input
                       type="number"
                       className="character-sheet__vital-input"
@@ -956,6 +1007,18 @@ function CharacterSheetPage() {
                   </div>
                 </section>
 
+                <details className="character-sheet__glossary">
+                  <summary>What do these boxes mean?</summary>
+                  <dl>
+                    {SHEET_TERMS.map(([term, meaning]) => (
+                      <div key={term}>
+                        <dt>{term}</dt>
+                        <dd>{meaning}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </details>
+
                 <div className="character-sheet__tabbar">
                   <CharacterSheetTabs
                     activeTab={activeTab}
@@ -996,13 +1059,15 @@ function CharacterSheetPage() {
                 </div>
 
                 <div className="character-sheet__main">
-                  {activeTab === "actions" && attackWith && tableCombat?.isMyTurn && (
-                    <AttackPanel
-                      attack={attackWith}
-                      combat={tableCombat}
-                      onClose={() => setAttackWith(null)}
-                    />
-                  )}
+                  {activeTab === "actions" &&
+                    attackWith &&
+                    tableCombat?.isMyTurn && (
+                      <AttackPanel
+                        attack={attackWith}
+                        combat={tableCombat}
+                        onClose={() => setAttackWith(null)}
+                      />
+                    )}
 
                   {activeTab === "actions" && (
                     <CharacterSheetActionsTab
