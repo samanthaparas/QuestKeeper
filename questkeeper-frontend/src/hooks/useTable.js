@@ -9,9 +9,11 @@ import {
   subscribeToTable,
 } from "../utils/tableStore";
 
-// Seconds between safety refreshes. Live updates arrive instantly when Supabase
-// Realtime is on; this keeps the page correct even if it is not.
+// Milliseconds between safety refreshes. Live updates arrive instantly when
+// Supabase Realtime is on; this keeps the page correct even if it is not.
+// During a fight it checks more often, so the DM sees attacks as they land.
 const POLL_MS = 8000;
+const POLL_COMBAT_MS = 3000;
 
 // Loads one table (members, combatants, and, for the DM, secret enemy HP) and
 // keeps it fresh while the page is open.
@@ -23,9 +25,12 @@ export function useTable(tableId) {
     combatants: [],
     enemyHp: {},
     events: [],
+    updatedAt: null,
     isLoading: true,
     error: "",
   });
+
+  const inCombat = Boolean(state.table?.combat_active);
 
   const refresh = useCallback(async () => {
     try {
@@ -46,7 +51,7 @@ export function useTable(tableId) {
         table.dm_id === user?.id
           ? await listEnemyHp(
               combatants
-                .filter((combatant) => combatant.kind === "monster")
+                .filter((combatant) => combatant.kind !== "player")
                 .map((combatant) => combatant.id),
             )
           : {};
@@ -57,6 +62,7 @@ export function useTable(tableId) {
         combatants,
         enemyHp,
         events,
+        updatedAt: new Date(),
         isLoading: false,
         error: "",
       });
@@ -72,13 +78,13 @@ export function useTable(tableId) {
   useEffect(() => {
     refresh();
     const stopListening = subscribeToTable(tableId, refresh);
-    const timer = setInterval(refresh, POLL_MS);
+    const timer = setInterval(refresh, inCombat ? POLL_COMBAT_MS : POLL_MS);
 
     return () => {
       stopListening();
       clearInterval(timer);
     };
-  }, [tableId, refresh]);
+  }, [tableId, refresh, inCombat]);
 
   return {
     ...state,

@@ -1,0 +1,41 @@
+.add-combatant {
+  display: grid;
+  gap: var(--qk-space-3);
+}
+
+.add-combatant__kinds,
+.add-combatant__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qk-space-2) var(--qk-space-4);
+}
+
+.add-combatant__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qk-space-2);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.add-combatant__field,
+.add-combatant__number {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: #fff;
+  color: var(--qk-text);
+  font: inherit;
+}
+
+.add-combatant__field--name {
+  flex: 1;
+  min-width: 200px;
+}
+
+.add-combatant__number {
+  width: 92px;
+  text-align: center;
+}

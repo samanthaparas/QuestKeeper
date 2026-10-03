@@ -36,6 +36,10 @@ function Navigation() {
         Tables
       </NavLink>
 
+      <NavLink className={linkClass} to="/library">
+        Monster Library
+      </NavLink>
+
       <NavLink className={linkClass} to="/about">
         About
       </NavLink>

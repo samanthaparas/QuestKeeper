@@ -102,6 +102,28 @@ describe("TurnBanner", () => {
     expect(switchTable).toHaveBeenCalledWith("t-old");
   });
 
+  it("lets a player end their own turn, and only on their turn", async () => {
+    const endTurn = vi.fn().mockResolvedValue(undefined);
+    const { rerender } = render(
+      <TurnBanner combat={makeCombat({ isMyTurn: false, endTurn })} onApplyDamage={vi.fn()} />,
+    );
+    expect(screen.queryByRole("button", { name: "End my turn" })).not.toBeInTheDocument();
+
+    rerender(<TurnBanner combat={makeCombat({ isMyTurn: true, endTurn })} onApplyDamage={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "End my turn" }));
+
+    expect(endTurn).toHaveBeenCalled();
+  });
+
+  it("shows why ending the turn failed", async () => {
+    const endTurn = vi.fn().mockRejectedValue(new Error("It is not your turn"));
+    render(<TurnBanner combat={makeCombat({ isMyTurn: true, endTurn })} onApplyDamage={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "End my turn" }));
+
+    expect(await screen.findByText("It is not your turn")).toBeInTheDocument();
+  });
+
   it("celebrates your own turn", () => {
     render(<TurnBanner combat={makeCombat({ isMyTurn: true })} onApplyDamage={vi.fn()} />);
 

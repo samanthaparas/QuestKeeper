@@ -12,6 +12,7 @@ import CharactersPage from "./pages/CharactersPage/CharactersPage";
 import CharacterSheetPage from "./pages/CharacterSheetPage/CharacterSheetPage";
 import TablesPage from "./pages/TablesPage/TablesPage";
 import TablePage from "./pages/TablePage/TablePage";
+import LibraryPage from "./pages/LibraryPage/LibraryPage";
 import Guide from "./pages/Guide/Guide";
 import AuthPage from "./pages/AuthPage/AuthPage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
@@ -65,6 +66,14 @@ function App() {
           element={
             <ProtectedRoute>
               <TablePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/library"
+          element={
+            <ProtectedRoute>
+              <LibraryPage />
             </ProtectedRoute>
           }
         />

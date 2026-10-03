@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useTableTurn } from "./useTableTurn";
-import { getActiveCombatForCharacter } from "../utils/tableStore";
+import { endMyTurn, getActiveCombatForCharacter } from "../utils/tableStore";
 
 vi.mock("../utils/supabaseClient", () => ({ supabase: {} }));
 vi.mock("../context/useAuth", () => ({ useAuth: () => ({ user: { id: "u1" } }) }));
 vi.mock("../utils/tableStore", () => ({
+  endMyTurn: vi.fn().mockResolvedValue(undefined),
   getActiveCombatForCharacter: vi.fn(),
   subscribeToTable: vi.fn(() => () => {}),
 }));
@@ -84,6 +85,21 @@ describe("useTableTurn", () => {
     const { result } = renderHook(() => useTableTurn("char-1"));
 
     await waitFor(() => expect(result.current?.tableName).toBe("Sam's Silly Garden Chase"));
+  });
+
+  it("ends the turn at the table being followed, then refreshes", async () => {
+    const { result } = renderHook(() => useTableTurn("char-1"));
+    await waitFor(() => expect(result.current).not.toBeNull());
+    const callsBefore = getActiveCombatForCharacter.mock.calls.length;
+
+    await act(async () => {
+      await result.current.endTurn();
+    });
+
+    expect(endMyTurn).toHaveBeenCalledWith("t-new");
+    await waitFor(() =>
+      expect(getActiveCombatForCharacter.mock.calls.length).toBeGreaterThan(callsBefore),
+    );
   });
 
   it("keeps each character's choice separate", async () => {

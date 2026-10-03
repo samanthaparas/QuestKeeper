@@ -14,6 +14,15 @@ function TurnBanner({ combat, onApplyDamage }) {
   const { now, next, isMyTurn, latestEvent, damageRequests } = combat;
   const isNextMine = next && combat.myCombatant && next.id === combat.myCombatant.id;
 
+  async function handleEndTurn() {
+    setError("");
+    try {
+      await combat.endTurn();
+    } catch (endError) {
+      setError(endError.message ?? "Could not end your turn.");
+    }
+  }
+
   async function handleDamageRequest(request, shouldApply) {
     setError("");
     try {
@@ -67,6 +76,11 @@ function TurnBanner({ combat, onApplyDamage }) {
           <span className="turn-banner__next">
             {isNextMine ? "You're up next" : `Next: ${next.name}`}
           </span>
+        )}
+        {isMyTurn && combat.endTurn && (
+          <Button variant="secondary" className="turn-banner__end" onClick={handleEndTurn}>
+            End my turn
+          </Button>
         )}
         {latestEvent && (
           <span className="turn-banner__event">{latestEvent.message}</span>

@@ -193,6 +193,119 @@ export async function monsterAttackRoll({ attackerId, targetUserId, attackName, 
   );
 }
 
+// --- DM toolkit: monsters, allies, stat blocks ------------------------------
+
+// kind is "monster" (an enemy) or "ally" (a friendly NPC, or a party member the
+// DM tracks by hand). The stat block ({ attacks: [{ name, toHit, damage }],
+// notes }) and AC/HP stay hidden from players.
+export async function addCombatant({
+  tableId,
+  name,
+  maxHp,
+  kind = "monster",
+  initiative = null,
+  armorClass = null,
+  statBlock = {},
+}) {
+  return unwrap(
+    await supabase.rpc("add_combatant", {
+      p_table_id: tableId,
+      p_name: name,
+      p_max_hp: maxHp,
+      p_kind: kind,
+      p_initiative: initiative,
+      p_armor_class: armorClass,
+      p_stat_block: statBlock,
+    }),
+  );
+}
+
+export async function editCombatant({ id, name, maxHp, currentHp, armorClass, statBlock = null }) {
+  unwrap(
+    await supabase.rpc("edit_combatant", {
+      p_combatant_id: id,
+      p_name: name,
+      p_max_hp: maxHp,
+      p_current_hp: currentHp,
+      p_armor_class: armorClass,
+      p_stat_block: statBlock,
+    }),
+  );
+}
+
+// A free-form line in the activity log from the DM.
+export async function dmLog(tableId, message) {
+  unwrap(await supabase.rpc("dm_log", { p_table_id: tableId, p_message: message }));
+}
+
+// Any monster or ally attacks any other fighter. Returns { result, ac } where
+// result is "hit", "crit", "miss", or "unknown" (the target has no AC on file,
+// so the DM calls it). ac is only given when the target is a player.
+export async function dmAttackRoll({ attackerId, targetId, attackName, natural, bonus }) {
+  return unwrap(
+    await supabase.rpc("dm_attack_roll", {
+      p_attacker_id: attackerId,
+      p_target_id: targetId,
+      p_attack_name: attackName,
+      p_natural: natural,
+      p_bonus: bonus,
+    }),
+  );
+}
+
+// A player passes the turn to the next fighter in the initiative order.
+export async function endMyTurn(tableId) {
+  unwrap(await supabase.rpc("end_my_turn", { p_table_id: tableId }));
+}
+
+// --- Monster library (each user's own saved monsters and NPCs) ---------------
+
+export async function listTemplates() {
+  return unwrap(
+    await supabase
+      .from("monster_templates")
+      .select("*")
+      .order("name", { ascending: true }),
+  );
+}
+
+export async function createTemplate({ name, kind, maxHp, armorClass, statBlock }) {
+  return unwrap(
+    await supabase
+      .from("monster_templates")
+      .insert({
+        name: name.trim(),
+        kind,
+        max_hp: maxHp,
+        armor_class: armorClass,
+        stat_block: statBlock,
+      })
+      .select()
+      .single(),
+  );
+}
+
+export async function updateTemplate(id, { name, kind, maxHp, armorClass, statBlock }) {
+  return unwrap(
+    await supabase
+      .from("monster_templates")
+      .update({
+        name: name.trim(),
+        kind,
+        max_hp: maxHp,
+        armor_class: armorClass,
+        stat_block: statBlock,
+      })
+      .eq("id", id)
+      .select()
+      .single(),
+  );
+}
+
+export async function deleteTemplate(id) {
+  unwrap(await supabase.from("monster_templates").delete().eq("id", id));
+}
+
 // Cancels a player's latest attack; any damage it dealt is put back.
 export async function dmDenyAttack(attackerId) {
   unwrap(

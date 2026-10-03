@@ -1,0 +1,51 @@
+.combatant-edit {
+  flex-basis: 100%;
+  display: grid;
+  gap: var(--qk-space-3);
+  padding-top: var(--qk-space-3);
+  border-top: 1px dashed var(--qk-border);
+}
+
+.combatant-edit__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--qk-space-2) var(--qk-space-4);
+}
+
+.combatant-edit__label {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--qk-text-muted);
+}
+
+.combatant-edit__field,
+.combatant-edit__number {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: #fff;
+  color: var(--qk-text);
+  font: inherit;
+}
+
+.combatant-edit__field {
+  flex: 1;
+  min-width: 180px;
+}
+
+.combatant-edit__number {
+  width: 92px;
+  text-align: center;
+}
+
+.combatant-edit__error {
+  margin: 0;
+  padding: var(--qk-space-2) var(--qk-space-3);
+  border: 1px solid var(--qk-danger);
+  border-radius: var(--qk-radius-control);
+  color: var(--qk-danger);
+}
