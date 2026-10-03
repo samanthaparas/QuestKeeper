@@ -46,6 +46,18 @@ function About() {
           </a>
           .
         </p>
+        <p className="about__credits-text">
+          Found a mistake or something missing? Please{" "}
+          <a
+            className="about__link"
+            href="https://github.com/samanthaparas/QuestKeeper/issues/new"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            tell us on GitHub
+          </a>
+          .
+        </p>
         <p className="about__credits-note">
           QuestKeeper is an independent fan project. It is not affiliated with
           or endorsed by Wizards of the Coast.

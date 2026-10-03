@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Link } from "react-router-dom";
 import Header from "./components/Header/Header";
 import Home from "./pages/Home/Home";
 import About from "./pages/About/About";
@@ -16,6 +16,20 @@ import LibraryPage from "./pages/LibraryPage/LibraryPage";
 import Guide from "./pages/Guide/Guide";
 import AuthPage from "./pages/AuthPage/AuthPage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
+
+function NotFound() {
+  return (
+    <main className="search-page">
+      <div className="search-page__content">
+        <h1 className="search-page__title">We couldn't find that page</h1>
+        <p className="search-page__description">
+          The link may be old or mistyped. <Link to="/">Head back home</Link> or{" "}
+          <Link to="/guide">start with the beginner guide</Link>.
+        </p>
+      </div>
+    </main>
+  );
+}
 
 function App() {
   return (
@@ -80,6 +94,7 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/guide" element={<Guide />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </>
   );
