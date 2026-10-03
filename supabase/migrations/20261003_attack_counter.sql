@@ -1,6 +1,8 @@
 -- QuestKeeper: count attacks per turn, and let the DM deny the latest attack.
 --
--- Run AFTER 20261003_combat_actions.sql. Run once in the Supabase SQL Editor.
+-- Run AFTER 20261003_combat_actions.sql in the Supabase SQL Editor.
+-- Safe to run more than once: it only adds what is missing and replaces the
+-- functions, so re-running it never causes harm.
 --
 -- There is deliberately NO limit on attacks (Extra Attack, bonus actions, and
 -- so on all exist). The counter is just visible to everyone, and the DM can
@@ -11,9 +13,9 @@
 -- ---------------------------------------------------------------------------
 
 alter table public.combatants
-  add column attacks_this_turn int not null default 0 check (attacks_this_turn >= 0),
-  add column last_attack_target uuid references public.combatants (id) on delete set null,
-  add column last_attack_damage int not null default 0 check (last_attack_damage >= 0);
+  add column if not exists attacks_this_turn int not null default 0 check (attacks_this_turn >= 0),
+  add column if not exists last_attack_target uuid references public.combatants (id) on delete set null,
+  add column if not exists last_attack_damage int not null default 0 check (last_attack_damage >= 0);
 
 -- A new turn (or a new/ended fight) starts everyone's counter and attack state fresh.
 create or replace function public.reset_attack_counters()
@@ -35,6 +37,8 @@ end;
 $$;
 
 revoke execute on function public.reset_attack_counters() from public, anon, authenticated;
+
+drop trigger if exists game_tables_reset_attack_counters on public.game_tables;
 
 create trigger game_tables_reset_attack_counters
   after update on public.game_tables
@@ -196,3 +200,6 @@ $$;
 
 revoke execute on function public.dm_deny_attack(uuid) from public, anon;
 grant execute on function public.dm_deny_attack(uuid) to authenticated;
+
+-- Tell the API to notice the new function and columns right away.
+notify pgrst, 'reload schema';
