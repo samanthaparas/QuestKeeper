@@ -1,0 +1,61 @@
+.monster-attack {
+  flex-basis: 100%;
+  display: grid;
+  gap: var(--qk-space-3);
+  padding-top: var(--qk-space-3);
+  border-top: 1px dashed var(--qk-terracotta);
+}
+
+.monster-attack__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qk-space-2) var(--qk-space-3);
+}
+
+.monster-attack__field,
+.monster-attack__number {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: #fff;
+  color: var(--qk-text);
+  font: inherit;
+}
+
+.monster-attack__field {
+  flex: 1;
+  min-width: 140px;
+}
+
+.monster-attack__number {
+  width: 84px;
+  text-align: center;
+}
+
+.monster-attack__or,
+.monster-attack__note {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.monster-attack__result {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.monster-attack__rolled {
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.monster-attack__error {
+  margin: 0;
+  padding: var(--qk-space-2) var(--qk-space-3);
+  border: 1px solid var(--qk-danger);
+  border-radius: var(--qk-radius-control);
+  color: var(--qk-danger);
+}

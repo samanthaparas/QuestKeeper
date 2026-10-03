@@ -51,15 +51,19 @@ export async function getCharacter(id) {
 
 export async function saveCharacter(sheet) {
   const { id, ...rest } = sheet;
+  // getSession reads the saved session locally. getUser would make a network
+  // call to the login service on every save, which counts toward its rate limit.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) throw new Error("You are signed out. Log in to save changes.");
 
   const { data, error } = await supabase
     .from("characters")
     .upsert({
       id,
-      user_id: user.id,
+      user_id: session.user.id,
       data: rest,
       updated_at: new Date().toISOString(),
     })

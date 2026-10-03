@@ -7,6 +7,7 @@ import "./TurnBanner.css";
 // `combat` comes from useTableTurn; `onApplyDamage` lowers this character's HP.
 function TurnBanner({ combat, onApplyDamage }) {
   const [error, setError] = useState("");
+  const [appliedNote, setAppliedNote] = useState("");
 
   if (!combat) return null;
 
@@ -18,7 +19,7 @@ function TurnBanner({ combat, onApplyDamage }) {
     try {
       // Mark it handled first, so tapping twice can never apply it twice.
       const amount = await resolveDamageRequest(request.id, shouldApply);
-      if (shouldApply) onApplyDamage(amount);
+      setAppliedNote(shouldApply ? (onApplyDamage(amount) ?? "") : "");
       combat.refresh();
     } catch (requestError) {
       setError(requestError.message ?? "Could not update that.");
@@ -32,6 +33,26 @@ function TurnBanner({ combat, onApplyDamage }) {
         role="status"
         aria-live="polite"
       >
+        {combat.tableName && (
+          <span className="turn-banner__table">
+            Playing at <strong>{combat.tableName}</strong>
+          </span>
+        )}
+        {combat.activeTables?.length > 1 && (
+          <label className="turn-banner__switch">
+            <span className="turn-banner__switch-label">Switch table</span>
+            <select
+              value={combat.table.id}
+              onChange={(event) => combat.switchTable(event.target.value)}
+            >
+              {combat.activeTables.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <span className="turn-banner__round">Round {combat.round}</span>
         <span className="turn-banner__now">
           {isMyTurn ? "It's your turn!" : now ? `Now: ${now.name}` : "Combat has started"}
@@ -65,6 +86,12 @@ function TurnBanner({ combat, onApplyDamage }) {
           </Button>
         </div>
       ))}
+
+      {appliedNote && (
+        <p className="turn-banner__applied" role="status">
+          {appliedNote}
+        </p>
+      )}
 
       {error && (
         <p className="turn-banner__error" role="alert">

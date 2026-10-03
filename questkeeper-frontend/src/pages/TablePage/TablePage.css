@@ -126,6 +126,11 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  /* Roomy for a normal party, but a long initiative list scrolls inside the
+     box instead of pushing the rest of the page far down. */
+  max-height: 460px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .table-page__row {
@@ -311,4 +316,65 @@
   background-color: var(--qk-brass-soft);
   font-size: 13px;
   font-weight: 700;
+}
+
+.table-page__sheet-link {
+  align-self: center;
+  text-decoration: none;
+}
+
+.table-page__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.table-page__tab {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: #fff;
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-page__tab--active {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: #fff;
+}
+
+/* An enemy with an attack waiting on the DM's call stands out in its own row. */
+.table-page__row--awaiting {
+  border: 2px solid var(--qk-warning);
+  background-color: var(--qk-brass-soft);
+  box-shadow: 0 0 0 3px rgba(196, 139, 56, 0.25);
+}
+
+.table-page__row-call {
+  flex-basis: 100%;
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--qk-brass);
+}
+
+.table-page__log--expanded {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.table-page__log-toggle {
+  justify-self: start;
+}
+
+.table-page__subtitle--order {
+  margin: 0;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 20px;
 }

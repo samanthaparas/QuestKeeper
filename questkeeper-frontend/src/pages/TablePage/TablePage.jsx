@@ -28,6 +28,7 @@ import {
 } from "../../utils/tableStore";
 import Button from "../../components/Button/Button";
 import CharacterSummaryCard from "../../components/CharacterSummaryCard/CharacterSummaryCard";
+import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
@@ -42,14 +43,26 @@ function CombatantRow({
   onSetInitiative,
   onDamage,
   onDeny,
+  onResolve,
+  pendingCalls = [],
+  combatActive = false,
+  players = [],
+  tableId,
+  onChanged,
   onRemove,
 }) {
   const [amount, setAmount] = useState("");
   const [initiativeInput, setInitiativeInput] = useState("");
   const [rollNote, setRollNote] = useState("");
+  const [showAttack, setShowAttack] = useState(false);
 
   const isMonster = combatant.kind === "monster";
-  const canEditInitiative = isDm || isMe;
+  // Initiative is locked once combat starts. The one exception is someone who
+  // joined mid-fight and has none yet, otherwise they would never get a turn.
+  const canEditInitiative =
+    (isDm || isMe) && (!combatActive || combatant.initiative === null);
+  const canAttack =
+    isDm && isMonster && combatActive && combatant.status !== "down" && players.length > 0;
 
   function submitInitiative(event) {
     event.preventDefault();
@@ -76,7 +89,7 @@ function CombatantRow({
     <li
       className={`table-page__row${isCurrent ? " table-page__row--current" : ""}${
         combatant.status === "down" ? " table-page__row--down" : ""
-      }`}
+      }${pendingCalls.length > 0 ? " table-page__row--awaiting" : ""}`}
     >
       <div className="table-page__row-main">
         <span className="table-page__initiative">
@@ -89,7 +102,7 @@ function CombatantRow({
             {isMonster && <span className="table-page__tag table-page__tag--monster">Enemy</span>}
           </span>
 
-          {!isMonster && combatant.attacks_this_turn > 0 && (
+          {combatant.attacks_this_turn > 0 && (
             <span className="table-page__attack-count">
               {combatant.attacks_this_turn}{" "}
               {combatant.attacks_this_turn === 1 ? "attack" : "attacks"} this turn
@@ -156,6 +169,17 @@ function CombatantRow({
           </div>
         )}
 
+        {canAttack && (
+          <Button
+            type="button"
+            variant="secondary"
+            aria-expanded={showAttack}
+            onClick={() => setShowAttack((open) => !open)}
+          >
+            Attack
+          </Button>
+        )}
+
         {isDm && !isMonster && combatant.attacks_this_turn > 0 && combatant.last_attack_target && (
           <Button type="button" variant="secondary" onClick={() => onDeny(combatant)}>
             Deny last attack
@@ -168,6 +192,49 @@ function CombatantRow({
           </Button>
         )}
       </div>
+
+      {canAttack && showAttack && (
+        <MonsterAttackPanel
+          attacker={combatant}
+          players={players}
+          tableId={tableId}
+          onChanged={onChanged}
+          onClose={() => setShowAttack(false)}
+        />
+      )}
+
+      {isDm && pendingCalls.length > 0 && (
+        <div className="table-page__row-call" role="alert">
+          {pendingCalls.map((attacker) => (
+            <div className="table-page__call" key={attacker.id}>
+              <span>
+                <strong>{attacker.name}</strong> attacked {combatant.name} with{" "}
+                {attacker.attack_name ?? "an attack"}
+                {attacker.attack_natural != null && (
+                  <>
+                    {" "}and rolled{" "}
+                    <strong>{attacker.attack_natural + (attacker.attack_bonus ?? 0)}</strong>{" "}
+                    ({attacker.attack_natural} {(attacker.attack_bonus ?? 0) >= 0 ? "+" : "-"}{" "}
+                    {Math.abs(attacker.attack_bonus ?? 0)})
+                  </>
+                )}
+                . Does it hit?
+              </span>
+              <div className="table-page__inline-form">
+                <Button type="button" onClick={() => onResolve(attacker, true)}>
+                  Hit
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => onResolve(attacker, false)}>
+                  Miss
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => onDeny(attacker)}>
+                  Deny
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </li>
   );
 }
@@ -187,6 +254,9 @@ function TablePage() {
   const [monsterHp, setMonsterHp] = useState("");
   const [monsterInitiative, setMonsterInitiative] = useState("");
   const [monsterAc, setMonsterAc] = useState("");
+  const [showMonsterForm, setShowMonsterForm] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState("");
+  const [showAllEvents, setShowAllEvents] = useState(false);
 
   const [hitSource, setHitSource] = useState("");
   const [hitTargetUserId, setHitTargetUserId] = useState("");
@@ -273,6 +343,17 @@ function TablePage() {
   const players = combatants.filter((combatant) => combatant.kind === "player");
   const monsters = combatants.filter((combatant) => combatant.kind === "monster");
   const awaitingCall = players.filter((player) => player.attack_state === "awaiting_dm");
+  // Calls normally show inside the monster's own row; this catches any attack
+  // whose target is missing so it can never get stuck.
+  const orphanCalls = awaitingCall.filter(
+    (player) => !monsters.some((monster) => monster.id === player.attack_target),
+  );
+  const visibleEvents = showAllEvents ? events : events.slice(0, 5);
+  // Once a fight starts, the monster form folds away to save room. The DM can
+  // still open it from the Combat header whenever they need another monster.
+  const monsterFormOpen = !table.combat_active || showMonsterForm;
+  const selectedSheet =
+    characters.find((sheet) => sheet.id === selectedPlayerId) ?? characters[0];
 
   async function handleAddMonster(event) {
     event.preventDefault();
@@ -288,6 +369,7 @@ function TablePage() {
     setMonsterHp("");
     setMonsterInitiative("");
     setMonsterAc("");
+    setShowMonsterForm(false);
   }
 
   async function handleHitPlayer(event) {
@@ -329,6 +411,12 @@ function TablePage() {
         }
         onDamage={(target, amount) => run(() => applyDamage(target.id, amount))}
         onDeny={denyAttack}
+        pendingCalls={awaitingCall.filter((player) => player.attack_target === combatant.id)}
+        combatActive={table.combat_active}
+        players={players}
+        tableId={table.id}
+        onChanged={refresh}
+        onResolve={(attacker, hit) => run(() => dmResolveAttack(attacker.id, hit))}
         onRemove={(target) => {
           if (target.kind === "player") {
             if (window.confirm(`Remove ${target.name} from the table?`)) {
@@ -361,6 +449,15 @@ function TablePage() {
               <span className="table-page__code-value">{table.join_code}</span>
             </div>
           )}
+
+          {!isDm && myMember?.character_id && (
+            <Link
+              className="qk-button qk-button--primary table-page__sheet-link"
+              to={`/characters/${myMember.character_id}`}
+            >
+              Open my character sheet
+            </Link>
+          )}
         </header>
 
         {(error || actionError) && (
@@ -377,7 +474,7 @@ function TablePage() {
               <p className="table-page__turn-line">
                 <strong>Round {table.round}</strong>
                 {now && <> · Now: <strong>{now.name}</strong></>}
-                {now && now.kind === "player" && now.attacks_this_turn > 0 && (
+                {now && now.attacks_this_turn > 0 && (
                   <> ({now.attacks_this_turn} {now.attacks_this_turn === 1 ? "attack" : "attacks"})</>
                 )}
                 {next && <> · Next: {next.name}</>}
@@ -388,6 +485,15 @@ function TablePage() {
 
             {isDm && (
               <div className="table-page__combat-buttons">
+                {table.combat_active && (
+                  <Button
+                    variant="secondary"
+                    aria-expanded={showMonsterForm}
+                    onClick={() => setShowMonsterForm((open) => !open)}
+                  >
+                    {showMonsterForm ? "Hide monster form" : "+ Add monster"}
+                  </Button>
+                )}
                 {!table.combat_active ? (
                   <Button
                     disabled={!canStart}
@@ -435,7 +541,14 @@ function TablePage() {
             </p>
           )}
 
-          <ol className="table-page__order">{ordered.map(renderRow)}</ol>
+          {ordered.length > 0 && (
+            <h3 className="table-page__subtitle table-page__subtitle--order">
+              Initiative order
+            </h3>
+          )}
+          <ol className="table-page__order" aria-label="Initiative order">
+            {ordered.map(renderRow)}
+          </ol>
 
           {waiting.length > 0 && (
             <>
@@ -451,7 +564,7 @@ function TablePage() {
           )}
         </section>
 
-        {isDm && (
+        {isDm && monsterFormOpen && (
           <section className="table-page__section">
             <h2 className="table-page__section-title">Add a monster</h2>
             <p className="table-page__hint">
@@ -500,10 +613,10 @@ function TablePage() {
           </section>
         )}
 
-        {isDm && awaitingCall.length > 0 && (
+        {isDm && orphanCalls.length > 0 && (
           <section className="table-page__section table-page__section--alert" role="alert">
             <h2 className="table-page__section-title">Waiting for your call</h2>
-            {awaitingCall.map((player) => {
+            {orphanCalls.map((player) => {
               const target = combatants.find((c) => c.id === player.attack_target);
               return (
                 <div className="table-page__call" key={player.id}>
@@ -591,21 +704,53 @@ function TablePage() {
                 cannot edit any sheet.
               </p>
             ) : (
-              <div className="table-page__characters">
-                {characters.map((sheet) => (
-                  <CharacterSummaryCard key={sheet.id} sheet={sheet} />
-                ))}
-              </div>
+              <>
+                <div className="table-page__tabs" role="tablist" aria-label="Players">
+                  {characters.map((sheet) => (
+                    <button
+                      key={sheet.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={selectedSheet?.id === sheet.id}
+                      className={`table-page__tab${
+                        selectedSheet?.id === sheet.id ? " table-page__tab--active" : ""
+                      }`}
+                      onClick={() => setSelectedPlayerId(sheet.id)}
+                    >
+                      {sheet.name}
+                    </button>
+                  ))}
+                  {characters.length > 1 && (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={selectedPlayerId === "all"}
+                      className={`table-page__tab${
+                        selectedPlayerId === "all" ? " table-page__tab--active" : ""
+                      }`}
+                      onClick={() => setSelectedPlayerId("all")}
+                    >
+                      Show all
+                    </button>
+                  )}
+                </div>
+
+                <div className="table-page__characters">
+                  {(selectedPlayerId === "all" ? characters : [selectedSheet]).map(
+                    (sheet) => (
+                      <CharacterSummaryCard key={sheet.id} sheet={sheet} />
+                    ),
+                  )}
+                </div>
+              </>
             )}
           </section>
         )}
 
         {!isDm && myMember && table.combat_active && (
           <p className="table-page__hint">
-            Attacks and damage happen on your character sheet.{" "}
-            {myMember.character_id && (
-              <Link to={`/characters/${myMember.character_id}`}>Open my sheet</Link>
-            )}
+            Attacks and damage happen on your character sheet. Use the button at the
+            top to open it.
           </p>
         )}
 
@@ -614,11 +759,24 @@ function TablePage() {
           {events.length === 0 ? (
             <p className="table-page__empty">Nothing has happened yet.</p>
           ) : (
-            <ul className="table-page__log">
-              {events.map((entry) => (
-                <li key={entry.id}>{entry.message}</li>
-              ))}
-            </ul>
+            <>
+              <ul
+                className={`table-page__log${showAllEvents ? " table-page__log--expanded" : ""}`}
+              >
+                {visibleEvents.map((entry) => (
+                  <li key={entry.id}>{entry.message}</li>
+                ))}
+              </ul>
+              {events.length > 5 && (
+                <Button
+                  variant="secondary"
+                  className="table-page__log-toggle"
+                  onClick={() => setShowAllEvents((open) => !open)}
+                >
+                  {showAllEvents ? "Show fewer" : `Show all ${events.length}`}
+                </Button>
+              )}
+            </>
           )}
         </section>
 

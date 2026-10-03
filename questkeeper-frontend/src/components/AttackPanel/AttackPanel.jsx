@@ -23,7 +23,7 @@ function AttackPanel({ attack, combat, onClose }) {
 
   const [targetId, setTargetId] = useState(targets[0]?.id ?? "");
   const [physicalRoll, setPhysicalRoll] = useState("");
-  const [result, setResult] = useState("");
+  const [lastRoll, setLastRoll] = useState(null);
   const [damageRolled, setDamageRolled] = useState(null);
   const [physicalDamage, setPhysicalDamage] = useState("");
   const [error, setError] = useState("");
@@ -33,6 +33,17 @@ function AttackPanel({ attack, combat, onClose }) {
   const canRollDamage = parseDamage(attack.damage) !== null;
   const hasHit = me.attack_state === "hit";
   const isAwaitingDm = me.attack_state === "awaiting_dm";
+  // The outcome follows the live state, so "Waiting for the DM" turns into
+  // "That hits!" the moment the DM calls it.
+  const liveOutcome = hasHit
+    ? me.attack_crit
+      ? RESULT_TEXT.crit
+      : RESULT_TEXT.hit
+    : isAwaitingDm
+      ? RESULT_TEXT.awaiting
+      : lastRoll?.outcome === "miss"
+        ? RESULT_TEXT.miss
+        : "";
   const effectiveTargetId = targets.some((target) => target.id === targetId)
     ? targetId
     : (targets[0]?.id ?? "");
@@ -58,7 +69,10 @@ function AttackPanel({ attack, combat, onClose }) {
         natural,
         bonus,
       });
-      setResult(`Rolled ${natural} ${bonus >= 0 ? "+" : "-"} ${Math.abs(bonus)} = ${natural + bonus}. ${RESULT_TEXT[outcome]}`);
+      setLastRoll({
+        summary: `Rolled ${natural} ${bonus >= 0 ? "+" : "-"} ${Math.abs(bonus)} = ${natural + bonus}.`,
+        outcome,
+      });
       setPhysicalRoll("");
       combat.refresh();
     });
@@ -171,7 +185,11 @@ function AttackPanel({ attack, combat, onClose }) {
         </>
       )}
 
-      {result && <p className="attack-panel__result">{result}</p>}
+      {lastRoll && (
+        <p className="attack-panel__result">
+          {lastRoll.summary} {liveOutcome}
+        </p>
+      )}
 
       {isAwaitingDm && (
         <p className="attack-panel__note">
@@ -181,8 +199,8 @@ function AttackPanel({ attack, combat, onClose }) {
 
       {hasHit && (
         <div className="attack-panel__damage">
-          <p className="attack-panel__result">
-            {me.attack_crit ? "Critical hit!" : "That hits!"} Now roll damage
+          <p className="attack-panel__note">
+            Now roll damage
             {attack.damage ? ` (${attack.damage}${me.attack_crit ? ", dice doubled" : ""})` : ""}.
           </p>
 
