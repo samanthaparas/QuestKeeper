@@ -22,8 +22,8 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | --- | --- | --- | --- | --- |
 | 1 | Skip creation steps that don't apply (subrace, cantrip, subclass, spells); fix doubled subclass message | Creation | Small | Merged |
 | 2 | Fix the Tiefling message and add Thaumaturgy to Tiefling sheets | Creation | Small | Merged |
-| 3 | Show racial traits on race details; class features and spellcasting on class details; split the glued "skill choices" sentence | Reference | Small | Done (2026-10-05, pending merge): race pages show traits, languages, age and size; class pages show level 1 features, later features, spellcasting and one line per skill choice; saving throws no longer listed twice |
-| 4 | Show full spell details (components, school, classes, higher levels) by reusing the pop-up formatter | Reference | Small | Done (2026-10-05, pending merge): spell pages show school, components, concentration, ritual, classes, every paragraph, higher levels and tables |
+| 3 | Show racial traits on race details; class features and spellcasting on class details; split the glued "skill choices" sentence | Reference | Small | Merged (2026-10-05): race pages show traits, languages, age and size; class pages show level 1 features, later features, spellcasting and one line per skill choice; saving throws no longer listed twice |
+| 4 | Show full spell details (components, school, classes, higher levels) by reusing the pop-up formatter | Reference | Small | Merged (2026-10-05): spell pages show school, components, concentration, ritual, classes, every paragraph, higher levels and tables |
 | 5 | Guide in the menu, 404 page, fix the 800-1100 px menu overflow | Navigation | Small | Merged |
 | 6 | Tooltips and a glossary for AC, Init, Temp, Prof, Hit Dice, P, Save | Sheet | Small | Merged (tooltips on Temp, AC, Init, Prof, Level; glossary panel covers the rest) |
 | 7 | Make Level read-only | Sheet | Small | Changed: kept editable (it is how people enter an existing character), added a tooltip pointing to Level Up |
