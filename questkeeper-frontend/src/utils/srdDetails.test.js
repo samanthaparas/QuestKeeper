@@ -10,6 +10,36 @@ vi.mock("./api", () => ({
     { index: "aura-of-protection", name: "Aura of Protection" },
   ]),
   getSubclassFeatures: vi.fn(),
+  getRaceDetails: vi.fn().mockResolvedValue({
+    index: "tiefling",
+    name: "Tiefling",
+    speed: 30,
+    size: "Medium",
+    size_description: "About the same size as humans.",
+    age: "Mature like humans.",
+    alignment: "Often chaotic.",
+    ability_bonuses: [
+      { ability_score: { name: "INT" }, bonus: 1 },
+      { ability_score: { name: "CHA" }, bonus: 2 },
+    ],
+    languages: [{ name: "Common" }, { name: "Infernal" }],
+    traits: [{ index: "infernal-legacy", name: "Infernal Legacy" }, { index: "darkvision", name: "Darkvision" }],
+    subraces: [],
+  }),
+  getClassDetails: vi.fn().mockResolvedValue({
+    index: "paladin",
+    name: "Paladin",
+    hit_die: 10,
+    saving_throws: [{ name: "WIS" }, { name: "CHA" }],
+    proficiencies: [{ name: "All armor" }, { name: "Saving Throw: WIS" }],
+    proficiency_choices: [{ desc: "Choose two from Athletics and Insight" }],
+    starting_equipment: [{ equipment: { name: "Chain Mail" }, quantity: 1 }],
+    subclasses: [{ name: "Devotion" }],
+  }),
+  getClassLevel: vi.fn().mockResolvedValue({
+    features: [{ index: "divine-sense", name: "Divine Sense" }],
+    spellcasting: undefined,
+  }),
   getEquipmentDetails: vi.fn((index) =>
     index === "mystery"
       ? Promise.reject(new Error("nope"))
@@ -55,6 +85,12 @@ import {
   buildFeatureChoices,
   loadFeatureEntries,
   loadStartingGear,
+  loadRaceDetails,
+  mapRaceToPanel,
+  loadClassDetails,
+  mapClassToPanel,
+  describeClassSpellcasting,
+  mapSpellToPanel,
 } from "./srdDetails";
 describe("normalizeItemName", () => {
   it("ignores capitals and extra spaces", () => {
@@ -730,6 +766,130 @@ describe("loadStartingGear", () => {
     expect(gear).toEqual([
       { index: "dagger", name: "dagger", quantity: 2 },
       { index: "chain-mail", name: "chain-mail", quantity: 1 },
+    ]);
+  });
+});
+
+describe("race detail panel", () => {
+  it("loads the full text of every trait and shows languages, age and size", async () => {
+    const panel = mapRaceToPanel(await loadRaceDetails("tiefling"));
+
+    expect(panel).toMatchObject({
+      name: "Tiefling",
+      abilityBonuses: "INT +1, CHA +2",
+      languages: "Common, Infernal",
+      age: "Mature like humans.",
+      sizeDescription: "About the same size as humans.",
+    });
+    expect(panel.traits[0]).toEqual({
+      name: "Infernal Legacy",
+      description: "You know the thaumaturgy cantrip.",
+    });
+  });
+
+  it("mentions the free ability and language picks", () => {
+    const panel = mapRaceToPanel({
+      name: "Half-Elf",
+      ability_bonuses: [{ ability_score: { name: "CHA" }, bonus: 2 }],
+      ability_bonus_options: { choose: 2, from: { options: [{ bonus: 1 }] } },
+      languages: [{ name: "Common" }, { name: "Elvish" }],
+      language_options: { choose: 1 },
+    });
+
+    expect(panel.abilityBonuses).toBe("CHA +2, plus +1 to 2 other abilities of your choice");
+    expect(panel.languages).toBe("Common, Elvish, plus 1 of your choice");
+  });
+
+  it("falls back to trait names when the full text has not loaded", () => {
+    const panel = mapRaceToPanel({
+      name: "Elf",
+      ability_bonuses: [],
+      traits: [{ name: "Trance" }],
+    });
+    expect(panel.traits).toEqual([{ name: "Trance", description: "" }]);
+  });
+});
+
+describe("class detail panel", () => {
+  it("lists level 1 features with their text and hides the duplicate saving throw lines", async () => {
+    const panel = mapClassToPanel(await loadClassDetails("paladin"));
+
+    expect(panel.hitDie).toBe("d10");
+    expect(panel.proficiencies).toEqual(["All armor"]);
+    expect(panel.levelOneFeatures).toEqual([
+      { name: "Divine Sense", description: "Detect fiends." },
+    ]);
+    expect(panel.laterFeatures).toBe("Aura of Protection");
+  });
+
+  it("keeps each proficiency choice on its own line", () => {
+    const panel = mapClassToPanel({
+      name: "Bard",
+      hit_die: 8,
+      proficiency_choices: [{ desc: "Choose any three" }, { desc: "Three musical instruments of your choice" }],
+    });
+    expect(panel.skillChoiceLines).toEqual(["Choose any three", "Three musical instruments of your choice"]);
+  });
+});
+
+describe("describeClassSpellcasting", () => {
+  it("is empty for a class that does not cast", () => {
+    expect(describeClassSpellcasting({ index: "fighter" })).toBe("");
+  });
+
+  it("says spellcasting starts at level 2 for half casters", () => {
+    expect(describeClassSpellcasting({ index: "paladin", levelOneSpellcasting: null })).toBe(
+      "Casts with Charisma. Spellcasting starts at level 2.",
+    );
+  });
+
+  it("summarises cantrips, spells known and slots, joined naturally", () => {
+    expect(
+      describeClassSpellcasting({
+        index: "bard",
+        levelOneSpellcasting: { cantrips_known: 2, spells_known: 4, spell_slots_level_1: 2 },
+      }),
+    ).toBe("Casts with Charisma. At level 1: 2 cantrips, 4 spells known and 2 first-level spell slots.");
+    expect(
+      describeClassSpellcasting({
+        index: "wizard",
+        levelOneSpellcasting: { cantrips_known: 3, spell_slots_level_1: 2 },
+      }),
+    ).toBe(
+      "Casts with Intelligence. At level 1: 3 cantrips and 2 first-level spell slots. You choose which spells to ready each day.",
+    );
+  });
+});
+
+describe("spell detail panel", () => {
+  it("shows every paragraph, the components, concentration and who can cast it", () => {
+    const panel = mapSpellToPanel({
+      name: "Bless",
+      level: 1,
+      school: { name: "Enchantment" },
+      casting_time: "1 action",
+      range: "30 feet",
+      components: ["V", "S", "M"],
+      material: "A sprinkling of holy water",
+      duration: "1 minute",
+      concentration: true,
+      desc: ["First paragraph.", "Second paragraph."],
+      higher_level: ["Choose one more creature per slot level."],
+      classes: [{ name: "Cleric" }, { name: "Paladin" }],
+    });
+
+    expect(panel.kind).toBe("1st-level Enchantment");
+    expect(panel.classes).toBe("Cleric, Paladin");
+    expect(panel.facts).toEqual(
+      expect.arrayContaining([
+        { label: "Components", value: "V, S, M (A sprinkling of holy water)" },
+        { label: "Duration", value: "Concentration, 1 minute" },
+      ]),
+    );
+    expect(panel.blocks).toEqual([
+      "First paragraph.",
+      "Second paragraph.",
+      "At Higher Levels. Choose one more creature per slot level.",
     ]);
   });
 });

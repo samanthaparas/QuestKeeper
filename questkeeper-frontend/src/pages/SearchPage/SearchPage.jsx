@@ -5,11 +5,16 @@ import {
   getRaces,
   getSpells,
   getBackgrounds,
-  getClassDetails,
-  getRaceDetails,
   getSpellDetails,
   getBackgroundDetails,
 } from "../../utils/api";
+import {
+  loadClassDetails,
+  loadRaceDetails,
+  mapClassToPanel,
+  mapRaceToPanel,
+  mapSpellToPanel,
+} from "../../utils/srdDetails";
 import SearchForm from "../../components/SearchForm/SearchForm";
 import DetailPanel from "../../components/DetailPanel/DetailPanel";
 import ResultCard from "../../components/ResultCard/ResultCard";
@@ -92,49 +97,9 @@ function SearchPage() {
   }
 
   function formatDetailedResult(data, category) {
-    if (category === "Race") {
-      const abilityBonuses = data.ability_bonuses
-        .map((ability) => `${ability.ability_score.name} +${ability.bonus}`)
-        .join(", ");
+    if (category === "Race") return mapRaceToPanel(data);
 
-      return {
-        name: data.name,
-        category,
-        speed: data.speed,
-        size: data.size,
-        alignment: data.alignment,
-        abilityBonuses,
-      };
-    }
-
-    if (category === "Class") {
-      const savingThrows = data.saving_throws
-        .map((item) => item.name)
-        .join(", ");
-
-      const proficiencies = data.proficiencies.map((item) => item.name);
-
-      const skillChoices = data.proficiency_choices
-        .map((choice) => choice.desc)
-        .join(" ");
-
-      const startingEquipment = data.starting_equipment
-        .map((item) => `${item.equipment.name} x${item.quantity}`)
-        .join(", ");
-
-      const subclasses = data.subclasses.map((item) => item.name).join(", ");
-
-      return {
-        name: data.name,
-        category,
-        hitDie: `d${data.hit_die}`,
-        savingThrows,
-        proficiencies,
-        skillChoices,
-        startingEquipment,
-        subclasses,
-      };
-    }
+    if (category === "Class") return mapClassToPanel(data);
 
     if (category === "Background") {
       const startingProficiencies = data.starting_proficiencies.map(
@@ -161,17 +126,7 @@ function SearchPage() {
       };
     }
 
-    if (category === "Spell") {
-      return {
-        name: data.name,
-        category,
-        description: data.desc?.[0] || "No description available.",
-        range: data.range,
-        duration: data.duration,
-        castingTime: data.casting_time,
-        level: data.level,
-      };
-    }
+    if (category === "Spell") return mapSpellToPanel(data);
 
     return {
       name: data.name,
@@ -184,8 +139,8 @@ function SearchPage() {
     setSelectedResult(result);
 
     const detailRequests = {
-      Class: getClassDetails,
-      Race: getRaceDetails,
+      Class: loadClassDetails,
+      Race: loadRaceDetails,
       Spell: getSpellDetails,
       Background: getBackgroundDetails,
     };

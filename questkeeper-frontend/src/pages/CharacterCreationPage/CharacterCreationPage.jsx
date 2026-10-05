@@ -2,9 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getRaces,
-  getRaceDetails,
   getClasses,
-  getClassDetails,
   getBackgrounds,
   getBackgroundDetails,
   getSubraceDetails,
@@ -43,6 +41,10 @@ import {
   loadFeatureEntries,
   buildFeatureChoices,
   loadStartingGear,
+  loadRaceDetails,
+  loadClassDetails,
+  mapRaceToPanel,
+  mapClassToPanel,
 } from "../../utils/srdDetails";
 import PickerStep from "../../components/PickerStep/PickerStep";
 import AbilityScoreStep from "../../components/AbilityScoreStep/AbilityScoreStep";
@@ -60,43 +62,8 @@ import CreationStepRail from "../../components/CreationStepRail/CreationStepRail
 import CreationSummaryPanel from "../../components/CreationSummaryPanel/CreationSummaryPanel";
 import Button from "../../components/Button/Button";
 
-function mapRaceToDetailPanelResult(data) {
-  const abilityBonuses = data.ability_bonuses
-    .map((ability) => `${ability.ability_score.name} +${ability.bonus}`)
-    .join(", ");
-
-  return {
-    name: data.name,
-    category: "Race",
-    speed: data.speed,
-    size: data.size,
-    alignment: data.alignment,
-    abilityBonuses,
-  };
-}
-
-function mapClassToDetailPanelResult(data) {
-  const savingThrows = data.saving_throws.map((item) => item.name).join(", ");
-  const proficiencies = data.proficiencies.map((item) => item.name);
-  const skillChoices = data.proficiency_choices
-    .map((choice) => choice.desc)
-    .join(" ");
-  const startingEquipment = data.starting_equipment
-    .map((item) => `${item.equipment.name} x${item.quantity}`)
-    .join(", ");
-  const subclasses = data.subclasses.map((item) => item.name).join(", ");
-
-  return {
-    name: data.name,
-    category: "Class",
-    hitDie: `d${data.hit_die}`,
-    savingThrows,
-    proficiencies,
-    skillChoices,
-    startingEquipment,
-    subclasses,
-  };
-}
+const mapRaceToDetailPanelResult = mapRaceToPanel;
+const mapClassToDetailPanelResult = mapClassToPanel;
 
 function mapSubraceToDetailPanelResult(data) {
   const abilityBonuses = data.ability_bonuses
@@ -354,7 +321,7 @@ function CharacterCreationPage() {
               description="Your character's race shapes their natural traits and abilities. Pick one to read what it offers before you commit."
               category="Race"
               fetchList={getRaces}
-              fetchDetails={getRaceDetails}
+              fetchDetails={loadRaceDetails}
               mapToDetailPanelResult={mapRaceToDetailPanelResult}
               mapToSnapshot={mapRaceToSnapshot}
               initialSelectedRaw={raceRaw}
@@ -421,7 +388,7 @@ function CharacterCreationPage() {
               description="Your character's class is what they do best in a fight or a tough situation. Pick one to see how it plays before you commit."
               category="Class"
               fetchList={getClasses}
-              fetchDetails={getClassDetails}
+              fetchDetails={loadClassDetails}
               mapToDetailPanelResult={mapClassToDetailPanelResult}
               mapToSnapshot={mapClassToSnapshot}
               initialSelectedRaw={classRaw}

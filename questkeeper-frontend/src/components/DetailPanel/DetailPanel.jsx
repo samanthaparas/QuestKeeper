@@ -1,5 +1,39 @@
 import "./DetailPanel.css";
 
+// Paragraphs and simple tables from the SRD text (spell descriptions, etc.).
+function renderBlocks(blocks) {
+  return blocks.map((block, index) =>
+    typeof block === "string" ? (
+      <p key={index}>{block}</p>
+    ) : (
+      <div className="detail-panel__table-wrapper" key={index}>
+        <table className="detail-panel__table">
+          {block.header.length > 0 && (
+            <thead>
+              <tr>
+                {block.header.map((cell, cellIndex) => (
+                  <th scope="col" key={cellIndex}>
+                    {cell}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          )}
+          <tbody>
+            {block.rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ),
+  );
+}
+
 // `actions`: an optional single React node rendered next to the title
 // (e.g. PickerStep's Choose button). Not a multi-action slot — there's no
 // defined layout/ordering for more than one element here.
@@ -44,9 +78,49 @@ function DetailPanel({ selectedResult, actions }) {
             <strong>Size:</strong> {selectedResult.size}
           </p>
 
+          {selectedResult.sizeDescription && (
+            <p className="detail-panel__description">
+              {selectedResult.sizeDescription}
+            </p>
+          )}
+
           <p>
             <strong>Ability Bonuses:</strong> {selectedResult.abilityBonuses}
           </p>
+
+          {selectedResult.languages && (
+            <p>
+              <strong>Languages:</strong> {selectedResult.languages}
+            </p>
+          )}
+
+          {selectedResult.subraces && (
+            <p>
+              <strong>Subraces:</strong> {selectedResult.subraces}
+            </p>
+          )}
+
+          {selectedResult.traits?.length > 0 && (
+            <>
+              <p>
+                <strong>Racial traits</strong>
+              </p>
+
+              <ul className="detail-panel__list detail-panel__list--rich">
+                {selectedResult.traits.map((trait) => (
+                  <li key={trait.name}>
+                    <strong>{trait.name}.</strong> {trait.description}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {selectedResult.age && (
+            <p>
+              <strong>Age:</strong> {selectedResult.age}
+            </p>
+          )}
 
           <p>
             <strong>Alignment</strong>
@@ -66,6 +140,35 @@ function DetailPanel({ selectedResult, actions }) {
             <strong>Saving Throws:</strong> {selectedResult.savingThrows}
           </p>
 
+          {selectedResult.spellcasting && (
+            <p>
+              <strong>Spellcasting:</strong> {selectedResult.spellcasting}
+            </p>
+          )}
+
+          {selectedResult.levelOneFeatures?.length > 0 && (
+            <>
+              <p>
+                <strong>At level 1 you get</strong>
+              </p>
+
+              <ul className="detail-panel__list detail-panel__list--rich">
+                {selectedResult.levelOneFeatures.map((feature) => (
+                  <li key={feature.name}>
+                    <strong>{feature.name}.</strong> {feature.description}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {selectedResult.laterFeatures && (
+            <p>
+              <strong>Later you'll also gain:</strong>{" "}
+              {selectedResult.laterFeatures}
+            </p>
+          )}
+
           <p>
             <strong>Proficiencies:</strong>
           </p>
@@ -77,8 +180,16 @@ function DetailPanel({ selectedResult, actions }) {
           </ul>
 
           <p>
-            <strong>Skill Choices:</strong> {selectedResult.skillChoices}
+            <strong>Skill Choices:</strong>
           </p>
+
+          <ul className="detail-panel__list">
+            {(selectedResult.skillChoiceLines ?? [selectedResult.skillChoices])
+              .filter(Boolean)
+              .map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+          </ul>
 
           {selectedResult.startingEquipment && (
             <p>
@@ -209,7 +320,27 @@ function DetailPanel({ selectedResult, actions }) {
         </p>
       )}
 
-      {selectedResult.category === "Spell" && (
+      {selectedResult.category === "Spell" && selectedResult.facts && (
+        <>
+          <p className="detail-panel__description">{selectedResult.kind}</p>
+
+          {selectedResult.facts.map((fact) => (
+            <p key={fact.label}>
+              <strong>{fact.label}:</strong> {fact.value}
+            </p>
+          ))}
+
+          {selectedResult.classes && (
+            <p>
+              <strong>Classes:</strong> {selectedResult.classes}
+            </p>
+          )}
+
+          {renderBlocks(selectedResult.blocks)}
+        </>
+      )}
+
+      {selectedResult.category === "Spell" && !selectedResult.facts && (
         <>
           {selectedResult.level !== undefined && (
             <p>
