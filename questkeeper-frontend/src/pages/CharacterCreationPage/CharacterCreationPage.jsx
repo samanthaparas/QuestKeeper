@@ -24,7 +24,11 @@ import {
   ABILITY_SCORES,
   getAbilityModifier,
   getStartingHitPoints,
-  getStartingArmorClass,
+  computeStartingArmorClass,
+  buildStartingAttacks,
+  buildStartingLanguages,
+  buildStartingProficiencies,
+  getProficiencyBonus,
   buildStartingSpellcasting,
   mergeSubrace,
   getSubclassLevel,
@@ -38,6 +42,7 @@ import { saveCharacter } from "../../utils/characterStore";
 import {
   loadFeatureEntries,
   buildFeatureChoices,
+  loadStartingGear,
 } from "../../utils/srdDetails";
 import PickerStep from "../../components/PickerStep/PickerStep";
 import AbilityScoreStep from "../../components/AbilityScoreStep/AbilityScoreStep";
@@ -249,9 +254,38 @@ function CharacterCreationPage() {
         createFeat({ name: choice.name, description: choice.description }),
       );
 
+    // Starting gear does real work on the sheet: armor sets the AC, weapons
+    // become attacks, and the race, background and class fill in languages and
+    // proficiencies. If the equipment lookup fails, AC falls back to 10 + Dex.
+    const gear = await loadStartingGear(equipment).catch(() => []);
+    const startingArmorClass = computeStartingArmorClass({
+      gear,
+      scores: abilityScores,
+      classId: characterClass?.id,
+    });
+    const classProficiencies = classRaw?.proficiencies ?? [];
+    const attacks = buildStartingAttacks({
+      gear,
+      scores: abilityScores,
+      proficiencyNames: classProficiencies.map(
+        (proficiency) => proficiency.name,
+      ),
+      proficiencyBonus: getProficiencyBonus(1),
+    });
+    const languages = buildStartingLanguages({
+      raceLanguages: raceRaw?.languages,
+      raceChoices: raceRaw?.language_options?.choose ?? 0,
+      backgroundChoices: backgroundRaw?.language_options?.choose ?? 0,
+      backgroundName: background?.name,
+    });
+    const proficiencies = buildStartingProficiencies(classProficiencies);
+
     const sheet = createCharacterSheet({
       name,
       features,
+      attacks,
+      languages,
+      proficiencies,
       race: finalRace,
       class: finalClass,
       background,
@@ -261,7 +295,7 @@ function CharacterCreationPage() {
       equipment,
       spellcasting: finalSpellcasting,
       combat: {
-        armorClass: getStartingArmorClass(dexModifier),
+        armorClass: startingArmorClass,
         initiative: dexModifier,
         speed: finalRace?.speed ?? 30,
         hitPoints: { max: maxHitPoints, current: maxHitPoints, temporary: 0 },

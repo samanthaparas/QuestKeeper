@@ -33,7 +33,7 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 11 | Tap-to-expand spell summaries on the starting spells step | Creation | Medium | Open |
 | 12 | Plain "good if you want..." blurbs on every race and class card | Creation, Reference | Medium | Open |
 | 13 | Spells page filters (level, class, school) and a scrolling or paged list | Reference | Medium | Open |
-| 14 | Set armor class from starting armor; add starting weapons to Actions; fill languages | Sheet | Medium | Open |
+| 14 | Set armor class from starting armor; add starting weapons to Actions; fill languages | Sheet | Medium | Done (2026-10-05, pending merge): AC from starting armor and shield, starting weapons on Actions with to-hit and damage, languages, class proficiencies |
 | 15 | First-run prompts on each empty tab, with one-tap "add from inventory" | Sheet | Medium | Open |
 | 16 | Feedback link on detail pages | Reference | Small | Partly merged (footer and About link to GitHub issues; not on each detail page) |
 | 17 | Table first-time hints, a DM prep checklist, a "How combat works" Guide page | Tables | Medium | Open |
@@ -42,10 +42,10 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 20 | Decide how to use the 2024 backgrounds in creation | Creation | Large (product decision) | Open |
 | 21 | Grey out skills the background already grants | Creation | Small | Merged (background now comes before skills) |
 | 22 | Fix the 16 px sideways scroll on the phone sheet; show vitals before the skills list | Sheet | Small | Merged |
-| 23 | Duplicate library entries: disable the button after the first click | Library | Small | Open |
-| 24 | Confirm step before deleting a table, character or library entry | Tables, Library | Small | Open |
-| 25 | Show join errors next to the Join form | Tables | Small | Open |
-| 26 | Default monster attack targets to the opposite side | Tables | Small | Open |
+| 23 | Duplicate library entries: disable the button after the first click | Library | Small | Done (2026-10-05, pending merge): saving a monster to the library skips an exact copy |
+| 24 | Confirm step before deleting a table, character or library entry | Tables, Library | Small | Already in place: character, table and library deletes all ask first (verified in code) |
+| 25 | Show join errors next to the Join form | Tables | Small | Done (2026-10-05, pending merge) |
+| 26 | Default monster attack targets to the opposite side | Tables | Small | Done (2026-10-05, pending merge): targets are grouped into Opponents and Same side |
 | 27 | Let players retype name, race, class, subclass, background and spellcasting ability, and toggle saving throw proficiency, so homebrew and non-SRD characters match a paper sheet (Story tab and Save badges) | Sheet | Small | Merged (2026-10-04) |
 | 28 | Flat bonus fields and expertise: a "Bonus to all saves" box (Aura of Protection, Cloak of Protection), per-skill bonus boxes behind a Bonuses button (Jack of All Trades), and skill expertise (click the badge: P, then E). Found by comparing a real Google Sheet to a QuestKeeper sheet | Sheet | Small | Merged (2026-10-04) |
 | 29 | Temporary AC bonus box (Haste and similar) that shows "+2 = 23" next to AC without overwriting the base AC; the DM's view of a player sheet uses the total | Sheet | Small | Merged (2026-10-04) |

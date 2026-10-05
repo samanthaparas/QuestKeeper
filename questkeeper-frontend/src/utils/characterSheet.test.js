@@ -27,6 +27,11 @@ import {
   cycleSkillProficiency,
   getSaveModifier,
   getEffectiveArmorClass,
+  computeStartingArmorClass,
+  buildStartingAttacks,
+  buildStartingLanguages,
+  buildStartingProficiencies,
+  isProficientWithWeapon,
   getSkillModifier,
   createAttack,
   updateAttack,
@@ -1119,5 +1124,210 @@ describe("getEffectiveArmorClass", () => {
   it("works for sheets saved before the bonus existed", () => {
     expect(getEffectiveArmorClass({ combat: { armorClass: 14 } })).toBe(14);
     expect(getEffectiveArmorClass({})).toBe(10);
+  });
+});
+
+describe("computeStartingArmorClass", () => {
+  const scores = { strength: 15, dexterity: 14, constitution: 13, wisdom: 12 };
+  const leather = {
+    armor_category: "Light",
+    armor_class: { base: 11, dex_bonus: true },
+  };
+  const chain = {
+    armor_category: "Heavy",
+    armor_class: { base: 16, dex_bonus: false },
+  };
+  const scale = {
+    armor_category: "Medium",
+    armor_class: { base: 14, dex_bonus: true, max_bonus: 2 },
+  };
+  const shield = {
+    armor_category: "Shield",
+    armor_class: { base: 2, dex_bonus: false },
+  };
+
+  it("adds Dex to light armor", () => {
+    expect(
+      computeStartingArmorClass({ gear: [leather], scores, classId: "bard" }),
+    ).toBe(13);
+  });
+
+  it("ignores Dex for heavy armor and caps it for medium armor", () => {
+    expect(
+      computeStartingArmorClass({ gear: [chain], scores, classId: "paladin" }),
+    ).toBe(16);
+    expect(
+      computeStartingArmorClass({
+        gear: [scale],
+        scores: { ...scores, dexterity: 18 },
+        classId: "cleric",
+      }),
+    ).toBe(16);
+  });
+
+  it("adds a shield on top of armor or of no armor", () => {
+    expect(
+      computeStartingArmorClass({
+        gear: [chain, shield],
+        scores,
+        classId: "paladin",
+      }),
+    ).toBe(18);
+    expect(
+      computeStartingArmorClass({ gear: [shield], scores, classId: "cleric" }),
+    ).toBe(14);
+  });
+
+  it("uses 10 + Dex with nothing worn, and the unarmored formulas for Barbarian and Monk", () => {
+    expect(
+      computeStartingArmorClass({ gear: [], scores, classId: "fighter" }),
+    ).toBe(12);
+    expect(
+      computeStartingArmorClass({ gear: [], scores, classId: "barbarian" }),
+    ).toBe(13);
+    expect(
+      computeStartingArmorClass({ gear: [], scores, classId: "monk" }),
+    ).toBe(13);
+  });
+});
+
+describe("buildStartingAttacks", () => {
+  const scores = { strength: 15, dexterity: 14 };
+  const dagger = {
+    name: "Dagger",
+    weapon_category: "Simple",
+    weapon_range: "Melee",
+    damage: { damage_dice: "1d4", damage_type: { name: "Piercing" } },
+    properties: [
+      { index: "finesse", name: "Finesse" },
+      { index: "monk", name: "Monk" },
+    ],
+    throw_range: { normal: 20, long: 60 },
+    quantity: 2,
+  };
+  const longbow = {
+    name: "Longbow",
+    weapon_category: "Martial",
+    weapon_range: "Ranged",
+    damage: { damage_dice: "1d8", damage_type: { name: "Piercing" } },
+    properties: [{ index: "ammunition", name: "Ammunition" }],
+    range: { normal: 150, long: 600 },
+  };
+
+  it("works out to-hit and damage from the ability scores and proficiency", () => {
+    const [attack] = buildStartingAttacks({
+      gear: [dagger],
+      scores,
+      proficiencyNames: ["Simple Weapons"],
+      proficiencyBonus: 2,
+    });
+
+    expect(attack).toMatchObject({
+      name: "Dagger",
+      toHit: 4,
+      damage: "1d4+2",
+      damageType: "Piercing",
+    });
+    expect(attack.notes).toBe("Quantity: 2 - Finesse - Range 20/60 ft");
+  });
+
+  it("uses Dex for ranged weapons and skips the proficiency bonus when untrained", () => {
+    const [attack] = buildStartingAttacks({
+      gear: [longbow],
+      scores,
+      proficiencyNames: ["Simple Weapons"],
+    });
+    expect(attack).toMatchObject({
+      name: "Longbow",
+      toHit: 2,
+      damage: "1d8+2",
+    });
+  });
+
+  it("leaves out armor and other gear", () => {
+    expect(
+      buildStartingAttacks({
+        gear: [{ name: "Chain Mail", armor_category: "Heavy" }],
+        scores,
+      }),
+    ).toEqual([]);
+  });
+
+  it("writes a negative modifier and drops a zero one", () => {
+    const negative = buildStartingAttacks({
+      gear: [longbow],
+      scores: { dexterity: 8 },
+    });
+    expect(negative[0].damage).toBe("1d8-1");
+    const zero = buildStartingAttacks({
+      gear: [longbow],
+      scores: { dexterity: 10 },
+    });
+    expect(zero[0].damage).toBe("1d8");
+  });
+});
+
+describe("isProficientWithWeapon", () => {
+  it("matches by category or by named weapon", () => {
+    expect(
+      isProficientWithWeapon({ name: "Club", weapon_category: "Simple" }, [
+        "Simple Weapons",
+      ]),
+    ).toBe(true);
+    expect(
+      isProficientWithWeapon({ name: "Rapier", weapon_category: "Martial" }, [
+        "Rapiers",
+      ]),
+    ).toBe(true);
+    expect(
+      isProficientWithWeapon(
+        { name: "Crossbow, hand", weapon_category: "Martial" },
+        ["Hand crossbows"],
+      ),
+    ).toBe(true);
+    expect(
+      isProficientWithWeapon({ name: "Greataxe", weapon_category: "Martial" }, [
+        "Simple Weapons",
+      ]),
+    ).toBe(false);
+  });
+});
+
+describe("buildStartingLanguages", () => {
+  it("lists known languages and reminds about any left to choose", () => {
+    expect(
+      buildStartingLanguages({
+        raceLanguages: [{ name: "Common" }, { name: "Elvish" }],
+        raceChoices: 1,
+        backgroundChoices: 2,
+        backgroundName: "Acolyte",
+      }),
+    ).toBe(
+      "Common, Elvish\nChoose 1 more (your race)\nChoose 2 more (Acolyte)",
+    );
+  });
+
+  it("is blank when there is nothing to say", () => {
+    expect(buildStartingLanguages({})).toBe("");
+  });
+});
+
+describe("buildStartingProficiencies", () => {
+  it("keeps armor, weapon and tool proficiencies but not saving throws or skills", () => {
+    const entries = buildStartingProficiencies([
+      { name: "Light Armor" },
+      { name: "Simple Weapons" },
+      { name: "Saving Throw: DEX" },
+      { name: "Skill: Stealth" },
+      { name: "Thieves' Tools" },
+    ]);
+
+    expect(entries.map((entry) => entry.name)).toEqual([
+      "Light Armor",
+      "Simple Weapons",
+      "Thieves' Tools",
+    ]);
+    expect(entries[0]).toMatchObject({ description: "" });
+    expect(entries[0].index).toBeTruthy();
   });
 });

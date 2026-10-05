@@ -328,6 +328,149 @@ export function getStartingArmorClass(dexModifier) {
   return 10 + dexModifier;
 }
 
+// --- Starting gear: what a new character's equipment does for them ----------
+
+// AC from the armor and shield a character starts with. Body armor replaces
+// 10 + Dex; a shield adds its bonus; Barbarians and Monks use their own
+// unarmored formulas when they wear nothing.
+export function computeStartingArmorClass({ gear = [], scores, classId }) {
+  const mod = (ability) => getAbilityModifier(scores?.[ability] ?? 10);
+  const dex = mod("dexterity");
+
+  const bodyArmor = gear.filter((item) =>
+    ["Light", "Medium", "Heavy"].includes(item.armor_category),
+  );
+  const shield = gear.some((item) => item.armor_category === "Shield")
+    ? (gear.find((item) => item.armor_category === "Shield").armor_class
+        ?.base ?? 2)
+    : 0;
+
+  const armorValues = bodyArmor.map((item) => {
+    const armorClass = item.armor_class ?? {};
+    if (!armorClass.dex_bonus) return armorClass.base ?? 10;
+    const cap = armorClass.max_bonus ?? Infinity;
+    return (armorClass.base ?? 10) + Math.min(dex, cap);
+  });
+
+  if (armorValues.length > 0) return Math.max(...armorValues) + shield;
+
+  let unarmored = 10 + dex;
+  if (classId === "barbarian") unarmored += mod("constitution");
+  if (classId === "monk" && shield === 0) unarmored += mod("wisdom");
+  return unarmored + shield;
+}
+
+function wordsOf(name) {
+  return String(name ?? "")
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.replace(/s$/, ""))
+    .sort()
+    .join(" ");
+}
+
+// Is the class proficient with this weapon? Matches "Simple Weapons",
+// "Martial Weapons", or a named weapon ("Longswords", "Hand crossbows").
+export function isProficientWithWeapon(weapon, proficiencyNames = []) {
+  const names = proficiencyNames.map((name) => String(name).toLowerCase());
+  if (weapon.weapon_category === "Simple" && names.includes("simple weapons"))
+    return true;
+  if (weapon.weapon_category === "Martial" && names.includes("martial weapons"))
+    return true;
+  const target = wordsOf(weapon.name);
+  return proficiencyNames.some((name) => wordsOf(name) === target);
+}
+
+function describeWeaponNotes(weapon, quantity) {
+  const parts = [];
+  if (quantity > 1) parts.push(`Quantity: ${quantity}`);
+  const properties = (weapon.properties ?? [])
+    .filter((property) => property.index !== "monk")
+    .map((property) => property.name);
+  if (properties.length > 0) parts.push(properties.join(", "));
+  const range =
+    weapon.throw_range ??
+    (weapon.weapon_range === "Ranged" ? weapon.range : null);
+  if (range?.long) parts.push(`Range ${range.normal}/${range.long} ft`);
+  return parts.join(" - ");
+}
+
+// Turns the weapons a character starts with into rows for the Actions tab,
+// with the to-hit and damage worked out from their ability scores.
+export function buildStartingAttacks({
+  gear = [],
+  scores,
+  proficiencyNames = [],
+  proficiencyBonus = 2,
+}) {
+  const mod = (ability) => getAbilityModifier(scores?.[ability] ?? 10);
+  const strength = mod("strength");
+  const dexterity = mod("dexterity");
+
+  return gear
+    .filter((item) => item.damage?.damage_dice && item.weapon_category)
+    .map((weapon) => {
+      const isFinesse = (weapon.properties ?? []).some(
+        (property) => property.index === "finesse",
+      );
+      const abilityMod =
+        weapon.weapon_range === "Ranged"
+          ? dexterity
+          : isFinesse
+            ? Math.max(strength, dexterity)
+            : strength;
+      const toHit =
+        abilityMod +
+        (isProficientWithWeapon(weapon, proficiencyNames)
+          ? proficiencyBonus
+          : 0);
+      const bonus =
+        abilityMod === 0
+          ? ""
+          : abilityMod > 0
+            ? `+${abilityMod}`
+            : String(abilityMod);
+
+      return createAttack({
+        name: weapon.name,
+        toHit,
+        damage: `${weapon.damage.damage_dice}${bonus}`,
+        damageType: weapon.damage.damage_type?.name ?? "",
+        notes: describeWeaponNotes(weapon, weapon.quantity ?? 1),
+      });
+    });
+}
+
+// "Common, Draconic" plus a reminder for any languages the player still has
+// to pick (Half-Elf, Acolyte, and so on).
+export function buildStartingLanguages({
+  raceLanguages = [],
+  raceChoices = 0,
+  backgroundChoices = 0,
+  backgroundName,
+}) {
+  const known = raceLanguages.map((language) => language.name ?? language);
+  const lines = [known.join(", ")].filter(Boolean);
+  if (raceChoices > 0) lines.push(`Choose ${raceChoices} more (your race)`);
+  if (backgroundChoices > 0) {
+    lines.push(
+      `Choose ${backgroundChoices} more (${backgroundName ?? "your background"})`,
+    );
+  }
+  return lines.join("\n");
+}
+
+// Armor, weapon and tool proficiencies the class grants, as sheet entries.
+// Saving throws and skills are shown elsewhere, so they are left out.
+export function buildStartingProficiencies(classProficiencies = []) {
+  return classProficiencies
+    .map((proficiency) => proficiency.name ?? proficiency)
+    .filter((name) => !/^saving throw|^skill:/i.test(name))
+    .map((name) => ({ index: crypto.randomUUID(), name, description: "" }));
+}
+
 export const ABILITY_SCORE_IMPROVEMENT_LEVELS = [4, 8, 12, 16, 19];
 
 export function getLevelUpStepKeys(targetLevel, characterClass) {

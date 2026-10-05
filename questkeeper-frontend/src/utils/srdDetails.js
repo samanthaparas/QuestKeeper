@@ -6,6 +6,7 @@ import {
   getSubraceTraits,
   getFeatureDetails,
   getTraitDetails,
+  getEquipmentDetails,
 } from "./api";
 
 const SPELL_LEVEL_LABELS = [
@@ -269,6 +270,21 @@ export function formatEquipmentDetails(item) {
       ...toLines(item.special),
     ]),
   };
+}
+
+// Looks up the full SRD details (armor class, damage, properties) for each
+// piece of starting equipment, keeping its quantity. Items that can't be
+// looked up (a custom name, a network hiccup) are skipped.
+export async function loadStartingGear(equipment = []) {
+  const results = await Promise.allSettled(
+    equipment.map((item) => getEquipmentDetails(item.index)),
+  );
+
+  return results.flatMap((result, position) =>
+    result.status === "fulfilled" && result.value
+      ? [{ ...result.value, quantity: equipment[position].quantity ?? 1 }]
+      : [],
+  );
 }
 
 // The plain text a feature carries onto a character sheet (one paragraph per
