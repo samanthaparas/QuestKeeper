@@ -1,4 +1,12 @@
 import { getFeatDescriptionLines } from "./characterSheet";
+import {
+  getClassFeatures,
+  getSubclassFeatures,
+  getRaceTraits,
+  getSubraceTraits,
+  getFeatureDetails,
+  getTraitDetails,
+} from "./api";
 
 const SPELL_LEVEL_LABELS = [
   "",
@@ -261,6 +269,94 @@ export function formatEquipmentDetails(item) {
       ...toLines(item.special),
     ]),
   };
+}
+
+// The plain text a feature carries onto a character sheet (one paragraph per
+// line; the sheet shows each line as a bullet).
+export function descriptionFromSrd(desc) {
+  return toLines(desc)
+    .filter((line) => !line.startsWith("|"))
+    .join("\n");
+}
+
+// Everything the SRD says a character gets from their race, subrace, class and
+// subclass, with each entry's level (null for racial traits) and description.
+// A failed lookup is skipped so one bad request never blocks the rest.
+export async function loadFeatureEntries({
+  classId,
+  subclassId,
+  raceId,
+  subraceId,
+}) {
+  const lists = await Promise.allSettled([
+    raceId && getRaceTraits(raceId).then(tagWithSource("trait")),
+    subraceId && getSubraceTraits(subraceId).then(tagWithSource("trait")),
+    classId && getClassFeatures(classId).then(tagWithSource("feature")),
+    subclassId &&
+      getSubclassFeatures(subclassId).then(tagWithSource("feature")),
+  ]);
+
+  const refs = lists.flatMap((result, order) =>
+    result.status === "fulfilled" && Array.isArray(result.value)
+      ? result.value.map((ref) => ({ ...ref, order }))
+      : [],
+  );
+
+  const details = await Promise.allSettled(
+    refs.map((ref) =>
+      ref.source === "trait"
+        ? getTraitDetails(ref.index)
+        : getFeatureDetails(ref.index),
+    ),
+  );
+
+  return details.flatMap((result, position) => {
+    if (result.status !== "fulfilled") return [];
+    const ref = refs[position];
+    const data = result.value;
+
+    return [
+      {
+        key: `${ref.source}:${ref.index}`,
+        name: data.name ?? ref.name,
+        level: ref.source === "trait" ? null : (data.level ?? null),
+        description: descriptionFromSrd(data.desc),
+        order: ref.order,
+        sourceLabel:
+          ref.source === "trait"
+            ? "Racial trait"
+            : (data.subclass?.name ?? data.class?.name ?? "Class feature"),
+      },
+    ];
+  });
+}
+
+// Orders the entries (race first, then class, then subclass; lower levels
+// first) and works out what to tick by default: everything the character has
+// reached and does not already have.
+export function buildFeatureChoices(
+  entries,
+  characterLevel,
+  existingNames = [],
+) {
+  const have = new Set(existingNames.map(normalizeItemName));
+
+  return entries
+    .map((entry) => {
+      const alreadyAdded = have.has(normalizeItemName(entry.name));
+      const reached = entry.level === null || entry.level <= characterLevel;
+      return {
+        ...entry,
+        alreadyAdded,
+        defaultSelected: !alreadyAdded && reached,
+      };
+    })
+    .sort(
+      (a, b) =>
+        a.order - b.order ||
+        (a.level ?? 0) - (b.level ?? 0) ||
+        a.name.localeCompare(b.name),
+    );
 }
 
 export function preferEdition(matches, edition) {

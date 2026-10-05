@@ -52,6 +52,7 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 30 | DM: nicknames and animal icons for identical monsters ("Tell them apart": e.g. "Goblin (red duck)"), an icon picker in Edit, and a visible tip that the How many box adds several of the same monster at once | Tables | Small | Done (2026-10-05, pending merge) |
 | 31 | DM: roll initiative for monsters. A per-monster Roll d20 button, a "Roll initiative for N monsters" button that skips any monster that already has an initiative (so a boss can be rolled with real dice), and an Initiative bonus field on the stat block | Tables | Small | Done (2026-10-05, pending merge) |
 | 32 | DM add-monster form: visible labels above Name, How many, HP, AC and Initiative, and above each attack's name, to-hit and damage, so values filled in from a library entry can still be read (found while using the library autofill) | Tables | Small | Done (2026-10-05, pending merge) |
+| 33 | Class features and racial traits on the sheet: new characters arrive with their race's traits and level 1 class features written in, and the Features tab has "Add from my class and race" (ticks everything up to your level, skips what you already have) for existing characters and level-ups. Found by comparing a real sheet whose Features tab was empty | Sheet, Creation | Medium | Done (2026-10-05, pending merge) |
 
 ## Reference pages (logged out)
 

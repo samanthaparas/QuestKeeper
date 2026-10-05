@@ -1161,3 +1161,49 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
 .character-sheet__ability-extras .character-sheet__ability-hint {
   flex: 1 1 220px;
 }
+
+.character-sheet__feature-import {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  justify-items: start;
+}
+
+.character-sheet__feature-import-panel {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  justify-items: start;
+}
+
+.character-sheet__feature-import-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.character-sheet__feature-import-list label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.character-sheet__feature-import-list input {
+  margin-top: 3px;
+}
+
+.character-sheet__feature-import-meta {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+}
