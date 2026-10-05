@@ -32,7 +32,7 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 10 | Skill descriptions and a pick-these-if-unsure tip | Creation | Medium | Merged (skills step now shows ability and a one-line description) |
 | 11 | Tap-to-expand spell summaries on the starting spells step | Creation | Medium | Merged (2026-10-05): every starting cantrip and 1st-level spell shows a tag and a one-line summary with a Read more button for the full text, in the class spell step and the High Elf cantrip step |
 | 12 | Plain "good if you want..." blurbs on every race and class card | Creation, Reference | Medium | Merged (2026-10-05): every race and class has a short tagline on its card and a "Good if you want..." callout (plus role and difficulty for classes) on the detail panel and in creation |
-| 13 | Spells page filters (level, class, school) and a scrolling or paged list | Reference | Medium | Open |
+| 13 | Spells page filters (level, class, school) and a scrolling or paged list | Reference | Medium | Merged (2026-10-05): Level, Class and School dropdowns that combine with the name search, a Clear filters button and match count, level and school on each card, and 40 spells at a time with a Show more button (the page starts about 5,800 px tall instead of 35,000) |
 | 14 | Set armor class from starting armor; add starting weapons to Actions; fill languages | Sheet | Medium | Merged (2026-10-05): AC from starting armor and shield, starting weapons on Actions with to-hit and damage, languages, class proficiencies |
 | 15 | First-run prompts on each empty tab, with one-tap "add from inventory" | Sheet | Medium | Open |
 | 16 | Feedback link on detail pages | Reference | Small | Partly merged (footer and About link to GitHub issues; not on each detail page) |
@@ -85,7 +85,7 @@ Every result card also says the same generic line, so the list gives no hint of 
 
 ### Scrolling and layout
 
-- **Spells is one very long page.** All 319 spells render in one list, about 35,000 px tall, with no filter for level, class or school.
+- **Spells is one very long page.** All 319 spells render in one list, about 35,000 px tall, with no filter for level, class or school. Fixed 2026-10-05 (filters and paging).
 - Race, class and background lists are short and fine. The two-column list and detail layout is clear on desktop, and Back to results is a good touch on phones.
 - Long detail text (Acolyte feature, spells) would read better with the facts in a small table at the top and the description below.
 
