@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getTraitDetails } from "../../utils/api";
 import "./SubraceCantripStep.css";
 import Button from "../Button/Button";
+import SpellChoiceOption from "../SpellChoiceOption/SpellChoiceOption";
 
 function SubraceCantripStep({
   subrace,
@@ -78,21 +79,15 @@ function SubraceCantripStep({
 
           <div className="subrace-cantrip-step__checklist">
             {options.map((option) => (
-              <label
-                className="subrace-cantrip-step__checkbox"
+              <SpellChoiceOption
                 key={option.index}
-              >
-                <input
-                  type="checkbox"
-                  checked={chosen.includes(option.index)}
-                  disabled={
-                    !chosen.includes(option.index) &&
-                    chosen.length >= maxChoices
-                  }
-                  onChange={() => toggleChoice(option.index)}
-                />
-                {option.name}
-              </label>
+                spell={option}
+                checked={chosen.includes(option.index)}
+                disabled={
+                  !chosen.includes(option.index) && chosen.length >= maxChoices
+                }
+                onToggle={() => toggleChoice(option.index)}
+              />
             ))}
           </div>
         </>

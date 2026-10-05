@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getGroupStatus, getVisibleSteps } from "./creationSteps";
+import { getGroupStatus, getVisibleSteps, getReviewIssues } from "./creationSteps";
 import { getRaceFixedCantrip } from "./characterSheet";
 
 const ALL_STEPS = ["name", "race", "subrace", "class", "review"];
@@ -103,5 +103,40 @@ describe("getRaceFixedCantrip", () => {
   it("gives Tiefling Thaumaturgy and nobody else a fixed cantrip", () => {
     expect(getRaceFixedCantrip("tiefling")?.index).toBe("thaumaturgy");
     expect(getRaceFixedCantrip("human")).toBeNull();
+  });
+});
+
+describe("getReviewIssues", () => {
+  const complete = {
+    steps: ["name", "race", "class", "background", "classSkills", "abilities", "review"],
+    race: { id: "human" },
+    characterClass: { id: "fighter", skillChoice: { choose: 2 } },
+    background: { id: "acolyte" },
+    classSkills: [{ index: "athletics" }, { index: "history" }],
+    abilityScores: { strength: 15 },
+  };
+
+  it("finds nothing when the character is complete", () => {
+    expect(getReviewIssues(complete)).toEqual([]);
+  });
+
+  it("points at the step that fixes each gap", () => {
+    const issues = getReviewIssues({
+      ...complete,
+      steps: [...complete.steps, "subrace", "classSpells"],
+      subrace: null,
+      classSkills: [{ index: "athletics" }],
+      spellChoices: null,
+      abilityScores: null,
+    });
+
+    expect(issues.map((issue) => issue.step)).toEqual(["subrace", "classSkills", "classSpells", "abilities"]);
+    expect(issues.find((issue) => issue.step === "classSkills").message).toBe("Choose 1 more skill");
+  });
+
+  it("does not ask for steps that do not apply to this character", () => {
+    expect(getReviewIssues({ ...complete, spellChoices: null }).map((issue) => issue.step)).not.toContain(
+      "classSpells",
+    );
   });
 });

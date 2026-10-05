@@ -51,19 +51,29 @@ function ClassSkillChoiceStep({
             {skillChoice.choose === 1 ? "" : "s"} to be proficient in:
           </p>
 
-          <p className="class-skill-choice-step__hint">
-            Not sure? Perception and Stealth come up in almost every adventure.
-            The letters show which ability a skill uses.
+          <p className="class-skill-choice-step__counter">
+            Chosen {chosenSkills.length} of {maxChoices}
+            {chosenSkills.length === maxChoices
+              ? ". Untick one to pick a different skill."
+              : ""}
           </p>
 
           <div className="class-skill-choice-step__checklist">
             {skillChoice.options.map((skill) => {
               const isGranted = grantedIndexes.has(skill.index);
               const details = SKILLS.find((item) => item.index === skill.index);
+              const isLocked =
+                isGranted ||
+                (!chosenSkills.includes(skill.index) &&
+                  chosenSkills.length >= maxChoices);
 
               return (
                 <label
-                  className="class-skill-choice-step__checkbox"
+                  className={`class-skill-choice-step__checkbox${isLocked ? " class-skill-choice-step__checkbox--locked" : ""
+                    }${chosenSkills.includes(skill.index)
+                      ? " class-skill-choice-step__checkbox--picked"
+                      : ""
+                    }`}
                   key={skill.index}
                 >
                   <input

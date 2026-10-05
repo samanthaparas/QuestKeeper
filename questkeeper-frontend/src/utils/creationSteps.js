@@ -4,6 +4,12 @@ import {
   getSpellcastingType,
 } from "./characterSheet";
 
+// Optional pictures for the Tips card on each step. To add one, put an image
+// in questkeeper-frontend/public/creation-art/ and list it here, for example:
+//   abilities: "/creation-art/abilities.png",
+// Steps without an entry just show their tips.
+export const CREATION_STEP_ART = {};
+
 // Background comes before skills so the skills step can grey out any skill
 // the background already grants.
 export const CREATION_STEP_GROUPS = [
@@ -42,6 +48,47 @@ export function getVisibleSteps({ raceRaw, subrace, characterClass } = {}) {
 
   steps.push("abilities", "review");
   return steps;
+}
+
+// What is still missing before a character can be created, so the Review page
+// can point at each gap instead of letting an incomplete sheet through. Each
+// issue names the step that fixes it.
+export function getReviewIssues({
+  steps,
+  race,
+  subrace,
+  subraceCantrip,
+  characterClass,
+  subclass,
+  background,
+  classSkills = [],
+  spellChoices,
+  abilityScores,
+}) {
+  const issues = [];
+  const add = (step, message) => issues.push({ step, message });
+
+  if (!race) add("race", "Choose a race");
+  if (steps.includes("subrace") && !subrace) add("subrace", "Choose a subrace");
+  if (steps.includes("subraceCantrip") && !subraceCantrip) {
+    add("subraceCantrip", "Choose your free cantrip");
+  }
+  if (!characterClass) add("class", "Choose a class");
+  if (steps.includes("subclass") && !subclass) add("subclass", "Choose a subclass");
+  if (!background) add("background", "Choose a background");
+
+  const skillsNeeded = characterClass?.skillChoice?.choose ?? 0;
+  if (characterClass && classSkills.length < skillsNeeded) {
+    const missing = skillsNeeded - classSkills.length;
+    add("classSkills", `Choose ${missing} more skill${missing === 1 ? "" : "s"}`);
+  }
+
+  if (steps.includes("classSpells") && !spellChoices) {
+    add("classSpells", "Choose your starting spells");
+  }
+  if (!abilityScores) add("abilities", "Assign your ability scores");
+
+  return issues;
 }
 
 export function getGroupStatus(group, allSteps, currentIndex) {

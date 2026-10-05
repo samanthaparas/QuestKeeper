@@ -1,0 +1,121 @@
+.spell-option {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font-size: 14px;
+}
+
+/* Can't be picked right now: dashed, muted, and labelled, so it reads as
+   "unavailable" and not "broken". */
+.spell-option--locked {
+  border-style: dashed;
+  border-color: var(--qk-border-strong, var(--qk-border));
+  background-color: var(--qk-surface-muted);
+}
+
+.spell-option--locked .spell-option__name,
+.spell-option--locked .spell-option__summary {
+  color: var(--qk-text-muted);
+}
+
+.spell-option--locked .spell-option__label {
+  cursor: not-allowed;
+}
+
+.spell-option--picked {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+}
+
+.spell-option__lock {
+  padding: 1px 8px;
+  border-radius: 4px;
+  background-color: var(--qk-text-muted);
+  color: var(--qk-surface);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.spell-option__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.spell-option__name {
+  font-weight: 700;
+}
+
+.spell-option__tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.spell-option__tag--damage {
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-terracotta-hover);
+}
+
+.spell-option__note {
+  flex-basis: 100%;
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.spell-option__summary {
+  margin: 0 0 0 26px;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.spell-option__more {
+  justify-self: start;
+  margin-left: 26px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--qk-terracotta-hover);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.spell-option__more:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.spell-option__details {
+  margin: 4px 0 0 26px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--qk-border);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.spell-option__details p {
+  margin: 0 0 8px;
+}
+
+.spell-option__kind {
+  color: var(--qk-terracotta);
+  font-weight: 700;
+}
+
+.spell-option__facts {
+  color: var(--qk-text-muted);
+}

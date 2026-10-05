@@ -4,6 +4,7 @@ import {
   getSpellcastingType,
   ABILITY_LABELS,
 } from "./characterSheet";
+import { getRaceGuidance, getClassGuidance } from "./beginnerGuidance";
 import {
   getClassFeatures,
   getSubclassFeatures,
@@ -342,6 +343,7 @@ export function mapRaceToPanel(data) {
     languages,
     traits,
     subraces: listNames(data.subraces),
+    guidance: getRaceGuidance(data.index),
   };
 }
 
@@ -436,6 +438,7 @@ export function mapClassToPanel(data) {
     })),
     laterFeatures: (data.laterFeatureNames ?? []).join(", "),
     spellcasting: describeClassSpellcasting(data),
+    guidance: getClassGuidance(data.index),
   };
 }
 

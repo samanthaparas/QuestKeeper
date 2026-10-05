@@ -9,8 +9,7 @@
   max-width: var(--qk-content-width);
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 210px minmax(0, 1fr) 300px;
-  gap: 32px;
+  gap: 16px;
   align-items: start;
 }
 
@@ -42,26 +41,10 @@
   outline-offset: 2px;
 }
 
-.character-creation__review-list {
-  list-style: none;
-  margin: 0 0 32px;
-  padding: 0;
-  display: grid;
-  gap: 12px;
-  font-size: 18px;
-  line-height: 1.5;
-}
-
 .character-creation__nav {
   display: flex;
   gap: 16px;
   margin-top: 32px;
-}
-
-@media screen and (max-width: 1024px) {
-  .character-creation__layout {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media screen and (max-width: 600px) {
@@ -71,5 +54,37 @@
 
   .character-creation__title {
     font-size: 26px;
+  }
+}
+
+.character-creation__edit-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 10px 16px;
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-terracotta-hover);
+  font-weight: 600;
+}
+
+/* Narrow steps: the step on the left, a Tips card on the right. */
+.character-creation__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 32px;
+  align-items: start;
+}
+
+.character-creation__main {
+  min-width: 0;
+}
+
+@media screen and (max-width: 1000px) {
+  .character-creation__split {
+    grid-template-columns: 1fr;
   }
 }

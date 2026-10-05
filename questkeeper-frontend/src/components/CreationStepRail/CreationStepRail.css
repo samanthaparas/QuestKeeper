@@ -7,34 +7,46 @@
   margin: 0;
   padding: 0;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 0;
 }
 
 .creation-step-rail__item {
   display: flex;
+  align-items: center;
+}
+
+/* An arrow between steps, pointing the way forward. */
+.creation-step-rail__item:not(:last-child)::after {
+  content: "\203A";
+  margin: 0 6px;
+  color: var(--qk-text-muted);
+  font-size: 20px;
+  line-height: 1;
 }
 
 .creation-step-rail__button,
 .creation-step-rail__static {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 40px;
-  padding: 8px 12px;
-  border-radius: var(--qk-radius-control);
+  gap: 8px;
+  min-height: 38px;
+  padding: 6px 12px;
+  border-radius: 999px;
   font-size: 14px;
   font-weight: 600;
   color: var(--qk-text-muted);
+  white-space: nowrap;
 }
 
 .creation-step-rail__button {
   border: none;
   background: none;
   cursor: pointer;
-  text-align: left;
   font: inherit;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .creation-step-rail__button:hover {
@@ -50,12 +62,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: 1px solid var(--qk-border);
   font-size: 12px;
   flex-shrink: 0;
+}
+
+.creation-step-rail__item--complete .creation-step-rail__button {
+  color: var(--qk-text);
 }
 
 .creation-step-rail__item--complete .creation-step-rail__marker {
@@ -72,19 +88,19 @@
 .creation-step-rail__item--current .creation-step-rail__marker {
   border-color: var(--qk-terracotta);
   background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
 }
 
-@media screen and (max-width: 1024px) {
+@media screen and (max-width: 700px) {
   .creation-step-rail__list {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 6px;
   }
 
   .creation-step-rail__button,
   .creation-step-rail__static {
-    width: auto;
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 6px 8px;
+    font-size: 13px;
   }
 }

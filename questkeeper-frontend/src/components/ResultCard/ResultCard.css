@@ -57,3 +57,10 @@
   color: var(--qk-text-muted);
   font-size: 14px;
 }
+
+.result-card__tagline {
+  margin: 4px 0 0;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  line-height: 1.3;
+}

@@ -26,9 +26,9 @@
 
 .class-spell-choice-step__checklist {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
-  max-width: 640px;
+  max-width: 760px;
 }
 
 .class-spell-choice-step__checkbox {

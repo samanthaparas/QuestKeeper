@@ -1,7 +1,7 @@
 import "./DetailPanel.css";
 
 // Paragraphs and simple tables from the SRD text (spell descriptions, etc.).
-function renderBlocks(blocks) {
+export function SrdBlocks({ blocks }) {
   return blocks.map((block, index) =>
     typeof block === "string" ? (
       <p key={index}>{block}</p>
@@ -66,6 +66,29 @@ function DetailPanel({ selectedResult, actions }) {
         <p className="detail-panel__description">
           {selectedResult.description}
         </p>
+      )}
+
+      {selectedResult.guidance && (
+        <div className="detail-panel__guide">
+          <p className="detail-panel__guide-main">
+            <strong>Good if you want</strong> {selectedResult.guidance.goodIf}.
+          </p>
+          {(selectedResult.guidance.role ||
+            selectedResult.guidance.difficulty) && (
+            <p className="detail-panel__guide-chips">
+              {selectedResult.guidance.role && (
+                <span className="detail-panel__chip">
+                  {selectedResult.guidance.role}
+                </span>
+              )}
+              {selectedResult.guidance.difficulty && (
+                <span className="detail-panel__chip">
+                  {selectedResult.guidance.difficulty}
+                </span>
+              )}
+            </p>
+          )}
+        </div>
       )}
 
       {selectedResult.category === "Race" && (
@@ -173,7 +196,7 @@ function DetailPanel({ selectedResult, actions }) {
             <strong>Proficiencies:</strong>
           </p>
 
-          <ul className="detail-panel__list">
+          <ul className="detail-panel__list detail-panel__list--chips">
             {selectedResult.proficiencies?.map((item) => (
               <li key={item}>{item}</li>
             ))}
@@ -211,7 +234,7 @@ function DetailPanel({ selectedResult, actions }) {
               <strong>Starting Proficiencies:</strong>
             </p>
 
-            <ul className="detail-panel__list">
+            <ul className="detail-panel__list detail-panel__list--chips">
               {selectedResult.startingProficiencies?.map((item) => (
                 <li key={item}>{item}</li>
               ))}
@@ -225,7 +248,7 @@ function DetailPanel({ selectedResult, actions }) {
               <strong>Starting Equipment:</strong>
             </p>
 
-            <ul className="detail-panel__list">
+            <ul className="detail-panel__list detail-panel__list--chips">
               {selectedResult.startingEquipment?.map((item) => (
                 <li key={item}>{item}</li>
               ))}
@@ -278,7 +301,7 @@ function DetailPanel({ selectedResult, actions }) {
               <strong>Starting Proficiencies:</strong>
             </p>
 
-            <ul className="detail-panel__list">
+            <ul className="detail-panel__list detail-panel__list--chips">
               {selectedResult.startingProficiencies?.map((item) => (
                 <li key={item}>{item}</li>
               ))}
@@ -288,7 +311,7 @@ function DetailPanel({ selectedResult, actions }) {
               <strong>Starting Equipment:</strong>
             </p>
 
-            <ul className="detail-panel__list">
+            <ul className="detail-panel__list detail-panel__list--chips">
               {selectedResult.equipmentChoices?.map((item, index) => (
                 <li key={index}>{item}</li>
               ))}
@@ -336,7 +359,7 @@ function DetailPanel({ selectedResult, actions }) {
             </p>
           )}
 
-          {renderBlocks(selectedResult.blocks)}
+          <SrdBlocks blocks={selectedResult.blocks} />
         </>
       )}
 

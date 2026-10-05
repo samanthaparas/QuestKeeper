@@ -1,0 +1,34 @@
+.creation-tips {
+  position: sticky;
+  top: 16px;
+  padding: 20px 22px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+  box-shadow: 0 4px 12px var(--qk-shadow);
+}
+
+.creation-tips__art {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  margin: 0 0 16px;
+  border-radius: var(--qk-radius-control);
+  object-fit: cover;
+}
+
+.creation-tips__title {
+  margin: 0 0 12px;
+  color: var(--qk-terracotta);
+  font-size: 18px;
+}
+
+.creation-tips__list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0 0 0 20px;
+  color: var(--qk-text);
+  font-size: 14px;
+  line-height: 1.5;
+}

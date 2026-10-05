@@ -58,3 +58,24 @@
   gap: 16px;
   margin-top: 32px;
 }
+
+.class-skill-choice-step__counter {
+  margin: 0 0 12px;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Can't be picked right now: dashed and muted, and the note under the name
+   says why ("Already from Acolyte"), so it never looks broken. */
+.class-skill-choice-step__checkbox--locked {
+  border-style: dashed;
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text-muted);
+  cursor: not-allowed;
+}
+
+.class-skill-choice-step__checkbox--picked {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+}

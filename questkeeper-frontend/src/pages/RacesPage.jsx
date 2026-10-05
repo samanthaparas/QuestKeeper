@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getRaces } from "../utils/api";
 import { loadRaceDetails, mapRaceToPanel } from "../utils/srdDetails";
+import { getRaceGuidance } from "../utils/beginnerGuidance";
 import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
@@ -22,6 +23,7 @@ function RacesPage() {
           name: item.name,
           category: "Race",
           description: "Select this race to view more details.",
+          tagline: getRaceGuidance(item.index)?.tagline,
           url: item.url,
         }));
 

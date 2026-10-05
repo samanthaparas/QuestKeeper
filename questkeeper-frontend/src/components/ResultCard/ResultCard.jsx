@@ -35,6 +35,9 @@ function ResultCard({ result, onClick, isSelected }) {
           {result.category}
           {result.edition && ` · ${result.edition} SRD`}
         </p>
+        {result.tagline && (
+          <p className="result-card__tagline">{result.tagline}</p>
+        )}
       </div>
     </button>
   );
