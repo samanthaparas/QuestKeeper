@@ -20,7 +20,10 @@ import {
   tagWithSource,
   formatClassFeatureDetails,
   formatTraitDetails,
+  loadFeatureEntries,
+  buildFeatureChoices,
 } from "../../utils/srdDetails";
+import Button from "../Button/Button";
 
 function loadFeatureDetails(match) {
   return match.source === "trait"
@@ -33,7 +36,9 @@ function CharacterSheetFeaturesTab({
   subclassId,
   raceId,
   subraceId,
+  level = 1,
   features,
+  onFeaturesAddMany,
   onFeatureAdd,
   onFeatureUpdate,
   onFeatureRemove,
@@ -53,6 +58,12 @@ function CharacterSheetFeaturesTab({
   const [allFeats, setAllFeats] = useState([]);
   const [characterFeatures, setCharacterFeatures] = useState([]);
   const detailView = useSrdDetailView();
+  const [showImport, setShowImport] = useState(false);
+  const [importState, setImportState] = useState({
+    status: "idle",
+    choices: [],
+  });
+  const [picked, setPicked] = useState(() => new Set());
 
   useEffect(() => {
     Promise.allSettled([getFeats("2014"), getFeats("2024")]).then((results) =>
@@ -105,6 +116,56 @@ function CharacterSheetFeaturesTab({
     return preferEdition(findSrdMatches(feat.name, allFeats), feat.edition);
   }
 
+  // Looks up what the SRD gives this race and class, ticks everything the
+  // character has reached, and lets the player add the rest or skip some.
+  function toggleImport() {
+    if (showImport) {
+      setShowImport(false);
+      return;
+    }
+
+    setShowImport(true);
+    setImportState({ status: "loading", choices: [] });
+
+    loadFeatureEntries({ classId, subclassId, raceId, subraceId })
+      .then((entries) => {
+        const choices = buildFeatureChoices(
+          entries,
+          level,
+          features.map((feature) => feature.name),
+        );
+        setPicked(
+          new Set(choices.filter((c) => c.defaultSelected).map((c) => c.key)),
+        );
+        setImportState({ status: "ready", choices });
+      })
+      .catch(() => setImportState({ status: "error", choices: [] }));
+  }
+
+  function togglePicked(key) {
+    setPicked((previous) => {
+      const next = new Set(previous);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function addPicked() {
+    const chosen = importState.choices.filter((choice) =>
+      picked.has(choice.key),
+    );
+    if (chosen.length === 0) return;
+
+    onFeaturesAddMany(
+      chosen.map((choice) => ({
+        name: choice.name,
+        description: choice.description,
+      })),
+    );
+    setShowImport(false);
+  }
+
   function openFeatDetails(feat) {
     const matches = getFeatMatches(feat);
     detailView.open(matches[0].name, () =>
@@ -119,6 +180,80 @@ function CharacterSheetFeaturesTab({
   return (
     <>
       <section className="character-sheet__section">
+        <div className="character-sheet__feature-import">
+          <Button
+            variant="secondary"
+            type="button"
+            aria-expanded={showImport}
+            onClick={toggleImport}
+          >
+            {showImport ? "Close" : "Add from my class and race"}
+          </Button>
+
+          {showImport && (
+            <div className="character-sheet__feature-import-panel">
+              {importState.status === "loading" && (
+                <p className="character-sheet__empty-text">
+                  Looking up your features...
+                </p>
+              )}
+              {importState.status === "error" && (
+                <p className="character-sheet__empty-text">
+                  Couldn't load features right now. Try again in a moment.
+                </p>
+              )}
+              {importState.status === "ready" &&
+                importState.choices.length === 0 && (
+                  <p className="character-sheet__empty-text">
+                    No features found for this race and class. Homebrew? Use Add
+                    Feature below to type your own.
+                  </p>
+                )}
+              {importState.status === "ready" &&
+                importState.choices.length > 0 && (
+                  <>
+                    <p className="character-sheet__empty-text">
+                      Features up to level {level} are ticked. Untick any you
+                      don't want, then add them. You can edit or remove them
+                      afterward.
+                    </p>
+                    <ul className="character-sheet__feature-import-list">
+                      {importState.choices.map((choice) => (
+                        <li key={choice.key}>
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={picked.has(choice.key)}
+                              disabled={choice.alreadyAdded}
+                              onChange={() => togglePicked(choice.key)}
+                            />
+                            <span>
+                              <strong>{choice.name}</strong>{" "}
+                              <span className="character-sheet__feature-import-meta">
+                                {choice.sourceLabel}
+                                {choice.level ? ` · level ${choice.level}` : ""}
+                                {choice.alreadyAdded
+                                  ? " · already on your sheet"
+                                  : ""}
+                              </span>
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      type="button"
+                      onClick={addPicked}
+                      disabled={picked.size === 0}
+                    >
+                      {`Add ${picked.size} ${picked.size === 1 ? "feature" : "features"}`}
+                    </Button>
+                  </>
+                )}
+            </div>
+          )}
+        </div>
+
         <EditableItemList
           title="Features"
           items={features}

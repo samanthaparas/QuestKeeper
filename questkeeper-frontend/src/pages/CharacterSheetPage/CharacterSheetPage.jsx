@@ -599,6 +599,13 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, features: [...(sheet.features ?? []), feature] });
   }
 
+  function handleFeaturesAddMany(list) {
+    const added = list.map((feature) =>
+      createFeat({ name: feature.name, description: feature.description }),
+    );
+    persistSheet({ ...sheet, features: [...(sheet.features ?? []), ...added] });
+  }
+
   function handleFeatureUpdate(id, values) {
     persistSheet({
       ...sheet,
@@ -1284,6 +1291,8 @@ function CharacterSheetPage() {
                       raceId={sheet.race?.id}
                       subraceId={sheet.race?.subrace?.id}
                       features={sheet.features ?? []}
+                      level={sheet.level}
+                      onFeaturesAddMany={handleFeaturesAddMany}
                       onFeatureAdd={handleFeatureAdd}
                       onFeatureUpdate={handleFeatureUpdate}
                       onFeatureRemove={handleFeatureRemove}

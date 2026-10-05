@@ -31,9 +31,14 @@ import {
   getSubraceCantripTraitId,
   getRaceFixedCantrip,
   addRacialCantrip,
+  createFeat,
 } from "../../utils/characterSheet";
 
 import { saveCharacter } from "../../utils/characterStore";
+import {
+  loadFeatureEntries,
+  buildFeatureChoices,
+} from "../../utils/srdDetails";
 import PickerStep from "../../components/PickerStep/PickerStep";
 import AbilityScoreStep from "../../components/AbilityScoreStep/AbilityScoreStep";
 import ClassSkillChoiceStep from "../../components/ClassSkillChoiceStep/ClassSkillChoiceStep";
@@ -154,6 +159,7 @@ function CharacterCreationPage() {
   const [subclass, setSubclass] = useState(null);
   const [subclassRaw, setSubclassRaw] = useState(null);
   const [subraceCantrip, setSubraceCantrip] = useState(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   const finalRace = mergeSubrace(race, subrace);
 
@@ -187,6 +193,9 @@ function CharacterCreationPage() {
   }
 
   async function handleCreate() {
+    if (isCreating) return;
+    setIsCreating(true);
+
     const conModifier = getAbilityModifier(abilityScores.constitution);
     const dexModifier = getAbilityModifier(abilityScores.dexterity);
     const hitDie = characterClass?.hitDie ?? 8;
@@ -225,8 +234,24 @@ function CharacterCreationPage() {
       ? addRacialCantrip(spellcasting, subraceCantrip)
       : spellcasting;
 
+    // New characters arrive with their race's traits and their level 1 class
+    // features already written down. If the lookup fails they just start
+    // empty, and "Add from my class and race" is on the Features tab.
+    const featureEntries = await loadFeatureEntries({
+      classId: characterClass?.id,
+      subclassId: subclass?.id,
+      raceId: race?.id,
+      subraceId: subrace?.id,
+    }).catch(() => []);
+    const features = buildFeatureChoices(featureEntries, 1, [])
+      .filter((choice) => choice.defaultSelected)
+      .map((choice) =>
+        createFeat({ name: choice.name, description: choice.description }),
+      );
+
     const sheet = createCharacterSheet({
       name,
+      features,
       race: finalRace,
       class: finalClass,
       background,
@@ -245,8 +270,12 @@ function CharacterCreationPage() {
       },
     });
 
-    await saveCharacter(sheet);
-    navigate("/characters");
+    try {
+      await saveCharacter(sheet);
+      navigate("/characters");
+    } finally {
+      setIsCreating(false);
+    }
   }
 
   return (
@@ -559,7 +588,9 @@ function CharacterCreationPage() {
                   Back
                 </Button>
 
-                <Button onClick={handleCreate}>Create Character</Button>
+                <Button onClick={handleCreate} disabled={isCreating}>
+                  {isCreating ? "Creating..." : "Create Character"}
+                </Button>
               </div>
             </div>
           )}

@@ -1,4 +1,26 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("./api", () => ({
+  getRaceTraits: vi.fn().mockResolvedValue([{ index: "infernal-legacy", name: "Infernal Legacy" }]),
+  getSubraceTraits: vi.fn(),
+  getClassFeatures: vi.fn().mockResolvedValue([
+    { index: "divine-sense", name: "Divine Sense" },
+    { index: "aura-of-protection", name: "Aura of Protection" },
+  ]),
+  getSubclassFeatures: vi.fn(),
+  getTraitDetails: vi.fn().mockResolvedValue({
+    name: "Infernal Legacy",
+    desc: ["You know the **thaumaturgy** cantrip."],
+  }),
+  getFeatureDetails: vi.fn((index) =>
+    Promise.resolve(
+      index === "divine-sense"
+        ? { name: "Divine Sense", level: 1, class: { name: "Paladin" }, desc: ["Detect fiends.", "|a|b|"] }
+        : { name: "Aura of Protection", level: 6, class: { name: "Paladin" }, desc: ["Add Charisma to saves."] },
+    ),
+  ),
+}));
+
 import {
   normalizeItemName,
   findSrdMatches,
@@ -12,6 +34,9 @@ import {
   groupMarkdownTables,
   formatClassFeatureDetails,
   formatTraitDetails,
+  descriptionFromSrd,
+  buildFeatureChoices,
+  loadFeatureEntries,
 } from "./srdDetails";
 describe("normalizeItemName", () => {
   it("ignores capitals and extra spaces", () => {
@@ -592,5 +617,54 @@ describe("formatTraitDetails", () => {
 
     expect(details.kind).toBe("Racial Trait");
     expect(details.facts).toEqual([]);
+  });
+});
+
+describe("descriptionFromSrd", () => {
+  it("joins paragraphs with new lines and strips markdown bold and tables", () => {
+    expect(descriptionFromSrd(["You gain **bold** stuff.", "", "|a|b|", "Second line."])).toBe(
+      "You gain bold stuff.\nSecond line.",
+    );
+  });
+});
+
+describe("loadFeatureEntries", () => {
+  it("gathers racial traits and class features with their levels", async () => {
+    const entries = await loadFeatureEntries({ classId: "paladin", raceId: "tiefling" });
+
+    expect(entries.map((entry) => [entry.name, entry.level, entry.sourceLabel])).toEqual([
+      ["Infernal Legacy", null, "Racial trait"],
+      ["Divine Sense", 1, "Paladin"],
+      ["Aura of Protection", 6, "Paladin"],
+    ]);
+    expect(entries[0].description).toBe("You know the thaumaturgy cantrip.");
+    expect(entries[1].description).toBe("Detect fiends.");
+  });
+});
+
+describe("buildFeatureChoices", () => {
+  const entries = [
+    { key: "feature:aura", name: "Aura of Protection", level: 6, order: 2, description: "" },
+    { key: "feature:sense", name: "Divine Sense", level: 1, order: 2, description: "" },
+    { key: "trait:legacy", name: "Infernal Legacy", level: null, order: 0, description: "" },
+  ];
+
+  it("lists race first, then class by level, and ticks what the character has reached", () => {
+    const choices = buildFeatureChoices(entries, 3, []);
+
+    expect(choices.map((choice) => choice.name)).toEqual([
+      "Infernal Legacy",
+      "Divine Sense",
+      "Aura of Protection",
+    ]);
+    expect(choices.map((choice) => choice.defaultSelected)).toEqual([true, true, false]);
+  });
+
+  it("marks features already on the sheet and does not tick them", () => {
+    const choices = buildFeatureChoices(entries, 15, ["divine sense"]);
+    const sense = choices.find((choice) => choice.name === "Divine Sense");
+
+    expect(sense.alreadyAdded).toBe(true);
+    expect(sense.defaultSelected).toBe(false);
   });
 });
