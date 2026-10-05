@@ -6,7 +6,7 @@ import {
   listTemplates,
   updateTemplate,
 } from "../../utils/tableStore";
-import { cleanStatBlock, emptyStatBlock, readStatBlock } from "../../utils/statBlock";
+import { cleanStatBlock, emptyStatBlock, isSameTemplate, readStatBlock } from "../../utils/statBlock";
 import Button from "../../components/Button/Button";
 import StatBlockFields from "../../components/StatBlockFields/StatBlockFields";
 import "./LibraryPage.css";
@@ -67,6 +67,10 @@ function LibraryPage() {
       armorClass: form.armorClass === "" ? null : Number(form.armorClass),
       statBlock: cleanStatBlock(form.statBlock),
     };
+
+    if (!editingId && templates.some((template) => isSameTemplate(template, payload))) {
+      return setError("That's already in your library.");
+    }
 
     setError("");
     setIsBusy(true);

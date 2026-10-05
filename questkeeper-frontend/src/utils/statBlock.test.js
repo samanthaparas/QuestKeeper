@@ -5,6 +5,7 @@ import {
   cleanStatBlock,
   numberedNames,
   pieceNames,
+  isSameTemplate,
   splitIcon,
   withIcon,
   recentEventsFor,
@@ -138,5 +139,35 @@ describe("splitIcon and withIcon", () => {
   it("leaves a plain name alone", () => {
     expect(splitIcon("Goblin 2")).toEqual({ icon: "", text: "Goblin 2" });
     expect(withIcon("Goblin 2", "")).toBe("Goblin 2");
+  });
+});
+
+describe("isSameTemplate", () => {
+  const saved = {
+    kind: "ally",
+    name: "Maccath the Crimson",
+    max_hp: 50,
+    armor_class: 15,
+    stat_block: { notes: "", attacks: [{ name: "Longsword", toHit: 10, damage: "" }] },
+  };
+  const same = {
+    kind: "ally",
+    name: " maccath the crimson ",
+    maxHp: 50,
+    armorClass: 15,
+    statBlock: { notes: "", attacks: [{ name: "Longsword", toHit: 10, damage: "" }] },
+  };
+
+  it("matches the same monster, ignoring capitals and spacing", () => {
+    expect(isSameTemplate(saved, same)).toBe(true);
+  });
+
+  it("does not match when anything meaningful differs", () => {
+    expect(isSameTemplate(saved, { ...same, maxHp: 60 })).toBe(false);
+    expect(isSameTemplate(saved, { ...same, kind: "monster" })).toBe(false);
+    expect(isSameTemplate(saved, { ...same, armorClass: null })).toBe(false);
+    expect(
+      isSameTemplate(saved, { ...same, statBlock: { notes: "Bigger", attacks: [] } }),
+    ).toBe(false);
   });
 });

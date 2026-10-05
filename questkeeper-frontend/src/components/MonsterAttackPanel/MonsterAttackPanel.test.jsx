@@ -210,4 +210,20 @@ describe("MonsterAttackPanel", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("That fighter is down");
   });
+
+  it("separates opponents from the monster's own side in the target list", () => {
+    setup();
+
+    const select = screen.getByLabelText("Who is being attacked");
+    const groups = Array.from(select.querySelectorAll("optgroup")).map((group) => [
+      group.label,
+      Array.from(group.querySelectorAll("option")).map((option) => option.textContent),
+    ]);
+
+    expect(groups).toEqual([
+      ["Opponents", ["Billie (player)", "Sir Pip (ally)"]],
+      ["Same side (charm, confusion, mistakes)", ["Goblin"]],
+    ]);
+    expect(select).toHaveValue("c-billie");
+  });
 });

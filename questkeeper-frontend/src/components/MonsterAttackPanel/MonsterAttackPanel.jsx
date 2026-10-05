@@ -23,6 +23,12 @@ function orderTargets(attacker, targets) {
   return [...targets].sort((a, b) => rank(a) - rank(b));
 }
 
+// Which side a target is on, relative to the attacker. Enemies usually attack
+// players and allies; allies usually attack enemies.
+function isOppositeSide(attacker, target) {
+  return attacker.kind === "ally" ? target.kind === "monster" : target.kind !== "monster";
+}
+
 // The DM's attack panel: a monster or ally rolls to hit any other fighter, with
 // the attack filled in from its stat block. Damage on a player goes to that
 // player as an Apply button; damage on a monster or ally is applied directly.
@@ -32,6 +38,18 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
     attacker,
     targets.filter((target) => !(target.kind !== "player" && target.status === "down")),
   );
+
+  const opposite = choices.filter((choice) => isOppositeSide(attacker, choice));
+  const sameSide = choices.filter((choice) => !isOppositeSide(attacker, choice));
+
+  function renderTargetOption(choice) {
+    return (
+      <option key={choice.id} value={choice.id}>
+        {choice.name}
+        {KIND_NOTE[choice.kind]}
+      </option>
+    );
+  }
 
   const [targetId, setTargetId] = useState(choices[0]?.id ?? "");
   const [pickedAttack, setPickedAttack] = useState(attacks.length > 0 ? "0" : "custom");
@@ -156,12 +174,16 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
               value={target?.id ?? ""}
               onChange={(event) => setTargetId(event.target.value)}
             >
-              {choices.map((choice) => (
-                <option key={choice.id} value={choice.id}>
-                  {choice.name}
-                  {KIND_NOTE[choice.kind]}
-                </option>
-              ))}
+              {opposite.length > 0 && sameSide.length > 0 ? (
+                <>
+                  <optgroup label="Opponents">{opposite.map(renderTargetOption)}</optgroup>
+                  <optgroup label="Same side (charm, confusion, mistakes)">
+                    {sameSide.map(renderTargetOption)}
+                  </optgroup>
+                </>
+              ) : (
+                choices.map(renderTargetOption)
+              )}
             </select>
 
             {attacks.length > 0 && (

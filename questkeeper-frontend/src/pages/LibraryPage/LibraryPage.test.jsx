@@ -144,4 +144,21 @@ describe("LibraryPage", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not reach the database");
   });
+
+  it("won't add a second copy of something already in the library", async () => {
+    renderPage();
+    await screen.findByText("Bugbear");
+
+    await userEvent.type(screen.getByLabelText("Name"), "Bugbear");
+    await userEvent.type(screen.getByLabelText("HP"), "27");
+    await userEvent.type(screen.getByLabelText("AC"), "16");
+    await userEvent.click(screen.getByRole("button", { name: "+ Add attack" }));
+    await userEvent.type(screen.getByLabelText("Attack 1 name"), "Morningstar");
+    await userEvent.type(screen.getByLabelText("Attack 1 to hit"), "4");
+    await userEvent.type(screen.getByLabelText("Attack 1 damage"), "2d8+2");
+    await userEvent.click(screen.getByRole("button", { name: "Add to library" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("already in your library");
+    expect(createTemplate).not.toHaveBeenCalled();
+  });
 });
