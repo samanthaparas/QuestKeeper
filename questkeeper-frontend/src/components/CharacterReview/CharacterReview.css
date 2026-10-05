@@ -1,0 +1,248 @@
+.character-review {
+  display: grid;
+  gap: 20px;
+}
+
+.character-review__hero {
+  padding: 24px 28px;
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-terracotta-soft);
+}
+
+.character-review__eyebrow {
+  margin: 0 0 4px;
+  color: var(--qk-terracotta-hover);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.character-review__name {
+  margin: 0;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 40px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.character-review__tagline {
+  margin: 6px 0 16px;
+  color: var(--qk-text);
+  font-size: 18px;
+}
+
+.character-review__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.character-review__stats li {
+  padding: 4px 14px;
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.character-review__stats strong {
+  color: var(--qk-text);
+}
+
+.character-review__issues {
+  padding: 16px 20px;
+  border: 1px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.character-review__issues-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: var(--qk-terracotta-hover);
+}
+
+.character-review__issues ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.character-review__issues li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.character-review__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.character-review__card {
+  padding: 20px 22px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+  box-shadow: 0 4px 12px var(--qk-shadow);
+}
+
+.character-review__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.character-review__card-head h2 {
+  margin: 0;
+  color: var(--qk-terracotta);
+  font-size: 18px;
+}
+
+.character-review__facts {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.character-review__fact {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--qk-border);
+}
+
+.character-review__fact:first-child {
+  border-top: none;
+}
+
+.character-review__fact dt {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.character-review__fact dd {
+  margin: 0;
+  color: var(--qk-text);
+  font-size: 17px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.character-review__abilities {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.character-review__abilities li {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 10px 6px;
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface-muted);
+}
+
+.character-review__ability-name {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.character-review__ability-score {
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.character-review__ability-mod {
+  color: var(--qk-terracotta-hover);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.character-review__subhead {
+  margin: 12px 0 8px;
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.character-review__subhead:first-of-type {
+  margin-top: 0;
+}
+
+.character-review__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.character-review__chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+  font-size: 14px;
+}
+
+.character-review__chip-note {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+}
+
+.character-review__empty {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.character-review__actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+@media screen and (max-width: 600px) {
+  .character-review__name {
+    font-size: 30px;
+  }
+
+  .character-review__fact {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .character-review__fact dt {
+    grid-column: 1 / -1;
+  }
+}

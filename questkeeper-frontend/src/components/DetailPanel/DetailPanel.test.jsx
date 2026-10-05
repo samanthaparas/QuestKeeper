@@ -126,3 +126,50 @@ describe("DetailPanel: spell", () => {
     expect(within(table).getByText("Moves randomly")).toBeInTheDocument();
   });
 });
+
+describe("DetailPanel: beginner guidance", () => {
+  it("shows a Good if you want line with the role and difficulty for a class", () => {
+    render(
+      <DetailPanel
+        selectedResult={{
+          name: "Fighter",
+          category: "Class",
+          hitDie: "d10",
+          savingThrows: "STR, CON",
+          proficiencies: [],
+          startingEquipment: "",
+          subclasses: "Champion",
+          guidance: {
+            goodIf:
+              "to be great at fighting with the simplest rules in the game",
+            role: "Weapon expert",
+            difficulty: "Easy to play",
+          },
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(/great at fighting with the simplest rules/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Weapon expert")).toBeInTheDocument();
+    expect(screen.getByText("Easy to play")).toBeInTheDocument();
+  });
+
+  it("shows nothing extra when a race or class has no guidance", () => {
+    render(
+      <DetailPanel
+        selectedResult={{
+          name: "Homebrew",
+          category: "Race",
+          speed: 30,
+          size: "Medium",
+          abilityBonuses: "",
+          alignment: "",
+        }}
+      />,
+    );
+
+    expect(screen.queryByText("Good if you want")).not.toBeInTheDocument();
+  });
+});

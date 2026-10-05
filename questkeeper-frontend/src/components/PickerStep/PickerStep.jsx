@@ -12,6 +12,7 @@ function PickerStep({
   fetchDetails,
   mapToDetailPanelResult,
   mapToSnapshot,
+  getTagline,
   initialSelectedRaw,
   emptyMessage,
   onChoose,
@@ -81,7 +82,12 @@ function PickerStep({
             {items.map((item) => (
               <ResultCard
                 key={item.index}
-                result={{ name: item.name, category, index: item.index }}
+                result={{
+                  name: item.name,
+                  category,
+                  index: item.index,
+                  tagline: getTagline?.(item),
+                }}
                 isSelected={selectedIndex === item.index}
                 onClick={() => handleSelect(item)}
               />
