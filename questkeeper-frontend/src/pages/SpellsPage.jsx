@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSpells, getSpellDetails } from "../utils/api";
+import { mapSpellToPanel } from "../utils/srdDetails";
 import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
@@ -60,17 +61,7 @@ function SpellsPage() {
 
     getSpellDetails(result.index)
       .then((data) => {
-        const formattedSpell = {
-          name: data.name,
-          category: "Spell",
-          description: data.desc?.[0] || "No description available.",
-          range: data.range,
-          duration: data.duration,
-          castingTime: data.casting_time,
-          level: data.level,
-        };
-
-        setSelectedResult(formattedSpell);
+        setSelectedResult(mapSpellToPanel(data));
         setApiError("");
       })
       .catch(() => {

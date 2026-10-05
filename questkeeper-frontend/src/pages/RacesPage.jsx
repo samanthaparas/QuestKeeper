@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getRaces, getRaceDetails } from "../utils/api";
+import { getRaces } from "../utils/api";
+import { loadRaceDetails, mapRaceToPanel } from "../utils/srdDetails";
 import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
@@ -50,22 +51,9 @@ function RacesPage() {
   function handleResultClick(result) {
     setSelectedResult(result);
 
-    getRaceDetails(result.index)
+    loadRaceDetails(result.index)
       .then((data) => {
-        const abilityBonuses = data.ability_bonuses
-          .map((ability) => `${ability.ability_score.name} +${ability.bonus}`)
-          .join(", ");
-
-        const formattedRace = {
-          name: data.name,
-          category: "Race",
-          speed: data.speed,
-          size: data.size,
-          alignment: data.alignment,
-          abilityBonuses,
-        };
-
-        setSelectedResult(formattedRace);
+        setSelectedResult(mapRaceToPanel(data));
         setApiError("");
       })
       .catch(() => {

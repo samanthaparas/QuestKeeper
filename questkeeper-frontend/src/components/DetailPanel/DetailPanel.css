@@ -55,3 +55,33 @@
 .detail-panel__list li {
   margin-bottom: 4px;
 }
+
+.detail-panel__list--rich {
+  list-style: disc;
+}
+
+.detail-panel__list--rich li {
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.detail-panel__table-wrapper {
+  margin: 0 0 14px;
+  overflow-x: auto;
+}
+
+.detail-panel__table {
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.detail-panel__table th,
+.detail-panel__table td {
+  padding: 4px 10px;
+  border: 1px solid var(--qk-border);
+  text-align: left;
+}
+
+.detail-panel__table th {
+  background-color: var(--qk-surface-muted);
+}

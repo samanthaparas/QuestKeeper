@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getClasses, getClassDetails } from "../utils/api";
+import { getClasses } from "../utils/api";
+import { loadClassDetails, mapClassToPanel } from "../utils/srdDetails";
 import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
@@ -51,36 +52,9 @@ function ClassesPage() {
   function handleResultClick(result) {
     setSelectedResult(result);
 
-    getClassDetails(result.index)
+    loadClassDetails(result.index)
       .then((data) => {
-        const savingThrows = data.saving_throws
-          .map((item) => item.name)
-          .join(", ");
-
-        const proficiencies = data.proficiencies.map((item) => item.name);
-
-        const skillChoices = data.proficiency_choices
-          .map((choice) => choice.desc)
-          .join(" ");
-
-        const startingEquipment = data.starting_equipment
-          .map((item) => `${item.equipment.name} x${item.quantity}`)
-          .join(", ");
-
-        const subclasses = data.subclasses.map((item) => item.name).join(", ");
-
-        const formattedClass = {
-          name: data.name,
-          category: "Class",
-          hitDie: `d${data.hit_die}`,
-          savingThrows,
-          proficiencies,
-          skillChoices,
-          startingEquipment,
-          subclasses,
-        };
-
-        setSelectedResult(formattedClass);
+        setSelectedResult(mapClassToPanel(data));
         setApiError("");
       })
       .catch(() => {

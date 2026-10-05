@@ -1,4 +1,9 @@
-import { getFeatDescriptionLines } from "./characterSheet";
+import {
+  getFeatDescriptionLines,
+  getSpellcastingAbility,
+  getSpellcastingType,
+  ABILITY_LABELS,
+} from "./characterSheet";
 import {
   getClassFeatures,
   getSubclassFeatures,
@@ -7,6 +12,9 @@ import {
   getFeatureDetails,
   getTraitDetails,
   getEquipmentDetails,
+  getRaceDetails,
+  getClassDetails,
+  getClassLevel,
 } from "./api";
 
 const SPELL_LEVEL_LABELS = [
@@ -269,6 +277,178 @@ export function formatEquipmentDetails(item) {
       ...toLines(item.description),
       ...toLines(item.special),
     ]),
+  };
+}
+
+// --- Race, class and spell detail panels --------------------------------------
+// One set of formatters shared by the Races, Classes, Spells and Search pages
+// and by character creation, so a race looks the same wherever it is shown.
+
+function listNames(items) {
+  return (items ?? []).map((item) => item.name).join(", ");
+}
+
+// A race, plus the full text of each of its racial traits.
+export async function loadRaceDetails(raceId) {
+  const race = await getRaceDetails(raceId);
+  const results = await Promise.allSettled(
+    (race.traits ?? []).map((trait) => getTraitDetails(trait.index)),
+  );
+
+  return {
+    ...race,
+    traitDetails: results.flatMap((result) =>
+      result.status === "fulfilled" && result.value ? [result.value] : [],
+    ),
+  };
+}
+
+export function mapRaceToPanel(data) {
+  const bonuses = (data.ability_bonuses ?? []).map(
+    (ability) => `${ability.ability_score.name} +${ability.bonus}`,
+  );
+  const choice = data.ability_bonus_options;
+  const abilityBonuses = choice
+    ? `${bonuses.join(", ")}, plus +${choice.from.options[0]?.bonus ?? 1} to ${choice.choose} other abilities of your choice`
+    : bonuses.join(", ");
+
+  const languageNames = listNames(data.languages);
+  const extraLanguages = data.language_options?.choose;
+  const languages = extraLanguages
+    ? `${languageNames}, plus ${extraLanguages} of your choice`
+    : languageNames;
+
+  // Full trait text when it has been loaded, otherwise just the names.
+  const traits =
+    (data.traitDetails ?? []).length > 0
+      ? data.traitDetails.map((trait) => ({
+          name: trait.name,
+          description: descriptionFromSrd(trait.desc),
+        }))
+      : (data.traits ?? []).map((trait) => ({
+          name: trait.name,
+          description: "",
+        }));
+
+  return {
+    name: data.name,
+    category: "Race",
+    speed: data.speed,
+    size: data.size,
+    sizeDescription: data.size_description,
+    age: data.age,
+    alignment: data.alignment,
+    abilityBonuses,
+    languages,
+    traits,
+    subraces: listNames(data.subraces),
+  };
+}
+
+// A class, plus what you get at level 1 (with full text), the names of what
+// comes later, and the level 1 spellcasting numbers.
+export async function loadClassDetails(classId) {
+  const [data, levelOne, featureList] = await Promise.all([
+    getClassDetails(classId),
+    getClassLevel(classId, 1).catch(() => null),
+    getClassFeatures(classId).catch(() => []),
+  ]);
+
+  const levelOneRefs = levelOne?.features ?? [];
+  const results = await Promise.allSettled(
+    levelOneRefs.map((feature) => getFeatureDetails(feature.index)),
+  );
+  const levelOneNames = new Set(levelOneRefs.map((feature) => feature.name));
+
+  return {
+    ...data,
+    levelOneFeatures: results.flatMap((result) =>
+      result.status === "fulfilled" && result.value ? [result.value] : [],
+    ),
+    laterFeatureNames: featureList
+      .map((feature) => feature.name)
+      .filter((name) => !levelOneNames.has(name)),
+    levelOneSpellcasting: levelOne?.spellcasting ?? null,
+  };
+}
+
+// A plain sentence about how this class casts spells at level 1.
+export function describeClassSpellcasting(data) {
+  const ability = getSpellcastingAbility(data.index);
+  if (!ability) return "";
+
+  const label = ABILITY_LABELS[ability];
+  const numbers = data.levelOneSpellcasting;
+  if (!numbers?.cantrips_known && !numbers?.spell_slots_level_1) {
+    return `Casts with ${label}. Spellcasting starts at level 2.`;
+  }
+
+  const parts = [];
+  if (numbers.cantrips_known) {
+    parts.push(
+      `${numbers.cantrips_known} cantrip${numbers.cantrips_known === 1 ? "" : "s"}`,
+    );
+  }
+  if (numbers.spells_known) {
+    parts.push(
+      `${numbers.spells_known} spell${numbers.spells_known === 1 ? "" : "s"} known`,
+    );
+  }
+  const slots = numbers.spell_slots_level_1;
+  if (slots) {
+    parts.push(`${slots} first-level spell slot${slots === 1 ? "" : "s"}`);
+  }
+
+  const summary =
+    parts.length > 1
+      ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`
+      : parts[0];
+  const prepared =
+    getSpellcastingType(data.index) === "prepared"
+      ? " You choose which spells to ready each day."
+      : "";
+
+  return `Casts with ${label}. At level 1: ${summary}.${prepared}`;
+}
+
+export function mapClassToPanel(data) {
+  return {
+    name: data.name,
+    category: "Class",
+    hitDie: `d${data.hit_die}`,
+    savingThrows: listNames(data.saving_throws),
+    // Saving throws already have their own line, so they are left out here.
+    proficiencies: (data.proficiencies ?? [])
+      .map((item) => item.name)
+      .filter((name) => !/^saving throw/i.test(name)),
+    // One line per choice, so "choose three skills" and "three instruments"
+    // are not glued into one sentence.
+    skillChoiceLines: (data.proficiency_choices ?? []).map(
+      (choice) => choice.desc,
+    ),
+    startingEquipment: (data.starting_equipment ?? [])
+      .map((item) => `${item.equipment.name} x${item.quantity}`)
+      .join(", "),
+    subclasses: listNames(data.subclasses),
+    levelOneFeatures: (data.levelOneFeatures ?? []).map((feature) => ({
+      name: feature.name,
+      description: descriptionFromSrd(feature.desc),
+    })),
+    laterFeatures: (data.laterFeatureNames ?? []).join(", "),
+    spellcasting: describeClassSpellcasting(data),
+  };
+}
+
+export function mapSpellToPanel(data) {
+  const details = formatSpellDetails(data);
+
+  return {
+    name: data.name,
+    category: "Spell",
+    kind: details.kind,
+    facts: details.facts,
+    classes: listNames(data.classes),
+    blocks: details.blocks,
   };
 }
 
