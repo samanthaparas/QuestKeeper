@@ -64,6 +64,54 @@
   color: var(--qk-danger);
 }
 
+.search-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  width: min(100%, 760px);
+  margin: 24px auto 0;
+}
+
+.search-page__filter {
+  display: flex;
+  flex: 1 1 160px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.search-page__filter-label {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.search-page__filter-select {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 2px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background: var(--qk-surface);
+  color: var(--qk-text);
+  font-family: var(--qk-font-body);
+  font-size: 16px;
+}
+
+.search-page__filter-select:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.search-page__count {
+  width: min(100%, 760px);
+  margin: 16px auto 0;
+  color: var(--qk-text-muted);
+}
+
+.search-page__show-more {
+  justify-self: start;
+}
+
 .search-page__note {
   margin-bottom: 24px;
   color: var(--qk-text-muted);
