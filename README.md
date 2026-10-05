@@ -32,7 +32,9 @@ QuestKeeper is a full-stack companion for **Dungeons & Dragons Fifth Edition**, 
 
 - Global search across classes, races, spells, and backgrounds, plus dedicated category browsing pages.
 - Selectable result cards with an in-page detail panel, including race/class/background icons.
-- Guided character creation wizard — Name, Race (with subraces), Class (with subclasses where the SRD grants one at level 1), Background, class skill and starting-spell choices, and ability scores — with a persistent step rail and a live "Your Hero So Far" summary panel, and real derived starting stats (HP, AC, initiative, speed, saving throws) instead of flat defaults.
+- A guided character creation wizard for first-time players: the steps run as a row across the top, a slim "Your hero so far" strip fills in as you go, and the detail cards get the full page width. Every race and class has a plain-language "Good if you want..." line (classes also show a role and difficulty), every starting spell has a one-line summary and a Read more button for its full text, and each narrow step has a Tips card with class-specific advice. Options you can't pick are clearly marked as locked.
+- A Review page that reads like a character introduction: a card per section (who they are, ability scores, skills, magic, gear), a Change button on each that returns straight to Review, and a list of anything still missing before the character can be created.
+- New characters arrive with real derived starting stats: AC from the armor and shield they wear, attacks worked out from their starting weapons and proficiencies, languages, class proficiencies, racial traits, and level 1 class features, instead of flat defaults.
 - A tabbed character sheet (Actions, Spells, Resources, Inventory, Features, Story) with a persistent combat header (HP, AC, initiative, speed, ability scores) and a sticky Skills sidebar, so a tab you don't need — like Spells, for a non-caster — simply isn't there.
 - A full level-up flow: hit points (roll, take average, or enter a physical dice result), ability score improvements or feats, subclass selection at the correct level per class, and new-spell learning, with your current stats shown on every step.
 - Manual tracking for equipment (with attunement, capped at 3 items), attacks, feats, features, proficiencies, and per-rest limited-use resources, plus a dedicated per-level spell slot tracker — all editable after creation, not just at creation time.
@@ -42,7 +44,11 @@ QuestKeeper is a full-stack companion for **Dungeons & Dragons Fifth Edition**, 
 - Accounts (sign up, log in, session persistence) with character sheets saved to your account and a portrait upload for each character.
 - Spell slots computed from class and level at creation and level-up, temporary HP tracking, and tap-to-toggle skill and item proficiencies.
 - Weapon autocomplete with damage autofill and a to-hit ability hint, alongside spell autocomplete.
+- Race, class, and spell pages show what a player actually needs to choose: every racial trait with its text, the features you get at level 1 and what comes later, how the class casts spells, and full spell details (school, components, concentration, classes, higher-level scaling, and tables).
 - Tap any spell, feat, weapon, magic item, class feature, or racial trait for its full SRD details in a popup, including real tables.
+- Flat bonuses that real sheets need: a bonus to all saves (Paladin's Aura of Protection), per-skill bonuses, skill expertise, and a temporary AC bonus (Haste). Race, class, subclass, background, and spellcasting ability can all be retyped, so homebrew and non-SRD characters can match a paper sheet, and an "Add from my class and race" picker writes SRD class features and racial traits onto the sheet.
+- Tables for live play: a DM creates a table with a join code, and players join with one of their characters. The DM gets a read-only view of every sheet, an initiative tracker, and a private Monster Library; every player sees a turn banner on their own sheet. Enemy HP and AC stay hidden (players see a name, Bloodied or Down, and damage taken).
+- A full attack flow: a player rolls a virtual d20 or types a physical roll, and the database decides hit or miss against the secret AC. The DM can run attacks for monsters and allies from their stat blocks, send damage to a player as a request they apply on their own sheet, deny an attack, track friendly NPCs by hand, add many identical monsters at once with nicknames and icons, and roll initiative for every monster in one click while still rolling a boss with real dice.
 - The 2024 SRD's backgrounds and feats in browsing and the level-up flow, labeled by edition, with a full SRD attribution on the About page.
 - A "Learn the Basics" guide with an interactive dice roller, and ability score explanations plus a 4d6 roll-for-stats option in character creation.
 - A warm, parchment-and-terracotta visual design ("Wayfarer") applied consistently across the whole app, built on a shared CSS token system and a shared `Button` component.
@@ -54,7 +60,7 @@ QuestKeeper is a full-stack companion for **Dungeons & Dragons Fifth Edition**, 
 | ---------- | ---------------------------------- |
 | Frontend   | React 19, React Router, Vite, CSS  |
 | Backend    | Node.js, Express, REST routes      |
-| Auth/Data  | Supabase (Auth, Postgres, Storage) |
+| Auth/Data  | Supabase (Auth, Postgres, Realtime, Storage) |
 | Testing    | Vitest, React Testing Library      |
 | Data       | D&D 5e SRD API (2014 and 2024)     |
 | Repository | npm workspaces monorepo            |
@@ -71,7 +77,8 @@ QuestKeeper currently includes:
 - Global search across the available categories.
 - A guided character creation wizard (with subraces and level-1 subclasses where applicable) and a tabbed character sheet page covering stats, skills, spellcasting (including a spell slot tracker and spell autocomplete), attacks, equipment, feats, features, proficiencies, resources, and a Story tab (backstory, appearance, companion, notes) — all directly editable after creation.
 - A level-up flow for existing characters (hit points, ability score improvements or feats, subclass selection, new spells).
-- Supabase-backed sign up and login; the character pages require an account, while reference pages and search are open to everyone.
+- Supabase-backed sign up and login; the character and table pages require an account, while reference pages and search are open to everyone.
+- Live tables (join codes, initiative, hidden enemy stats, attacks, damage requests, an activity log, and a monster library) built on Postgres row-level security and SQL functions, with realtime updates and a polling fallback.
 - A backend connection to the D&D 5e SRD API's 2014 endpoints, plus an opt-in 2024 edition for backgrounds, feats, and magic items.
 - Root npm workspace commands for running both applications from the monorepo.
 - A Vitest suite for the character sheet's pure game-logic functions and React Testing Library tests for sheet components.
@@ -95,6 +102,8 @@ QuestKeeper/
 |       |-- components/          Reusable interface components
 |       |-- pages/               Page-level React components
 |       `-- utils/api.js         Frontend API request functions
+|-- supabase/
+|   `-- migrations/              SQL for tables, row-level security, and the game-rule functions
 |-- package.json                 Shared workspace commands
 `-- README.md
 ```
@@ -111,12 +120,14 @@ React frontend
     -> D&D 5e SRD API (2014 and 2024)
 
 React frontend
-    -> Supabase (Auth, saved characters, portraits)
+    -> Supabase (Auth, saved characters, portraits, tables and combat)
 ```
 
 The frontend normally requests reference data from `http://localhost:3001/api`. The Express backend then requests the appropriate resource from `https://www.dnd5eapi.co/api/2014` (or `/2024` when requested) and returns it in a consistent `{ data: ... }` response.
 
 Accounts, saved characters, and portrait uploads go directly from the frontend to Supabase. Row-level security on the `characters` table limits every select, insert, update, and delete to the signed-in user's own rows.
+
+Tables and combat also go directly to Supabase, but the frontend never sees secret data. Enemy HP, armor class, and stat blocks live in a separate DM-only table, and every game rule that depends on them (does this attack hit, how much damage was dealt, whose turn is next) runs inside a database function, so a player's browser only ever receives the result.
 
 Keeping the external SRD API behind the QuestKeeper backend creates a place to add validation, caching, source information, and normalized data later.
 
@@ -251,6 +262,18 @@ Automated tests cover the character sheet's pure functions (ability scores, hit 
 
 **Current solution:** The frontend supports `VITE_API_BASE_URL`. In local development, it defaults to `http://localhost:3001/api`. The deployed Render frontend is configured to use `https://questkeeper-api.onrender.com/api`, allowing the same frontend codebase to work correctly in both local and production environments.
 
+### Enemy stats have to stay secret from the players
+
+**Problem:** A DM tool is only useful if players can't see the enemy's HP and armor class. Hiding them in the interface isn't enough, because anything the browser receives can be read from the network tab.
+
+**Current solution:** Hidden stats live in their own table that only the DM's account can read. Players call SQL functions that apply the rules on the server, for example comparing an attack roll to the secret AC, and receive only "hit" or "miss" and the damage dealt. The public record shows a name, a status of Healthy, Bloodied, or Down, and damage taken, never the numbers behind them. Each rule was checked by running the functions against a local Postgres database as different users (DM, player, and outsider), though those checks are not yet automated tests in the repository.
+
+### Beginner help had to be written, not generated
+
+**Problem:** The SRD data says what a spell or class does in rules language, but a first-time player needs to know what a choice means. Showing the raw rules text made character creation feel like homework.
+
+**Current solution:** A small, hand-written layer sits on top of the SRD data: a one-line "Good if you want..." for every race and class, and a short summary and tag for every spell a new character can pick, each checked against the SRD text. The full rules text is always one click away, so beginners get the summary and experienced players still get the real thing.
+
 ## Known limitations
 
 - Content is limited to what the 2014 and 2024 SRDs provide. Material from other books (Xanathar's, Tasha's, Sword Coast, and so on) isn't included, because it isn't released for reuse.
@@ -264,6 +287,11 @@ Automated tests cover the character sheet's pure functions (ability scores, hit 
 - Sheet sections can't yet be sorted, filtered, or favorited, and there is no sheet-wide Beginner Mode toggle for hiding hints.
 - Test coverage doesn't include the backend or end-to-end flows.
 - The free backend service may take approximately a minute to wake after a period of inactivity.
+- Every player needs an account to join a table. A DM can add anyone without an account as a friendly party member and track their HP by hand.
+- Secret messaging between the DM and individual players isn't built yet.
+- A character built on an SRD class keeps that class's features and level-up rules. A homebrew class (an Artificer, for example) can be typed onto the sheet, but its features and spells are entered by hand.
+- The table and combat rules in the database are checked by hand and through component tests, not by automated database or end-to-end tests.
+- The free Supabase plan has no automatic backups, so important data should be exported periodically.
 
 ## Planned development
 
@@ -271,11 +299,13 @@ The current high-level sequence is:
 
 1. Keep the architecture, vision, setup, and content policies documented.
 2. Fix the known sheet gaps: cap level-up ability score improvements at 20, let every race choose its ability score bonuses, lock race/class/background-granted spells, and model equipment/proficiency choices during guided creation.
-3. Add sheet quality-of-life features: sorting, filtering, and favorites for long lists, and a Beginner Mode toggle for hiding hints.
+3. Add sheet quality-of-life features: sorting, filtering, and favorites for long lists, a Beginner Mode toggle for hiding hints, and first-run prompts on empty tabs.
+   Also pending from usability testing: filters for the Spells page, table hints and a "How combat works" guide for new groups, search by meaning ("sneak", "heal"), a "Not sure?" class helper, and a decision on how to use the 2024 backgrounds in creation.
 4. Add normalized backend models, source provenance, response validation, caching, and timeouts, and make global search tolerate a failing category.
 5. Expand automated test coverage to the backend and to the remaining UI components.
 6. Add richer Companion tracking (attacks/spells of its own), if that turns out to be worth the complexity versus the current lightweight stat block.
-7. Explore AI-assisted features after the underlying rules and character data are reliable, such as a backstory generator and "describe the vibe" character suggestions.
+7. Add secret messaging between the DM and players.
+8. Explore AI-assisted features after the underlying rules and character data are reliable, such as a backstory generator and "describe the vibe" character suggestions.
 
 The roadmap is intentionally incremental. Each feature should be small enough to understand, implement, test, and review before moving to the next one.
 
