@@ -14,6 +14,8 @@ function TablesPage() {
   const [characters, setCharacters] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [createError, setCreateError] = useState("");
+  const [joinError, setJoinError] = useState("");
 
   const [newTableName, setNewTableName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -33,12 +35,12 @@ function TablesPage() {
     event.preventDefault();
     if (!newTableName.trim()) return;
 
-    setError("");
+    setCreateError("");
     try {
       const table = await createTable(newTableName);
       navigate(`/tables/${table.id}`);
-    } catch (createError) {
-      setError(createError.message);
+    } catch (failure) {
+      setCreateError(failure.message);
     }
   }
 
@@ -46,12 +48,12 @@ function TablesPage() {
     event.preventDefault();
     if (!joinCode.trim() || !joinCharacterId) return;
 
-    setError("");
+    setJoinError("");
     try {
       const tableId = await joinTable(joinCode, joinCharacterId);
       navigate(`/tables/${tableId}`);
-    } catch (joinError) {
-      setError(joinError.message);
+    } catch (failure) {
+      setJoinError(failure.message);
     }
   }
 
@@ -84,6 +86,11 @@ function TablesPage() {
               placeholder="e.g. The Final Fight"
               onChange={(event) => setNewTableName(event.target.value)}
             />
+            {createError && (
+              <p className="tables-page__error" role="alert">
+                {createError}
+              </p>
+            )}
             <Button type="submit" disabled={!newTableName.trim()}>
               Create table
             </Button>
@@ -118,6 +125,11 @@ function TablesPage() {
                 </option>
               ))}
             </select>
+            {joinError && (
+              <p className="tables-page__error" role="alert">
+                {joinError}
+              </p>
+            )}
             <Button type="submit" disabled={!joinCode.trim() || !joinCharacterId}>
               Join table
             </Button>

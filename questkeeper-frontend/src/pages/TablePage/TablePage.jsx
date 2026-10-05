@@ -31,7 +31,7 @@ import {
   setMyInitiative,
   startCombat,
 } from "../../utils/tableStore";
-import { pieceNames, readStatBlock, recentEventsFor } from "../../utils/statBlock";
+import { isSameTemplate, pieceNames, readStatBlock, recentEventsFor } from "../../utils/statBlock";
 import Button from "../../components/Button/Button";
 import CharacterSummaryCard from "../../components/CharacterSummaryCard/CharacterSummaryCard";
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
@@ -452,7 +452,8 @@ function TablePage() {
         });
       }
 
-      if (entry.saveToLibrary) {
+      // Don't save a second copy of something that is already in the library.
+      if (entry.saveToLibrary && !templates.some((template) => isSameTemplate(template, entry))) {
         const saved = await createTemplate({
           name: entry.name,
           kind: entry.kind,

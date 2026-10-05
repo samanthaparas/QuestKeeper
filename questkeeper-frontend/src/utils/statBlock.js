@@ -101,6 +101,22 @@ export function withIcon(text, icon) {
   return icon ? `${icon} ${text}` : text;
 }
 
+// True when a saved library entry is the same monster as `entry` (same side,
+// name, HP, AC and stat block), so saving it again would only add a copy.
+export function isSameTemplate(template, entry) {
+  const normalize = (statBlock) => JSON.stringify(cleanStatBlock(readStatBlock(statBlock)));
+  const name = (value) => String(value ?? "").trim().toLowerCase();
+  const armorClass = (value) => (value === undefined || value === null || value === "" ? null : Number(value));
+
+  return (
+    template.kind === entry.kind &&
+    name(template.name) === name(entry.name) &&
+    Number(template.max_hp) === Number(entry.maxHp) &&
+    armorClass(template.armor_class) === armorClass(entry.armorClass) &&
+    normalize(template.stat_block) === normalize(entry.statBlock)
+  );
+}
+
 // The newest activity lines that mention this fighter by name, so a monster's
 // row can show what just happened to it. A name does not match inside a longer
 // one ("Goblin" does not match "Goblin 2" or "Goblins").

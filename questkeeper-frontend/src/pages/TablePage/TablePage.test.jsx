@@ -14,6 +14,7 @@ import {
   dmResolveAttack,
   addCombatant,
   createTemplate,
+  listTemplates,
   editCombatant,
   endMyTurn,
 } from "../../utils/tableStore";
@@ -585,6 +586,22 @@ describe("TablePage", () => {
       await waitFor(() =>
         expect(createTemplate).toHaveBeenCalledWith(expect.objectContaining({ name: "Ogre", maxHp: 59 })),
       );
+    });
+
+    it("does not save a second copy of a monster already in the library", async () => {
+      mockTable({ isDm: true, combatActive: false });
+      listTemplates.mockResolvedValueOnce([
+        { id: "tpl-ogre", name: "Ogre", kind: "monster", max_hp: 59, armor_class: null, stat_block: {} },
+      ]);
+      renderPage();
+
+      await userEvent.type(screen.getByLabelText("Name"), "Ogre");
+      await userEvent.type(screen.getByLabelText("HP"), "59");
+      await userEvent.click(screen.getByLabelText("Also save to my library"));
+      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+      await waitFor(() => expect(addCombatant).toHaveBeenCalled());
+      expect(createTemplate).not.toHaveBeenCalled();
     });
 
     it("keeps what was typed and says why when adding fails", async () => {
