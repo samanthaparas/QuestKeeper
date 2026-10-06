@@ -90,7 +90,9 @@ QuestKeeper is actively developed, with features added incrementally so the arch
 ```text
 QuestKeeper/
 |-- docs/
+|   |-- QA_NEW_PLAYER_WALKTHROUGH.md  New-player QA findings and fix tracker
 |   |-- QUESTKEEPER_VISION.md    Product vision and development direction
+|   |-- TWO_ACCOUNT_TEST.md      End-to-end DM + player test for live play
 |   `-- screenshots/             README screenshots
 |-- questkeeper-backend/
 |   |-- src/controllers/         Requests and transforms upstream API data
