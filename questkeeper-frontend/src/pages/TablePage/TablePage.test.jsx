@@ -1033,3 +1033,30 @@ describe("nudge shake and cooldown", () => {
     expect(within(rowFor("Billie")).getByRole("button", { name: /Nudge/ })).toBeEnabled();
   });
 });
+
+describe("monster row layout", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockTable({ isDm: true, combatActive: true });
+  });
+
+  it("puts Attack first, then the monster's own HP controls, then Edit and Remove", async () => {
+    renderPage();
+
+    const row = await waitFor(() => rowFor("Kobold"));
+    const names = within(row)
+      .getAllByRole("button")
+      .map((button) => button.textContent);
+    expect(names).toEqual(["Attack", "Damage", "Heal", "Edit", "Remove"]);
+  });
+
+  it("labels Damage and Heal as changing that monster's HP", async () => {
+    renderPage();
+
+    const row = await waitFor(() => rowFor("Kobold"));
+    const hp = within(row).getByRole("group", { name: "Change Kobold's HP" });
+    expect(within(hp).getByRole("button", { name: "Damage" })).toBeInTheDocument();
+    expect(within(hp).getByRole("button", { name: "Heal" })).toBeInTheDocument();
+    expect(within(hp).queryByRole("button", { name: "Attack" })).not.toBeInTheDocument();
+  });
+});

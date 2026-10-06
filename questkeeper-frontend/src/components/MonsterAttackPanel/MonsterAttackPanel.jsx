@@ -203,6 +203,13 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
             )}
           </div>
 
+          {attacks.length === 0 && (
+            <p className="monster-attack__note monster-attack__note--help">
+              No attacks saved for {attacker.name}. Type one below, or tap <strong>Edit</strong> on
+              its row afterwards so it&apos;s ready next time.
+            </p>
+          )}
+
           <div className="monster-attack__row">
             <input
               className="monster-attack__field"
@@ -227,6 +234,14 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
               }}
             />
           </div>
+
+          {pickedAttack === "custom" && (
+            <p className="monster-attack__note">
+              <strong>Not sure of the + hit?</strong> It&apos;s in the monster&apos;s stat block,
+              like &quot;Scimitar: +4 to hit&quot;. Most low-level monsters use +3 to +5. Left
+              blank, it counts as +0.
+            </p>
+          )}
 
           <div className="monster-attack__row">
             <Button disabled={isBusy || !target} onClick={() => submitAttack(rollDie(20))}>

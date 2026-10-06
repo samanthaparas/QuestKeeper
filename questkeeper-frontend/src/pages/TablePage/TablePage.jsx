@@ -327,14 +327,33 @@ function CombatantRow({
           <span className="table-page__roll-note">{rollNote}</span>
         )}
 
+        {/* In play order: the monster attacks, then its own HP changes, then
+            the rarely used Edit and Remove. */}
+        {canAttack && (
+          <Button
+            type="button"
+            aria-expanded={showAttack}
+            onClick={() => setShowAttack((open) => !open)}
+          >
+            Attack
+          </Button>
+        )}
+
         {isDm && isNpc && (
-          <div className="table-page__inline-form">
+          <div
+            className="table-page__inline-form table-page__hp-group"
+            role="group"
+            aria-label={`Change ${combatant.name}'s HP`}
+          >
+            <span className="table-page__hp-label" aria-hidden="true">
+              HP
+            </span>
             <input
               className="table-page__number"
               type="number"
               min="0"
               aria-label={`Damage or healing for ${combatant.name}`}
-              placeholder="Amt"
+              placeholder="Amount"
               value={amount}
               onChange={(event) => setAmount(event.target.value)}
             />
@@ -347,28 +366,6 @@ function CombatantRow({
           </div>
         )}
 
-        {canAttack && (
-          <Button
-            type="button"
-            variant="secondary"
-            aria-expanded={showAttack}
-            onClick={() => setShowAttack((open) => !open)}
-          >
-            Attack
-          </Button>
-        )}
-
-        {isDm && isNpc && (
-          <Button
-            type="button"
-            variant="secondary"
-            aria-expanded={showEdit}
-            onClick={() => setShowEdit((open) => !open)}
-          >
-            Edit
-          </Button>
-        )}
-
         {isDm && !isNpc && combatant.attacks_this_turn > 0 && combatant.last_attack_target && (
           <Button type="button" variant="secondary" onClick={() => onDeny(combatant)}>
             Deny last attack
@@ -376,9 +373,21 @@ function CombatantRow({
         )}
 
         {isDm && (
-          <Button type="button" variant="secondary" onClick={() => onRemove(combatant)}>
-            Remove
-          </Button>
+          <div className="table-page__row-manage">
+            {isNpc && (
+              <Button
+                type="button"
+                variant="secondary"
+                aria-expanded={showEdit}
+                onClick={() => setShowEdit((open) => !open)}
+              >
+                Edit
+              </Button>
+            )}
+            <Button type="button" variant="secondary" onClick={() => onRemove(combatant)}>
+              Remove
+            </Button>
+          </div>
         )}
       </div>
 

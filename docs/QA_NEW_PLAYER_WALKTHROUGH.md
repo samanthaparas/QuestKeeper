@@ -36,7 +36,7 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 14 | Set armor class from starting armor; add starting weapons to Actions; fill languages | Sheet | Medium | Merged (2026-10-05): AC from starting armor and shield, starting weapons on Actions with to-hit and damage, languages, class proficiencies |
 | 15 | First-run prompts on each empty tab, with one-tap "add from inventory" | Sheet | Medium | Merged (2026-10-05): every empty sheet list shows a prompt saying what goes there and which button to press; the backstory box asks "Who were you before the adventure?"; Actions offers a "From your inventory" button per SRD weapon not yet an attack; Add Weapon fills in to hit and damage (including "+1" magic weapons) and explains it in plain words, with a "How is this worked out?" toggle |
 | 16 | Feedback link on detail pages | Reference | Small | Partly merged (footer and About link to GitHub issues; not on each detail page) |
-| 17 | Table first-time hints, a DM prep checklist, a "How combat works" Guide page | Tables | Medium | Open |
+| 17 | Table first-time hints, a DM prep checklist, a "How combat works" Guide page | Tables | Medium | Merged (2026-10-05): DM "Before the fight" checklist that ticks itself off; "Roll initiative" card for players at the top of Combat (physical rolls take just the die, like attacks); "Waiting for initiative" listed first and highlighted; DM nudges (card glows and shakes, 4 s cooldown); one-line player tips; Tables page explainer; "At the table" Guide section; turn banner shows the next two in order |
 | 18 | Search by meaning ("sneak", "heal", "damage") | Search | Large | Open |
 | 19 | "Not sure?" class helper quiz | Creation | Large | Open |
 | 20 | Decide how to use the 2024 backgrounds in creation | Creation | Large (product decision) | Open |
@@ -55,6 +55,7 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 33 | Class features and racial traits on the sheet: new characters arrive with their race's traits and level 1 class features written in, and the Features tab has "Add from my class and race" (ticks everything up to your level, skips what you already have) for existing characters and level-ups. Found by comparing a real sheet whose Features tab was empty | Sheet, Creation | Medium | Merged (2026-10-05) |
 | 34 | Character creation layout: steps run as a row across the top with arrows, "Your hero so far" is a slim strip under them, the detail panel gets the full width, spell choices stack in one column so Read more never stretches a neighbour, narrow steps get a Tips card (with a slot for pictures) beside them, and options you can't pick are clearly marked as locked | Creation | Medium | Merged (2026-10-05) |
 | 35 | Beginner/Seasoned toggle: one account-level switch (e.g. "Show beginner tips") that hides or shortens beginner help everywhere, so experienced players get a cleaner page. Steps: list every beginner element (save-badge tip, "What do these boxes mean?", empty-tab prompts, the To Hit tip strip, creation Tips cards, "Good if you want..." callouts), decide hide vs shorten for each, then route them through one shared wrapper so future tips follow the switch. The unused per-character `experienceMode` field could be retired or reused. Raised while reviewing the To Hit helper text | Sheet, Creation | Medium | Open |
+| 36 | DM monster rows: put Attack first and group Damage/Heal under an "HP" label so it is clear they change that monster's HP; in the monster attack panel, a helper when the monster has no saved attacks (what to type, typical + hit); monster attacks on players should count the player's temporary AC bonus. Found while running a test fight as DM | Tables | Small | Open |
 
 ## Reference pages (logged out)
 
@@ -250,7 +251,7 @@ The DM has many controls on one page: add monsters and allies, edit, attack, dam
 
 - **Solo character sheet.** Needs first-run help, the abbreviation tooltips and sensible defaults.
 - **DM running a table with no player accounts.** Today every player needs an account. The friendly NPC or party member option already lets a DM track players by hand; promote it with a line like "Players without accounts? Add them here and track HP yourself."
-- **Live play with friends.** Needs the join, turn and damage flows above, plus a single-page "How combat works" in the Guide.
+- **Live play with friends.** Needs the join, turn and damage flows above, plus a single-page "How combat works" in the Guide (added 2026-10-05, row #17).
 
 ## Live test results (2026-10-03)
 

@@ -534,3 +534,27 @@
   margin: 0;
   font-weight: 700;
 }
+
+/* Damage and Heal change this monster's own HP, so they sit together in a
+   labelled box, separate from Attack (which hits someone else). */
+.table-page__hp-group {
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface-muted);
+}
+
+.table-page__hp-label {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* Edit and Remove are used rarely, so they sit a little apart at the end. */
+.table-page__row-manage {
+  display: flex;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--qk-border);
+}
