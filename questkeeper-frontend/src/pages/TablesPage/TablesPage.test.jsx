@@ -56,3 +56,30 @@ describe("TablesPage errors", () => {
     expect(within(createCard).getByRole("alert")).toBe(alert);
   });
 });
+
+describe("TablesPage help for new groups", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    listCharacters.mockResolvedValue([]);
+  });
+
+  it("explains how a game night works when you are not at any tables", async () => {
+    listMyTables.mockResolvedValue([]);
+    renderPage();
+
+    expect(await screen.findByText(/Here is how a game night works/)).toBeInTheDocument();
+    expect(screen.getByText(/The DM creates a table/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "How playing at a table works" })).toHaveAttribute(
+      "href",
+      "/guide?section=tables",
+    );
+  });
+
+  it("drops the explainer once you are at a table", async () => {
+    listMyTables.mockResolvedValue([{ id: "t1", name: "Final Fight", dm_id: "u1" }]);
+    renderPage();
+
+    expect(await screen.findByText("Final Fight")).toBeInTheDocument();
+    expect(screen.queryByText(/Here is how a game night works/)).not.toBeInTheDocument();
+  });
+});

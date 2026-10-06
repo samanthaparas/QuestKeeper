@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useTable } from "../../hooks/useTable";
@@ -6,6 +6,7 @@ import { getCharacter, getCharactersByIds } from "../../utils/characterStore";
 import {
   STATUS_LABELS,
   getNowAndNext,
+  describeUpcoming,
   rollInitiative,
   sortCombatants,
   rollMonsterInitiative,
@@ -17,6 +18,7 @@ import {
   createTemplate,
   deleteTable,
   dmDenyAttack,
+  dmLog,
   dmResolveAttack,
   editCombatant,
   endCombat,
@@ -32,6 +34,15 @@ import {
   startCombat,
 } from "../../utils/tableStore";
 import { isSameTemplate, pieceNames, readStatBlock, recentEventsFor } from "../../utils/statBlock";
+import {
+  NEW_ENCOUNTER_MESSAGE,
+  getDmPrepSteps,
+  getPlayerTableTip,
+  findActiveNudge,
+  hasActiveNudge,
+  nudgeMessage,
+} from "../../utils/tableGuidance";
+import { getAbilityModifier } from "../../utils/characterSheet";
 import Button from "../../components/Button/Button";
 import CharacterSummaryCard from "../../components/CharacterSummaryCard/CharacterSummaryCard";
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
@@ -40,6 +51,108 @@ import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEdi
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
+// After a nudge, the DM's Nudge buttons rest briefly so one tap can't spam.
+const NUDGE_COOLDOWN_MS = 4000;
+
+// A quick side-to-side shake for the player's "Roll initiative" card.
+const SHAKE_KEYFRAMES = [
+  { transform: "translateX(0)" },
+  { transform: "translateX(-8px) rotate(-1deg)" },
+  { transform: "translateX(8px) rotate(1deg)" },
+  { transform: "translateX(-6px) rotate(-0.5deg)" },
+  { transform: "translateX(6px) rotate(0.5deg)" },
+  { transform: "translateX(-3px)" },
+  { transform: "translateX(0)" },
+];
+
+function prefersReducedMotion() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+}
+
+function formatRollNote(roll, modifier, total) {
+  return `Rolled ${roll} ${modifier >= 0 ? "+" : "-"} ${Math.abs(modifier)} = ${total}`;
+}
+
+// Shown at the top of Combat to a player who hasn't rolled initiative yet, so
+// they don't have to find their own row under a long list of monsters. A
+// physical roll works like attacks: type just the die, and Dexterity is added.
+function InitiativePrompt({ combatant, dexterity, onSet, nudgeId = null }) {
+  const [dieInput, setDieInput] = useState("");
+  const cardRef = useRef(null);
+  const nudged = nudgeId !== null;
+
+  // Shake once for each new nudge (each has its own log id). Skipped for
+  // people who ask their device for less motion; the glow still shows.
+  useEffect(() => {
+    if (!nudgeId || prefersReducedMotion()) return;
+    cardRef.current?.animate?.(SHAKE_KEYFRAMES, { duration: 600, easing: "ease-in-out" });
+  }, [nudgeId]);
+  const modifier = getAbilityModifier(dexterity ?? 10);
+  const bonus = `${modifier >= 0 ? "+" : "-"}${Math.abs(modifier)}`;
+
+  function rollForMe() {
+    const { roll, total } = rollInitiative(dexterity);
+    onSet(total, formatRollNote(roll, modifier, total));
+  }
+
+  function useMyRoll(event) {
+    event.preventDefault();
+    const roll = Number(dieInput);
+    if (dieInput === "" || !Number.isInteger(roll) || roll < 1 || roll > 20) return;
+    onSet(roll + modifier, formatRollNote(roll, modifier, roll + modifier));
+    setDieInput("");
+  }
+
+  return (
+    <section
+      ref={cardRef}
+      className={`table-page__init-prompt${nudged ? " table-page__init-prompt--nudged" : ""}`}
+      aria-labelledby="init-prompt-title"
+    >
+      <h3 id="init-prompt-title" className="table-page__init-prompt-title">
+        Roll initiative for {combatant.name}
+      </h3>
+      {nudged && (
+        <p className="table-page__init-prompt-nudge" role="status">
+          🔔 Your DM is waiting for your roll!
+        </p>
+      )}
+      <p className="table-page__init-prompt-text">
+        Initiative decides the turn order: the highest number goes first. Pick one:
+      </p>
+      <div className="table-page__init-prompt-options">
+        <div className="table-page__init-prompt-option">
+          <Button onClick={rollForMe}>Roll d20 for me</Button>
+          <span className="table-page__init-prompt-note">
+            The app rolls and adds your Dexterity ({bonus}).
+          </span>
+        </div>
+        <span className="table-page__init-prompt-or">or</span>
+        <form className="table-page__init-prompt-option" onSubmit={useMyRoll}>
+          <label className="table-page__init-prompt-label" htmlFor="init-prompt-die">
+            Rolling real dice? Type just the number on your d20:
+          </label>
+          <div className="table-page__inline-form">
+            <input
+              id="init-prompt-die"
+              className="table-page__number"
+              type="number"
+              min="1"
+              max="20"
+              placeholder="d20"
+              value={dieInput}
+              onChange={(event) => setDieInput(event.target.value)}
+            />
+            <Button type="submit" variant="secondary" disabled={dieInput === ""}>
+              Use my roll
+            </Button>
+          </div>
+          <span className="table-page__init-prompt-note">We add your {bonus} for you.</span>
+        </form>
+      </div>
+    </section>
+  );
+}
 
 function CombatantRow({
   combatant,
@@ -60,6 +173,9 @@ function CombatantRow({
   onChanged,
   onEdit,
   onRemove,
+  onNudge = null,
+  nudged = false,
+  nudgeCooling = false,
 }) {
   const [amount, setAmount] = useState("");
   const [initiativeInput, setInitiativeInput] = useState("");
@@ -73,8 +189,11 @@ function CombatantRow({
   const isNpc = combatant.kind !== "player";
   // Initiative is locked once combat starts. The one exception is someone who
   // joined mid-fight and has none yet, otherwise they would never get a turn.
-  const canEditInitiative =
-    (isDm || isMe) && (!combatActive || combatant.initiative === null);
+  // A player who hasn't rolled uses the prompt at the top of Combat instead,
+  // so their own row only offers a re-roll before the fight starts.
+  const canEditInitiative = isDm
+    ? !combatActive || combatant.initiative === null
+    : isMe && !combatActive && combatant.initiative !== null;
   const canAttack =
     isDm && isNpc && combatActive && combatant.status !== "down" && targets.length > 0;
 
@@ -82,13 +201,20 @@ function CombatantRow({
     event.preventDefault();
     const value = Number(initiativeInput);
     if (initiativeInput === "" || Number.isNaN(value)) return;
-    onSetInitiative(combatant, value);
+    if (isMe && !isDm) {
+      // Players type just the die, like attacks; their Dexterity is added.
+      const modifier = getAbilityModifier(myDexterity ?? 10);
+      setRollNote(formatRollNote(value, modifier, value + modifier));
+      onSetInitiative(combatant, value + modifier);
+    } else {
+      onSetInitiative(combatant, value);
+    }
     setInitiativeInput("");
   }
 
   function rollForMe() {
     const { roll, modifier, total } = rollInitiative(myDexterity);
-    setRollNote(`Rolled ${roll} ${modifier >= 0 ? "+" : "-"} ${Math.abs(modifier)} = ${total}`);
+    setRollNote(formatRollNote(roll, modifier, total));
     onSetInitiative(combatant, total);
   }
 
@@ -110,7 +236,11 @@ function CombatantRow({
     <li
       className={`table-page__row${isCurrent ? " table-page__row--current" : ""}${
         combatant.status === "down" ? " table-page__row--down" : ""
-      }${pendingCalls.length > 0 ? " table-page__row--awaiting" : ""}`}
+      }${pendingCalls.length > 0 ? " table-page__row--awaiting" : ""}${
+        combatant.initiative === null || combatant.initiative === undefined
+          ? " table-page__row--needs-initiative"
+          : ""
+      }`}
     >
       <div className="table-page__row-main">
         <span className="table-page__initiative">
@@ -155,13 +285,25 @@ function CombatantRow({
       </div>
 
       <div className="table-page__row-actions">
+        {onNudge && (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={nudgeCooling}
+            onClick={() => onNudge(combatant)}
+          >
+            {nudgeCooling ? "Nudged ✓" : nudged ? "🔔 Nudge again" : "🔔 Nudge"}
+          </Button>
+        )}
         {canEditInitiative && (
           <form className="table-page__inline-form" onSubmit={submitInitiative}>
             <input
               className="table-page__number"
               type="number"
-              aria-label={`Initiative for ${combatant.name}`}
-              placeholder="Init"
+              aria-label={
+                isMe && !isDm ? "Your d20 roll for initiative" : `Initiative for ${combatant.name}`
+              }
+              placeholder={isMe && !isDm ? "d20" : "Init"}
               value={initiativeInput}
               onChange={(event) => setInitiativeInput(event.target.value)}
             />
@@ -314,6 +456,11 @@ function TablePage() {
   const [showMonsterForm, setShowMonsterForm] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [showAllEvents, setShowAllEvents] = useState(false);
+  const [myRollNote, setMyRollNote] = useState("");
+  const [nudgeCooling, setNudgeCooling] = useState(false);
+  const nudgeTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(nudgeTimer.current), []);
 
   const [hitSource, setHitSource] = useState("");
   const [hitTargetUserId, setHitTargetUserId] = useState("");
@@ -403,7 +550,7 @@ function TablePage() {
   const waiting = combatants.filter(
     (combatant) => combatant.initiative === null || combatant.initiative === undefined,
   );
-  const { now, next } = getNowAndNext(combatants, table.current_combatant_id);
+  const { now, upcoming } = getNowAndNext(combatants, table.current_combatant_id);
   const canStart = ordered.length > 0;
   const unrolledNpcs = waiting.filter((combatant) => combatant.kind !== "player");
   const unrolledNpcCount = unrolledNpcs.length;
@@ -422,6 +569,14 @@ function TablePage() {
   const monsters = combatants.filter((combatant) => combatant.kind === "monster");
   const npcs = combatants.filter((combatant) => combatant.kind !== "player");
   const amUp = Boolean(now && now.kind === "player" && now.user_id === user?.id);
+  const myCombatant = players.find((player) => player.user_id === user?.id);
+  const waitingPlayers = waiting.filter((combatant) => combatant.kind === "player");
+  const prepSteps = getDmPrepSteps({ combatants, combatActive: table.combat_active });
+  const playerTip = getPlayerTableTip({
+    me: myCombatant,
+    combatActive: table.combat_active,
+    isMyTurn: amUp,
+  });
   const awaitingCall = players.filter((player) => player.attack_state === "awaiting_dm");
   // Calls normally show inside the monster's own row; this catches any attack
   // whose target is missing so it can never get stuck.
@@ -505,6 +660,20 @@ function TablePage() {
     });
   }
 
+  // A friendly reminder to players who haven't rolled initiative yet.
+  function nudge(...players) {
+    if (nudgeCooling) return undefined;
+    setNudgeCooling(true);
+    clearTimeout(nudgeTimer.current);
+    nudgeTimer.current = setTimeout(() => setNudgeCooling(false), NUDGE_COOLDOWN_MS);
+
+    return run(async () => {
+      for (const player of players) {
+        await dmLog(table.id, nudgeMessage(player.name));
+      }
+    });
+  }
+
   function denyAttack(player) {
     if (
       window.confirm(
@@ -545,6 +714,11 @@ function TablePage() {
           await refresh();
         }}
         onResolve={(attacker, hit) => run(() => dmResolveAttack(attacker.id, hit))}
+        onNudge={
+          isDm && combatant.kind === "player" && combatant.initiative == null ? nudge : null
+        }
+        nudged={combatant.kind === "player" && hasActiveNudge(events, combatant.name)}
+        nudgeCooling={nudgeCooling}
         onRemove={(target) => {
           if (target.kind === "player") {
             if (window.confirm(`Remove ${target.name} from the table?`)) {
@@ -568,7 +742,12 @@ function TablePage() {
         <header className="table-page__header">
           <div>
             <h1 className="table-page__title">{table.name}</h1>
-            <p className="table-page__role">{isDm ? "You are the DM" : "You are a player"}</p>
+            <p className="table-page__role">
+              {isDm ? "You are the DM" : "You are a player"} ·{" "}
+              <Link className="table-page__guide-link" to="/guide?section=tables">
+                How tables work
+              </Link>
+            </p>
           </div>
 
           {isDm && (
@@ -594,6 +773,49 @@ function TablePage() {
           </p>
         )}
 
+        {isDm && !table.combat_active && (
+          <section className="table-page__prep" aria-labelledby="prep-title">
+            <h2 id="prep-title" className="table-page__prep-title">
+              Before the fight
+            </h2>
+            <ol className="table-page__prep-steps">
+              {prepSteps.map((step) => (
+                <li
+                  key={step.id}
+                  className={`table-page__prep-step${step.done ? " table-page__prep-step--done" : ""}${
+                    step.current ? " table-page__prep-step--current" : ""
+                  }`}
+                >
+                  <span className="table-page__prep-mark" aria-hidden="true">
+                    {step.done ? "✓" : ""}
+                  </span>
+                  <span>
+                    <strong>{step.label}</strong>
+                    <span className="table-page__visually-hidden">{step.done ? " (done)" : " (to do)"}</span>
+                    <span className="table-page__prep-detail">{step.detail}</span>
+                    {step.id === "initiative" && waitingPlayers.length > 0 && (
+                      <Button
+                        variant="secondary"
+                        className="table-page__prep-action"
+                        disabled={nudgeCooling}
+                        onClick={() => nudge(...waitingPlayers)}
+                      >
+                        {nudgeCooling
+                          ? "Nudged ✓"
+                          : `🔔 Nudge ${
+                              waitingPlayers.length === 1
+                                ? waitingPlayers[0].name
+                                : `${waitingPlayers.length} players`
+                            } to roll`}
+                      </Button>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
         <section className="table-page__combat">
           <div className="table-page__combat-head">
             <h2 className="table-page__section-title">Combat</h2>
@@ -605,7 +827,12 @@ function TablePage() {
                 {now && now.attacks_this_turn > 0 && (
                   <> ({now.attacks_this_turn} {now.attacks_this_turn === 1 ? "attack" : "attacks"})</>
                 )}
-                {next && <> · Next: {next.name}</>}
+                {upcoming.length > 0 && (
+                  <>
+                    {" · "}
+                    {describeUpcoming(upcoming, myCombatant?.id)}
+                  </>
+                )}
               </p>
             ) : (
               <p className="table-page__turn-line">No fight in progress.</p>
@@ -658,7 +885,10 @@ function TablePage() {
                         "Clear all monsters and everyone's initiative for a new encounter?",
                       )
                     ) {
-                      run(() => resetEncounter(table.id));
+                      run(async () => {
+                        await resetEncounter(table.id);
+                        await dmLog(table.id, NEW_ENCOUNTER_MESSAGE);
+                      });
                     }
                   }}
                 >
@@ -681,10 +911,36 @@ function TablePage() {
             </p>
           )}
 
-          {!isDm && myMember && waiting.some((c) => c.user_id === user?.id) && (
-            <p className="table-page__hint">
-              Set your initiative below: roll a d20 here, or enter a roll from your own dice.
+          {!isDm && myCombatant && myCombatant.initiative == null && (
+            <InitiativePrompt
+              combatant={myCombatant}
+              dexterity={myDexterity}
+              nudgeId={findActiveNudge(events, myCombatant.name)?.id ?? null}
+              onSet={(total, note) => {
+                setMyRollNote(note);
+                run(() => setMyInitiative(table.id, total));
+              }}
+            />
+          )}
+
+          {!isDm && myRollNote && myCombatant?.initiative != null && (
+            <p className="table-page__hint" role="status">
+              Your initiative: {myRollNote}.
             </p>
+          )}
+
+          {!isDm && playerTip && <p className="table-page__hint">{playerTip}</p>}
+
+          {/* Listed first: these are who the table is waiting on. */}
+          {waiting.length > 0 && (
+            <>
+              <h3 className="table-page__subtitle table-page__subtitle--order">
+                Waiting for initiative ({waiting.length})
+              </h3>
+              <ul className="table-page__order" aria-label="Waiting for initiative">
+                {waiting.map(renderRow)}
+              </ul>
+            </>
           )}
 
           {ordered.length > 0 && (
@@ -695,13 +951,6 @@ function TablePage() {
           <ol className="table-page__order" aria-label="Initiative order">
             {ordered.map(renderRow)}
           </ol>
-
-          {waiting.length > 0 && (
-            <>
-              <h3 className="table-page__subtitle">Waiting for initiative</h3>
-              <ul className="table-page__order">{waiting.map(renderRow)}</ul>
-            </>
-          )}
 
           {combatants.length === 0 && (
             <p className="table-page__empty">

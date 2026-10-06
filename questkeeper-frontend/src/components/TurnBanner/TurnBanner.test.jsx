@@ -14,6 +14,10 @@ function makeCombat(overrides = {}) {
     round: 2,
     now: { id: "c-kobold", name: "Kobold" },
     next: { id: "c-me", name: "Billie" },
+    upcoming: [
+      { id: "c-me", name: "Billie" },
+      { id: "c-thorn", name: "Thorn" },
+    ],
     myCombatant: { id: "c-me" },
     isMyTurn: false,
     latestEvent: { message: "Billie attacks Kobold with Dagger (rolled 15). That hits!" },
@@ -36,7 +40,7 @@ describe("TurnBanner", () => {
 
     expect(screen.getByText("Round 2")).toBeInTheDocument();
     expect(screen.getByText("Now: Kobold")).toBeInTheDocument();
-    expect(screen.getByText("You're up next")).toBeInTheDocument();
+    expect(screen.getByText("You're up next, then Thorn")).toBeInTheDocument();
     expect(screen.getByText(/That hits!/)).toBeInTheDocument();
   });
 

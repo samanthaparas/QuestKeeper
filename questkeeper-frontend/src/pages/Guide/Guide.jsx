@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import DiceRoller from "../../components/DiceRoller/DiceRoller";
 import {
   ABILITY_SCORES,
@@ -13,6 +14,7 @@ const SECTIONS = [
   { id: "dice", label: "Dice" },
   { id: "abilities", label: "Abilities" },
   { id: "turns", label: "Your turn" },
+  { id: "tables", label: "At the table" },
   { id: "choices", label: "Your choices" },
 ];
 
@@ -36,13 +38,21 @@ const FRIENDLY_ABILITY_DESCRIPTIONS = {
     "Your presence and force of personality. Use it to persuade, perform, intimidate, deceive, or cast magic through sheer confidence.",
 };
 
-function scrollToSection(id) {
-  document
-    .getElementById(id)
-    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+function scrollToSection(id, behavior = "smooth") {
+  document.getElementById(id)?.scrollIntoView({ behavior, block: "start" });
 }
 
 function Guide() {
+  // Other pages link to a section with /guide?section=tables.
+  const [searchParams] = useSearchParams();
+  const sectionId = searchParams.get("section");
+
+  // Jump straight there (no animation) when arriving from a link, so the
+  // page doesn't slowly scroll past every section above it.
+  useEffect(() => {
+    if (sectionId) scrollToSection(sectionId, "auto");
+  }, [sectionId]);
+
   return (
     <main className="guide">
       <section className="guide__hero">
@@ -318,6 +328,121 @@ function Guide() {
           Plans may change and D&amp;D loves chaos, but you will feel much less
           put on the spot when your name comes up.
         </p>
+      </section>
+
+      <section
+        id="tables"
+        className="guide__section"
+        aria-labelledby="tables-title"
+      >
+        <h2 id="tables-title" className="guide__section-title">
+          Playing at a QuestKeeper table
+        </h2>
+        <p>
+          A <strong>table</strong> is your group&apos;s shared screen for a
+          fight. The DM runs it, and each player joins with their character.
+          Everyone sees the turn order and how hurt each enemy looks, but only
+          the DM sees the monsters&apos; real hit points, Armor Class (AC) and
+          attacks. When you attack, QuestKeeper checks the hidden AC for you, so
+          nobody has to say the number out loud.
+        </p>
+
+        <h3 className="guide__subheading">If you are a player</h3>
+        <ol className="guide__list">
+          <li>
+            <strong>Join.</strong> On the <Link to="/tables">Tables</Link> page,
+            type the join code your DM gives you and pick your character.
+          </li>
+          <li>
+            <strong>Roll initiative.</strong> A <em>Roll initiative</em> box
+            appears at the top of the table page. Tap <em>Roll d20 for me</em>,
+            or roll a real d20, type just the number on the die and tap{" "}
+            <em>Use my roll</em>. Either way, your Dexterity is added for you.
+          </li>
+          <li>
+            <strong>Wait for your turn.</strong> Keep your character sheet open.
+            A banner at the top says whose turn it is and tells you when
+            you&apos;re up.
+          </li>
+          <li>
+            <strong>Attack.</strong> On your turn, open the <em>Actions</em> tab
+            and tap <em>Attack</em> next to a weapon. Pick a target, then roll
+            the d20 in the app or enter your own roll (just the die; your bonus
+            is added). The app tells you if it hits. If it does, roll damage the
+            same way and tap <em>Deal damage</em>.
+          </li>
+          <li>
+            <strong>Spells and everything else.</strong> For anything that
+            isn&apos;t a weapon attack, roll as usual and tell your DM what
+            happens. They can apply the damage for you.
+          </li>
+          <li>
+            <strong>Getting hit.</strong> If an enemy hits you, the banner says
+            so and offers <em>Apply damage</em>. It comes off your temporary hit
+            points first, then your hit points.
+          </li>
+          <li>
+            <strong>End your turn.</strong> Tap <em>End my turn</em> so the next
+            person can go.
+          </li>
+        </ol>
+
+        <p className="guide__example">
+          <strong>Enemy health words:</strong> <em>Healthy</em> means barely
+          scratched, <em>Bloodied</em> means at half its hit points or less, and{" "}
+          <em>Down</em> means out of the fight. You also see how much damage
+          each enemy has taken, but never how much it has left.
+        </p>
+
+        <h3 className="guide__subheading">If you are the DM</h3>
+        <ol className="guide__list">
+          <li>
+            <strong>Create a table</strong> on the Tables page and share its
+            join code. Players can join any time, even mid-fight; latecomers
+            roll initiative when they arrive.
+          </li>
+          <li>
+            <strong>Add monsters</strong> with their HP, AC and attacks. Set{" "}
+            <em>How many</em> for a group of the same monster, and give each a
+            nickname or icon to match the pieces on your real table. Save
+            favourites to your <Link to="/library">Monster Library</Link>.
+          </li>
+          <li>
+            <strong>Get initiative.</strong> Players roll their own. Use the
+            roll button for all your monsters at once, or set a boss&apos;s
+            number by hand first if you roll it with real dice. Anyone who
+            hasn&apos;t rolled is listed first; tap <em>Nudge</em> to send a
+            friendly reminder.
+          </li>
+          <li>
+            <strong>Start combat</strong> and use <em>Next turn</em> to move
+            down the order. Rounds count up on their own, and defeated monsters
+            are skipped.
+          </li>
+          <li>
+            <strong>Run the monsters.</strong> Tap <em>Attack</em> on a
+            monster&apos;s row to roll against a player. A hit is sent to that
+            player to apply on their sheet. Use the damage box on a row for
+            spells, traps or anything else.
+          </li>
+          <li>
+            <strong>Make a call.</strong> If a player&apos;s attack should not
+            have counted, <em>Deny last attack</em> undoes it and any damage it
+            dealt. If a monster has no AC saved, you decide hit or miss
+            yourself.
+          </li>
+        </ol>
+
+        <p className="guide__tip">
+          <strong>If the Wi-Fi drops:</strong> keep playing with paper and real
+          dice. QuestKeeper is a helper, not the rules. When it&apos;s back, the
+          DM can fix HP with the damage box and use <em>Next turn</em> to catch
+          up.
+        </p>
+
+        <Link className="guide__cta" to="/tables">
+          Go to Tables
+        </Link>
       </section>
 
       <section

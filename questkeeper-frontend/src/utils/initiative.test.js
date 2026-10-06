@@ -3,6 +3,7 @@ import {
   sortCombatants,
   getTurnOrder,
   getNowAndNext,
+  describeUpcoming,
   getNextTurn,
   rollInitiative,
   rollMonsterInitiative,
@@ -68,12 +69,52 @@ describe("getNowAndNext", () => {
   });
 
   it("returns nothing when no turn has been set", () => {
-    expect(getNowAndNext(fight, null)).toEqual({ now: null, next: null });
+    expect(getNowAndNext(fight, null)).toEqual({ now: null, next: null, upcoming: [] });
   });
 
   it("has no next when only one combatant takes turns", () => {
     const solo = [makeCombatant({ name: "Billie", initiative: 10 })];
     expect(getNowAndNext(solo, "Billie").next).toBeNull();
+    expect(getNowAndNext(solo, "Billie").upcoming).toEqual([]);
+  });
+
+  it("lists the next two, wrapping into the next round", () => {
+    const names = (id) => getNowAndNext(fight, id).upcoming.map((c) => c.name);
+    expect(names("Billie")).toEqual(["Kobold", "Thorn"]);
+    expect(names("Thorn")).toEqual(["Mira", "Billie"]);
+  });
+
+  it("never repeats whoever is going now in a two-person fight", () => {
+    const duel = fight.slice(0, 2);
+    expect(getNowAndNext(duel, "Billie").upcoming.map((c) => c.name)).toEqual(["Kobold"]);
+  });
+
+  it("skips defeated monsters in the upcoming list", () => {
+    const withDownKobold = fight.map((c) => (c.name === "Kobold" ? { ...c, status: "down" } : c));
+    expect(getNowAndNext(withDownKobold, "Billie").upcoming.map((c) => c.name)).toEqual([
+      "Thorn",
+      "Mira",
+    ]);
+  });
+});
+
+describe("describeUpcoming", () => {
+  const kobold = { id: "k", name: "Kobold" };
+  const thorn = { id: "t", name: "Thorn" };
+  const billie = { id: "me", name: "Billie" };
+
+  it("names the next two", () => {
+    expect(describeUpcoming([kobold, thorn], "me")).toBe("Next: Kobold, then Thorn");
+  });
+
+  it("says you when you're next or second", () => {
+    expect(describeUpcoming([billie, kobold], "me")).toBe("You're up next, then Kobold");
+    expect(describeUpcoming([kobold, billie], "me")).toBe("Next: Kobold, then you");
+  });
+
+  it("handles one or nobody upcoming", () => {
+    expect(describeUpcoming([kobold], "me")).toBe("Next: Kobold");
+    expect(describeUpcoming([], "me")).toBe("");
   });
 });
 

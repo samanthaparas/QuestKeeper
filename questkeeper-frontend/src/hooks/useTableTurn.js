@@ -6,6 +6,7 @@ import {
   subscribeToTable,
 } from "../utils/tableStore";
 import { getNowAndNext } from "../utils/initiative";
+import { latestGameEvent } from "../utils/tableGuidance";
 
 const POLL_MS = 5000;
 
@@ -99,7 +100,7 @@ export function useTableTurn(characterId) {
 
   if (!combat) return null;
 
-  const { now, next } = getNowAndNext(
+  const { now, next, upcoming } = getNowAndNext(
     combat.combatants,
     combat.table.current_combatant_id,
   );
@@ -118,9 +119,10 @@ export function useTableTurn(characterId) {
     combatants: combat.combatants,
     now,
     next,
+    upcoming,
     myCombatant,
     isMyTurn: Boolean(myCombatant && now && now.id === myCombatant.id),
-    latestEvent: combat.events[0] ?? null,
+    latestEvent: latestGameEvent(combat.events),
     damageRequests: combat.damageRequests,
     refresh,
   };
