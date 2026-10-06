@@ -63,7 +63,10 @@ function TablesPage() {
         <h1 className="tables-page__title">Tables</h1>
         <p className="tables-page__description">
           A table is one campaign or session. The DM creates it and shares the
-          join code. Players join with one of their characters.
+          join code. Players join with one of their characters.{" "}
+          <Link className="tables-page__guide-link" to="/guide?section=tables">
+            How playing at a table works
+          </Link>
         </p>
 
         {error && (
@@ -141,9 +144,26 @@ function TablesPage() {
         {isLoading && <p className="tables-page__empty">Loading your tables...</p>}
 
         {!isLoading && tables.length === 0 && (
-          <p className="tables-page__empty">
-            You are not at any tables yet. Create one or join with a code.
-          </p>
+          <div className="tables-page__intro">
+            <p className="tables-page__empty">
+              You are not at any tables yet. Here is how a game night works:
+            </p>
+            <ol className="tables-page__intro-steps">
+              <li>
+                <strong>The DM creates a table</strong> and reads out its
+                six-character join code.
+              </li>
+              <li>
+                <strong>Each player joins</strong> with that code and picks the
+                character they are playing.
+              </li>
+              <li>
+                <strong>When a fight starts,</strong> everyone rolls initiative
+                on the table page. Players attack from their character sheet,
+                and the DM keeps the monsters&apos; HP and AC hidden.
+              </li>
+            </ol>
+          </div>
         )}
 
         <ul className="tables-page__list">

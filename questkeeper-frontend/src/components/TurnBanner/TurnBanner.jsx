@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { resolveDamageRequest } from "../../utils/tableStore";
+import { describeUpcoming } from "../../utils/initiative";
 import Button from "../Button/Button";
 import "./TurnBanner.css";
 
@@ -12,7 +13,10 @@ function TurnBanner({ combat, onApplyDamage }) {
   if (!combat) return null;
 
   const { now, next, isMyTurn, latestEvent, damageRequests } = combat;
-  const isNextMine = next && combat.myCombatant && next.id === combat.myCombatant.id;
+  const upcomingText = describeUpcoming(
+    combat.upcoming ?? (next ? [next] : []),
+    combat.myCombatant?.id,
+  );
 
   async function handleEndTurn() {
     setError("");
@@ -72,11 +76,7 @@ function TurnBanner({ combat, onApplyDamage }) {
             {now.attacks_this_turn === 1 ? "time" : "times"} this turn
           </span>
         )}
-        {next && (
-          <span className="turn-banner__next">
-            {isNextMine ? "You're up next" : `Next: ${next.name}`}
-          </span>
-        )}
+        {upcomingText && <span className="turn-banner__next">{upcomingText}</span>}
         {isMyTurn && combat.endTurn && (
           <Button variant="secondary" className="turn-banner__end" onClick={handleEndTurn}>
             End my turn

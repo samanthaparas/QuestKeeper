@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import TablePage from "./TablePage";
@@ -17,6 +17,8 @@ import {
   listTemplates,
   editCombatant,
   endMyTurn,
+  dmLog,
+  resetEncounter,
 } from "../../utils/tableStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -42,6 +44,7 @@ vi.mock("../../utils/tableStore", () => ({
   applyDamage: vi.fn().mockResolvedValue(undefined),
   deleteTable: vi.fn(),
   dmDenyAttack: vi.fn().mockResolvedValue(undefined),
+  dmLog: vi.fn().mockResolvedValue(undefined),
   dmResolveAttack: vi.fn(),
   endCombat: vi.fn(),
   leaveTable: vi.fn(),
@@ -242,11 +245,11 @@ describe("TablePage", () => {
       expect(screen.queryByRole("button", { name: "Attack" })).not.toBeInTheDocument();
     });
 
-    it("lets the player roll their own initiative", async () => {
+    it("lets the player roll their own initiative from the prompt", async () => {
       vi.spyOn(Math, "random").mockReturnValue(0.5); // d20 -> 11
       renderPage();
 
-      await userEvent.click(screen.getByRole("button", { name: "Roll d20" }));
+      await userEvent.click(await screen.findByRole("button", { name: "Roll d20 for me" }));
 
       expect(setMyInitiative).toHaveBeenCalledWith("t1", expect.any(Number));
       vi.restoreAllMocks();
@@ -751,5 +754,282 @@ describe("rolling initiative for monsters", () => {
 
     await screen.findByText("Kobold");
     expect(screen.queryByRole("button", { name: /Roll initiative for/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("table help for new groups", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("shows the DM a prep checklist before combat, pointing at the next step", async () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    renderPage();
+
+    const checklist = await screen.findByRole("region", { name: "Before the fight" });
+    const steps = within(checklist).getAllByRole("listitem");
+    expect(steps.map((step) => step.textContent)).toEqual([
+      expect.stringContaining("Share the join code (done)"),
+      expect.stringContaining("Add the monsters (done)"),
+      expect.stringContaining("Get everyone's initiative (to do)Still waiting on Billie."),
+      expect.stringContaining("Start combat (to do)"),
+    ]);
+    expect(steps[2]).toHaveClass("table-page__prep-step--current");
+  });
+
+  it("hides the checklist once combat has started", async () => {
+    mockTable({ isDm: true, combatActive: true });
+    renderPage();
+
+    await screen.findByText("Final Fight");
+    expect(screen.queryByRole("region", { name: "Before the fight" })).not.toBeInTheDocument();
+  });
+
+  it("never shows the checklist to players", async () => {
+    mockTable({ isDm: false, combatActive: false, currentId: null });
+    renderPage();
+
+    await screen.findByText("Final Fight");
+    expect(screen.queryByRole("region", { name: "Before the fight" })).not.toBeInTheDocument();
+  });
+
+  it("tells a waiting player where their turn will show up", async () => {
+    mockTable({ isDm: false, combatActive: true });
+    renderPage();
+
+    expect(await screen.findByText(/A banner on your character sheet tells you/)).toBeInTheDocument();
+  });
+
+  it("links to the Guide's table section", async () => {
+    mockTable({ isDm: false });
+    renderPage();
+
+    expect(await screen.findByRole("link", { name: "How tables work" })).toHaveAttribute(
+      "href",
+      "/guide?section=tables",
+    );
+  });
+});
+
+describe("initiative prompt for players", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockTable({ isDm: false, combatActive: false, currentId: null });
+  });
+
+  it("puts a Roll initiative card above the initiative list", async () => {
+    renderPage();
+
+    const prompt = await screen.findByRole("region", { name: "Roll initiative for Billie" });
+    const order = screen.getByRole("list", { name: "Initiative order" });
+    expect(prompt.compareDocumentPosition(order) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(prompt).toHaveTextContent("The app rolls and adds your Dexterity (+2).");
+  });
+
+  it("adds Dexterity to a physical roll, like attacks", async () => {
+    renderPage();
+    // The sheet's Dexterity (14, so +2) loads after the page.
+    await screen.findByText("The app rolls and adds your Dexterity (+2).");
+
+    await userEvent.type(
+      screen.getByLabelText("Rolling real dice? Type just the number on your d20:"),
+      "14",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Use my roll" }));
+
+    expect(setMyInitiative).toHaveBeenCalledWith("t1", 16);
+  });
+
+  it("ignores a number that can't be on a d20", async () => {
+    renderPage();
+    await screen.findByText("The app rolls and adds your Dexterity (+2).");
+
+    await userEvent.type(
+      screen.getByLabelText("Rolling real dice? Type just the number on your d20:"),
+      "25",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Use my roll" }));
+
+    expect(setMyInitiative).not.toHaveBeenCalled();
+  });
+
+  it("does not repeat the controls on the player's own waiting row", async () => {
+    renderPage();
+    await screen.findByRole("region", { name: "Roll initiative for Billie" });
+
+    expect(within(rowFor("Billie")).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("goes away once the player has an initiative", async () => {
+    useTable.mockReturnValue({
+      ...currentTable,
+      combatants: combatants.map((c) => (c.id === "c-billie" ? { ...c, initiative: 15 } : c)),
+    });
+    renderPage();
+
+    await screen.findByText("Final Fight");
+    expect(screen.queryByRole("region", { name: /Roll initiative for/ })).not.toBeInTheDocument();
+  });
+
+  it("is never shown to the DM", async () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    renderPage();
+
+    await screen.findByText("Final Fight");
+    expect(screen.queryByRole("region", { name: /Roll initiative for/ })).not.toBeInTheDocument();
+  });
+
+  it("highlights and counts everyone still waiting for initiative", async () => {
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Waiting for initiative (1)" })).toBeInTheDocument();
+    expect(rowFor("Billie")).toHaveClass("table-page__row--needs-initiative");
+    expect(rowFor("Kobold")).not.toHaveClass("table-page__row--needs-initiative");
+  });
+});
+
+describe("nudging players to roll initiative", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it("lists who the table is waiting on above the initiative order", async () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    renderPage();
+
+    const waitingList = await screen.findByRole("list", { name: "Waiting for initiative" });
+    const order = screen.getByRole("list", { name: "Initiative order" });
+    expect(waitingList.compareDocumentPosition(order) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("lets the DM nudge a waiting player from their row", async () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    renderPage();
+
+    await userEvent.click(await within(rowFor("Billie")).findByRole("button", { name: "🔔 Nudge" }));
+
+    expect(dmLog).toHaveBeenCalledWith("t1", "🔔 Billie, the DM is waiting for your initiative roll!");
+  });
+
+  it("offers a nudge from the prep checklist too", async () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: "🔔 Nudge Billie to roll" }));
+
+    expect(dmLog).toHaveBeenCalledWith("t1", "🔔 Billie, the DM is waiting for your initiative roll!");
+  });
+
+  it("does not offer a nudge for monsters", async () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    useTable.mockReturnValue({
+      ...currentTable,
+      combatants: combatants.map((c) => (c.id === "c-kobold" ? { ...c, initiative: null } : c)),
+    });
+    renderPage();
+
+    await screen.findByText("Final Fight");
+    expect(within(rowFor("Kobold")).queryByRole("button", { name: /Nudge/ })).not.toBeInTheDocument();
+  });
+
+  it("lights up the player's prompt when they have been nudged", async () => {
+    mockTable({ isDm: false, combatActive: false, currentId: null });
+    useTable.mockReturnValue({
+      ...currentTable,
+      events: [{ id: "n1", message: "🔔 Billie, the DM is waiting for your initiative roll!" }],
+    });
+    renderPage();
+
+    expect(await screen.findByText("🔔 Your DM is waiting for your roll!")).toBeInTheDocument();
+  });
+
+  it("logs a new encounter so old nudges stop counting", async () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: "New encounter" }));
+
+    await waitFor(() =>
+      expect(dmLog).toHaveBeenCalledWith("t1", "🧹 The DM started a new encounter."),
+    );
+    expect(resetEncounter).toHaveBeenCalledWith("t1");
+  });
+});
+
+describe("nudge shake and cooldown", () => {
+  const nudgeFor = (id) => ({ id, message: "🔔 Billie, the DM is waiting for your initiative roll!" });
+  let animate;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    animate = vi.fn();
+    Element.prototype.animate = animate;
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+  });
+
+  afterEach(() => {
+    delete Element.prototype.animate;
+    delete window.matchMedia;
+    vi.useRealTimers();
+  });
+
+  function playerWithEvents(events) {
+    mockTable({ isDm: false, combatActive: false, currentId: null });
+    useTable.mockReturnValue({ ...currentTable, events });
+  }
+
+  it("shakes the player's card once for each new nudge, not on every refresh", async () => {
+    playerWithEvents([nudgeFor("n1")]);
+    const { rerender } = renderPage();
+    await screen.findByText("🔔 Your DM is waiting for your roll!");
+    expect(animate).toHaveBeenCalledTimes(1);
+
+    // A refresh with the same nudge doesn't shake again...
+    rerender(
+      <MemoryRouter initialEntries={["/tables/t1"]}>
+        <Routes>
+          <Route path="/tables/:id" element={<TablePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(animate).toHaveBeenCalledTimes(1);
+
+    // ...but a second nudge does.
+    playerWithEvents([nudgeFor("n2"), nudgeFor("n1")]);
+    rerender(
+      <MemoryRouter initialEntries={["/tables/t1"]}>
+        <Routes>
+          <Route path="/tables/:id" element={<TablePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(animate).toHaveBeenCalledTimes(2));
+  });
+
+  it("skips the shake for people who prefer less motion", async () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    playerWithEvents([nudgeFor("n1")]);
+    renderPage();
+
+    await screen.findByText("🔔 Your DM is waiting for your roll!");
+    expect(animate).not.toHaveBeenCalled();
+  });
+
+  it("rests the DM's Nudge buttons for a few seconds after a nudge", async () => {
+    vi.useFakeTimers();
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    renderPage();
+
+    fireEvent.click(within(rowFor("Billie")).getByRole("button", { name: "🔔 Nudge" }));
+
+    expect(within(rowFor("Billie")).getByRole("button", { name: "Nudged ✓" })).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: "Nudged ✓" })).toHaveLength(2);
+    expect(dmLog).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(4000);
+    });
+
+    expect(within(rowFor("Billie")).getByRole("button", { name: /Nudge/ })).toBeEnabled();
   });
 });

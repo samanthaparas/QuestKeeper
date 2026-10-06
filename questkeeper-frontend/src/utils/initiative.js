@@ -30,17 +30,38 @@ export function getTurnOrder(combatants) {
   return sortCombatants(combatants).filter(takesTurns);
 }
 
-// { now, next } for the banner. `next` is null when only one combatant is left.
+// How many people the banner lists after whoever is going now.
+export const UPCOMING_COUNT = 2;
+
+// { now, next, upcoming } for the banner. `upcoming` is the next few in turn
+// order (wrapping into the next round) without repeating whoever is going
+// now, so a two-person fight lists just one. `next` is upcoming[0], or null.
 export function getNowAndNext(combatants, currentId) {
   const order = getTurnOrder(combatants);
   const index = order.findIndex((combatant) => combatant.id === currentId);
 
-  if (index === -1) return { now: null, next: null };
+  if (index === -1) return { now: null, next: null, upcoming: [] };
 
-  return {
-    now: order[index],
-    next: order.length > 1 ? order[(index + 1) % order.length] : null,
-  };
+  const upcoming = [];
+  for (let step = 1; step <= UPCOMING_COUNT && step < order.length; step += 1) {
+    upcoming.push(order[(index + step) % order.length]);
+  }
+
+  return { now: order[index], next: upcoming[0] ?? null, upcoming };
+}
+
+// "Next: Kobold, then Thorn", saying "you" for the viewer's own character:
+// "You're up next, then Kobold" or "Next: Kobold, then you".
+export function describeUpcoming(upcoming, myCombatantId) {
+  if (!upcoming || upcoming.length === 0) return "";
+
+  const names = upcoming.map((combatant) =>
+    combatant.id === myCombatantId ? "you" : combatant.name,
+  );
+  const [first, ...rest] = names;
+  const then = rest.map((name) => `, then ${name}`).join("");
+
+  return first === "you" ? `You're up next${then}` : `Next: ${first}${then}`;
 }
 
 // Moves to the next combatant who takes a turn. Wrapping past the end starts a
