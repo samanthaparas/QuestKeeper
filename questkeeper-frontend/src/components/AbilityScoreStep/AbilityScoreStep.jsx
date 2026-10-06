@@ -4,7 +4,12 @@ import {
   STANDARD_ARRAY,
   ABILITY_LABELS,
   ABILITY_DESCRIPTIONS,
+  ABILITY_ABBREVIATIONS,
   applyRaceBonuses,
+  applyCustomRaceBonuses,
+  canCustomizeRaceBonuses,
+  getRaceBonusPattern,
+  isCustomRaceBonusComplete,
   getAbilityModifier,
   rollAbilityScore,
 } from "../../utils/characterSheet";
@@ -53,12 +58,28 @@ function optionsFor(ability, pool, assignments) {
   return options.sort((a, b) => b - a);
 }
 
+// "+2 CON, +1 WIS", plus "+1 to two of your choice" for a Half-Elf.
+function describeRaceBonuses(race) {
+  const fixed = Object.entries(race?.abilityScoreIncreases ?? {})
+    .filter(([, bonus]) => bonus > 0)
+    .map(([ability, bonus]) => `+${bonus} ${ABILITY_ABBREVIATIONS[ability]}`);
+  const choice = race?.abilityScoreChoice;
+  if (choice) {
+    fixed.push(
+      `+${choice.options[0]?.bonus ?? 1} to ${choice.choose === 2 ? "two" : choice.choose} of your choice`,
+    );
+  }
+  return fixed.join(", ");
+}
+
 function AbilityScoreStep({
   race,
   initialAssignments,
   initialChosenBonusAbilities,
   initialScoreMethod,
   initialRolledPool,
+  initialBonusMode,
+  initialCustomBonuses,
   onNext,
   onBack,
 }) {
@@ -74,14 +95,32 @@ function AbilityScoreStep({
   const [chosenBonusAbilities, setChosenBonusAbilities] = useState(
     () => initialChosenBonusAbilities ?? [],
   );
+  // "race": the race's own bonuses. "custom": the player puts the same
+  // amounts on abilities of their choice.
+  const bonusPattern = getRaceBonusPattern(race);
+  const canCustomize = canCustomizeRaceBonuses(race);
+  const [bonusMode, setBonusMode] = useState(() =>
+    canCustomize && initialBonusMode === "custom" ? "custom" : "race",
+  );
+  // Saved picks only carry over if they still fit this race's bonuses (the
+  // player may have gone back and changed race).
+  const [customBonuses, setCustomBonuses] = useState(() =>
+    initialCustomBonuses?.length === bonusPattern.length
+      ? initialCustomBonuses
+      : bonusPattern.map(() => null),
+  );
 
   const pool = poolValuesFor(scoreMethod, rolledPool);
   const usedValues = Object.values(assignments).filter((v) => v !== null);
-  const finalScores = applyRaceBonuses(assignments, race, chosenBonusAbilities);
+  const isCustom = bonusMode === "custom";
+  const finalScores = isCustom
+    ? applyCustomRaceBonuses(assignments, bonusPattern, customBonuses)
+    : applyRaceBonuses(assignments, race, chosenBonusAbilities);
   const needsBonusChoice = Boolean(race?.abilityScoreChoice);
-  const hasMadeBonusChoice =
-    !needsBonusChoice ||
-    chosenBonusAbilities.length === race.abilityScoreChoice.choose;
+  const hasMadeBonusChoice = isCustom
+    ? isCustomRaceBonusComplete(bonusPattern, customBonuses)
+    : !needsBonusChoice ||
+      chosenBonusAbilities.length === race.abilityScoreChoice.choose;
   const poolIsReady =
     scoreMethod === "standard" ||
     rolledPool.every((slot) => slot.total !== null);
@@ -103,6 +142,14 @@ function AbilityScoreStep({
       if (prev.length >= maxChoices) return prev;
       return [...prev, ability];
     });
+  }
+
+  function handleCustomBonusChange(slot, ability) {
+    setCustomBonuses((prev) =>
+      prev.map((current, index) =>
+        index === slot ? ability || null : current,
+      ),
+    );
   }
 
   function handleScoreMethodChange(method) {
@@ -216,11 +263,77 @@ function AbilityScoreStep({
         </>
       )}
 
+      {canCustomize && (
+        <fieldset className="ability-score-step__bonus-mode">
+          <legend className="ability-score-step__bonus-choice-title">
+            Racial bonuses
+          </legend>
+          <label className="ability-score-step__bonus-option">
+            <input
+              type="radio"
+              name="bonus-mode"
+              checked={!isCustom}
+              onChange={() => setBonusMode("race")}
+            />
+            Use {race.name}&apos;s bonuses ({describeRaceBonuses(race)})
+          </label>
+          <label className="ability-score-step__bonus-option">
+            <input
+              type="radio"
+              name="bonus-mode"
+              checked={isCustom}
+              onChange={() => setBonusMode("custom")}
+            />
+            Choose where they go
+          </label>
+          <p className="ability-score-step__bonus-note">
+            Newer D&amp;D rules, and many tables, let you put your race&apos;s
+            bonuses on any abilities. Check with your DM.
+          </p>
+
+          {isCustom && (
+            <div className="ability-score-step__custom-bonuses">
+              {bonusPattern.map((bonus, slot) => (
+                <label
+                  className="ability-score-step__custom-bonus"
+                  key={slot}
+                >
+                  <span className="ability-score-step__bonus">+{bonus} to</span>
+                  <select
+                    className="ability-score-step__select"
+                    aria-label={`Ability for bonus ${slot + 1} (+${bonus})`}
+                    value={customBonuses[slot] ?? ""}
+                    onChange={(e) =>
+                      handleCustomBonusChange(slot, e.target.value)
+                    }
+                  >
+                    <option value="">Choose an ability</option>
+                    {ABILITY_SCORES.map((ability) => (
+                      <option
+                        key={ability}
+                        value={ability}
+                        disabled={customBonuses.some(
+                          (picked, index) =>
+                            index !== slot && picked === ability,
+                        )}
+                      >
+                        {ABILITY_LABELS[ability]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+          )}
+        </fieldset>
+      )}
+
       <div className="ability-score-step__grid">
         {ABILITY_SCORES.map((ability) => {
           const base = assignments[ability];
-          const bonus = race?.abilityScoreIncreases?.[ability] ?? 0;
           const finalScore = finalScores[ability] ?? 0;
+          // Whatever the race adds here, fixed, chosen (Half-Elf) or moved.
+          const bonus = base !== null ? finalScore - base : 0;
 
           return (
             <div className="ability-score-step__row" key={ability}>
@@ -235,6 +348,7 @@ function AbilityScoreStep({
 
               <select
                 className="ability-score-step__select"
+                aria-label={`${ABILITY_LABELS[ability]} score`}
                 value={base ?? ""}
                 onChange={(e) => handleAssign(ability, e.target.value)}
               >
@@ -264,7 +378,7 @@ function AbilityScoreStep({
         })}
       </div>
 
-      {race?.abilityScoreChoice && (
+      {race?.abilityScoreChoice && !isCustom && (
         <div className="ability-score-step__bonus-choice">
           <p className="ability-score-step__bonus-choice-title">
             {race.name} lets you choose {race.abilityScoreChoice.choose} more
@@ -307,6 +421,8 @@ function AbilityScoreStep({
               chosenBonusAbilities,
               scoreMethod,
               rolledPool,
+              bonusMode,
+              customBonuses,
             })
           }
         >

@@ -225,3 +225,48 @@
     min-width: 0;
   }
 }
+
+/* Racial bonuses: the race's own, or moved to abilities the player picks. */
+.ability-score-step__bonus-mode {
+  display: grid;
+  gap: 10px;
+  max-width: 640px;
+  margin: 24px 0 0;
+  padding: 16px 20px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.ability-score-step__bonus-mode legend {
+  padding: 0 6px;
+  margin: 0;
+  font-weight: 700;
+}
+
+.ability-score-step__bonus-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--qk-text);
+  cursor: pointer;
+}
+
+.ability-score-step__bonus-note {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ability-score-step__custom-bonuses {
+  display: grid;
+  gap: 8px;
+}
+
+.ability-score-step__custom-bonus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
