@@ -51,7 +51,7 @@ QuestKeeper is a full-stack companion for **Dungeons & Dragons Fifth Edition**, 
 - Tables for live play: a DM creates a table with a join code, and players join with one of their characters. The DM gets a read-only view of every sheet, an initiative tracker, and a private Monster Library; every player sees a turn banner on their own sheet. Enemy HP and AC stay hidden (players see a name, Bloodied or Down, and damage taken).
 - A full attack flow: a player rolls a virtual d20 or types a physical roll, and the database decides hit or miss against the secret AC. The DM can run attacks for monsters and allies from their stat blocks, send damage to a player as a request they apply on their own sheet, deny an attack, track friendly NPCs by hand, add many identical monsters at once with nicknames and icons, and roll initiative for every monster in one click while still rolling a boss with real dice.
 - The 2024 SRD's backgrounds and feats in browsing and the level-up flow, labeled by edition, with a full SRD attribution on the About page.
-- A "Learn the Basics" guide with an interactive dice roller, and ability score explanations plus a 4d6 roll-for-stats option in character creation.
+- A "Learn the Basics" guide with an interactive dice roller, and ability score explanations plus a 4d6 roll-for-stats option in character creation. Any race (except Human, whose +1s already cover everything) can keep its own ability bonuses or move the same amounts to abilities of the player's choice.
 - A warm, parchment-and-terracotta visual design ("Wayfarer") applied consistently across the whole app, built on a shared CSS token system and a shared `Button` component.
 - Loading, empty, and error feedback for API-driven views, and a responsive/mobile result-to-detail flow on every reference page.
 
@@ -284,7 +284,6 @@ Automated tests cover the character sheet's pure functions (ability scores, hit 
 - Global search depends on all category requests succeeding together.
 - Upstream requests do not yet use application-level caching or explicit timeouts.
 - Equipment/proficiency _choices_ (e.g. "a martial weapon or two simple weapons") aren't modeled during guided creation; only guaranteed starting gear is, plus freeform manual entry for anything else.
-- Only races with a choice in the SRD data (Half-Elf) get to choose their ability score bonuses; other races apply fixed bonuses.
 - Sheet sections can't yet be sorted, filtered, or favorited, and there is no sheet-wide Beginner Mode toggle for hiding hints.
 - Test coverage doesn't include the backend or end-to-end flows.
 - The free backend service may take approximately a minute to wake after a period of inactivity.
@@ -299,7 +298,7 @@ Automated tests cover the character sheet's pure functions (ability scores, hit 
 The current high-level sequence is:
 
 1. Keep the architecture, vision, setup, and content policies documented.
-2. Fix the known sheet gaps: let every race choose its ability score bonuses, and model equipment/proficiency choices during guided creation.
+2. Fix the known sheet gap: model equipment/proficiency choices during guided creation.
 3. Add sheet quality-of-life features: sorting, filtering, and favorites for long lists, and a Beginner Mode toggle for hiding hints.
    Also pending from usability testing: search by meaning ("sneak", "heal"), a "Not sure?" class helper, and a decision on how to use the 2024 backgrounds in creation.
 4. Add normalized backend models, source provenance, response validation, caching, and timeouts, and make global search tolerate a failing category.

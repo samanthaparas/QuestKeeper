@@ -312,6 +312,50 @@ export function applyRaceBonuses(baseScores, race, chosenAbilities = []) {
   return result;
 }
 
+// A race's ability bonuses as a list of amounts, largest first: a Hill Dwarf
+// is [2, 1], a Half-Elf [2, 1, 1] (its +2 plus two +1s of its choice), a
+// Human [1, 1, 1, 1, 1, 1].
+export function getRaceBonusPattern(race) {
+  const fixed = Object.values(race?.abilityScoreIncreases ?? {}).filter(
+    (bonus) => bonus > 0,
+  );
+  const choice = race?.abilityScoreChoice;
+  const chosen = choice
+    ? Array.from(
+        { length: choice.choose },
+        () => choice.options[0]?.bonus ?? 1,
+      )
+    : [];
+  return [...fixed, ...chosen].sort((a, b) => b - a);
+}
+
+// Players may put their race's bonuses on any abilities (newer rules do this
+// by default, and many tables allow it). Pointless for a race that already
+// gives +1 to all six, so it isn't offered there.
+export function canCustomizeRaceBonuses(race) {
+  const pattern = getRaceBonusPattern(race);
+  return pattern.length > 0 && pattern.length < ABILITY_SCORES.length;
+}
+
+// True once every bonus has its own, different ability.
+export function isCustomRaceBonusComplete(pattern, picks = []) {
+  const chosen = pattern.map((_, index) => picks[index]).filter(Boolean);
+  return (
+    chosen.length === pattern.length && new Set(chosen).size === chosen.length
+  );
+}
+
+// Adds the race's bonus amounts to the abilities the player picked:
+// picks[i] receives pattern[i].
+export function applyCustomRaceBonuses(baseScores, pattern, picks = []) {
+  const result = { ...baseScores };
+  pattern.forEach((bonus, index) => {
+    const ability = picks[index];
+    if (ability) result[ability] = (result[ability] ?? 0) + bonus;
+  });
+  return result;
+}
+
 export function mergeSubrace(race, subrace) {
   if (!subrace) return race;
 

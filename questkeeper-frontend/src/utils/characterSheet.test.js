@@ -3,6 +3,10 @@ import {
   getAbilityModifier,
   getProficiencyBonus,
   applyRaceBonuses,
+  getRaceBonusPattern,
+  canCustomizeRaceBonuses,
+  isCustomRaceBonusComplete,
+  applyCustomRaceBonuses,
   getStartingHitPoints,
   getStartingArmorClass,
   getSpellSaveDC,
@@ -1685,5 +1689,62 @@ describe("Hit Dice and rests", () => {
     const nearlyFull = restingSheet();
     nearlyFull.combat.hitDice = { total: 4, remaining: 3, die: 8 };
     expect(applyRest(nearlyFull, "long").combat.hitDice.remaining).toBe(4);
+  });
+});
+
+describe("choosing where racial bonuses go", () => {
+  const hillDwarf = { abilityScoreIncreases: { constitution: 2, wisdom: 1 } };
+  const halfElf = {
+    abilityScoreIncreases: { charisma: 2 },
+    abilityScoreChoice: {
+      choose: 2,
+      options: [
+        { ability: "strength", bonus: 1 },
+        { ability: "dexterity", bonus: 1 },
+      ],
+    },
+  };
+  const human = {
+    abilityScoreIncreases: {
+      strength: 1,
+      dexterity: 1,
+      constitution: 1,
+      intelligence: 1,
+      wisdom: 1,
+      charisma: 1,
+    },
+  };
+
+  it("lists each race's bonus amounts, largest first", () => {
+    expect(getRaceBonusPattern(hillDwarf)).toEqual([2, 1]);
+    expect(getRaceBonusPattern(halfElf)).toEqual([2, 1, 1]);
+    expect(getRaceBonusPattern(human)).toEqual([1, 1, 1, 1, 1, 1]);
+  });
+
+  it("offers the choice to every race except one that already raises all six", () => {
+    expect(canCustomizeRaceBonuses(hillDwarf)).toBe(true);
+    expect(canCustomizeRaceBonuses(halfElf)).toBe(true);
+    expect(canCustomizeRaceBonuses(human)).toBe(false);
+    expect(canCustomizeRaceBonuses(null)).toBe(false);
+  });
+
+  it("needs a different ability for every bonus", () => {
+    expect(isCustomRaceBonusComplete([2, 1], ["dexterity", "wisdom"])).toBe(
+      true,
+    );
+    expect(isCustomRaceBonusComplete([2, 1], ["dexterity", null])).toBe(false);
+    expect(isCustomRaceBonusComplete([2, 1], ["dexterity", "dexterity"])).toBe(
+      false,
+    );
+  });
+
+  it("adds each amount to the picked ability", () => {
+    expect(
+      applyCustomRaceBonuses(
+        { dexterity: 15, wisdom: 12, constitution: 14 },
+        [2, 1],
+        ["dexterity", "wisdom"],
+      ),
+    ).toEqual({ dexterity: 17, wisdom: 13, constitution: 14 });
   });
 });
