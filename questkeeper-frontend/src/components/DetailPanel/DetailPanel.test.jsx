@@ -173,3 +173,29 @@ describe("DetailPanel: beginner guidance", () => {
     expect(screen.queryByText("Good if you want")).not.toBeInTheDocument();
   });
 });
+
+describe("DetailPanel feedback link", () => {
+  it("links to a new GitHub issue titled with the entry's name", () => {
+    render(
+      <DetailPanel selectedResult={{ name: "Fireball", category: "Spell" }} />,
+    );
+
+    const link = screen.getByRole("link", { name: "Tell us" });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://github.com/samanthaparas/QuestKeeper/issues/new?title=Feedback%3A%20Fireball%20(Spell)",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link.closest("p")).toHaveTextContent(
+      "Something wrong or confusing about Fireball?",
+    );
+  });
+
+  it("has no feedback link before anything is selected", () => {
+    render(<DetailPanel selectedResult={null} />);
+
+    expect(
+      screen.queryByRole("link", { name: "Tell us" }),
+    ).not.toBeInTheDocument();
+  });
+});

@@ -1,5 +1,14 @@
 import "./DetailPanel.css";
 
+const NEW_ISSUE_URL = "https://github.com/samanthaparas/QuestKeeper/issues/new";
+
+// A GitHub "new issue" link with the title filled in, so feedback says which
+// entry it is about ("Feedback: Fireball (Spell)").
+function feedbackUrl({ name, category }) {
+  const about = category ? `${name} (${category})` : name;
+  return `${NEW_ISSUE_URL}?title=${encodeURIComponent(`Feedback: ${about}`)}`;
+}
+
 // Paragraphs and simple tables from the SRD text (spell descriptions, etc.).
 export function SrdBlocks({ blocks }) {
   return blocks.map((block, index) =>
@@ -390,6 +399,18 @@ function DetailPanel({ selectedResult, actions }) {
           )}
         </>
       )}
+
+      <p className="detail-panel__feedback">
+        Something wrong or confusing about {selectedResult.name}?{" "}
+        <a
+          className="detail-panel__feedback-link"
+          href={feedbackUrl(selectedResult)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Tell us
+        </a>
+      </p>
     </section>
   );
 }
