@@ -22,6 +22,7 @@ function CharacterReview({
   cantrips,
   spells,
   equipment,
+  canChangeGear = false,
   hitPoints,
   issues,
   onEdit,
@@ -223,6 +224,16 @@ function CharacterReview({
         <section className="character-review__card">
           <div className="character-review__card-head">
             <h2>Starting gear</h2>
+            {canChangeGear && (
+              <Button
+                variant="secondary"
+                type="button"
+                aria-label="Change starting gear"
+                onClick={() => onEdit("equipment")}
+              >
+                Change
+              </Button>
+            )}
           </div>
           {equipment.length > 0 ? (
             <ul className="character-review__chips">

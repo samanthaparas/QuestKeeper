@@ -140,3 +140,19 @@ describe("getReviewIssues", () => {
     );
   });
 });
+
+describe("the Gear step", () => {
+  it("appears after Abilities only when the class or background has gear choices", () => {
+    const withGear = getVisibleSteps({ characterClass: { id: "fighter" }, hasEquipmentChoices: true });
+    expect(withGear.slice(-3)).toEqual(["abilities", "equipment", "review"]);
+    expect(getVisibleSteps({ characterClass: { id: "fighter" } })).not.toContain("equipment");
+  });
+
+  it("is listed on Review until the gear is chosen", () => {
+    const steps = ["equipment", "review"];
+    const base = { steps, race: {}, characterClass: {}, background: {}, abilityScores: {} };
+
+    expect(getReviewIssues(base)).toEqual([{ step: "equipment", message: "Choose your starting gear" }]);
+    expect(getReviewIssues({ ...base, equipmentChosen: true })).toEqual([]);
+  });
+});

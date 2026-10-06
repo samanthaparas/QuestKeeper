@@ -68,6 +68,8 @@ import {
 import CreationStepRail from "../../components/CreationStepRail/CreationStepRail";
 import CreationSummaryPanel from "../../components/CreationSummaryPanel/CreationSummaryPanel";
 import CharacterReview from "../../components/CharacterReview/CharacterReview";
+import EquipmentChoiceStep from "../../components/EquipmentChoiceStep/EquipmentChoiceStep";
+import { parseEquipmentChoices } from "../../utils/equipmentChoices";
 import CreationTips from "../../components/CreationTips/CreationTips";
 import Button from "../../components/Button/Button";
 
@@ -142,10 +144,23 @@ function CharacterCreationPage() {
   const [subraceCantrip, setSubraceCantrip] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const [cameFromReview, setCameFromReview] = useState(false);
+  // Starting-gear choices and the gear they add (null until the Gear step).
+  const [equipmentSelections, setEquipmentSelections] = useState(null);
+  const [chosenEquipment, setChosenEquipment] = useState([]);
 
   const finalRace = mergeSubrace(race, subrace);
+  const equipmentGroups = [
+    ...parseEquipmentChoices(classRaw, "class"),
+    ...parseEquipmentChoices(backgroundRaw, "background"),
+  ];
+  const hasEquipmentChoices = equipmentGroups.length > 0;
 
-  const steps = getVisibleSteps({ raceRaw, subrace, characterClass });
+  const steps = getVisibleSteps({
+    raceRaw,
+    subrace,
+    characterClass,
+    hasEquipmentChoices,
+  });
   const step = stepKey;
   const stepIndex = Math.max(0, steps.indexOf(stepKey));
 
@@ -160,6 +175,7 @@ function CharacterCreationPage() {
     classSkills,
     spellChoices,
     abilityScores,
+    equipmentChosen: equipmentSelections !== null,
   });
   const reviewReady = issues.length === 0;
 
@@ -204,7 +220,10 @@ function CharacterCreationPage() {
 
   // The step list depends on the choice just made, so work out "next" from
   // the state the character is about to have, not the one rendered now.
-  function goNext(fromKey, nextState = { raceRaw, subrace, characterClass }) {
+  function goNext(
+    fromKey,
+    nextState = { raceRaw, subrace, characterClass, hasEquipmentChoices },
+  ) {
     const nextSteps = getVisibleSteps(nextState);
     const next = nextSteps[nextSteps.indexOf(fromKey) + 1];
     if (next) moveTo(next);
@@ -240,6 +259,7 @@ function CharacterCreationPage() {
     const equipment = [
       ...(characterClass?.startingEquipment ?? []),
       ...(background?.startingEquipment ?? []),
+      ...chosenEquipment,
     ];
 
     const spellcasting = buildStartingSpellcasting(
@@ -476,6 +496,8 @@ function CharacterCreationPage() {
                   onChoose={(snapshot, raw) => {
                     setCharacterClass(snapshot);
                     setClassRaw(raw);
+                    setEquipmentSelections(null);
+                    setChosenEquipment([]);
                     setClassSkills([]);
                     setSpellChoices(null);
                     setSubclass(null);
@@ -484,6 +506,10 @@ function CharacterCreationPage() {
                       raceRaw,
                       subrace,
                       characterClass: snapshot,
+                      hasEquipmentChoices:
+                        parseEquipmentChoices(raw, "class").length > 0 ||
+                        parseEquipmentChoices(backgroundRaw, "background")
+                          .length > 0,
                     });
                   }}
                   onBack={goBack}
@@ -569,6 +595,8 @@ function CharacterCreationPage() {
                   onChoose={(snapshot, raw) => {
                     setBackground(snapshot);
                     setBackgroundRaw(raw);
+                    setEquipmentSelections(null);
+                    setChosenEquipment([]);
                     const granted = new Set(
                       (snapshot.skillProficiencies ?? []).map(
                         (skill) => skill.index,
@@ -599,6 +627,28 @@ function CharacterCreationPage() {
                     setAbilityScores(scores);
                     setAbilityAssignments(raw);
                     goNext("abilities");
+                  }}
+                  onBack={goBack}
+                />
+              )}
+
+              {step === "equipment" && (
+                <EquipmentChoiceStep
+                  key={`${classRaw?.index}-${backgroundRaw?.index}`}
+                  groups={equipmentGroups}
+                  sourceNames={{
+                    class: characterClass?.name ?? "Class",
+                    background: background?.name ?? "Background",
+                  }}
+                  fixedGear={[
+                    ...(characterClass?.startingEquipment ?? []),
+                    ...(background?.startingEquipment ?? []),
+                  ]}
+                  initialSelections={equipmentSelections}
+                  onNext={(selections, chosen) => {
+                    setEquipmentSelections(selections);
+                    setChosenEquipment(chosen);
+                    goNext("equipment");
                   }}
                   onBack={goBack}
                 />
@@ -637,7 +687,9 @@ function CharacterCreationPage() {
                   equipment={[
                     ...(characterClass?.startingEquipment ?? []),
                     ...(background?.startingEquipment ?? []),
+                    ...chosenEquipment,
                   ]}
+                  canChangeGear={steps.includes("equipment")}
                   hitPoints={
                     abilityScores
                       ? getStartingHitPoints(

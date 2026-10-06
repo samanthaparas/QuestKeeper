@@ -20,6 +20,7 @@ export const CREATION_STEP_GROUPS = [
   { label: "Skills", steps: ["classSkills"] },
   { label: "Magic", steps: ["classSpells"] },
   { label: "Abilities", steps: ["abilities"] },
+  { label: "Gear", steps: ["equipment"] },
   { label: "Review", steps: ["review"] },
 ];
 
@@ -28,7 +29,12 @@ const NO_LEVEL_ONE_SPELLS = new Set(["paladin", "ranger"]);
 
 // Only show the steps that apply to this character, so nobody has to click
 // through a screen that says "nothing to do here".
-export function getVisibleSteps({ raceRaw, subrace, characterClass } = {}) {
+export function getVisibleSteps({
+  raceRaw,
+  subrace,
+  characterClass,
+  hasEquipmentChoices = false,
+} = {}) {
   const steps = ["name", "race"];
 
   if ((raceRaw?.subraces?.length ?? 0) > 0) steps.push("subrace");
@@ -46,7 +52,10 @@ export function getVisibleSteps({ raceRaw, subrace, characterClass } = {}) {
     steps.push("classSpells");
   }
 
-  steps.push("abilities", "review");
+  steps.push("abilities");
+  // Most classes offer either/or starting gear ("chain mail or leather armor").
+  if (hasEquipmentChoices) steps.push("equipment");
+  steps.push("review");
   return steps;
 }
 
@@ -64,6 +73,7 @@ export function getReviewIssues({
   classSkills = [],
   spellChoices,
   abilityScores,
+  equipmentChosen = false,
 }) {
   const issues = [];
   const add = (step, message) => issues.push({ step, message });
@@ -87,6 +97,9 @@ export function getReviewIssues({
     add("classSpells", "Choose your starting spells");
   }
   if (!abilityScores) add("abilities", "Assign your ability scores");
+  if (steps.includes("equipment") && !equipmentChosen) {
+    add("equipment", "Choose your starting gear");
+  }
 
   return issues;
 }
