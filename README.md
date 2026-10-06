@@ -36,9 +36,10 @@ QuestKeeper is a full-stack companion for **Dungeons & Dragons Fifth Edition**, 
 - A Review page that reads like a character introduction: a card per section (who they are, ability scores, skills, magic, gear), a Change button on each that returns straight to Review, and a list of anything still missing before the character can be created.
 - New characters arrive with real derived starting stats: AC from the armor and shield they wear, attacks worked out from their starting weapons and proficiencies, languages, class proficiencies, racial traits, and level 1 class features, instead of flat defaults.
 - A tabbed character sheet (Actions, Spells, Resources, Inventory, Features, Story) with a persistent combat header (HP, AC, initiative, speed, ability scores) and a sticky Skills sidebar, so a tab you don't need — like Spells, for a non-caster — simply isn't there.
-- A full level-up flow: hit points (roll, take average, or enter a physical dice result), ability score improvements or feats, subclass selection at the correct level per class, and new-spell learning, with your current stats shown on every step.
+- A full level-up flow: hit points (roll, take average, or enter a physical dice result), ability score improvements (capped at 20) or feats, subclass selection at the correct level per class, and new-spell learning, with your current stats shown on every step.
+- Rests that follow the rules: a Short Rest spends Hit Dice to heal (each die plus your Constitution modifier) and refills short-rest abilities; a Long Rest restores HP and spell slots and gives back half your Hit Dice. Each rest says what it changed.
 - Manual tracking for equipment (with attunement, capped at 3 items), attacks, feats, features, proficiencies, and per-rest limited-use resources, plus a dedicated per-level spell slot tracker — all editable after creation, not just at creation time.
-- Spell name autocomplete when adding a spell, with Level and Components auto-filled from the SRD the moment you pick or type an exact match; homebrew spells still work as plain freeform entries.
+- Spell name autocomplete when adding a spell, with Level and Components auto-filled from the SRD the moment you pick or type an exact match; homebrew spells still work as plain freeform entries. Spells granted by your race arrive locked (🔒 "From your race") so they can't be swapped or deleted by accident, and any spell can be locked or unlocked.
 - A trackable Companion mini stat block (name, AC, speed, HP, notes) as an alternative to freeform text, toggleable per-character without losing whichever mode you're not currently using.
 - A show/hide toggle for the Backstory section, for characters that don't need it visible.
 - Accounts (sign up, log in, session persistence) with character sheets saved to your account and a portrait upload for each character.
@@ -284,8 +285,6 @@ Automated tests cover the character sheet's pure functions (ability scores, hit 
 - Upstream requests do not yet use application-level caching or explicit timeouts.
 - Equipment/proficiency _choices_ (e.g. "a martial weapon or two simple weapons") aren't modeled during guided creation; only guaranteed starting gear is, plus freeform manual entry for anything else.
 - Only races with a choice in the SRD data (Half-Elf) get to choose their ability score bonuses; other races apply fixed bonuses.
-- Level-up ability score improvements aren't capped at 20, so a +2 can push a score past the maximum.
-- Cantrips and spells granted by a race, class, or background can still be swapped on the sheet.
 - Sheet sections can't yet be sorted, filtered, or favorited, and there is no sheet-wide Beginner Mode toggle for hiding hints.
 - Test coverage doesn't include the backend or end-to-end flows.
 - The free backend service may take approximately a minute to wake after a period of inactivity.
@@ -300,7 +299,7 @@ Automated tests cover the character sheet's pure functions (ability scores, hit 
 The current high-level sequence is:
 
 1. Keep the architecture, vision, setup, and content policies documented.
-2. Fix the known sheet gaps: cap level-up ability score improvements at 20, let every race choose its ability score bonuses, lock race/class/background-granted spells, and model equipment/proficiency choices during guided creation.
+2. Fix the known sheet gaps: let every race choose its ability score bonuses, and model equipment/proficiency choices during guided creation.
 3. Add sheet quality-of-life features: sorting, filtering, and favorites for long lists, and a Beginner Mode toggle for hiding hints.
    Also pending from usability testing: search by meaning ("sneak", "heal"), a "Not sure?" class helper, and a decision on how to use the 2024 backgrounds in creation.
 4. Add normalized backend models, source provenance, response validation, caching, and timeouts, and make global search tolerate a failing category.

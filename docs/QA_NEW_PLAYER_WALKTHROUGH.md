@@ -214,7 +214,7 @@ Each tab has an empty-state line ("No attacks recorded yet", with an Add Weapon 
 ### Other things that would hesitate a new player
 
 - **Level is an editable number box.** Typing 5 changes the level without the Level Up wizard. Kept editable on purpose (it is how existing characters are entered); a tooltip now points to Level Up.
-- **Short Rest button** is still shown. A tooltip stating what each rest does would help more than removing it. (The glossary now explains both rests.)
+- **Short Rest button** is still shown. A tooltip stating what each rest does would help more than removing it. (The glossary now explains both rests.) Fixed 2026-10-05 (#101): Short Rest opens a panel to spend Hit Dice and refill short-rest abilities, Long Rest gives back half your Hit Dice, and both say what they changed.
 - **Number boxes everywhere.** HP, AC and ability scores are editable with no "edit" cue. Consider locking core numbers behind an Edit toggle.
 - **Damage and healing** require typing a new HP total. Add -/+ buttons or a Damage / Heal amount field.
 - **Auto-saving** is silent. Add a small "Saved" indicator.
