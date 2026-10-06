@@ -227,3 +227,31 @@ describe("MonsterAttackPanel", () => {
     expect(select).toHaveValue("c-billie");
   });
 });
+
+describe("help when a monster has no saved attacks", () => {
+  it("says no attacks are saved and how to add them, plus a + hit tip", () => {
+    setup({ statBlock: {} });
+
+    expect(screen.getByText(/No attacks saved for Kobold/)).toHaveTextContent(
+      "tap Edit on its row afterwards",
+    );
+    expect(screen.getByText(/Not sure of the \+ hit\?/).closest("p")).toHaveTextContent(
+      "Most low-level monsters use +3 to +5",
+    );
+  });
+
+  it("stays quiet when a saved attack is picked", () => {
+    setup();
+
+    expect(screen.queryByText(/No attacks saved/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Not sure of the \+ hit\?/)).not.toBeInTheDocument();
+  });
+
+  it("shows the + hit tip when the DM picks Something else", async () => {
+    setup();
+
+    await userEvent.selectOptions(screen.getByLabelText("Which attack"), "custom");
+
+    expect(screen.getByText(/Not sure of the \+ hit\?/)).toBeInTheDocument();
+  });
+});

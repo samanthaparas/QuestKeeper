@@ -59,3 +59,12 @@
   border-radius: var(--qk-radius-control);
   color: var(--qk-danger);
 }
+
+/* Shown when a monster has no saved attacks, so the DM knows what to do. */
+.monster-attack__note--help {
+  padding: 8px 12px;
+  border-left: 3px solid var(--qk-brass);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+}
