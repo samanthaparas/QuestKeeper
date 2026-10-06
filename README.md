@@ -300,7 +300,7 @@ The current high-level sequence is:
 1. Keep the architecture, vision, setup, and content policies documented.
 2. Fix the known sheet gaps: cap level-up ability score improvements at 20, let every race choose its ability score bonuses, lock race/class/background-granted spells, and model equipment/proficiency choices during guided creation.
 3. Add sheet quality-of-life features: sorting, filtering, and favorites for long lists, a Beginner Mode toggle for hiding hints, and first-run prompts on empty tabs.
-   Also pending from usability testing: filters for the Spells page, table hints and a "How combat works" guide for new groups, search by meaning ("sneak", "heal"), a "Not sure?" class helper, and a decision on how to use the 2024 backgrounds in creation.
+   Also pending from usability testing: table hints and a "How combat works" guide for new groups, search by meaning ("sneak", "heal"), a "Not sure?" class helper, and a decision on how to use the 2024 backgrounds in creation.
 4. Add normalized backend models, source provenance, response validation, caching, and timeouts, and make global search tolerate a failing category.
 5. Expand automated test coverage to the backend and to the remaining UI components.
 6. Add richer Companion tracking (attacks/spells of its own), if that turns out to be worth the complexity versus the current lightweight stat block.
