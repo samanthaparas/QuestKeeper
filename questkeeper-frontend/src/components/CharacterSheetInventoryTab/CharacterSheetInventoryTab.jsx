@@ -54,7 +54,7 @@ function CharacterSheetInventoryTab({
         formatPrimaryLabel={(item) =>
           `${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ""}`
         }
-        emptyText="No equipment recorded yet."
+        emptyText="Track what you carry: weapons, armor, potions and treasure. Tap Add Item to add your first thing. Weapons you add here can be turned into attacks on the Actions tab with one tap."
         addButtonLabel="Add Item"
         onAdd={onEquipmentAdd}
         onUpdate={onEquipmentUpdate}

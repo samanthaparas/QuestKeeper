@@ -109,7 +109,7 @@ function CharacterSheetStoryTab({
             className="character-sheet__textarea"
             value={backstory ?? ""}
             onChange={(e) => onBackstoryChange(e.target.value)}
-            placeholder="Where your character comes from, what drives them, key life events"
+            placeholder='Who were you before the adventure? One sentence is enough to start, like "A runaway noble hiding from their family." Add more as you play.'
             rows={5}
           />
         ) : (
