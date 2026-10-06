@@ -34,7 +34,7 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 12 | Plain "good if you want..." blurbs on every race and class card | Creation, Reference | Medium | Merged (2026-10-05): every race and class has a short tagline on its card and a "Good if you want..." callout (plus role and difficulty for classes) on the detail panel and in creation |
 | 13 | Spells page filters (level, class, school) and a scrolling or paged list | Reference | Medium | Merged (2026-10-05): Level, Class and School dropdowns that combine with the name search, a Clear filters button and match count, level and school on each card, and 40 spells at a time with a Show more button (the page starts about 5,800 px tall instead of 35,000) |
 | 14 | Set armor class from starting armor; add starting weapons to Actions; fill languages | Sheet | Medium | Merged (2026-10-05): AC from starting armor and shield, starting weapons on Actions with to-hit and damage, languages, class proficiencies |
-| 15 | First-run prompts on each empty tab, with one-tap "add from inventory" | Sheet | Medium | Open |
+| 15 | First-run prompts on each empty tab, with one-tap "add from inventory" | Sheet | Medium | Merged (2026-10-05): every empty sheet list shows a prompt saying what goes there and which button to press; the backstory box asks "Who were you before the adventure?"; Actions offers a "From your inventory" button per SRD weapon not yet an attack; Add Weapon fills in to hit and damage (including "+1" magic weapons) and explains it in plain words, with a "How is this worked out?" toggle |
 | 16 | Feedback link on detail pages | Reference | Small | Partly merged (footer and About link to GitHub issues; not on each detail page) |
 | 17 | Table first-time hints, a DM prep checklist, a "How combat works" Guide page | Tables | Medium | Open |
 | 18 | Search by meaning ("sneak", "heal", "damage") | Search | Large | Open |
@@ -203,7 +203,7 @@ The Guide explains abilities and proficiency well, but never mentions AC in the 
 
 ### Blank state
 
-Each tab has an empty-state line ("No attacks recorded yet", with an Add Weapon button). That is a good start, but they are statements, not instructions. **Still open:**
+Each tab has an empty-state line ("No attacks recorded yet", with an Add Weapon button). That is a good start, but they are statements, not instructions. **All fixed 2026-10-05** (row #15; Features prefill in row #33):
 
 - Actions: "Add your first weapon. Your starting gear is in Inventory; tap Add Weapon to turn it into an attack." Better, offer one-tap "Add from inventory".
 - Features: prefill racial traits and class features from the SRD.
