@@ -8,6 +8,7 @@ import {
   getSpellSaveDC,
   getSpellAttackModifier,
   applyAbilityScoreChoice,
+  canIncreaseAbility,
   rollAbilityScore,
   rollD20,
   finalizeLevelUp,
@@ -20,6 +21,10 @@ import {
   setCurrentHp,
   setTemporaryHp,
   applyRest,
+  takeShortRest,
+  getHitDiceRemaining,
+  getLongRestHitDice,
+  describeSpellLock,
   createEquipmentItem,
   updateEquipmentItem,
   getAttunedCount,
@@ -955,6 +960,21 @@ describe("addRacialCantrip", () => {
     expect(result.cantripsKnown[0]).toMatchObject({ name: "Light", level: 0 });
   });
 
+  it("locks the cantrip and records where it came from", () => {
+    const result = addRacialCantrip(
+      null,
+      { index: "thaumaturgy", name: "Thaumaturgy" },
+      "your race (Tiefling)",
+    );
+    expect(result.cantripsKnown[0]).toMatchObject({
+      locked: true,
+      grantedBy: "your race (Tiefling)",
+    });
+    expect(describeSpellLock(result.cantripsKnown[0])).toBe(
+      "From your race (Tiefling)",
+    );
+  });
+
   it("creates a spellcasting object for a non-caster who otherwise has none", () => {
     const result = addRacialCantrip(null, { index: "light", name: "Light" });
     expect(result.cantripsKnown[0].name).toBe("Light");
@@ -1559,5 +1579,111 @@ describe("splitMagicWeaponName", () => {
       baseName: "Dagger",
       magicBonus: 0,
     });
+  });
+});
+
+describe("ability scores stop at 20", () => {
+  it("never raises a score past 20", () => {
+    expect(
+      applyAbilityScoreChoice(
+        { strength: 19 },
+        { type: "asi-one", ability: "strength" },
+      ),
+    ).toEqual({ strength: 20 });
+    expect(
+      applyAbilityScoreChoice(
+        { strength: 20, dexterity: 14 },
+        { type: "asi-two", abilities: ["strength", "dexterity"] },
+      ),
+    ).toEqual({ strength: 20, dexterity: 15 });
+  });
+
+  it("says when an increase would pass 20", () => {
+    expect(canIncreaseAbility(18, 2)).toBe(true);
+    expect(canIncreaseAbility(19, 2)).toBe(false);
+    expect(canIncreaseAbility(19, 1)).toBe(true);
+    expect(canIncreaseAbility(20, 1)).toBe(false);
+  });
+});
+
+describe("describeSpellLock", () => {
+  it("says Locked for a spell the player locked, and nothing when unlocked", () => {
+    expect(describeSpellLock({ locked: true })).toBe("Locked");
+    expect(describeSpellLock({ locked: false, grantedBy: "your race" })).toBe(
+      "",
+    );
+    expect(describeSpellLock({})).toBe("");
+  });
+});
+
+describe("Hit Dice and rests", () => {
+  function restingSheet(overrides = {}) {
+    return {
+      abilityScores: { constitution: 14 }, // +2
+      resources: [
+        { id: "r1", name: "Second Wind", max: 1, current: 0, resetOn: "short" },
+        { id: "r2", name: "Rage", max: 3, current: 0, resetOn: "long" },
+      ],
+      combat: {
+        hitPoints: { max: 30, current: 10, temporary: 0 },
+        hitDice: { total: 4, remaining: 3, die: 8 },
+      },
+      ...overrides,
+    };
+  }
+
+  it("treats a missing remaining count as all Hit Dice, and caps it at the total", () => {
+    expect(getHitDiceRemaining({ total: 3 })).toBe(3);
+    expect(getHitDiceRemaining({ total: 3, remaining: 5 })).toBe(3);
+    expect(getHitDiceRemaining({ total: 3, remaining: 0 })).toBe(0);
+  });
+
+  it("heals each spent die + CON and counts the dice down", () => {
+    const { sheet, summary } = takeShortRest(restingSheet(), [5, 3]);
+
+    expect(sheet.combat.hitPoints.current).toBe(10 + 7 + 5);
+    expect(sheet.combat.hitDice.remaining).toBe(1);
+    expect(summary).toMatchObject({
+      rolls: [5, 3],
+      con: 2,
+      healed: 12,
+      hpBefore: 10,
+      hpAfter: 22,
+      hitDiceLeft: 1,
+    });
+  });
+
+  it("refills short-rest resources but not long-rest ones", () => {
+    const { sheet } = takeShortRest(restingSheet(), []);
+
+    expect(sheet.resources.find((r) => r.id === "r1").current).toBe(1);
+    expect(sheet.resources.find((r) => r.id === "r2").current).toBe(0);
+  });
+
+  it("never heals past max HP or spends more dice than are left", () => {
+    const { sheet, summary } = takeShortRest(restingSheet(), [8, 8, 8, 8, 8]);
+
+    expect(sheet.combat.hitPoints.current).toBe(30);
+    expect(summary.rolls).toHaveLength(3);
+    expect(summary.healed).toBe(20);
+    expect(sheet.combat.hitDice.remaining).toBe(0);
+  });
+
+  it("never loses HP on a low roll with a negative CON", () => {
+    const sheet = restingSheet({ abilityScores: { constitution: 6 } }); // -2
+    expect(takeShortRest(sheet, [1]).summary.healed).toBe(0);
+  });
+
+  it("gives back half the Hit Dice on a long rest, at least one, never more than the total", () => {
+    expect(getLongRestHitDice({ total: 5 })).toBe(2);
+    expect(getLongRestHitDice({ total: 1 })).toBe(1);
+
+    const spent = restingSheet();
+    spent.combat.hitDice = { total: 4, remaining: 0, die: 8 };
+    expect(applyRest(spent, "long").combat.hitDice.remaining).toBe(2);
+
+    const nearlyFull = restingSheet();
+    nearlyFull.combat.hitDice = { total: 4, remaining: 3, die: 8 };
+    expect(applyRest(nearlyFull, "long").combat.hitDice.remaining).toBe(4);
   });
 });

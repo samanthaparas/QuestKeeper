@@ -23,6 +23,8 @@ import {
   removeResource,
   setCurrentHp,
   applyRest,
+  takeShortRest,
+  getHitDiceRemaining,
   createEquipmentItem,
   updateEquipmentItem,
   removeEquipmentItem,
@@ -45,6 +47,7 @@ import LevelUpWizard from "../../components/LevelUpWizard/LevelUpWizard";
 import Button from "../../components/Button/Button";
 import TurnBanner from "../../components/TurnBanner/TurnBanner";
 import AttackPanel from "../../components/AttackPanel/AttackPanel";
+import ShortRestPanel from "../../components/ShortRestPanel/ShortRestPanel";
 import CharacterSheetTabs from "../../components/CharacterSheetTabs/CharacterSheetTabs";
 import CharacterSheetActionsTab from "../../components/CharacterSheetActionsTab/CharacterSheetActionsTab";
 import CharacterSheetSpellsTab from "../../components/CharacterSheetSpellsTab/CharacterSheetSpellsTab";
@@ -103,6 +106,8 @@ function CharacterSheetPage() {
   const [loadedId, setLoadedId] = useState(null);
   const [showSkillBonuses, setShowSkillBonuses] = useState(false);
   const [isLevelingUp, setIsLevelingUp] = useState(false);
+  const [showShortRest, setShowShortRest] = useState(false);
+  const [restMessage, setRestMessage] = useState("");
   const [levelUpSummary, setLevelUpSummary] = useState(null);
   const [activeTab, setActiveTab] = useState("actions");
   const [activeSlotLevels, setActiveSlotLevels] = useState(() => new Set());
@@ -690,8 +695,47 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, spellcasting });
   }
 
-  function handleRest(restType) {
-    persistSheet(applyRest(sheet, restType));
+  function handleSpellLockToggle(spell) {
+    const spellcasting = updateSpell(
+      sheet.spellcasting,
+      findSpellListKey(spell.index),
+      spell.index,
+      { locked: !spell.locked },
+    );
+    persistSheet({ ...sheet, spellcasting });
+  }
+
+  function handleLongRest() {
+    const rested = applyRest(sheet, "long");
+    const regained =
+      getHitDiceRemaining(rested.combat.hitDice) -
+      getHitDiceRemaining(sheet.combat.hitDice);
+    persistSheet(rested);
+    setShowShortRest(false);
+    setRestMessage(
+      `Long rest done. HP is back to full${
+        regained > 0
+          ? `, you got ${regained} Hit ${regained === 1 ? "Die" : "Dice"} back,`
+          : ""
+      } and spell slots and abilities are refilled.`,
+    );
+  }
+
+  function handleShortRest(rolls) {
+    const { sheet: rested, summary } = takeShortRest(sheet, rolls);
+    persistSheet(rested);
+    setShowShortRest(false);
+    setRestMessage(
+      summary.rolls.length > 0
+        ? `Short rest done. Rolled ${summary.rolls.join(" + ")} (${formatModifier(
+            summary.con,
+          )} CON each) and healed ${summary.healed} HP: ${summary.hpBefore} → ${
+            summary.hpAfter
+          }. ${summary.hitDiceLeft} Hit ${
+            summary.hitDiceLeft === 1 ? "Die" : "Dice"
+          } left. Short-rest abilities are refilled.`
+        : "Short rest done. Short-rest abilities are refilled.",
+    );
   }
 
   function handleAttackAdd(values) {
@@ -1209,20 +1253,42 @@ function CharacterSheetPage() {
                     <Button onClick={() => setIsLevelingUp(true)}>
                       Level Up
                     </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => handleRest("long")}
-                    >
+                    <Button variant="secondary" onClick={handleLongRest}>
                       Long Rest
                     </Button>
                     <Button
                       variant="secondary"
-                      onClick={() => handleRest("short")}
+                      aria-expanded={showShortRest}
+                      onClick={() => {
+                        setRestMessage("");
+                        setShowShortRest((open) => !open);
+                      }}
                     >
                       Short Rest
                     </Button>
                   </div>
                 </div>
+
+                {showShortRest && (
+                  <ShortRestPanel
+                    sheet={sheet}
+                    onRest={handleShortRest}
+                    onClose={() => setShowShortRest(false)}
+                  />
+                )}
+
+                {restMessage && (
+                  <p className="character-sheet__rest-message" role="status">
+                    {restMessage}
+                    <button
+                      type="button"
+                      className="character-sheet__resource-remove"
+                      onClick={() => setRestMessage("")}
+                    >
+                      Dismiss
+                    </button>
+                  </p>
+                )}
 
                 <div className="character-sheet__main">
                   {activeTab === "actions" &&
@@ -1264,6 +1330,7 @@ function CharacterSheetPage() {
                       onSpellAdd={handleSpellAdd}
                       onSpellUpdate={handleSpellUpdate}
                       onSpellRemove={handleSpellRemove}
+                      onSpellLockToggle={handleSpellLockToggle}
                     />
                   )}
 

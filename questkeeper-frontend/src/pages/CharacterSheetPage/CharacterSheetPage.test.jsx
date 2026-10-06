@@ -231,3 +231,63 @@ it("shows the AC with a temporary bonus without changing the base AC", async () 
   expect(screen.getByText(/\+2 = 23/)).toBeInTheDocument();
   expect(screen.getByLabelText(/^AC/)).toHaveValue(21);
 });
+
+it("a Short Rest spends Hit Dice to heal and says what happened", async () => {
+  vi.spyOn(Math, "random").mockReturnValue(0.5); // d8 -> 5
+  const user = userEvent.setup();
+  const sheet = makeSheet();
+  sheet.abilityScores.constitution = 14; // +2
+  sheet.combat.hitPoints = { max: 30, current: 10, temporary: 0 };
+  sheet.combat.hitDice = { total: 3, remaining: 3, die: 8 };
+  renderSheet(sheet);
+
+  await user.click(await screen.findByRole("button", { name: "Short Rest" }));
+  await user.click(screen.getByRole("button", { name: "Roll 1 Hit Die and rest" }));
+
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Short rest done. Rolled 5 (+2 CON each) and healed 7 HP: 10 → 17. 2 Hit Dice left.",
+  );
+  vi.restoreAllMocks();
+});
+
+it("a Long Rest gives back Hit Dice and says so", async () => {
+  const user = userEvent.setup();
+  const sheet = makeSheet();
+  sheet.combat.hitDice = { total: 4, remaining: 0, die: 8 };
+  renderSheet(sheet);
+
+  await user.click(await screen.findByRole("button", { name: "Long Rest" }));
+
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Long rest done. HP is back to full, you got 2 Hit Dice back, and spell slots and abilities are refilled.",
+  );
+});
+
+it("locks granted spells and lets the player lock or unlock any spell", async () => {
+  vi.spyOn(window, "confirm").mockReturnValue(true);
+  const user = userEvent.setup();
+  const sheet = makeSheet({ class: { id: "cleric", name: "Cleric" } });
+  sheet.spellcasting = {
+    type: "prepared",
+    cantripsKnown: [
+      { index: "thaumaturgy", name: "Thaumaturgy", level: 0, notes: "", components: "", locked: true, grantedBy: "your race (Tiefling)" },
+      { index: "light", name: "Light", level: 0, notes: "", components: "" },
+    ],
+    spellsKnown: [],
+  };
+  renderSheet(sheet);
+
+  await user.click(await screen.findByRole("tab", { name: /Spells/ }));
+  const thaumaturgy = (await screen.findByText("Thaumaturgy")).closest("li");
+  expect(thaumaturgy).toHaveTextContent("🔒 From your race (Tiefling)");
+  expect(within(thaumaturgy).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+  expect(within(thaumaturgy).queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
+
+  const light = screen.getByText("Light").closest("li");
+  await user.click(within(light).getByRole("button", { name: "Lock Light" }));
+  expect(screen.getByText("Light").closest("li")).toHaveTextContent("🔒 Locked");
+
+  await user.click(within(screen.getByText("Thaumaturgy").closest("li")).getByRole("button", { name: "Unlock" }));
+  expect(within(screen.getByText("Thaumaturgy").closest("li")).getByRole("button", { name: "Edit" })).toBeInTheDocument();
+  vi.restoreAllMocks();
+});

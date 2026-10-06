@@ -249,7 +249,11 @@ function CharacterCreationPage() {
     );
 
     const finalSpellcasting = subraceCantrip
-      ? addRacialCantrip(spellcasting, subraceCantrip)
+      ? addRacialCantrip(
+          spellcasting,
+          subraceCantrip,
+          `your race (${subrace?.name ?? race?.name ?? "race"})`,
+        )
       : spellcasting;
 
     // New characters arrive with their race's traits and their level 1 class
