@@ -40,7 +40,7 @@ function CharacterSheetResourcesTab({
           placeholder: "Notes (optional) - one line per bullet point",
         },
       ]}
-      emptyText="No tracked resources yet. Add one below for anything with limited uses - Channel Divinity, Lay on Hands, spell slots, whatever you need."
+      emptyText="Track anything with limited uses, like Channel Divinity, Lay on Hands or Second Wind. Tap Add Resource, give it a name and how many uses you get, then lower the number as you use them. It refills on the rest you pick."
       addButtonLabel="Add Resource"
       onAdd={onResourceAdd}
       onUpdate={onResourceUpdate}

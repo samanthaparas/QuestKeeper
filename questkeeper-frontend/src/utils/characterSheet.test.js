@@ -29,6 +29,11 @@ import {
   getEffectiveArmorClass,
   computeStartingArmorClass,
   buildStartingAttacks,
+  findInventoryWeapons,
+  getWeaponAttackMath,
+  describeToHitMath,
+  describeToHitBasics,
+  splitMagicWeaponName,
   buildStartingLanguages,
   buildStartingProficiencies,
   isProficientWithWeapon,
@@ -1329,5 +1334,230 @@ describe("buildStartingProficiencies", () => {
     ]);
     expect(entries[0]).toMatchObject({ description: "" });
     expect(entries[0].index).toBeTruthy();
+  });
+});
+
+describe("findInventoryWeapons", () => {
+  const weapons = [
+    { index: "dagger", name: "Dagger" },
+    { index: "longsword", name: "Longsword" },
+    { index: "shortbow", name: "Shortbow" },
+  ];
+
+  it("finds inventory items that are SRD weapons", () => {
+    const equipment = [
+      { index: "1", name: "Dagger", quantity: 2 },
+      { index: "2", name: "Rope, hempen (50 feet)" },
+      { index: "3", name: " shortbow " },
+    ];
+
+    expect(
+      findInventoryWeapons(equipment, weapons, []).map(
+        (entry) => entry.weapon.index,
+      ),
+    ).toEqual(["dagger", "shortbow"]);
+  });
+
+  it("skips weapons that are already attacks, including named versions", () => {
+    const equipment = [
+      { index: "1", name: "Dagger" },
+      { index: "2", name: "Longsword" },
+    ];
+    const attacks = [{ name: "dagger" }, { name: "Night Terror Longsword" }];
+
+    expect(findInventoryWeapons(equipment, weapons, attacks)).toEqual([]);
+  });
+
+  it("lists a weapon once even if it appears twice in the inventory", () => {
+    const equipment = [
+      { index: "1", name: "Dagger" },
+      { index: "2", name: "Dagger" },
+    ];
+
+    expect(findInventoryWeapons(equipment, weapons, [])).toHaveLength(1);
+  });
+
+  it("returns nothing before the weapon list has loaded", () => {
+    expect(findInventoryWeapons([{ name: "Dagger" }], [], [])).toEqual([]);
+  });
+});
+
+describe("getWeaponAttackMath", () => {
+  const scores = { strength: 12, dexterity: 16 };
+  const rapier = {
+    name: "Rapier",
+    weapon_category: "Martial",
+    weapon_range: "Melee",
+    damage: { damage_dice: "1d8" },
+    properties: [{ index: "finesse", name: "Finesse" }],
+  };
+  const greataxe = {
+    name: "Greataxe",
+    weapon_category: "Martial",
+    weapon_range: "Melee",
+    damage: { damage_dice: "1d12" },
+    properties: [],
+  };
+
+  it("adds the better of STR and DEX for finesse weapons, plus proficiency", () => {
+    const math = getWeaponAttackMath({
+      weapon: rapier,
+      scores,
+      proficiencyNames: ["Martial Weapons"],
+      proficiencyBonus: 3,
+    });
+
+    expect(math).toMatchObject({
+      ability: "dexterity",
+      abilityMod: 3,
+      proficient: true,
+      toHit: 6,
+      damage: "1d8+3",
+    });
+  });
+
+  it("leaves out proficiency when the character isn't trained", () => {
+    const math = getWeaponAttackMath({
+      weapon: greataxe,
+      scores,
+      proficiencyNames: ["Simple Weapons"],
+    });
+
+    expect(math).toMatchObject({
+      ability: "strength",
+      proficient: false,
+      toHit: 1,
+      damage: "1d12+1",
+    });
+  });
+
+  it("adds a magic bonus to both to hit and damage", () => {
+    const math = getWeaponAttackMath({
+      weapon: greataxe,
+      scores,
+      proficiencyNames: ["Martial Weapons"],
+      magicBonus: 1,
+    });
+
+    expect(math.toHit).toBe(4);
+    expect(math.damage).toBe("1d12+2");
+  });
+});
+
+describe("describeToHitMath", () => {
+  const greatsword = {
+    name: "Greatsword",
+    weapon_category: "Martial",
+    weapon_range: "Melee",
+    damage: { damage_dice: "2d6" },
+    properties: [],
+  };
+  const scores = { strength: 15, dexterity: 10 };
+
+  it("explains each part in plain words, pointing at the sheet", () => {
+    const text = describeToHitMath(
+      getWeaponAttackMath({
+        weapon: greatsword,
+        scores,
+        proficiencyNames: ["Martial Weapons"],
+        proficiencyBonus: 4,
+        magicBonus: 1,
+      }),
+    );
+
+    expect(text.split("\n")).toEqual([
+      "When you attack, roll a d20 and add 7.",
+      "• +2 from your Strength (the +2 under STR 15 on your sheet). Greatsword uses Strength.",
+      "• +4 proficiency bonus, because you're trained with this weapon.",
+      "• +1 because it's magic.",
+      "If the total beats the target's Armor Class (AC), you hit. Change the number if your DM says otherwise.",
+    ]);
+  });
+
+  it("says when the proficiency list doesn't include the weapon", () => {
+    const text = describeToHitMath(
+      getWeaponAttackMath({
+        weapon: greatsword,
+        scores,
+        proficiencyNames: ["Simple Weapons"],
+      }),
+    );
+
+    expect(text).toContain("roll a d20 and add 2.");
+    expect(text).toContain(
+      "No proficiency bonus: your Proficiencies (Features tab) don't include this weapon.",
+    );
+  });
+
+  it("tells sheets with no proficiencies listed how to get the bonus counted", () => {
+    const text = describeToHitMath(
+      getWeaponAttackMath({
+        weapon: greatsword,
+        scores,
+        proficiencyNames: [],
+        proficiencyBonus: 4,
+      }),
+    );
+
+    expect(text).toContain(
+      'Not counted yet: your +4 proficiency bonus. If your class is trained with this weapon, make it +6. Add "Martial Weapons" to Proficiencies on the Features tab and the sheet will count it for you.',
+    );
+  });
+
+  it("says subtract for a negative total and explains finesse", () => {
+    const text = describeToHitMath(
+      getWeaponAttackMath({
+        weapon: {
+          name: "Dagger",
+          weapon_category: "Simple",
+          weapon_range: "Melee",
+          damage: { damage_dice: "1d4" },
+          properties: [{ index: "finesse" }],
+        },
+        scores: { strength: 6, dexterity: 8 },
+        proficiencyNames: ["Martial Weapons"],
+      }),
+    );
+
+    expect(text).toContain("roll a d20 and subtract 1.");
+    expect(text).toContain(
+      "Dagger can use Strength or Dexterity, so it uses your better one.",
+    );
+  });
+});
+
+describe("describeToHitBasics", () => {
+  it("explains to hit with the character's own numbers", () => {
+    expect(
+      describeToHitBasics({
+        scores: { strength: 10, dexterity: 16 },
+        proficiencyBonus: 2,
+      }).split("\n"),
+    ).toEqual([
+      "To Hit is what you add to a d20 when you attack. If the total beats the target's Armor Class (AC), you hit.",
+      "• Melee weapons add your Strength (+0). Ranged weapons add your Dexterity (+3). Finesse weapons can use either.",
+      "• Add your proficiency bonus (+2) if you're trained with the weapon.",
+      "Pick a weapon from the list and the sheet works this out for you.",
+    ]);
+  });
+});
+
+describe("splitMagicWeaponName", () => {
+  it("reads a bonus before or after the name", () => {
+    expect(splitMagicWeaponName("+1 Longsword")).toEqual({
+      baseName: "Longsword",
+      magicBonus: 1,
+    });
+    expect(splitMagicWeaponName("Longsword +2")).toEqual({
+      baseName: "Longsword",
+      magicBonus: 2,
+    });
+  });
+
+  it("leaves ordinary names alone", () => {
+    expect(splitMagicWeaponName(" Dagger ")).toEqual({
+      baseName: "Dagger",
+      magicBonus: 0,
+    });
   });
 });

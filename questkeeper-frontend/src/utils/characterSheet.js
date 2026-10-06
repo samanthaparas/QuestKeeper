@@ -397,6 +397,144 @@ function describeWeaponNotes(weapon, quantity) {
   return parts.join(" - ");
 }
 
+function formatBonus(value) {
+  return value === 0 ? "" : value > 0 ? `+${value}` : String(value);
+}
+
+// The numbers behind a weapon attack, so the sheet can both fill them in and
+// explain them: to hit = ability modifier + proficiency bonus (if trained)
+// + any magic bonus, and damage = the weapon's dice + the same modifier
+// + the magic bonus. Melee weapons use STR, ranged use DEX, and finesse
+// weapons use whichever is higher.
+//
+// When the character has no proficiencies listed at all (sheets made before
+// creation filled them in), we can't tell whether they're trained, so the
+// bonus is left out and proficiencyKnown is false so the hint can say so.
+export function getWeaponAttackMath({
+  weapon,
+  scores,
+  proficiencyNames = [],
+  proficiencyBonus = 2,
+  magicBonus = 0,
+}) {
+  const strengthScore = scores?.strength ?? 10;
+  const dexterityScore = scores?.dexterity ?? 10;
+  const strength = getAbilityModifier(strengthScore);
+  const dexterity = getAbilityModifier(dexterityScore);
+  const isFinesse = (weapon.properties ?? []).some(
+    (property) => property.index === "finesse",
+  );
+  const reason =
+    weapon.weapon_range === "Ranged"
+      ? "ranged"
+      : isFinesse
+        ? "finesse"
+        : "melee";
+  const ability =
+    reason === "ranged" || (reason === "finesse" && dexterity > strength)
+      ? "dexterity"
+      : "strength";
+  const abilityMod = ability === "dexterity" ? dexterity : strength;
+  const proficiencyKnown = proficiencyNames.length > 0;
+  const proficient = isProficientWithWeapon(weapon, proficiencyNames);
+  const bonus = Number(magicBonus || 0);
+  const toHit = abilityMod + (proficient ? proficiencyBonus : 0) + bonus;
+  const dice = weapon.damage?.damage_dice ?? "";
+
+  return {
+    weaponName: weapon.name,
+    weaponCategory: weapon.weapon_category,
+    reason,
+    ability,
+    abilityScore: ability === "dexterity" ? dexterityScore : strengthScore,
+    abilityMod,
+    proficiencyKnown,
+    proficient,
+    proficiencyBonus,
+    magicBonus: bonus,
+    toHit,
+    damage: dice ? `${dice}${formatBonus(abilityMod + bonus)}` : "",
+  };
+}
+
+function describeRoll(total) {
+  return total >= 0
+    ? `When you attack, roll a d20 and add ${total}.`
+    : `When you attack, roll a d20 and subtract ${-total}.`;
+}
+
+// A plain-language breakdown of a weapon's to-hit number, one short line per
+// part, pointing at the numbers already on the sheet so a beginner can see
+// where each one comes from. Lines are separated by newlines.
+export function describeToHitMath(math) {
+  const abilityName = ABILITY_LABELS[math.ability];
+  const abbreviation = ABILITY_ABBREVIATIONS[math.ability];
+  const why =
+    math.reason === "ranged"
+      ? `${math.weaponName} is a ranged weapon, so it uses ${abilityName}.`
+      : math.reason === "finesse"
+        ? `${math.weaponName} can use Strength or Dexterity, so it uses your better one.`
+        : `${math.weaponName} uses ${abilityName}.`;
+
+  const lines = [
+    describeRoll(math.toHit),
+    `• ${formatModifier(math.abilityMod)} from your ${abilityName} (the ${formatModifier(math.abilityMod)} under ${abbreviation} ${math.abilityScore} on your sheet). ${why}`,
+  ];
+
+  if (math.proficient) {
+    lines.push(
+      `• ${formatModifier(math.proficiencyBonus)} proficiency bonus, because you're trained with this weapon.`,
+    );
+  } else if (math.proficiencyKnown) {
+    lines.push(
+      `• No proficiency bonus: your Proficiencies (Features tab) don't include this weapon.`,
+    );
+  } else {
+    const category = math.weaponCategory
+      ? `"${math.weaponCategory} Weapons"`
+      : "your weapon proficiencies";
+    lines.push(
+      `• Not counted yet: your ${formatModifier(math.proficiencyBonus)} proficiency bonus. If your class is trained with this weapon, make it ${formatModifier(math.toHit + math.proficiencyBonus)}. Add ${category} to Proficiencies on the Features tab and the sheet will count it for you.`,
+    );
+  }
+
+  if (math.magicBonus) {
+    lines.push(`• ${formatModifier(math.magicBonus)} because it's magic.`);
+  }
+
+  lines.push(
+    "If the total beats the target's Armor Class (AC), you hit. Change the number if your DM says otherwise.",
+  );
+
+  return lines.join("\n");
+}
+
+// Shown under To Hit before a known weapon is picked, with this character's
+// own numbers.
+export function describeToHitBasics({ scores, proficiencyBonus = 2 }) {
+  const strength = formatModifier(getAbilityModifier(scores?.strength ?? 10));
+  const dexterity = formatModifier(getAbilityModifier(scores?.dexterity ?? 10));
+
+  return [
+    "To Hit is what you add to a d20 when you attack. If the total beats the target's Armor Class (AC), you hit.",
+    `• Melee weapons add your Strength (${strength}). Ranged weapons add your Dexterity (${dexterity}). Finesse weapons can use either.`,
+    `• Add your proficiency bonus (${formatModifier(proficiencyBonus)}) if you're trained with the weapon.`,
+    "Pick a weapon from the list and the sheet works this out for you.",
+  ].join("\n");
+}
+
+// Reads a magic bonus out of a weapon name: "+1 Longsword" or
+// "Longsword +2" gives the plain weapon name and the bonus.
+export function splitMagicWeaponName(name) {
+  const text = String(name ?? "").trim();
+  const match = text.match(/(^|\s)\+([1-3])(\s|$)/);
+  if (!match) return { baseName: text, magicBonus: 0 };
+  return {
+    baseName: text.replace(match[0], " ").replace(/\s+/g, " ").trim(),
+    magicBonus: Number(match[2]),
+  };
+}
+
 // Turns the weapons a character starts with into rows for the Actions tab,
 // with the to-hit and damage worked out from their ability scores.
 export function buildStartingAttacks({
@@ -405,42 +543,53 @@ export function buildStartingAttacks({
   proficiencyNames = [],
   proficiencyBonus = 2,
 }) {
-  const mod = (ability) => getAbilityModifier(scores?.[ability] ?? 10);
-  const strength = mod("strength");
-  const dexterity = mod("dexterity");
-
   return gear
     .filter((item) => item.damage?.damage_dice && item.weapon_category)
     .map((weapon) => {
-      const isFinesse = (weapon.properties ?? []).some(
-        (property) => property.index === "finesse",
-      );
-      const abilityMod =
-        weapon.weapon_range === "Ranged"
-          ? dexterity
-          : isFinesse
-            ? Math.max(strength, dexterity)
-            : strength;
-      const toHit =
-        abilityMod +
-        (isProficientWithWeapon(weapon, proficiencyNames)
-          ? proficiencyBonus
-          : 0);
-      const bonus =
-        abilityMod === 0
-          ? ""
-          : abilityMod > 0
-            ? `+${abilityMod}`
-            : String(abilityMod);
+      const math = getWeaponAttackMath({
+        weapon,
+        scores,
+        proficiencyNames,
+        proficiencyBonus,
+      });
 
       return createAttack({
         name: weapon.name,
-        toHit,
-        damage: `${weapon.damage.damage_dice}${bonus}`,
+        toHit: math.toHit,
+        damage: math.damage,
         damageType: weapon.damage.damage_type?.name ?? "",
         notes: describeWeaponNotes(weapon, weapon.quantity ?? 1),
       });
     });
+}
+
+// Inventory items that are SRD weapons but aren't on the Actions tab yet, so
+// the sheet can offer to turn them into attacks. An attack counts as covering
+// a weapon when its name contains the weapon's name, so "Night Terror
+// Longsword" covers a plain "Longsword" in the inventory.
+export function findInventoryWeapons(
+  equipment = [],
+  weapons = [],
+  attacks = [],
+) {
+  const weaponsByName = new Map(
+    weapons.map((weapon) => [weapon.name.toLowerCase(), weapon]),
+  );
+  const attackNames = attacks.map((attack) =>
+    String(attack.name ?? "").toLowerCase(),
+  );
+  const seen = new Set();
+
+  return equipment.flatMap((item) => {
+    const name = String(item.name ?? "")
+      .trim()
+      .toLowerCase();
+    const weapon = weaponsByName.get(name);
+    if (!weapon || seen.has(name)) return [];
+    seen.add(name);
+    if (attackNames.some((attackName) => attackName.includes(name))) return [];
+    return [{ item, weapon }];
+  });
 }
 
 // "Common, Draconic" plus a reminder for any languages the player still has

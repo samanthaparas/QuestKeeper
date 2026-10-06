@@ -197,7 +197,7 @@ function CharacterSheetSpellsTab({
             placeholder: "Notes (optional) - one line per bullet point",
           },
         ]}
-        emptyText="No spells recorded yet."
+        emptyText="Add the spells your character knows or has prepared. Tap Add Spell and start typing a name: its level and components fill in for you."
         addButtonLabel="Add Spell"
         onAdd={onSpellAdd}
         onUpdate={onSpellUpdate}

@@ -482,12 +482,38 @@
   text-align: center;
 }
 
-.character-sheet__item-description {
-  display: block;
-  margin-top: 4px;
-  font-size: 13px;
-  font-weight: 400;
+/* Help under an Add form's row of inputs (e.g. how To Hit is worked out).
+   Kept to one line, with the full breakdown behind a toggle. */
+.character-sheet__field-hint {
+  padding: 8px 12px;
+  border-left: 3px solid var(--qk-brass);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
   color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.character-sheet__field-hint-summary {
+  margin: 0;
+  color: var(--qk-text);
+}
+
+.character-sheet__field-hint-details summary {
+  width: fit-content;
+  margin-top: 2px;
+  color: var(--qk-terracotta);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.character-sheet__field-hint-details ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
+.character-sheet__field-hint-details li + li {
+  margin-top: 4px;
 }
 
 .character-sheet__textarea {
@@ -562,6 +588,36 @@
   color: var(--qk-text-muted);
   line-height: 1.5;
   margin: 0;
+}
+
+/* First-run prompt shown in place of an empty list: tells a new player what
+   goes here and which button to press. */
+.character-sheet__empty-prompt {
+  margin: 0;
+  padding: 14px 16px;
+  border: 2px dashed var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  color: var(--qk-text-muted);
+  line-height: 1.5;
+}
+
+.character-sheet__inventory-weapons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.character-sheet__inventory-weapons-label {
+  color: var(--qk-text-muted);
+  font-weight: 600;
+}
+
+.character-sheet__inventory-weapons-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--qk-danger);
 }
 
 .character-sheet input[type="number"]::-webkit-inner-spin-button,

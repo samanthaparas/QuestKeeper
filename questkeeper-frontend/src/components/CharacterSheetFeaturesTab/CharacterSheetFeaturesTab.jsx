@@ -270,7 +270,7 @@ function CharacterSheetFeaturesTab({
               placeholder: "Description (optional) - one line per bullet point",
             },
           ]}
-          emptyText="No class or racial features recorded yet."
+          emptyText='Your race and class give you special abilities, like Darkvision or Second Wind. Tap "Add from my class and race" above to fill them in, or Add Feature to type your own.'
           addButtonLabel="Add Feature"
           onAdd={onFeatureAdd}
           onUpdate={onFeatureUpdate}
@@ -299,7 +299,7 @@ function CharacterSheetFeaturesTab({
               placeholder: "Description (optional) - one line per bullet point",
             },
           ]}
-          emptyText="No feats yet."
+          emptyText="Feats are optional extra abilities. Most characters don't get one until level 4, when they can take a feat instead of raising an ability score, so it's fine for this to be empty."
           addButtonLabel="Add Feat"
           onAdd={onFeatAdd}
           onUpdate={onFeatUpdate}
@@ -326,7 +326,7 @@ function CharacterSheetFeaturesTab({
               placeholder: "Notes (optional) - one line per bullet point",
             },
           ]}
-          emptyText="No weapon, armor, or tool proficiencies recorded yet."
+          emptyText="The weapons, armor and tools your character is trained with, like Simple Weapons or Light Armor. Your class and background list them. Tap Add Proficiency to record each one."
           addButtonLabel="Add Proficiency"
           onAdd={onProficiencyAdd}
           onUpdate={onProficiencyUpdate}

@@ -16,7 +16,31 @@ function createEmptyValues(fields) {
   }, {});
 }
 
-function EditableItemField({ field, value, allValues, onChange }) {
+// A field's hint sits under the row of inputs, not inside it, so a long hint
+// can't push the other boxes around. Only the first line shows; any further
+// lines (like the to-hit breakdown) open from a "How is this worked out?"
+// toggle so the form stays tidy.
+function FieldHint({ text }) {
+  const [summary, ...details] = String(text).split("\n");
+
+  return (
+    <div className="character-sheet__field-hint">
+      <p className="character-sheet__field-hint-summary">{summary}</p>
+      {details.length > 0 && (
+        <details className="character-sheet__field-hint-details">
+          <summary>How is this worked out?</summary>
+          <ul>
+            {details.map((line) => (
+              <li key={line}>{line.replace(/^•\s*/, "")}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function EditableItemField({ field, value, onChange }) {
   if (field.type === "select") {
     return (
       <select
@@ -36,7 +60,6 @@ function EditableItemField({ field, value, allValues, onChange }) {
   const className = `character-sheet__resource-form-input${
     field.width ? ` character-sheet__resource-form-input--${field.width}` : ""
   }`;
-  const hint = field.getHint ? field.getHint(allValues) : null;
 
   return (
     <>
@@ -66,9 +89,6 @@ function EditableItemField({ field, value, allValues, onChange }) {
           ))}
         </datalist>
       )}
-      {hint && (
-        <span className="character-sheet__item-description">{hint}</span>
-      )}
     </>
   );
 }
@@ -89,6 +109,7 @@ function EditableItemList({
   isNameClickable,
   onNameClick,
   rowAction = null,
+  footer = null,
 }) {
   const primaryField = fields[0];
   const textareaField = fields.find((field) => field.type === "textarea");
@@ -241,11 +262,17 @@ function EditableItemList({
                 key={field.key}
                 field={field}
                 value={values[field.key]}
-                allValues={values}
                 onChange={(value) => handleFieldChange(field.key, value)}
               />
             ))}
           </div>
+
+          {formFields
+            .map((field) => field.getHint?.(values))
+            .filter(Boolean)
+            .map((hint) => (
+              <FieldHint key={hint} text={hint} />
+            ))}
 
           {textareaField && (
             <textarea
@@ -262,7 +289,7 @@ function EditableItemList({
       )}
 
       {items.length === 0 ? (
-        <p className="character-sheet__empty-text">{emptyText}</p>
+        <p className="character-sheet__empty-prompt">{emptyText}</p>
       ) : columns ? (
         <div className="character-sheet__attacks-table">
           <div
@@ -353,6 +380,8 @@ function EditableItemList({
           })}
         </ul>
       )}
+
+      {footer}
     </section>
   );
 }

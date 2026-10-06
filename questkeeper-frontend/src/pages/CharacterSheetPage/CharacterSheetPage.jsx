@@ -1242,6 +1242,12 @@ function CharacterSheetPage() {
                       onAttackAdd={handleAttackAdd}
                       onAttackUpdate={handleAttackUpdate}
                       onAttackRemove={handleAttackRemove}
+                      equipment={sheet.equipment ?? []}
+                      abilityScores={sheet.abilityScores}
+                      proficiencyNames={(sheet.proficiencies ?? []).map(
+                        (proficiency) => proficiency.name,
+                      )}
+                      proficiencyBonus={proficiencyBonus}
                     />
                   )}
 
