@@ -110,6 +110,10 @@ function EditableItemList({
   onNameClick,
   rowAction = null,
   footer = null,
+  // Optional locking (used for spells): a locked row hides Edit and Remove
+  // until it is unlocked, so it can't be changed by accident.
+  isLocked = null,
+  onToggleLock = null,
 }) {
   const primaryField = fields[0];
   const textareaField = fields.find((field) => field.type === "textarea");
@@ -172,6 +176,16 @@ function EditableItemList({
   function handleRemoveClick(item, id) {
     if (window.confirm(`Remove "${getLabel(item)}"? This can't be undone.`)) {
       onRemove(id);
+    }
+  }
+
+  function handleUnlockClick(item) {
+    if (
+      window.confirm(
+        `Unlock "${getLabel(item)}"? You'll be able to edit or remove it again.`,
+      )
+    ) {
+      onToggleLock(item);
     }
   }
 
@@ -360,20 +374,44 @@ function EditableItemList({
                 {extraRowContent && extraRowContent(item)}
 
                 <span className="character-sheet__attacks-actions">
-                  <button
-                    type="button"
-                    className="character-sheet__resource-remove"
-                    onClick={() => handleEdit(item)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="character-sheet__resource-remove"
-                    onClick={() => handleRemoveClick(item, id)}
-                  >
-                    Remove
-                  </button>
+                  {isLocked?.(item) ? (
+                    onToggleLock && (
+                      <button
+                        type="button"
+                        className="character-sheet__resource-remove"
+                        onClick={() => handleUnlockClick(item)}
+                      >
+                        Unlock
+                      </button>
+                    )
+                  ) : (
+                    <>
+                      {onToggleLock && (
+                        <button
+                          type="button"
+                          className="character-sheet__resource-remove"
+                          aria-label={`Lock ${getLabel(item)}`}
+                          onClick={() => onToggleLock(item)}
+                        >
+                          Lock
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="character-sheet__resource-remove"
+                        onClick={() => handleEdit(item)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="character-sheet__resource-remove"
+                        onClick={() => handleRemoveClick(item, id)}
+                      >
+                        Remove
+                      </button>
+                    </>
+                  )}
                 </span>
               </li>
             );

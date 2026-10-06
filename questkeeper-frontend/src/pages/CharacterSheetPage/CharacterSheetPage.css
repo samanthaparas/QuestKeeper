@@ -1263,3 +1263,28 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   color: var(--qk-text-muted);
   font-size: 12px;
 }
+
+/* A locked spell (granted by race, or locked by the player). */
+.character-sheet__lock-tag {
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background-color: var(--qk-moss-soft);
+  color: var(--qk-moss);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* One line saying what the last rest did. */
+.character-sheet__rest-message {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-moss-soft);
+  color: var(--qk-text);
+  line-height: 1.5;
+}

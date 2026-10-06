@@ -206,7 +206,10 @@ export function buildStartingSpellcasting(
   );
 }
 
-export function addRacialCantrip(spellcasting, cantrip) {
+// A cantrip that comes from the character's race (Tiefling's Thaumaturgy, a
+// High Elf's wizard cantrip). It arrives locked, with where it came from, so
+// it can't be swapped or deleted by accident on the sheet.
+export function addRacialCantrip(spellcasting, cantrip, grantedBy = "") {
   const base = spellcasting ?? {
     type: "known",
     cantripsKnown: [],
@@ -219,6 +222,8 @@ export function addRacialCantrip(spellcasting, cantrip) {
     level: 0,
     notes: "",
     components: "",
+    locked: true,
+    grantedBy,
   };
 
   return { ...base, cantripsKnown: [...base.cantripsKnown, entry] };
@@ -226,6 +231,13 @@ export function addRacialCantrip(spellcasting, cantrip) {
 
 // The AC the sheet shows: the base number plus any temporary bonus, like the
 // +2 from the Haste spell, so the real AC never has to be overwritten.
+// "From your race (Tiefling)" for a granted spell, "Locked" for one the
+// player locked themselves, or "" when it isn't locked.
+export function describeSpellLock(spell) {
+  if (!spell?.locked) return "";
+  return spell.grantedBy ? `From ${spell.grantedBy}` : "Locked";
+}
+
 export function getEffectiveArmorClass(sheet) {
   return (sheet?.combat?.armorClass ?? 10) + (sheet?.acBonus ?? 0);
 }
@@ -659,19 +671,31 @@ export function getAverageHitDieValue(die) {
   return Math.floor(die / 2) + 1;
 }
 
+// An Ability Score Improvement can't raise a score above 20.
+export const MAX_ABILITY_SCORE = 20;
+
+// Whether an ability can take this much of an increase without passing 20.
+export function canIncreaseAbility(score, amount) {
+  return (score ?? 0) + amount <= MAX_ABILITY_SCORE;
+}
+
 export function applyAbilityScoreChoice(abilityScores, choice) {
   if (!choice) return { ...abilityScores };
 
   const result = { ...abilityScores };
+  const raise = (ability, amount) => {
+    result[ability] = Math.min(
+      MAX_ABILITY_SCORE,
+      (result[ability] ?? 0) + amount,
+    );
+  };
 
   if (choice.type === "asi-one") {
-    result[choice.ability] = (result[choice.ability] ?? 0) + 2;
+    raise(choice.ability, 2);
   }
 
   if (choice.type === "asi-two") {
-    choice.abilities.forEach((ability) => {
-      result[ability] = (result[ability] ?? 0) + 1;
-    });
+    choice.abilities.forEach((ability) => raise(ability, 1));
   }
 
   return result;
@@ -985,6 +1009,19 @@ export function applyRest(sheet, restType) {
         }
       : sheet.spellcasting;
 
+  // A long rest also gives back half your Hit Dice (at least one).
+  const hitDice =
+    restType === "long" && sheet.combat.hitDice
+      ? {
+          ...sheet.combat.hitDice,
+          remaining: Math.min(
+            Number(sheet.combat.hitDice.total) || 0,
+            getHitDiceRemaining(sheet.combat.hitDice) +
+              getLongRestHitDice(sheet.combat.hitDice),
+          ),
+        }
+      : sheet.combat.hitDice;
+
   return {
     ...sheet,
     resources,
@@ -992,6 +1029,62 @@ export function applyRest(sheet, restType) {
     combat: {
       ...sheet.combat,
       hitPoints,
+      hitDice,
+    },
+  };
+}
+
+// How many Hit Dice are left to spend. Older sheets never tracked this, so
+// a missing value means all of them.
+export function getHitDiceRemaining(hitDice) {
+  const total = Number(hitDice?.total) || 0;
+  const remaining =
+    hitDice?.remaining === undefined || hitDice?.remaining === null
+      ? total
+      : Number(hitDice.remaining) || 0;
+  return Math.max(0, Math.min(total, remaining));
+}
+
+// A long rest gives back half your total Hit Dice, rounded down, minimum 1.
+export function getLongRestHitDice(hitDice) {
+  const total = Number(hitDice?.total) || 0;
+  return total > 0 ? Math.max(1, Math.floor(total / 2)) : 0;
+}
+
+// A short rest: spend Hit Dice to heal (each die roll + CON modifier, never
+// less than 0), then refill short-rest resources (and a Warlock's slots).
+// `rolls` are the results of the dice spent. Returns the new sheet and a
+// summary the page can show.
+export function takeShortRest(sheet, rolls = []) {
+  const hitDice = sheet.combat.hitDice ?? { total: 0, remaining: 0 };
+  const remaining = getHitDiceRemaining(hitDice);
+  const used = rolls.slice(0, remaining);
+  const con = getAbilityModifier(sheet.abilityScores?.constitution ?? 10);
+  const healing = used.reduce((sum, roll) => sum + Math.max(0, roll + con), 0);
+  const before = sheet.combat.hitPoints.current;
+  const hitPoints = setCurrentHp(sheet.combat.hitPoints, before + healing);
+
+  const rested = applyRest(
+    {
+      ...sheet,
+      combat: {
+        ...sheet.combat,
+        hitPoints,
+        hitDice: { ...hitDice, remaining: remaining - used.length },
+      },
+    },
+    "short",
+  );
+
+  return {
+    sheet: rested,
+    summary: {
+      rolls: used,
+      con,
+      healed: hitPoints.current - before,
+      hpBefore: before,
+      hpAfter: hitPoints.current,
+      hitDiceLeft: remaining - used.length,
     },
   };
 }

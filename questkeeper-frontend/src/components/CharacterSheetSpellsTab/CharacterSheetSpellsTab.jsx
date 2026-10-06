@@ -9,6 +9,7 @@ import {
   getSpellAttackModifier,
   getSpellSlots,
   formatModifier,
+  describeSpellLock,
 } from "../../utils/characterSheet";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
 
@@ -24,6 +25,7 @@ function CharacterSheetSpellsTab({
   onSpellAdd,
   onSpellUpdate,
   onSpellRemove,
+  onSpellLockToggle,
 }) {
   const [allSpells, setAllSpells] = useState([]);
   const detailView = useSrdDetailView();
@@ -202,12 +204,19 @@ function CharacterSheetSpellsTab({
         onAdd={onSpellAdd}
         onUpdate={onSpellUpdate}
         onRemove={onSpellRemove}
+        isLocked={(spell) => Boolean(spell.locked)}
+        onToggleLock={onSpellLockToggle}
         isNameClickable={(spell) =>
           findSrdMatches(spell.name, allSpells).length > 0
         }
         onNameClick={openSpellDetails}
         extraRowContent={(spell) => (
           <>
+            {spell.locked && (
+              <span className="character-sheet__lock-tag">
+                🔒 {describeSpellLock(spell)}
+              </span>
+            )}
             <span className="character-sheet__resource-reset">
               {spell.level === 0 ? "Cantrip" : `Level ${spell.level}`}
             </span>

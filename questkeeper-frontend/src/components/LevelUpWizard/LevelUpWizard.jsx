@@ -11,6 +11,8 @@ import {
   ABILITY_LABELS,
   ABILITY_DESCRIPTIONS,
   ABILITY_ABBREVIATIONS,
+  MAX_ABILITY_SCORE,
+  canIncreaseAbility,
   formatModifier,
   getProficiencyBonus,
 } from "../../utils/characterSheet";
@@ -372,7 +374,8 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
           </h3>
           <p className="level-up-wizard__step-description">
             At level {targetLevel}, choose one: increase two abilities by +1
-            each, increase one ability by +2, or take a feat.
+            each, increase one ability by +2, or take a feat. Ability scores
+            can&apos;t go above {MAX_ABILITY_SCORE}.
           </p>
 
           <div className="level-up-wizard__mode-options">
@@ -415,30 +418,37 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
 
           {asiMode === "asi-two" && (
             <div className="level-up-wizard__ability-checklist">
-              {ABILITY_SCORES.map((ability) => (
-                <label
-                  className="level-up-wizard__ability-checkbox"
-                  key={ability}
-                >
-                  <input
-                    type="checkbox"
-                    checked={asiAbilities.includes(ability)}
-                    disabled={
-                      !asiAbilities.includes(ability) &&
-                      asiAbilities.length >= 2
-                    }
-                    onChange={() => toggleAsiAbility(ability)}
-                  />
-                  <span className="level-up-wizard__ability-checkbox-text">
-                    <span className="level-up-wizard__ability-checkbox-name">
-                      {ABILITY_LABELS[ability]}
+              {ABILITY_SCORES.map((ability) => {
+                const score = sheet.abilityScores[ability];
+                const isMaxed = !canIncreaseAbility(score, 1);
+                return (
+                  <label
+                    className="level-up-wizard__ability-checkbox"
+                    key={ability}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={asiAbilities.includes(ability)}
+                      disabled={
+                        isMaxed ||
+                        (!asiAbilities.includes(ability) &&
+                          asiAbilities.length >= 2)
+                      }
+                      onChange={() => toggleAsiAbility(ability)}
+                    />
+                    <span className="level-up-wizard__ability-checkbox-text">
+                      <span className="level-up-wizard__ability-checkbox-name">
+                        {ABILITY_LABELS[ability]} ({score})
+                      </span>
+                      <span className="level-up-wizard__ability-checkbox-hint">
+                        {isMaxed
+                          ? `Already at ${MAX_ABILITY_SCORE}, the most an ability can be.`
+                          : ABILITY_DESCRIPTIONS[ability]}
+                      </span>
                     </span>
-                    <span className="level-up-wizard__ability-checkbox-hint">
-                      {ABILITY_DESCRIPTIONS[ability]}
-                    </span>
-                  </span>
-                </label>
-              ))}
+                  </label>
+                );
+              })}
             </div>
           )}
 
@@ -450,11 +460,25 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
                 onChange={(e) => setAsiAbility(e.target.value)}
               >
                 <option value="">Choose an ability</option>
-                {ABILITY_SCORES.map((ability) => (
-                  <option key={ability} value={ability}>
-                    {ABILITY_LABELS[ability]}
-                  </option>
-                ))}
+                {ABILITY_SCORES.map((ability) => {
+                  const score = sheet.abilityScores[ability];
+                  const canTakeTwo = canIncreaseAbility(score, 2);
+                  return (
+                    <option
+                      key={ability}
+                      value={ability}
+                      disabled={!canTakeTwo}
+                    >
+                      {`${ABILITY_LABELS[ability]} (${score}${
+                        canTakeTwo
+                          ? ` → ${score + 2}`
+                          : score >= MAX_ABILITY_SCORE
+                            ? `, already at ${MAX_ABILITY_SCORE}`
+                            : `, +2 would pass ${MAX_ABILITY_SCORE}`
+                      })`}
+                    </option>
+                  );
+                })}
               </select>
               {asiAbility && (
                 <p className="level-up-wizard__step-description">
