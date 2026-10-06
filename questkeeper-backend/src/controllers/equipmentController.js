@@ -33,3 +33,30 @@ export async function getEquipmentById(req, res, next) {
     next(error);
   }
 }
+
+// The items in one equipment category ("martial-weapons", "holy-symbols"),
+// for starting-gear choices like "any martial weapon".
+export async function getEquipmentCategory(req, res, next) {
+  try {
+    const { categoryId } = req.params;
+    const edition = resolveEdition(req.query);
+    const data = await fetchDnd5eById(
+      "equipment-categories",
+      edition,
+      categoryId,
+      "Unable to retrieve that equipment category.",
+    );
+    res.status(200).json({
+      data: {
+        index: data.index,
+        name: data.name,
+        equipment: (data.equipment ?? []).map(({ index, name }) => ({
+          index,
+          name,
+        })),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}

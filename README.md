@@ -34,6 +34,7 @@ QuestKeeper is a full-stack companion for **Dungeons & Dragons Fifth Edition**, 
 - Selectable result cards with an in-page detail panel, including race/class/background icons.
 - A guided character creation wizard for first-time players: the steps run as a row across the top, a slim "Your hero so far" strip fills in as you go, and the detail cards get the full page width. Every race and class has a plain-language "Good if you want..." line (classes also show a role and difficulty), every starting spell has a one-line summary and a Read more button for its full text, and each narrow step has a Tips card with class-specific advice. Options you can't pick are clearly marked as locked.
 - A Review page that reads like a character introduction: a card per section (who they are, ability scores, skills, magic, gear), a Change button on each that returns straight to Review, and a list of anything still missing before the character can be created.
+- A Gear step where each class's either/or starting equipment is chosen ("chain mail, or leather armor, a longbow and 20 arrows"), including "any martial weapon" style picks from the SRD's item lists.
 - New characters arrive with real derived starting stats: AC from the armor and shield they wear, attacks worked out from their starting weapons and proficiencies, languages, class proficiencies, racial traits, and level 1 class features, instead of flat defaults.
 - A tabbed character sheet (Actions, Spells, Resources, Inventory, Features, Story) with a persistent combat header (HP, AC, initiative, speed, ability scores) and a sticky Skills sidebar, so a tab you don't need — like Spells, for a non-caster — simply isn't there.
 - A full level-up flow: hit points (roll, take average, or enter a physical dice result), ability score improvements (capped at 20) or feats, subclass selection at the correct level per class, and new-spell learning, with your current stats shown on every step.
@@ -283,7 +284,7 @@ Automated tests cover the character sheet's pure functions (ability scores, hit 
 - Source, edition, license, and attribution metadata are shown for 2014/2024 edition labels and on the About page, but not yet as full per-entry provenance.
 - Global search depends on all category requests succeeding together.
 - Upstream requests do not yet use application-level caching or explicit timeouts.
-- Equipment/proficiency _choices_ (e.g. "a martial weapon or two simple weapons") aren't modeled during guided creation; only guaranteed starting gear is, plus freeform manual entry for anything else.
+- Tool and instrument proficiency _choices_ (e.g. a Bard's three musical instruments, a Monk's artisan's tools) aren't modeled during guided creation; they're entered by hand on the sheet. Starting gear choices are.
 - Sheet sections can't yet be sorted, filtered, or favorited, and there is no sheet-wide Beginner Mode toggle for hiding hints.
 - Test coverage doesn't include the backend or end-to-end flows.
 - The free backend service may take approximately a minute to wake after a period of inactivity.
@@ -298,7 +299,7 @@ Automated tests cover the character sheet's pure functions (ability scores, hit 
 The current high-level sequence is:
 
 1. Keep the architecture, vision, setup, and content policies documented.
-2. Fix the known sheet gap: model equipment/proficiency choices during guided creation.
+2. Fix the known sheet gap: model tool and instrument proficiency choices during guided creation.
 3. Add sheet quality-of-life features: sorting, filtering, and favorites for long lists, and a Beginner Mode toggle for hiding hints.
    Also pending from usability testing: search by meaning ("sneak", "heal"), a "Not sure?" class helper, and a decision on how to use the 2024 backgrounds in creation.
 4. Add normalized backend models, source provenance, response validation, caching, and timeouts, and make global search tolerate a failing category.

@@ -56,6 +56,7 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 34 | Character creation layout: steps run as a row across the top with arrows, "Your hero so far" is a slim strip under them, the detail panel gets the full width, spell choices stack in one column so Read more never stretches a neighbour, narrow steps get a Tips card (with a slot for pictures) beside them, and options you can't pick are clearly marked as locked | Creation | Medium | Merged (2026-10-05) |
 | 35 | Beginner/Seasoned toggle: one account-level switch (e.g. "Show beginner tips") that hides or shortens beginner help everywhere, so experienced players get a cleaner page. Steps: list every beginner element (save-badge tip, "What do these boxes mean?", empty-tab prompts, the To Hit tip strip, creation Tips cards, "Good if you want..." callouts), decide hide vs shorten for each, then route them through one shared wrapper so future tips follow the switch. The unused per-character `experienceMode` field could be retired or reused. Raised while reviewing the To Hit helper text | Sheet, Creation | Medium | Open |
 | 36 | DM monster rows: put Attack first and group Damage/Heal under an "HP" label so it is clear they change that monster's HP; in the monster attack panel, a helper when the monster has no saved attacks (what to type, typical + hit); monster attacks on players should count the player's temporary AC bonus. Found while running a test fight as DM | Tables | Small | Merged (2026-10-05): Attack first, Damage/Heal in a labelled HP box, Edit/Remove set apart; no-attacks and + hit help in the attack panel; migration 20261005_player_ac_bonus.sql adds the temporary AC bonus to monster attacks on players (applied to production) |
+| 37 | Starting equipment choices in creation: a Gear step after Abilities with one box per either/or choice ("(a) chain mail or (b) leather armor, longbow and 20 arrows"), the classic option preselected, dropdowns for "any martial weapon" style picks from the SRD item lists, "if proficient" notes, and the Acolyte's holy symbol. Chosen gear sets AC and becomes attacks; Review lists it with a Change button. Tool and instrument proficiency choices are still manual | Creation | Medium | In review (2026-10-05): PR open, not merged yet |
 
 ## Reference pages (logged out)
 
@@ -175,7 +176,7 @@ What creation does not carry onto the sheet, so players must add it by hand (all
 - **Attacks** are empty, even though weapons are in the inventory.
 - **Proficiencies and Features** tabs start empty even though the class grants armor and weapon proficiencies.
 - **Half-Elf Skill Versatility** (two extra skills) is not offered.
-- **Equipment choices** ("a rapier or a longsword") are missing because the SRD data lists only fixed gear.
+- **Equipment choices** ("a rapier or a longsword") are missing because the SRD data lists only fixed gear. (The SRD does list them, under a separate field; row #37 adds a Gear step for them, in review.)
 
 ## Character sheet
 

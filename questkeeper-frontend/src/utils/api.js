@@ -145,6 +145,15 @@ export function getEquipmentDetails(equipmentId, edition) {
   );
 }
 
+// The items in one equipment category, e.g. every martial weapon, for
+// starting-gear choices like "any martial weapon".
+export function getEquipmentCategory(categoryId) {
+  return requestJson(
+    `/equipment/categories/${encodeURIComponent(categoryId)}`,
+    `Failed to fetch equipment category ${categoryId}:`,
+  );
+}
+
 export function getMagicItems(edition) {
   return requestJson(
     `/magic-items${editionQuery(edition)}`,
