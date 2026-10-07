@@ -639,7 +639,10 @@
 .character-sheet__attacks-header,
 .character-sheet__attacks-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 70px 100px 110px 140px;
+  grid-template-columns: var(
+    --item-columns,
+    minmax(220px, 1fr) 70px 100px 110px 140px
+  );
   gap: 12px;
   align-items: center;
   padding: 8px 12px;
@@ -672,9 +675,40 @@
     display: none;
   }
 
+  /* Each attack becomes three lines that fit any phone:
+       the weapon name
+       To Hit | Damage | Type   (each value with its own small label)
+       Attack / Edit / Remove */
   .character-sheet__attacks-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 12px;
+  }
+
+  .character-sheet__attacks-row > .character-sheet__resource-name,
+  .character-sheet__attacks-row > .character-sheet__attacks-actions {
+    grid-column: 1 / -1;
+  }
+
+  .character-sheet__attacks-row > .character-sheet__attacks-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .character-sheet__attacks-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .character-sheet__attacks-cell::before {
+    content: attr(data-label);
+    color: var(--qk-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
 }
 
@@ -1287,4 +1321,228 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   background-color: var(--qk-moss-soft);
   color: var(--qk-text);
   line-height: 1.5;
+}
+
+/* ---------- Phones: an even, symmetrical top of the sheet ---------- */
+@media (max-width: 600px) {
+  /* Stat boxes on a 4-column grid:
+       [ Hit Points x2 ] [ Temp ] [ AC ]
+       [ Init ] [ Speed ] [ Prof ] [ Level ]
+       [ Hit Dice x2 ]   [ Gold x2 ]
+     The name, ability scores and bonus boxes span the full width. */
+  .character-sheet__vitals {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .character-sheet__vitals > :not(.character-sheet__vital) {
+    grid-column: 1 / -1;
+  }
+
+  .character-sheet__vital {
+    min-width: 0;
+  }
+
+  .character-sheet__vital--hp,
+  .character-sheet__vital--hit-dice,
+  .character-sheet__vital--gold {
+    grid-column: span 2;
+  }
+
+  /* Gold has a double-width box here, so give big totals room. */
+  .character-sheet__vital--gold .character-sheet__vital-input {
+    width: 88px;
+  }
+
+  /* Each ability score stacks: name on top, score and modifier in the
+     middle, Save badge across the bottom, so three fit side by side. */
+  .character-sheet__vitals .character-sheet__ability-card {
+    display: grid;
+    grid-template-columns: auto auto;
+    grid-template-areas:
+      "name name"
+      "score mod"
+      "save save";
+    justify-content: center;
+    justify-items: center;
+    align-items: center;
+    gap: 4px 6px;
+    padding: 8px 4px;
+  }
+
+  .character-sheet__vitals .character-sheet__ability-name {
+    grid-area: name;
+    font-size: 13px;
+  }
+
+  .character-sheet__vitals .character-sheet__ability-input {
+    grid-area: score;
+    width: 44px;
+    min-height: 30px;
+    font-size: 16px;
+  }
+
+  .character-sheet__vitals .character-sheet__ability-modifier {
+    grid-area: mod;
+    font-size: 14px;
+  }
+
+  .character-sheet__vitals .character-sheet__ability-save-badge {
+    grid-area: save;
+    justify-self: stretch;
+    padding: 3px 6px;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  /* Tabs and actions: two tidy blocks instead of a squeezed row. */
+  .character-sheet__tabbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding-bottom: 12px;
+  }
+
+  /* Tabs: equal buttons, three per row; a short last row is centred. */
+  .character-sheet__tabbar .character-sheet-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .character-sheet__tabbar .character-sheet-tabs__tab {
+    flex: 0 0 calc((100% - 12px) / 3);
+    min-height: 40px;
+    padding: 0 6px;
+    border: 1px solid var(--qk-border);
+    border-radius: var(--qk-radius-control);
+    background-color: var(--qk-surface);
+    color: var(--qk-text);
+  }
+
+  .character-sheet__tabbar .character-sheet-tabs__tab--active {
+    border-color: var(--qk-terracotta);
+    background-color: var(--qk-terracotta);
+    color: var(--qk-surface);
+  }
+
+  /* Actions: an even 2 x 2 grid —
+       [ Inspiration ] [ Level Up ]
+       [ Long Rest ]   [ Short Rest ] */
+  .character-sheet__tabbar .character-sheet__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 0;
+  }
+
+  .character-sheet__inspiration {
+    justify-content: center;
+    margin-right: 0;
+    min-height: 40px;
+    border: 1px solid var(--qk-border);
+    border-radius: var(--qk-radius-control);
+    background-color: var(--qk-surface);
+  }
+
+  .character-sheet__tabbar .qk-button {
+    width: 100%;
+    min-height: 40px;
+    font-size: 14px;
+  }
+}
+
+/* ---------- Stats | Skills switch (below 1024px) ---------- */
+/* The name sits on the left and the switch on the right of the same row. */
+.character-sheet__identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 12px;
+}
+
+.character-sheet__identity .character-sheet__title,
+.character-sheet__identity .character-sheet__subtitle {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.character-sheet__identity .character-sheet__subtitle {
+  order: 3;
+  flex-basis: 100%;
+}
+
+/* The whole pill is one button. The thumb is exactly half its width and
+   slides under whichever word is showing. */
+.character-sheet__panel-switch {
+  --switch-inset: 2px;
+  position: relative;
+  order: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: var(--switch-inset);
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+  font-family: var(--qk-font-body);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.character-sheet__panel-switch-thumb {
+  position: absolute;
+  top: var(--switch-inset);
+  bottom: var(--switch-inset);
+  left: var(--switch-inset);
+  width: calc(50% - var(--switch-inset));
+  border-radius: 999px;
+  background-color: var(--qk-terracotta);
+  box-shadow: 0 1px 3px var(--qk-shadow);
+  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.character-sheet__panel-switch--skills .character-sheet__panel-switch-thumb {
+  transform: translateX(100%);
+}
+
+.character-sheet__panel-switch-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  padding: 0 14px;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  transition: color 0.35s ease;
+}
+
+.character-sheet__panel-switch:not(.character-sheet__panel-switch--skills)
+  .character-sheet__panel-switch-label--stats,
+.character-sheet__panel-switch--skills
+  .character-sheet__panel-switch-label--skills {
+  color: var(--qk-surface);
+}
+
+.character-sheet__panel-switch:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .character-sheet__panel-switch-thumb,
+  .character-sheet__panel-switch-label {
+    transition: none;
+  }
+}
+
+/* Skills mode: the name and switch stay, the stat boxes step aside for the
+   skills list shown right underneath. */
+.character-sheet__vitals--skills > :not(.character-sheet__identity) {
+  display: none;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useTableTurn } from "../../hooks/useTableTurn";
 import { applyDamageToHitPoints } from "../../utils/attacks";
 import { getCharacter, saveCharacter } from "../../utils/characterStore";
@@ -105,6 +106,10 @@ function CharacterSheetPage() {
   const [sheet, setSheet] = useState(null);
   const [loadedId, setLoadedId] = useState(null);
   const [showSkillBonuses, setShowSkillBonuses] = useState(false);
+  // Below 1024px the skills list would sit under everything else, so a
+  // Stats | Skills switch by the name flips the top of the sheet instead.
+  const isCompact = useMediaQuery("(max-width: 1023px)");
+  const [compactPanel, setCompactPanel] = useState("stats");
   const [isLevelingUp, setIsLevelingUp] = useState(false);
   const [showShortRest, setShowShortRest] = useState(false);
   const [restMessage, setRestMessage] = useState("");
@@ -798,6 +803,83 @@ function CharacterSheetPage() {
     (sheet.spellcasting?.spellsKnown?.length ?? 0) > 0 ||
     getSpellSlots(sheet.spellcasting).some((slot) => slot.max > 0);
 
+  // Shown in the left rail on wide screens, or at the top of the sheet when
+  // the Stats | Skills switch is on Skills.
+  const skillsPanel = (
+    <section className="character-sheet__section character-sheet__skills">
+      <div className="character-sheet__section-header-row">
+        <h2 className="character-sheet__section-title">Skills</h2>
+        <button
+          type="button"
+          className="character-sheet__resource-remove"
+          aria-pressed={showSkillBonuses}
+          title="Show boxes to add flat bonuses to individual skills"
+          onClick={() => setShowSkillBonuses((shown) => !shown)}
+        >
+          {showSkillBonuses ? "Done" : "Bonuses"}
+        </button>
+      </div>
+      <ul className="character-sheet__skills-list">
+        {SKILLS.map((skill) => {
+          const isProficient = Boolean(sheet.skills?.[skill.index]);
+          const hasExpertise =
+            isProficient && Boolean(sheet.skillExpertise?.[skill.index]);
+          const bonus = sheet.skillBonuses?.[skill.index] ?? 0;
+          const modifier = getSkillModifier(
+            sheet.abilityScores[skill.ability],
+            isProficient,
+            proficiencyBonus,
+            { expertise: hasExpertise, bonus },
+          );
+
+          return (
+            <li
+              className={`character-sheet__skill-row${
+                isProficient ? " character-sheet__skill-row--proficient" : ""
+              }`}
+              key={skill.index}
+            >
+              <span className="character-sheet__skill-name">{skill.name}</span>
+              <span className="character-sheet__skill-ability">
+                {ABILITY_ABBREVIATIONS[skill.ability]}
+              </span>
+              <button
+                type="button"
+                className="character-sheet__skill-prof-badge"
+                aria-pressed={isProficient}
+                aria-label={`${skill.name} proficiency`}
+                title={
+                  hasExpertise
+                    ? "Expertise (double proficiency) - click to remove"
+                    : isProficient
+                      ? "Proficient - click for expertise"
+                      : "Not proficient - click to add"
+                }
+                onClick={() => handleSkillCycle(skill.index)}
+              >
+                {hasExpertise ? "E" : isProficient ? "P" : ""}
+              </button>
+              {showSkillBonuses && (
+                <input
+                  type="number"
+                  className="character-sheet__skill-bonus-input"
+                  value={bonus}
+                  aria-label={`${skill.name} bonus`}
+                  onChange={(e) =>
+                    handleSkillBonusChange(skill.index, e.target.value)
+                  }
+                />
+              )}
+              <span className="character-sheet__skill-modifier">
+                {formatModifier(modifier)}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+
   return (
     <main className="character-sheet" onChange={stripLeadingZeros}>
       <TurnBanner
@@ -860,92 +942,56 @@ function CharacterSheetPage() {
         {!isLevelingUp && !levelUpSummary && (
           <>
             <div className="character-sheet__shell">
-              <aside className="character-sheet__rail">
-                <section className="character-sheet__section character-sheet__skills">
-                  <div className="character-sheet__section-header-row">
-                    <h2 className="character-sheet__section-title">Skills</h2>
-                    <button
-                      type="button"
-                      className="character-sheet__resource-remove"
-                      aria-pressed={showSkillBonuses}
-                      title="Show boxes to add flat bonuses to individual skills"
-                      onClick={() => setShowSkillBonuses((shown) => !shown)}
-                    >
-                      {showSkillBonuses ? "Done" : "Bonuses"}
-                    </button>
-                  </div>
-                  <ul className="character-sheet__skills-list">
-                    {SKILLS.map((skill) => {
-                      const isProficient = Boolean(sheet.skills?.[skill.index]);
-                      const hasExpertise =
-                        isProficient &&
-                        Boolean(sheet.skillExpertise?.[skill.index]);
-                      const bonus = sheet.skillBonuses?.[skill.index] ?? 0;
-                      const modifier = getSkillModifier(
-                        sheet.abilityScores[skill.ability],
-                        isProficient,
-                        proficiencyBonus,
-                        { expertise: hasExpertise, bonus },
-                      );
-
-                      return (
-                        <li
-                          className={`character-sheet__skill-row${
-                            isProficient
-                              ? " character-sheet__skill-row--proficient"
-                              : ""
-                          }`}
-                          key={skill.index}
-                        >
-                          <span className="character-sheet__skill-name">
-                            {skill.name}
-                          </span>
-                          <span className="character-sheet__skill-ability">
-                            {ABILITY_ABBREVIATIONS[skill.ability]}
-                          </span>
-                          <button
-                            type="button"
-                            className="character-sheet__skill-prof-badge"
-                            aria-pressed={isProficient}
-                            aria-label={`${skill.name} proficiency`}
-                            title={
-                              hasExpertise
-                                ? "Expertise (double proficiency) - click to remove"
-                                : isProficient
-                                  ? "Proficient - click for expertise"
-                                  : "Not proficient - click to add"
-                            }
-                            onClick={() => handleSkillCycle(skill.index)}
-                          >
-                            {hasExpertise ? "E" : isProficient ? "P" : ""}
-                          </button>
-                          {showSkillBonuses && (
-                            <input
-                              type="number"
-                              className="character-sheet__skill-bonus-input"
-                              value={bonus}
-                              aria-label={`${skill.name} bonus`}
-                              onChange={(e) =>
-                                handleSkillBonusChange(
-                                  skill.index,
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          )}
-                          <span className="character-sheet__skill-modifier">
-                            {formatModifier(modifier)}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              </aside>
+              {!isCompact && (
+                <aside className="character-sheet__rail">{skillsPanel}</aside>
+              )}
 
               <div className="character-sheet__body">
-                <section className="character-sheet__vitals">
+                <section
+                  className={`character-sheet__vitals${
+                    isCompact && compactPanel === "skills"
+                      ? " character-sheet__vitals--skills"
+                      : ""
+                  }`}
+                >
                   <div className="character-sheet__identity">
+                    {isCompact && (
+                      // One button: a tap anywhere on the pill flips it, and the
+                      // thumb slides to the side that's showing.
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={compactPanel === "skills"}
+                        aria-label="Show skills"
+                        className={`character-sheet__panel-switch${
+                          compactPanel === "skills"
+                            ? " character-sheet__panel-switch--skills"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          setCompactPanel((panel) =>
+                            panel === "skills" ? "stats" : "skills",
+                          )
+                        }
+                      >
+                        <span
+                          className="character-sheet__panel-switch-thumb"
+                          aria-hidden="true"
+                        />
+                        <span
+                          className="character-sheet__panel-switch-label character-sheet__panel-switch-label--stats"
+                          aria-hidden="true"
+                        >
+                          Stats
+                        </span>
+                        <span
+                          className="character-sheet__panel-switch-label character-sheet__panel-switch-label--skills"
+                          aria-hidden="true"
+                        >
+                          Skills
+                        </span>
+                      </button>
+                    )}
                     <h1 className="character-sheet__title">{sheet.name}</h1>
                     <p className="character-sheet__subtitle">
                       Level {sheet.level} {sheet.race?.name ?? "No race"}{" "}
@@ -1089,7 +1135,7 @@ function CharacterSheetPage() {
                     />
                   </label>
 
-                  <div className="character-sheet__vital">
+                  <div className="character-sheet__vital character-sheet__vital--hit-dice">
                     <span className="character-sheet__vital-label">
                       Hit Dice
                     </span>
@@ -1119,7 +1165,7 @@ function CharacterSheetPage() {
                     </span>
                   </div>
 
-                  <label className="character-sheet__vital">
+                  <label className="character-sheet__vital character-sheet__vital--gold">
                     <span className="character-sheet__vital-label">Gold</span>
                     <input
                       type="number"
@@ -1216,6 +1262,8 @@ function CharacterSheetPage() {
                     </p>
                   </div>
                 </section>
+
+                {isCompact && compactPanel === "skills" && skillsPanel}
 
                 <details className="character-sheet__glossary">
                   <summary>What do these boxes mean?</summary>
