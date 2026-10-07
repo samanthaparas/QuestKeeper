@@ -1,0 +1,101 @@
+/* The narrow-screen menu as a drum: five rows show at once, the middle row
+   sits in a highlighted band, and the rows above and below tilt away. */
+.nav-wheel {
+  --nav-wheel-visible: 5;
+  position: relative;
+  width: min(100%, 320px);
+  margin: 0 auto;
+}
+
+/* The highlighted band the centred link snaps into. It sits behind the
+   links and doesn't scroll. */
+.nav-wheel__band {
+  position: absolute;
+  top: calc(var(--nav-wheel-row, 48px) * 2);
+  left: 0;
+  right: 0;
+  height: var(--nav-wheel-row, 48px);
+  border: 1px solid var(--qk-terracotta);
+  border-radius: 12px;
+  background-color: var(--qk-terracotta-soft);
+  pointer-events: none;
+}
+
+.nav-wheel__viewport {
+  position: relative;
+  height: calc(var(--nav-wheel-row, 48px) * var(--nav-wheel-visible));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  perspective: 520px;
+  /* Rows fade out towards the top and bottom edges, like a drum turning
+     away. */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 22%,
+    #000 78%,
+    transparent 100%
+  );
+}
+
+.nav-wheel__viewport::-webkit-scrollbar {
+  display: none;
+}
+
+/* Two empty rows above and below let the first and last links reach the
+   middle band. */
+.nav-wheel__list {
+  margin: 0;
+  padding: calc(var(--nav-wheel-row, 48px) * 2) 0;
+  list-style: none;
+}
+
+.nav-wheel__row {
+  height: var(--nav-wheel-row, 48px);
+  scroll-snap-align: center;
+}
+
+.nav-wheel__link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  border-radius: 12px;
+  color: var(--qk-text);
+  font-family: var(--qk-font-body);
+  font-size: 18px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.nav-wheel__link[data-centred="true"] {
+  color: var(--qk-terracotta-hover);
+  font-weight: 800;
+}
+
+/* The page you're on gets a small dot, wherever it sits on the wheel. */
+.nav-wheel__link.active::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background-color: var(--qk-terracotta);
+}
+
+.nav-wheel__link:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: -2px;
+}
+
+.nav-wheel__hint {
+  margin: 6px 0 0;
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  text-align: center;
+}

@@ -36,7 +36,10 @@ function Header() {
       </Link>
 
       <div className="header__actions">
-        <Navigation />
+        <Navigation
+          isMenuOpen={isMenuOpen}
+          onNavigate={() => setIsMenuOpen(false)}
+        />
 
         {!isLoading &&
           (user ? (
