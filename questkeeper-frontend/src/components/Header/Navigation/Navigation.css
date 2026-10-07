@@ -1,15 +1,17 @@
 .navigation {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .navigation__link {
   display: inline-flex;
   align-items: center;
   min-height: 34px;
-  padding: 0 12px;
+  padding: 0 8px;
   border-radius: 9px;
+  /* "My Characters" and "Monster Library" stay on one line. */
+  white-space: nowrap;
   color: var(--qk-text);
   text-decoration: none;
   font-weight: 600;

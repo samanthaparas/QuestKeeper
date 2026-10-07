@@ -41,14 +41,17 @@ function Header() {
         {!isLoading &&
           (user ? (
             <button
-              className="header__profile"
+              className="header__profile header__profile--signed-in"
               type="button"
               onClick={() => signOut()}
             >
               Log Out
             </button>
           ) : (
-            <Link className="header__profile" to="/login">
+            <Link
+              className="header__profile header__profile--signed-out"
+              to="/login"
+            >
               Log In
             </Link>
           ))}

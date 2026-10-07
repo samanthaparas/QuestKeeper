@@ -287,7 +287,7 @@ Automated tests cover the character sheet's pure functions (ability scores, hit 
 - Tool and instrument proficiency _choices_ (e.g. a Bard's three musical instruments, a Monk's artisan's tools) aren't modeled during guided creation; they're entered by hand on the sheet. Starting gear choices are.
 - Sheet sections can't yet be sorted, filtered, or favorited, and there is no sheet-wide Beginner Mode toggle for hiding hints.
 - Test coverage doesn't include the backend or end-to-end flows.
-- The free backend service may take approximately a minute to wake after a period of inactivity.
+- The free backend service sleeps after about 15 minutes without requests. The first request after that takes roughly 20 seconds while it wakes (measured at 22 seconds on 2026-10-07); requests after that answer in well under a second.
 - Every player needs an account to join a table. A DM can add anyone without an account as a friendly party member and track their HP by hand.
 - Secret messaging between the DM and individual players isn't built yet.
 - A character built on an SRD class keeps that class's features and level-up rules. A homebrew class (an Artificer, for example) can be typed onto the sheet, but its features and spells are entered by hand.
