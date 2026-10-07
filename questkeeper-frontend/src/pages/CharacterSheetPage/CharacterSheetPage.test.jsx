@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
@@ -290,4 +290,55 @@ it("locks granted spells and lets the player lock or unlock any spell", async ()
   await user.click(within(screen.getByText("Thaumaturgy").closest("li")).getByRole("button", { name: "Unlock" }));
   expect(within(screen.getByText("Thaumaturgy").closest("li")).getByRole("button", { name: "Edit" })).toBeInTheDocument();
   vi.restoreAllMocks();
+});
+
+describe("Stats | Skills switch on narrower screens", () => {
+  afterEach(() => {
+    delete window.matchMedia;
+  });
+
+  it("flips the top of the sheet between stats and skills", async () => {
+    window.matchMedia = vi.fn((query) => ({
+      matches: query.includes("max-width: 1023px"),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    const user = userEvent.setup();
+    renderSheet(makeSheet());
+
+    const toggle = await screen.findByRole("switch", { name: "Show skills" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByRole("heading", { name: "Skills" })).not.toBeInTheDocument();
+
+    // A tap anywhere on the pill flips it, not just on a word.
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("heading", { name: "Skills" })).toBeInTheDocument();
+    expect(document.querySelector(".character-sheet__vitals")).toHaveClass("character-sheet__vitals--skills");
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByRole("heading", { name: "Skills" })).not.toBeInTheDocument();
+  });
+
+  it("keeps skills in the side column with no switch on wide screens", async () => {
+    renderSheet(makeSheet());
+
+    expect(await screen.findByRole("heading", { name: "Skills" })).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+  });
+});
+
+it("labels each attack value so phones can show it without the header row", async () => {
+  const sheet = makeSheet();
+  sheet.attacks = [{ index: "a1", name: "Javelin", toHit: 10, damage: "1d6+5", damageType: "Piercing", notes: "" }];
+  renderSheet(sheet);
+
+  const row = (await screen.findByText("Javelin")).closest(".character-sheet__attacks-row");
+  expect(row.style.getPropertyValue("--item-columns")).toContain("minmax(220px, 1fr)");
+  expect([...row.querySelectorAll(".character-sheet__attacks-cell")].map((cell) => cell.dataset.label)).toEqual([
+    "To Hit",
+    "Damage",
+    "Type",
+  ]);
 });

@@ -240,8 +240,12 @@ function EditableItemList({
     );
   }
 
-  const gridTemplateColumns = columns
-    ? `minmax(220px, 1fr) ${columns.map((col) => col.width).join(" ")} 140px`
+  // Passed as a CSS variable (not an inline grid-template-columns) so the
+  // stylesheet can still re-flow the rows on phones.
+  const columnStyle = columns
+    ? {
+        "--item-columns": `minmax(220px, 1fr) ${columns.map((col) => col.width).join(" ")} 140px`,
+      }
     : undefined;
 
   return (
@@ -306,10 +310,7 @@ function EditableItemList({
         <p className="character-sheet__empty-prompt">{emptyText}</p>
       ) : columns ? (
         <div className="character-sheet__attacks-table">
-          <div
-            className="character-sheet__attacks-header"
-            style={{ gridTemplateColumns }}
-          >
+          <div className="character-sheet__attacks-header" style={columnStyle}>
             <span>{primaryField.label ?? ""}</span>
             {columns.map((col) => (
               <span key={col.key}>{col.label}</span>
@@ -323,12 +324,16 @@ function EditableItemList({
             return (
               <div
                 className="character-sheet__attacks-row"
-                style={{ gridTemplateColumns }}
+                style={columnStyle}
                 key={id}
               >
                 {renderPrimaryCell(item, id, notes)}
                 {columns.map((col) => (
-                  <span className="character-sheet__attacks-cell" key={col.key}>
+                  <span
+                    className="character-sheet__attacks-cell"
+                    data-label={col.label}
+                    key={col.key}
+                  >
                     {col.format ? col.format(item) : item[col.key]}
                   </span>
                 ))}

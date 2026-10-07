@@ -1,6 +1,6 @@
-import { useSyncExternalStore } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import NavWheel from "../NavWheel/NavWheel";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import "./Navigation.css";
 
 const NAV_LINKS = [
@@ -19,17 +19,6 @@ const NAV_LINKS = [
 // Matches the header's collapse point in Header.css.
 const NARROW_QUERY = "(max-width: 1240px)";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
-
-function useMediaQuery(query) {
-  return useSyncExternalStore(
-    (onChange) => {
-      const list = window.matchMedia?.(query);
-      list?.addEventListener?.("change", onChange);
-      return () => list?.removeEventListener?.("change", onChange);
-    },
-    () => window.matchMedia?.(query).matches ?? false,
-  );
-}
 
 function linkClass({ isActive }) {
   return `navigation__link${isActive ? " navigation__link--active" : ""}`;
