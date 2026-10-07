@@ -26,13 +26,35 @@
   line-height: 1.6;
 }
 
+/* Until a result is picked there is no details panel to show, so the
+   results use the full width. Picking one opens the list + details layout. */
 .search-page__layout {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 32px;
   margin-top: 32px;
   align-items: start;
   width: 100%;
+}
+
+.search-page__layout--detail-open {
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+}
+
+.search-page__layout:not(.search-page__layout--detail-open)
+  .search-page__detail-wrapper {
+  display: none;
+}
+
+.search-page__layout:not(.search-page__layout--detail-open)
+  .search-page__results {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+/* Messages and the Show more button span the whole results grid. */
+.search-page__results > p,
+.search-page__results > .search-page__show-more {
+  grid-column: 1 / -1;
 }
 
 .search-page__detail-wrapper {
