@@ -8,6 +8,7 @@ import {
   deleteHomebrew,
 } from "../../utils/homebrewStore";
 import { HOMEBREW_CATEGORIES, listHomebrew } from "../../utils/homebrewMappers";
+import { primeHomebrew } from "../../utils/homebrewCache";
 import {
   CATEGORY_LABELS,
   emptyHomebrewForm,
@@ -42,6 +43,11 @@ function HomebrewPage() {
     // SRD and Open5e races, for "which race is this a subrace of?"
     getRaces().then(setSrdRaces).catch(() => setSrdRaces([]));
   }, [loadEntries]);
+
+  // Share the up-to-date list with character creation and the other pages.
+  useEffect(() => {
+    if (user && !isLoading) primeHomebrew(user.id, entries);
+  }, [user, isLoading, entries]);
 
   const mine = entries.filter((entry) => entry.owner_id === user?.id);
   const sharedWithMe = entries.filter((entry) => entry.owner_id !== user?.id);

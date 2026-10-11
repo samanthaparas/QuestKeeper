@@ -1,3 +1,14 @@
+import { loadHomebrew } from "./homebrewCache";
+import {
+  isHomebrewId,
+  findHomebrew,
+  findHomebrewTrait,
+  findHomebrewFeature,
+  listHomebrew,
+  getHomebrewSubraceRefs,
+  getHomebrewSubclassRefs,
+} from "./homebrewMappers";
+
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3001/api"
 ).replace(/\/$/, "");
@@ -24,36 +35,89 @@ function editionQuery(edition) {
   return edition ? `?edition=${encodeURIComponent(edition)}` : "";
 }
 
-export function getRaces() {
-  return requestJson("/races", "Failed to fetch races:");
+// --- Homebrew ---------------------------------------------------------------
+// Homebrew IDs ("hb_...") are answered from the player's own homebrew; every
+// other ID goes to the backend as before. Lists get homebrew mixed in, so
+// pages and pickers don't need to know the difference.
+
+function byName(a, b) {
+  return a.name.localeCompare(b.name);
 }
 
-export function getRaceDetails(raceId) {
-  return requestJson(
-    `/races/${encodeURIComponent(raceId)}`,
-    `Failed to fetch race details for ID ${raceId}:`,
+// SRD/Open5e list + homebrew items, alphabetically.
+async function withHomebrewItems(listPromise, pickItems) {
+  const [list, entries] = await Promise.all([listPromise, loadHomebrew()]);
+  const extra = pickItems(entries);
+  return extra.length > 0 ? [...list, ...extra].sort(byName) : list;
+}
+
+async function findInHomebrew(index, find) {
+  const found = find(await loadHomebrew(), index);
+  if (!found) throw new Error(`Homebrew ${index} not found`);
+  return found;
+}
+
+export function getRaces() {
+  return withHomebrewItems(
+    requestJson("/races", "Failed to fetch races:"),
+    (entries) => listHomebrew(entries, "race"),
   );
+}
+
+export async function getRaceDetails(raceId) {
+  if (isHomebrewId(raceId)) return findInHomebrew(raceId, findHomebrew);
+
+  // SRD/Open5e races also list any homebrew subraces made for them.
+  const [race, entries] = await Promise.all([
+    requestJson(
+      `/races/${encodeURIComponent(raceId)}`,
+      `Failed to fetch race details for ID ${raceId}:`,
+    ),
+    loadHomebrew(),
+  ]);
+  const extra = getHomebrewSubraceRefs(entries, raceId);
+  return extra.length > 0
+    ? { ...race, subraces: [...(race.subraces ?? []), ...extra] }
+    : race;
 }
 
 export function getClasses() {
   return requestJson("/classes", "Failed to fetch classes:");
 }
 
-export function getClassDetails(classId) {
-  return requestJson(
-    `/classes/${encodeURIComponent(classId)}`,
-    `Failed to fetch class details for ID ${classId}:`,
-  );
+// Classes are SRD only, but their subclass list includes homebrew ones.
+export async function getClassDetails(classId) {
+  const [data, entries] = await Promise.all([
+    requestJson(
+      `/classes/${encodeURIComponent(classId)}`,
+      `Failed to fetch class details for ID ${classId}:`,
+    ),
+    loadHomebrew(),
+  ]);
+  const extra = getHomebrewSubclassRefs(entries, classId);
+  return extra.length > 0
+    ? { ...data, subclasses: [...(data.subclasses ?? []), ...extra] }
+    : data;
 }
 
+// Homebrew backgrounds follow the 2014 rules, so they join that list only.
 export function getBackgrounds(edition) {
-  return requestJson(
-    `/backgrounds${editionQuery(edition)}`,
-    "Failed to fetch backgrounds:",
+  return withHomebrewItems(
+    requestJson(`/backgrounds${editionQuery(edition)}`, "Failed to fetch backgrounds:"),
+    (entries) =>
+      edition === "2024"
+        ? []
+        : listHomebrew(entries, "background").map((item) => ({
+            ...item,
+            edition: "2014",
+          })),
   );
 }
 
 export function getBackgroundDetails(backgroundId, edition) {
+  if (isHomebrewId(backgroundId)) {
+    return findInHomebrew(backgroundId, findHomebrew);
+  }
   return requestJson(
     `/backgrounds/${encodeURIComponent(backgroundId)}${editionQuery(edition)}`,
     `Failed to fetch background details for ID ${backgroundId}:`,
@@ -100,6 +164,7 @@ export function getClassLevel(classId, level) {
 }
 
 export function getSubraceDetails(subraceId) {
+  if (isHomebrewId(subraceId)) return findInHomebrew(subraceId, findHomebrew);
   return requestJson(
     `/subraces/${encodeURIComponent(subraceId)}`,
     `Failed to fetch subrace details for ID ${subraceId}:`,
@@ -107,6 +172,9 @@ export function getSubraceDetails(subraceId) {
 }
 
 export function getSubclassDetails(subclassId) {
+  if (isHomebrewId(subclassId)) {
+    return findInHomebrew(subclassId, findHomebrew);
+  }
   return requestJson(
     `/subclasses/${encodeURIComponent(subclassId)}`,
     `Failed to fetch subclass details for ID ${subclassId}:`,
@@ -114,6 +182,7 @@ export function getSubclassDetails(subclassId) {
 }
 
 export function getTraitDetails(traitId) {
+  if (isHomebrewId(traitId)) return findInHomebrew(traitId, findHomebrewTrait);
   return requestJson(
     `/traits/${encodeURIComponent(traitId)}`,
     `Failed to fetch trait details for ID ${traitId}:`,
@@ -175,21 +244,31 @@ export function getClassFeatures(classId) {
   );
 }
 
-export function getSubclassFeatures(subclassId) {
+export async function getSubclassFeatures(subclassId) {
+  if (isHomebrewId(subclassId)) {
+    const subclass = await findInHomebrew(subclassId, findHomebrew);
+    return subclass.features.map(({ index, name, level }) => ({ index, name, level }));
+  }
   return requestJson(
     `/subclasses/${encodeURIComponent(subclassId)}/features`,
     `Failed to fetch features for subclass ${subclassId}:`,
   );
 }
 
-export function getRaceTraits(raceId) {
+export async function getRaceTraits(raceId) {
+  if (isHomebrewId(raceId)) {
+    return (await findInHomebrew(raceId, findHomebrew)).traits;
+  }
   return requestJson(
     `/races/${encodeURIComponent(raceId)}/traits`,
     `Failed to fetch traits for race ${raceId}:`,
   );
 }
 
-export function getSubraceTraits(subraceId) {
+export async function getSubraceTraits(subraceId) {
+  if (isHomebrewId(subraceId)) {
+    return (await findInHomebrew(subraceId, findHomebrew)).racial_traits;
+  }
   return requestJson(
     `/subraces/${encodeURIComponent(subraceId)}/traits`,
     `Failed to fetch traits for subrace ${subraceId}:`,
@@ -197,6 +276,9 @@ export function getSubraceTraits(subraceId) {
 }
 
 export function getFeatureDetails(featureId) {
+  if (isHomebrewId(featureId)) {
+    return findInHomebrew(featureId, findHomebrewFeature);
+  }
   return requestJson(
     `/features/${encodeURIComponent(featureId)}`,
     `Failed to fetch feature details for ID ${featureId}:`,

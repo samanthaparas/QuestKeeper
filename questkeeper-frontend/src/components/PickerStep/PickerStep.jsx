@@ -21,6 +21,9 @@ function PickerStep({
   onSkip,
   onBack,
   backLabel,
+  // Optional "Can't find it? Make your own" button (opens the homebrew form).
+  onMakeOwn,
+  makeOwnLabel = "Make your own",
 }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,6 +79,15 @@ function PickerStep({
     <div className="picker-step">
       <h2 className="picker-step__title">{title}</h2>
       <p className="picker-step__description">{description}</p>
+
+      {onMakeOwn && (
+        <p className="picker-step__make-own">
+          Can't find what you want?{" "}
+          <Button variant="secondary" onClick={onMakeOwn}>
+            {makeOwnLabel}
+          </Button>
+        </p>
+      )}
 
       {isLoading && <p className="picker-step__status">Loading options...</p>}
       {apiError && <p className="picker-step__error">{apiError}</p>}
