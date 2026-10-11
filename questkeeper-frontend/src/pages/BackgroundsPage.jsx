@@ -4,6 +4,8 @@ import { mapBackgroundToPanel } from "../utils/srdDetails";
 import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
+import SourceFilter from "../components/SourceFilter/SourceFilter";
+import { filterBySource } from "../utils/sourceFilters";
 import "../pages/SearchPage/SearchPage.css";
 import Button from "../components/Button/Button";
 
@@ -27,6 +29,8 @@ function BackgroundsPage() {
   const [backgroundResults, setBackgroundResults] = useState([]);
   const [selectedResult, setSelectedResult] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  // "all" or one book name, picked with the SourceFilter buttons.
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState("");
 
@@ -53,9 +57,11 @@ function BackgroundsPage() {
       });
   }, []);
 
-  const filteredBackgrounds = backgroundResults.filter((result) =>
+  // Search text first, then the source buttons (their counts follow the search).
+  const searchMatches = backgroundResults.filter((result) =>
     result.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
+  const filteredBackgrounds = filterBySource(searchMatches, sourceFilter);
 
   function handleSearchSubmit(e) {
     e.preventDefault();
@@ -115,6 +121,16 @@ function BackgroundsPage() {
           <p className="search-page__status">Loading backgrounds...</p>
         )}
         {apiError && <p className="search-page__error">{apiError}</p>}
+
+        <SourceFilter
+          underSearch
+          items={searchMatches}
+          value={sourceFilter}
+          onChange={(source) => {
+            setSourceFilter(source);
+            setSelectedResult(null);
+          }}
+        />
 
         <section
           className={`search-page__layout ${

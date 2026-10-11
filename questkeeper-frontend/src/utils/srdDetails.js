@@ -5,6 +5,7 @@ import {
   ABILITY_LABELS,
 } from "./characterSheet";
 import { getRaceGuidance, getClassGuidance } from "./beginnerGuidance";
+import { groupBySource } from "./sourceFilters";
 import {
   getClassFeatures,
   getSubclassFeatures,
@@ -527,6 +528,11 @@ export function mapClassToPanel(data) {
       .map((item) => `${item.equipment.name} x${item.quantity}`)
       .join(", "),
     subclasses: listNames(data.subclasses),
+    // Same list split by book, so players see where each subclass comes from.
+    subclassGroups: groupBySource(data.subclasses).map(({ source, items }) => ({
+      source,
+      names: listNames(items),
+    })),
     levelOneFeatures: (data.levelOneFeatures ?? []).map((feature) => ({
       name: feature.name,
       description: descriptionFromSrd(feature.desc),

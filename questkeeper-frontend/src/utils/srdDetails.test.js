@@ -988,6 +988,24 @@ describe("class detail panel", () => {
     });
     expect(panel.skillChoiceLines).toEqual(["Choose any three", "Three musical instruments of your choice"]);
   });
+
+  it("groups subclasses by the book they come from", () => {
+    const panel = mapClassToPanel({
+      name: "Rogue",
+      hit_die: 8,
+      subclasses: [
+        { name: "Thief", source: "SRD 5.1" },
+        { name: "Cat Burglar", source: "Tome of Heroes" },
+        { name: "Eldritch Trickster", source: "Open5e Originals" },
+        { name: "Smuggler", source: "Tome of Heroes" },
+      ],
+    });
+    expect(panel.subclassGroups).toEqual([
+      { source: "SRD 5.1", names: "Thief" },
+      { source: "Open5e Originals", names: "Eldritch Trickster" },
+      { source: "Tome of Heroes", names: "Cat Burglar, Smuggler" },
+    ]);
+  });
 });
 
 describe("describeClassSpellcasting", () => {

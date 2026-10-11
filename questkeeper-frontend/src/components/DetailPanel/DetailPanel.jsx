@@ -243,9 +243,25 @@ function DetailPanel({ selectedResult, actions }) {
             </p>
           )}
 
-          <p>
-            <strong>Subclasses:</strong> {selectedResult.subclasses}
-          </p>
+          {selectedResult.subclassGroups?.length > 1 ? (
+            <>
+              <p>
+                <strong>Subclasses:</strong>
+              </p>
+              {/* One line per book: badge, then that book's subclasses. */}
+              <ul className="detail-panel__list detail-panel__list--rich">
+                {selectedResult.subclassGroups.map((group) => (
+                  <li key={group.source}>
+                    <SourceBadge source={group.source} /> {group.names}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p>
+              <strong>Subclasses:</strong> {selectedResult.subclasses}
+            </p>
+          )}
         </>
       )}
 
