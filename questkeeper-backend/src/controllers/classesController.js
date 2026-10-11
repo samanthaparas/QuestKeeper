@@ -1,4 +1,6 @@
-import { fetchDnd5eList } from "../utils/dnd5eApiClient.js";
+import { fetchDnd5eList, tagSrdSource } from "../utils/dnd5eApiClient.js";
+import { fetchOpen5eOrEmpty } from "../utils/open5eClient.js";
+import { getOpen5eSubclassRefsForClass } from "../utils/open5eMappers.js";
 
 export async function getClasses(req, res, next) {
   try {
@@ -20,13 +22,17 @@ export async function getClasses(req, res, next) {
   }
 }
 
+// One class. Its subclass list includes the Open5e subclasses made for it,
+// so a Rogue can pick Cat Burglar as well as the SRD's Thief. If Open5e is
+// down, only the SRD subclass is listed.
 export async function getClassById(req, res, next) {
   try {
     const { classId } = req.params;
 
-    const response = await fetch(
-      `https://www.dnd5eapi.co/api/2014/classes/${classId}`,
-    );
+    const [response, open5eClasses] = await Promise.all([
+      fetch(`https://www.dnd5eapi.co/api/2014/classes/${classId}`),
+      fetchOpen5eOrEmpty("classes"),
+    ]);
 
     if (!response.ok) {
       const error = new Error("Unable to retrieve class details.");
@@ -37,7 +43,13 @@ export async function getClassById(req, res, next) {
     const data = await response.json();
 
     res.status(200).json({
-      data: data,
+      data: {
+        ...data,
+        subclasses: [
+          ...tagSrdSource(data.subclasses ?? []),
+          ...getOpen5eSubclassRefsForClass(open5eClasses, classId),
+        ],
+      },
     });
   } catch (error) {
     next(error);

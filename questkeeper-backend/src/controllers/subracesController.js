@@ -1,24 +1,35 @@
-import { fetchDnd5eList } from "../utils/dnd5eApiClient.js";
+import { fetchDnd5eList, fetchDnd5eById } from "../utils/dnd5eApiClient.js";
+import {
+  isOpen5eId,
+  fetchOpen5eResource,
+  notFound,
+} from "../utils/open5eClient.js";
+import { mapOpen5eSubraces } from "../utils/open5eMappers.js";
+
+// Subraces live inside Open5e's species list, so both handlers below look
+// them up there when the ID is an Open5e one.
+async function findOpen5eSubrace(subraceId, message) {
+  const species = await fetchOpen5eResource("species");
+  const subrace = mapOpen5eSubraces(species).find(
+    (entry) => entry.index === subraceId,
+  );
+  if (!subrace) throw notFound(message);
+  return subrace;
+}
 
 export async function getSubraceById(req, res, next) {
   try {
     const { subraceId } = req.params;
+    const message = "Unable to retrieve subrace details.";
 
-    const response = await fetch(
-      `https://www.dnd5eapi.co/api/2014/subraces/${subraceId}`,
-    );
+    const data = isOpen5eId(subraceId)
+      ? await findOpen5eSubrace(subraceId, message)
+      : {
+          ...(await fetchDnd5eById("subraces", "2014", subraceId, message)),
+          source: "SRD 5.1",
+        };
 
-    if (!response.ok) {
-      const error = new Error("Unable to retrieve subrace details.");
-      error.statusCode = response.status;
-      throw error;
-    }
-
-    const data = await response.json();
-
-    res.status(200).json({
-      data: data,
-    });
+    res.status(200).json({ data });
   } catch (error) {
     next(error);
   }
@@ -27,11 +38,16 @@ export async function getSubraceById(req, res, next) {
 export async function getSubraceTraits(req, res, next) {
   try {
     const { subraceId } = req.params;
-    const data = await fetchDnd5eList(
-      `subraces/${encodeURIComponent(subraceId)}/traits`,
-      "2014",
-      "Unable to retrieve subrace traits.",
-    );
+    const message = "Unable to retrieve subrace traits.";
+
+    const data = isOpen5eId(subraceId)
+      ? (await findOpen5eSubrace(subraceId, message)).racial_traits
+      : await fetchDnd5eList(
+          `subraces/${encodeURIComponent(subraceId)}/traits`,
+          "2014",
+          message,
+        );
+
     res.status(200).json({ data });
   } catch (error) {
     next(error);
