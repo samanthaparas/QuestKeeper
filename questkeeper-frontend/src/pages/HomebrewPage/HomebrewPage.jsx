@@ -34,8 +34,9 @@ function HomebrewPage() {
   const [form, setForm] = useState(() => {
     const prefill = location.state?.newHomebrew;
     if (!prefill?.category) return null;
-    const { category, ...fields } = prefill;
-    return { ...emptyHomebrewForm(category), ...fields };
+    const { category, data, ...fields } = prefill;
+    const blank = emptyHomebrewForm(category);
+    return { ...blank, ...fields, data: { ...blank.data, ...data } };
   });
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [srdRaces, setSrdRaces] = useState([]);

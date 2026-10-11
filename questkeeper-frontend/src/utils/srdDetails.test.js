@@ -1001,11 +1001,13 @@ describe("class detail panel", () => {
         { name: "Smuggler", source: "Tome of Heroes" },
       ],
     });
-    expect(panel.subclassGroups).toEqual([
+    expect(panel.subclassGroups.map(({ source, names }) => ({ source, names }))).toEqual([
       { source: "SRD 5.1", names: "Thief" },
       { source: "Open5e Originals", names: "Eldritch Trickster" },
       { source: "Tome of Heroes", names: "Cat Burglar, Smuggler" },
     ]);
+    // Each name keeps its ID, so the Classes page can open it.
+    expect(panel.subclassGroups[0].items).toEqual([{ index: undefined, name: "Thief" }]);
   });
 });
 

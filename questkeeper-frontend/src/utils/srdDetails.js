@@ -409,6 +409,25 @@ export function mapSubraceToPanel(data) {
 }
 
 export function mapSubclassToPanel(data) {
+  // A published-book subclass: summary and link only (see bookSubclasses.js).
+  if (data.is_book_entry) {
+    return {
+      name: data.name,
+      category: "Subclass",
+      source: data.source,
+      sourceGroup: data.sourceGroup,
+      bookEntry: {
+        category: "subclass",
+        name: data.name,
+        book: data.book,
+        summary: data.summary,
+        linkUrl: data.link_url,
+        classIndex: data.class?.index,
+        className: data.class?.name,
+        canMakeHomebrew: data.can_make_homebrew,
+      },
+    };
+  }
   return {
     name: data.name,
     category: "Subclass",
@@ -564,7 +583,35 @@ export function describeClassSpellcasting(data) {
   return `Casts with ${label}. At level 1: ${summary}.${prepared}`;
 }
 
+// Subclasses split by book, keeping each one's ID so the panel can open it.
+function groupSubclasses(subclasses) {
+  return groupBySource(subclasses).map(({ source, items }) => ({
+    source,
+    names: listNames(items),
+    items: items.map(({ index, name }) => ({ index, name })),
+  }));
+}
+
 export function mapClassToPanel(data) {
+  // A published-book class (Artificer, Blood Hunter): summary, link, and its
+  // subclasses to read about.
+  if (data.is_book_entry) {
+    return {
+      name: data.name,
+      category: "Class",
+      source: data.source,
+      sourceGroup: data.sourceGroup,
+      bookEntry: {
+        category: "class",
+        name: data.name,
+        book: data.book,
+        summary: data.summary,
+        linkUrl: data.link_url,
+      },
+      subclassFlavor: data.subclass_flavor,
+      subclassGroups: groupSubclasses(data.subclasses),
+    };
+  }
   return {
     name: data.name,
     category: "Class",
@@ -584,10 +631,7 @@ export function mapClassToPanel(data) {
       .join(", "),
     subclasses: listNames(data.subclasses),
     // Same list split by book, so players see where each subclass comes from.
-    subclassGroups: groupBySource(data.subclasses).map(({ source, items }) => ({
-      source,
-      names: listNames(items),
-    })),
+    subclassGroups: groupSubclasses(data.subclasses),
     levelOneFeatures: (data.levelOneFeatures ?? []).map((feature) => ({
       name: feature.name,
       description: descriptionFromSrd(feature.desc),

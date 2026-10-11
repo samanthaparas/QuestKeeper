@@ -7,6 +7,8 @@ import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
 import "../pages/SearchPage/SearchPage.css";
 import Button from "../components/Button/Button";
+import SourceFilter from "../components/SourceFilter/SourceFilter";
+import { filterBySource } from "../utils/sourceFilters";
 
 function ClassesPage() {
   const [classResults, setClassResults] = useState([]);
@@ -14,6 +16,8 @@ function ClassesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState("");
+  // "all" or one book name, picked with the SourceFilter buttons.
+  const [sourceFilter, setSourceFilter] = useState("all");
 
   useEffect(() => {
     getClasses()
@@ -22,8 +26,11 @@ function ClassesPage() {
           index: item.index,
           name: item.name,
           category: "Class",
+          source: item.source,
+          sourceGroup: item.sourceGroup,
           description: "Select this class to view more details.",
-          tagline: getClassGuidance(item.index)?.tagline,
+          // Book classes (Artificer, Blood Hunter) bring their own tagline.
+          tagline: getClassGuidance(item.index)?.tagline ?? item.tagline,
           preview: getCardPreview("Class", item),
           url: item.url,
         }));
@@ -39,9 +46,11 @@ function ClassesPage() {
       });
   }, []);
 
-  const filteredClasses = classResults.filter((result) =>
+  // Search text first, then the source buttons (their counts follow the search).
+  const searchMatches = classResults.filter((result) =>
     result.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
+  const filteredClasses = filterBySource(searchMatches, sourceFilter);
 
   function handleSearchSubmit(e) {
     e.preventDefault();
@@ -83,6 +92,16 @@ function ClassesPage() {
 
         {isLoading && <p className="search-page__status">Loading classes...</p>}
         {apiError && <p className="search-page__error">{apiError}</p>}
+
+        <SourceFilter
+          underSearch
+          items={searchMatches}
+          value={sourceFilter}
+          onChange={(source) => {
+            setSourceFilter(source);
+            setSelectedResult(null);
+          }}
+        />
 
         <section
           className={`search-page__layout ${

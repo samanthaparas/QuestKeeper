@@ -452,7 +452,9 @@ function CharacterCreationPage() {
                   fetchDetails={loadRaceDetails}
                   mapToDetailPanelResult={mapRaceToDetailPanelResult}
                   mapToSnapshot={mapRaceToSnapshot}
-                  getTagline={(item) => getRaceGuidance(item.index)?.tagline}
+                  getTagline={(item) =>
+                    getRaceGuidance(item.index)?.tagline ?? item.tagline
+                  }
                   initialSelectedRaw={pickerStart("race", raceRaw)}
                   onChoose={(snapshot, raw) => {
                     setRace(snapshot);
@@ -569,6 +571,17 @@ function CharacterCreationPage() {
                       : undefined
                   }
                   makeOwnLabel={`Make your own ${characterClass?.name ?? ""} subclass`}
+                  onMakeHomebrewFrom={(book) =>
+                    setHomebrewRequest({
+                      category: "subclass",
+                      fields: {
+                        name: book.name,
+                        basedOn: book.book,
+                        linkUrl: book.link_url,
+                      },
+                      data: { parentClass: characterClass.id },
+                    })
+                  }
                   title="Choose a Subclass"
                   description={
                     getSubclassLevel(characterClass?.id) === 1

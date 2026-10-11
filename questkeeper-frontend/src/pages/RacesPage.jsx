@@ -30,7 +30,8 @@ function RacesPage() {
           sourceGroup: item.sourceGroup,
           preview: getCardPreview("Race", item),
           description: "Select this race to view more details.",
-          tagline: getRaceGuidance(item.index)?.tagline,
+          // Book races bring their own tagline.
+          tagline: getRaceGuidance(item.index)?.tagline ?? item.tagline,
           url: item.url,
         }));
 

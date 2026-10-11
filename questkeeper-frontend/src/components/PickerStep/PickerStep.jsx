@@ -132,6 +132,7 @@ function PickerStep({
             )}
 
             <DetailPanel
+              inPicker
               selectedResult={
                 // In a picker, the book panel's own "go to My Homebrew" link is
                 // swapped for the button below, so progress isn't lost.

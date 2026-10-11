@@ -55,6 +55,48 @@ const ENTRIES = [
   ["Yuan-Ti", MPMM, "yuan-ti", "Snake-folk with a natural resistance to magic and poison. Good for a cunning, mysterious character."],
 ];
 
+// The short line under each race's name in lists, like the SRD races have
+// ("Tough and steady"). Our own words.
+const TAGLINES = {
+  Aarakocra: "Winged bird-folk of the skies",
+  Aasimar: "Touched by heavenly light",
+  Changeling: "Shapeshifter with many faces",
+  "Deep Gnome": "Quiet gnome of the deep dark",
+  Duergar: "Stern gray dwarf from below",
+  Eladrin: "Fey elf of the changing seasons",
+  Fairy: "Tiny winged fey",
+  Firbolg: "Gentle giant of the forest",
+  "Genasi (Air)": "Light as the wind",
+  "Genasi (Earth)": "Steady as stone",
+  "Genasi (Fire)": "Fiery temper, fiery blood",
+  "Genasi (Water)": "Calm as the tide",
+  Githyanki: "Fierce astral warrior",
+  Githzerai: "Calm, disciplined mind",
+  Goliath: "Towering mountain competitor",
+  Harengon: "Quick, lucky rabbit-folk",
+  Kenku: "Bird-folk who mimic voices",
+  Locathah: "Hardy fish-folk of the sea",
+  Owlin: "Silent, sharp-eyed owl-folk",
+  Satyr: "Fun-loving, goat-legged fey",
+  "Sea Elf": "Elf of the ocean depths",
+  "Shadar-Kai": "Elf touched by shadow",
+  Tabaxi: "Curious, wandering cat-folk",
+  Tortle: "Turtle-folk who carry their home",
+  Triton: "Proud guardian of the deep",
+  Verdan: "Chatty, ever-changing green folk",
+  Bugbear: "Big, sneaky goblin-kin",
+  Centaur: "Swift, horse-bodied wanderer",
+  Goblin: "Small, quick and scrappy",
+  Grung: "Poisonous little frog-folk",
+  Hobgoblin: "Disciplined goblin-kin tactician",
+  Kobold: "Crafty little dragon-kin",
+  Lizardfolk: "Blunt, practical reptile-folk",
+  Minotaur: "Bull-headed, horns-first fighter",
+  Orc: "Strong, fierce and tireless",
+  Shifter: "A beast within",
+  "Yuan-Ti": "Cunning snake-folk",
+};
+
 function toIndex(name) {
   return `book_${name.toLowerCase().replace(/[()]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
 }
@@ -69,6 +111,7 @@ export const BOOK_RACES = ENTRIES.map(([name, book, page, summary, extras = {}])
   is_book_entry: true,
   book,
   summary,
+  tagline: TAGLINES[name] ?? null,
   link_url: `${WIKIDOT}${page}`,
   open_version: extras.openVersion ?? null,
   // No traits or subraces: the book's rules aren't included.
@@ -78,11 +121,12 @@ export const BOOK_RACES = ENTRIES.map(([name, book, page, summary, extras = {}])
 
 // Short list items for the races list, with the summary as a hover preview.
 export function listBookRaces() {
-  return BOOK_RACES.map(({ index, name, source, sourceGroup, summary }) => ({
+  return BOOK_RACES.map(({ index, name, source, sourceGroup, summary, tagline }) => ({
     index,
     name,
     source,
     sourceGroup,
+    tagline,
     preview: summary,
   }));
 }
