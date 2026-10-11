@@ -199,6 +199,24 @@
   color: var(--qk-text-muted);
 }
 
+/* Subclass radio list: one column so long names and badges fit. */
+.level-up-wizard__subclass-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.level-up-wizard__ability-checkbox--active {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+}
+
+.level-up-wizard__feature-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
 .level-up-wizard__feat-card {
   padding: 16px;
   border: 1px solid var(--qk-border);
