@@ -23,10 +23,12 @@ import {
   getClassSpells,
   getClassDetails,
   getSubclassDetails,
+  getSubclassFeatures,
   getSpellDetails,
 } from "../../utils/api";
 import "./LevelUpWizard.css";
 import Button from "../Button/Button";
+import SourceBadge from "../SourceBadge/SourceBadge";
 
 function LevelUpWizard({ sheet, onComplete, onCancel }) {
   const targetLevel = sheet.level + 1;
@@ -50,7 +52,12 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
   const [featDetails, setFeatDetails] = useState(null);
   const [isFeatLoading, setIsFeatLoading] = useState(false);
 
+  // Subclass step: every option for this class (SRD + Open5e), the one the
+  // player is looking at, and what it grants.
+  const [subclassOptions, setSubclassOptions] = useState([]);
+  const [selectedSubclassIndex, setSelectedSubclassIndex] = useState("");
   const [classSubclass, setClassSubclass] = useState(null);
+  const [subclassFeatures, setSubclassFeatures] = useState([]);
   const [isSubclassLoading, setIsSubclassLoading] = useState(true);
   const [subclassError, setSubclassError] = useState("");
 
@@ -100,23 +107,53 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
     Boolean(selectedSpellIndex) &&
     selectedSpellDetails?.index !== selectedSpellIndex;
 
+  // Load the list of subclasses once the player reaches that step.
   useEffect(() => {
     if (currentStep?.key !== "subclass") return;
 
     getClassDetails(sheet.class.id)
       .then((classData) => {
-        const entry = classData.subclasses?.[0];
-        if (!entry) throw new Error("No subclass available");
-        return getSubclassDetails(entry.index);
+        const options = classData.subclasses ?? [];
+        if (options.length === 0) throw new Error("No subclass available");
+        setSubclassOptions(options);
+        // Only one choice (Open5e down)? Open it straight away.
+        if (options.length === 1) setSelectedSubclassIndex(options[0].index);
       })
-      .then(setClassSubclass)
       .catch(() =>
         setSubclassError(
-          "Unable to load subclass details. Please try again later.",
+          "Unable to load subclasses. Please try again later.",
         ),
       )
       .finally(() => setIsSubclassLoading(false));
   }, [currentStep?.key, sheet.class]);
+
+  // Load the picked subclass's description and its feature list.
+  useEffect(() => {
+    if (!selectedSubclassIndex) return;
+    let ignore = false;
+
+    Promise.all([
+      getSubclassDetails(selectedSubclassIndex),
+      getSubclassFeatures(selectedSubclassIndex).catch(() => []),
+    ])
+      .then(([details, features]) => {
+        if (ignore) return;
+        setClassSubclass(details);
+        setSubclassFeatures(features);
+      })
+      .catch(() => {
+        if (!ignore) setClassSubclass(null);
+      });
+
+    // Stops a slow answer for an earlier pick from replacing a newer one.
+    return () => {
+      ignore = true;
+    };
+  }, [selectedSubclassIndex]);
+
+  const isSubclassDetailLoading =
+    Boolean(selectedSubclassIndex) &&
+    classSubclass?.index !== selectedSubclassIndex;
 
   useEffect(() => {
     Promise.all([getFeats(), getFeats("2024")])
@@ -530,40 +567,92 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
         <div className="level-up-wizard__step">
           <h3 className="level-up-wizard__step-title">Choose Your Subclass</h3>
           <p className="level-up-wizard__step-description">
-            At level {targetLevel}, {sheet.class?.name ?? "your class"} gains a
-            subclass that shapes how you play. SRD 2014 only includes one
-            subclass per class, so there's nothing to pick between — review it
-            below.
+            At level {targetLevel}, {sheet.class?.name ?? "your class"} picks a
+            subclass that shapes how you play from here on. Pick one to read
+            what it does before you choose.
           </p>
 
-          {isSubclassLoading && <p>Loading subclass...</p>}
+          {isSubclassLoading && <p>Loading subclasses...</p>}
           {subclassError && (
             <p className="level-up-wizard__error">{subclassError}</p>
           )}
 
-          {classSubclass && (
-            <div className="level-up-wizard__feat-card">
-              <h4>{classSubclass.name}</h4>
-              <p>
-                <em>{classSubclass.subclass_flavor}</em>
-              </p>
-              {classSubclass.desc?.map((line, index) => (
-                <p key={index}>{line}</p>
+          {/* One radio button per subclass, with its book as a badge. */}
+          {subclassOptions.length > 0 && (
+            <div
+              className="level-up-wizard__subclass-list"
+              role="radiogroup"
+              aria-label="Subclasses"
+            >
+              {subclassOptions.map((option) => (
+                <label
+                  className={`level-up-wizard__ability-checkbox${
+                    selectedSubclassIndex === option.index
+                      ? " level-up-wizard__ability-checkbox--active"
+                      : ""
+                  }`}
+                  key={option.index}
+                >
+                  <input
+                    type="radio"
+                    name="subclass"
+                    value={option.index}
+                    checked={selectedSubclassIndex === option.index}
+                    onChange={() => setSelectedSubclassIndex(option.index)}
+                  />
+                  <span className="level-up-wizard__ability-checkbox-text">
+                    <span>{option.name}</span>
+                    <SourceBadge source={option.source} />
+                  </span>
+                </label>
               ))}
             </div>
           )}
 
+          {isSubclassDetailLoading && <p>Loading details...</p>}
+
+          {classSubclass && !isSubclassDetailLoading && (
+            <div className="level-up-wizard__feat-card">
+              <h4>{classSubclass.name}</h4>
+              <p>
+                <em>{classSubclass.subclass_flavor}</em>{" "}
+                <SourceBadge source={classSubclass.source} />
+              </p>
+              {classSubclass.desc?.map((line, index) => (
+                <p key={index}>{line}</p>
+              ))}
+
+              {/* What you'll get and when, so players can compare. */}
+              {subclassFeatures.length > 0 && (
+                <>
+                  <p>
+                    <strong>Features</strong>
+                  </p>
+                  <ul className="level-up-wizard__feature-list">
+                    {subclassFeatures.map((feature) => (
+                      <li key={feature.index}>
+                        {feature.name}
+                        {feature.level ? ` (level ${feature.level})` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          )}
+
           <Button
-            disabled={!classSubclass}
+            disabled={!classSubclass || isSubclassDetailLoading}
             onClick={() =>
               completeStep({
                 id: classSubclass.index,
                 name: classSubclass.name,
+                source: classSubclass.source ?? "SRD 5.1",
                 flavor: classSubclass.subclass_flavor,
               })
             }
           >
-            Next
+            Choose {classSubclass?.name ?? "a subclass"}
           </Button>
         </div>
       )}

@@ -109,8 +109,8 @@ export const SPELLCASTING_BY_CLASS = {
   wizard: { type: "prepared", ability: "intelligence" },
 };
 
-// Every SRD 2014 class has exactly one subclass, but they're granted at
-// different levels: Cleric/Sorcerer/Warlock at 1 (handled at character
+// The level each class picks its subclass. SRD and Open5e subclasses follow
+// the same schedule: Cleric/Sorcerer/Warlock at 1 (handled at character
 // creation, see CharacterCreationPage), Wizard/Druid at 2, everyone else
 // at 3. Verified against each class's actual level-by-level feature data,
 // not assumed.
