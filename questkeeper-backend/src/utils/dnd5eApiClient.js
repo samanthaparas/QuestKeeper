@@ -8,6 +8,19 @@ export function resolveEdition(query) {
     : DEFAULT_EDITION;
 }
 
+// The badge text for SRD entries, so they can sit in the same lists as
+// Open5e ones ("Tome of Heroes") and players can tell them apart.
+export function srdSourceLabel(edition) {
+  return edition === "2024" ? "SRD 5.2" : "SRD 5.1";
+}
+
+export function tagSrdSource(entries, edition = DEFAULT_EDITION) {
+  return entries.map((entry) => ({
+    ...entry,
+    source: srdSourceLabel(edition),
+  }));
+}
+
 export async function fetchDnd5eList(resource, edition, errorMessage) {
   const response = await fetch(`${BASE_URL}/${edition}/${resource}`);
 

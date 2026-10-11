@@ -30,3 +30,6 @@ jobs:
 
       - name: Build
         run: npm run build --workspace questkeeper-frontend
+
+      - name: Run backend tests
+        run: npm run test --workspace questkeeper-backend -- run
