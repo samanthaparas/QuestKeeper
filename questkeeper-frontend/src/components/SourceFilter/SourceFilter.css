@@ -1,0 +1,64 @@
+.source-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+/* Same width and spacing as the Spells page filters under the search bar. */
+.source-filter--under-search {
+  width: min(100%, 760px);
+  margin: 24px auto 16px;
+}
+
+/* Matches the Spells page's "Level" / "Class" / "School" labels. */
+.source-filter__label {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Wraps onto more lines on phones instead of scrolling sideways. */
+.source-filter__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.source-filter__button {
+  padding: 6px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.source-filter__button:hover {
+  border-color: var(--qk-terracotta);
+}
+
+.source-filter__button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.source-filter__button--active {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+}
+
+.source-filter__hint {
+  margin: 2px 0 0;
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.source-filter__hint a {
+  color: var(--qk-terracotta-hover);
+  font-weight: 600;
+}

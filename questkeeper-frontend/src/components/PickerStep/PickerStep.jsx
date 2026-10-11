@@ -3,6 +3,8 @@ import ResultCard from "../ResultCard/ResultCard";
 import DetailPanel from "../DetailPanel/DetailPanel";
 import "./PickerStep.css";
 import Button from "../Button/Button";
+import SourceFilter from "../SourceFilter/SourceFilter";
+import { filterBySource } from "../../utils/sourceFilters";
 
 function PickerStep({
   title,
@@ -33,6 +35,9 @@ function PickerStep({
     () => initialSelectedRaw ?? null,
   );
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  // "all" or one book name, picked with the SourceFilter buttons.
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const visibleItems = filterBySource(items, sourceFilter);
 
   useEffect(() => {
     fetchList()
@@ -77,9 +82,17 @@ function PickerStep({
       {showEmptyState && <p className="picker-step__status">{emptyMessage}</p>}
 
       {!isLoading && !apiError && !showEmptyState && (
+        <SourceFilter
+          items={items}
+          value={sourceFilter}
+          onChange={setSourceFilter}
+        />
+      )}
+
+      {!isLoading && !apiError && !showEmptyState && (
         <div className="picker-step__layout">
           <div className="picker-step__list">
-            {items.map((item) => (
+            {visibleItems.map((item) => (
               <ResultCard
                 key={item.index}
                 result={{

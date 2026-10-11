@@ -5,6 +5,8 @@ import { getRaceGuidance } from "../utils/beginnerGuidance";
 import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
+import SourceFilter from "../components/SourceFilter/SourceFilter";
+import { filterBySource } from "../utils/sourceFilters";
 import "../pages/SearchPage/SearchPage.css";
 import Button from "../components/Button/Button";
 
@@ -12,6 +14,8 @@ function RacesPage() {
   const [raceResults, setRaceResults] = useState([]);
   const [selectedResult, setSelectedResult] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  // "all" or one book name, picked with the SourceFilter buttons.
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState("");
 
@@ -38,9 +42,11 @@ function RacesPage() {
       });
   }, []);
 
-  const filteredRaces = raceResults.filter((result) =>
+  // Search text first, then the source buttons (their counts follow the search).
+  const searchMatches = raceResults.filter((result) =>
     result.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
+  const filteredRaces = filterBySource(searchMatches, sourceFilter);
 
   function handleSearchSubmit(e) {
     e.preventDefault();
@@ -82,6 +88,16 @@ function RacesPage() {
 
         {isLoading && <p className="search-page__status">Loading races...</p>}
         {apiError && <p className="search-page__error">{apiError}</p>}
+
+        <SourceFilter
+          underSearch
+          items={searchMatches}
+          value={sourceFilter}
+          onChange={(source) => {
+            setSourceFilter(source);
+            setSelectedResult(null);
+          }}
+        />
 
         <section
           className={`search-page__layout ${
