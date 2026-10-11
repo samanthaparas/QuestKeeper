@@ -435,6 +435,16 @@ function CharacterCreationPage() {
                   key={`race-${pickerVersion}`}
                   onMakeOwn={() => setHomebrewRequest({ category: "race" })}
                   makeOwnLabel="Make your own race"
+                  onMakeHomebrewFrom={(book) =>
+                    setHomebrewRequest({
+                      category: "race",
+                      fields: {
+                        name: book.name,
+                        basedOn: book.book,
+                        linkUrl: book.link_url,
+                      },
+                    })
+                  }
                   title="Choose a Race"
                   description="Your character's race shapes their natural traits and abilities. Pick one to read what it offers before you commit."
                   category="Race"
@@ -636,6 +646,16 @@ function CharacterCreationPage() {
                   key={`background-${pickerVersion}`}
                   onMakeOwn={() => setHomebrewRequest({ category: "background" })}
                   makeOwnLabel="Make your own background"
+                  onMakeHomebrewFrom={(book) =>
+                    setHomebrewRequest({
+                      category: "background",
+                      fields: {
+                        name: book.name,
+                        basedOn: book.book,
+                        linkUrl: book.link_url,
+                      },
+                    })
+                  }
                   title="Choose a Background"
                   description="Your character's background covers their life before adventuring, including free skills and equipment."
                   category="Background"

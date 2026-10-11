@@ -5,6 +5,7 @@ import "./PickerStep.css";
 import Button from "../Button/Button";
 import SourceFilter from "../SourceFilter/SourceFilter";
 import { filterBySource } from "../../utils/sourceFilters";
+import { getCardPreview } from "../../utils/beginnerGuidance";
 
 function PickerStep({
   title,
@@ -24,6 +25,9 @@ function PickerStep({
   // Optional "Can't find it? Make your own" button (opens the homebrew form).
   onMakeOwn,
   makeOwnLabel = "Make your own",
+  // Published-book entries can't be chosen directly; this rebuilds one as
+  // homebrew instead (gets the selected entry).
+  onMakeHomebrewFrom,
 }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,6 +116,8 @@ function PickerStep({
                   category,
                   index: item.index,
                   source: item.source,
+                  sourceGroup: item.sourceGroup,
+                  preview: getCardPreview(category, item),
                   tagline: getTagline?.(item),
                 }}
                 isSelected={selectedIndex === item.index}
@@ -126,15 +132,35 @@ function PickerStep({
             )}
 
             <DetailPanel
-              selectedResult={selectedDetail}
+              selectedResult={
+                // In a picker, the book panel's own "go to My Homebrew" link is
+                // swapped for the button below, so progress isn't lost.
+                selectedDetail?.bookEntry
+                  ? {
+                      ...selectedDetail,
+                      bookEntry: { ...selectedDetail.bookEntry, inPicker: true },
+                    }
+                  : selectedDetail
+              }
               actions={
                 selectedDetail && !isDetailLoading ? (
-                  <Button
-                    className="picker-step__confirm-position"
-                    onClick={handleConfirm}
-                  >
-                    Choose {selectedDetail.name}
-                  </Button>
+                  selectedRaw?.is_book_entry ? (
+                    onMakeHomebrewFrom && (
+                      <Button
+                        className="picker-step__confirm-position"
+                        onClick={() => onMakeHomebrewFrom(selectedRaw)}
+                      >
+                        Make it as homebrew
+                      </Button>
+                    )
+                  ) : (
+                    <Button
+                      className="picker-step__confirm-position"
+                      onClick={handleConfirm}
+                    >
+                      Choose {selectedDetail.name}
+                    </Button>
+                  )
                 ) : null
               }
             />

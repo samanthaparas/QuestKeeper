@@ -6,6 +6,8 @@ import {
   getRaceGuidance,
   getClassGuidance,
   getStepTips,
+  BACKGROUND_SUMMARIES,
+  getCardPreview,
 } from "./beginnerGuidance";
 
 const SRD_RACES = [
@@ -128,5 +130,33 @@ describe("step tips", () => {
   it("still gives general ability tips when no class is chosen yet", () => {
     const { tips } = getStepTips("abilities");
     expect(tips.some((tip) => tip.includes("modifier"))).toBe(true);
+  });
+
+  it("gives every background QuestKeeper has rules for a two-sentence summary", () => {
+    const backgrounds = [
+      "acolyte", "criminal", "sage", "soldier", "open5e_con-artist",
+      "tdcs_crime-syndicate-member", "tdcs_elemental-warden", "tdcs_lyceum-student",
+      "tdcs_recovered-cultist", "toh_court-servant", "toh_desert-runner", "toh_destined",
+      "toh_diplomat", "toh_forest-dweller", "toh_former-adventurer", "toh_freebooter",
+      "toh_gamekeeper", "toh_innkeeper", "toh_mercenary-company-scion", "toh_mercenary-recruit",
+      "toh_monstrous-adoptee", "toh_mysterious-origins", "toh_northern-minstrel", "toh_occultist",
+      "toh_parfumier", "toh_scoundrel", "toh_sentry", "toh_trophy-hunter",
+    ];
+    for (const index of backgrounds) {
+      const summary = BACKGROUND_SUMMARIES[index];
+      expect(summary, index).toBeTruthy();
+      expect(summary.split(/(?<=\.)\s+/), index).toHaveLength(2);
+    }
+  });
+
+  it("gives every race, class and background card a hover preview", () => {
+    expect(getCardPreview("Race", { index: "dwarf" })).toMatch(/^Good if you want to be hard to kill/);
+    expect(getCardPreview("Class", { index: "rogue" })).toMatch(/^Good if you want/);
+    expect(getCardPreview("Background", { index: "acolyte" })).toMatch(/temple/);
+    // Book entries and homebrew bring their own summary.
+    expect(getCardPreview("Race", { index: "book_tabaxi", preview: "Cat-folk." })).toBe("Cat-folk.");
+    // Homebrew without a summary still gets something, so no card is blank.
+    expect(getCardPreview("Background", { index: "hb_x" })).toMatch(/No summary yet/);
+    expect(getCardPreview("Spell", { index: "fireball" })).toBeNull();
   });
 });

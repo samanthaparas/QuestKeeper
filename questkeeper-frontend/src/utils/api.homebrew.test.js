@@ -10,6 +10,7 @@ import {
   getRaceTraits,
   getTraitDetails,
   getBackgrounds,
+  getBackgroundDetails,
   getClassDetails,
   getSubclassFeatures,
   getFeatureDetails,
@@ -48,7 +49,20 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("api with homebrew", () => {
   it("mixes homebrew races into the list alphabetically", async () => {
-    expect((await getRaces()).map((race) => race.name)).toEqual(["Elf", "Owlfolk", "Tiefling"]);
+    const notBooks = (await getRaces()).filter((race) => !race.index.startsWith("book_"));
+    expect(notBooks.map((race) => race.name)).toEqual(["Elf", "Owlfolk", "Tiefling"]);
+  });
+
+  it("adds the published-book races, answered without the backend", async () => {
+    const races = await getRaces();
+    expect(races.find((race) => race.name === "Tabaxi")).toMatchObject({
+      index: "book_tabaxi",
+      sourceGroup: "Official books",
+    });
+    vi.mocked(fetch).mockClear();
+    expect(await getRaceDetails("book_tabaxi")).toMatchObject({ name: "Tabaxi", is_book_entry: true });
+    expect(await getRaceTraits("book_tabaxi")).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("answers homebrew IDs without calling the backend", async () => {
@@ -67,11 +81,32 @@ describe("api with homebrew", () => {
   });
 
   it("adds homebrew backgrounds to the 2014 list only", async () => {
-    expect((await getBackgrounds()).map((item) => item.name)).toEqual([
-      "Acolyte",
-      "Tavern Hand",
-    ]);
+    const notBooks = (await getBackgrounds()).filter((item) => !item.index.startsWith("book_"));
+    expect(notBooks.map((item) => item.name)).toEqual(["Acolyte", "Tavern Hand"]);
     expect((await getBackgrounds("2024")).map((item) => item.name)).toEqual(["Sage"]);
+  });
+
+  it("adds the published-book backgrounds to the 2014 list, even logged out", async () => {
+    loadHomebrew.mockResolvedValue([]);
+    const list = await getBackgrounds();
+    const folkHero = list.find((item) => item.name === "Folk Hero");
+    expect(folkHero).toMatchObject({
+      index: "book_folk-hero",
+      source: "Player's Handbook (2014)",
+      sourceGroup: "Official books",
+    });
+    expect(folkHero.preview).toMatch(/ordinary person/);
+    // Alphabetical with everything else.
+    expect(list.findIndex((item) => item.name === "Acolyte")).toBeLessThan(
+      list.findIndex((item) => item.name === "Anthropologist"),
+    );
+  });
+
+  it("answers book background details without calling the backend", async () => {
+    const entry = await getBackgroundDetails("book_city-watch");
+    expect(entry).toMatchObject({ name: "City Watch", is_book_entry: true });
+    expect(fetch).not.toHaveBeenCalled();
+    await expect(getBackgroundDetails("book_nope")).rejects.toThrow(/not found/);
   });
 
   it("adds homebrew subclasses to their class, with their features", async () => {
@@ -89,6 +124,7 @@ describe("api with homebrew", () => {
 
   it("still works logged out (no homebrew)", async () => {
     loadHomebrew.mockResolvedValue([]);
-    expect((await getRaces()).map((race) => race.name)).toEqual(["Elf", "Tiefling"]);
+    const notBooks = (await getRaces()).filter((race) => !race.index.startsWith("book_"));
+    expect(notBooks.map((race) => race.name)).toEqual(["Elf", "Tiefling"]);
   });
 });

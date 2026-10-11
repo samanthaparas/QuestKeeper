@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getClasses } from "../utils/api";
 import { loadClassDetails, mapClassToPanel } from "../utils/srdDetails";
-import { getClassGuidance } from "../utils/beginnerGuidance";
+import { getClassGuidance, getCardPreview } from "../utils/beginnerGuidance";
 import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
@@ -24,6 +24,7 @@ function ClassesPage() {
           category: "Class",
           description: "Select this class to view more details.",
           tagline: getClassGuidance(item.index)?.tagline,
+          preview: getCardPreview("Class", item),
           url: item.url,
         }));
 

@@ -421,7 +421,9 @@ export function findHomebrewFeature(entries, featureIndex) {
 // Short list items for one category ("race", "background"...). Other
 // people's drafts never arrive here; the database filters them out.
 export function listHomebrew(entries, category) {
-  return byCategory(entries, category).map((entry) =>
-    toListItem(commonFields(entry)),
-  );
+  return byCategory(entries, category).map((entry) => ({
+    ...toListItem(commonFields(entry)),
+    // The author's summary, shown when hovering the card.
+    preview: entry.summary || null,
+  }));
 }

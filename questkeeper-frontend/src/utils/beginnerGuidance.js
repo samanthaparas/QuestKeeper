@@ -255,3 +255,60 @@ export function getRaceGuidance(raceIndex) {
 export function getClassGuidance(classIndex) {
   return CLASS_GUIDANCE[classIndex] ?? null;
 }
+
+// Two-sentence summaries for the backgrounds QuestKeeper has full rules for
+// (SRD, Tome of Heroes, Tal'Dorei, Open5e), in our own words. Shown when a
+// player hovers a background card, the same way the book backgrounds are.
+export const BACKGROUND_SUMMARIES = {
+  acolyte: "You served in a temple, tending to its rites and its people. Good for a faithful character with a community behind them.",
+  criminal: "You broke the law to get by and still know the shadier side of town. Good for a streetwise character with useful contacts.",
+  sage: "You spent years studying in libraries and with learned teachers. Good for a scholar who loves research.",
+  soldier: "You trained and fought as part of an army. Good for a disciplined fighter who knows how to follow a plan.",
+  "open5e_con-artist": "You made a living from schemes and fake identities, with a cover story always ready. Good for a smooth talker who loves a good con.",
+  "tdcs_crime-syndicate-member": "You worked your way up inside a criminal organization that owes you a favor or two. Good for a streetwise character with powerful friends.",
+  "tdcs_elemental-warden": "You grew up protecting a place where wild elemental magic runs strong. Good for a nature-minded character in tune with the elements.",
+  "tdcs_lyceum-student": "You studied at a great academy and still have friends on its staff. Good for a curious, well-read character.",
+  "tdcs_recovered-cultist": "You once worshipped something dark, and you got out. Good for a character with a past to make up for.",
+  "toh_court-servant": "You served in a noble household, seeing everything while staying unnoticed. Good for a quiet, observant character who knows how the powerful live.",
+  "toh_desert-runner": "You grew up crossing harsh deserts where every drop of water counts. Good for a tough, resourceful survivor.",
+  toh_destined: "Fate has big plans for you, whether you like it or not. Good for a character running toward, or away from, their destiny.",
+  toh_diplomat: "You've smoothed over arguments between rivals and kingdoms. Good for a peacemaker who'd rather talk than fight.",
+  "toh_forest-dweller": "You lived deep in the woods, hunting and foraging. Good for a quiet, outdoorsy character who knows the forest.",
+  "toh_former-adventurer": "You've been adventuring before, and you're coming back for more. Good for a seasoned character with old friends and old enemies.",
+  toh_freebooter: "You sailed as a pirate, and people in every port know your old ship. Good for a bold character with a seafaring past.",
+  toh_gamekeeper: "You looked after the animals used for the hunt and know them well. Good for a patient character who loves animals.",
+  toh_innkeeper: "You ran an inn and got to know every kind of traveler. Good for a friendly character who always knows someone useful.",
+  "toh_mercenary-company-scion": "You were born into a famous family of mercenaries. Good for a fighter with a family name to live up to.",
+  "toh_mercenary-recruit": "You know every story about famous soldiers, and now you want to be one. Good for an eager, untested fighter.",
+  "toh_monstrous-adoptee": "You were raised by monsters and learned their ways. Good for an unusual character who sees the world differently.",
+  "toh_mysterious-origins": "You can't remember your past, but someone out there remembers you. Good for a character with a mystery to solve.",
+  "toh_northern-minstrel": "You traveled the cold north, collecting its songs and stories. Good for a musical character who loves history.",
+  toh_occultist: "You chase forbidden knowledge, strange cults and dark secrets. Good for a curious character drawn to the mysterious.",
+  toh_parfumier: "You crafted perfumes from plants and chemicals before adventuring. Good for a clever maker with a keen nose.",
+  toh_scoundrel: "You know a city's hidden corners and how to get by in them. Good for a scrappy, street-smart character.",
+  toh_sentry: "You stood guard for someone important, and guards everywhere recognize one of their own. Good for a watchful, dependable protector.",
+  "toh_trophy-hunter": "You've hunted dangerous beasts in the harshest places. Good for a tough, outdoorsy character who loves a challenge.",
+};
+
+// The short text shown when hovering a race, class or background card, so
+// every card in a list behaves the same. Book entries and homebrew bring
+// their own summary; everything else uses the beginner tips above.
+export function getCardPreview(category, item) {
+  if (item?.preview) return item.preview;
+  const index = item?.index;
+
+  if (category === "Race" && RACE_GUIDANCE[index]) {
+    return `Good if you want ${RACE_GUIDANCE[index].goodIf}.`;
+  }
+  if (category === "Class" && CLASS_GUIDANCE[index]) {
+    return `Good if you want ${CLASS_GUIDANCE[index].goodIf}.`;
+  }
+  if (category === "Background" && BACKGROUND_SUMMARIES[index]) {
+    return BACKGROUND_SUMMARIES[index];
+  }
+  // Only reached by homebrew with no summary yet.
+  if (["Race", "Class", "Background"].includes(category)) {
+    return "No summary yet. Open it to see the details.";
+  }
+  return null;
+}

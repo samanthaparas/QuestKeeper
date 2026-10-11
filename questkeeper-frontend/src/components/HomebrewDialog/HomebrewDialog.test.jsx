@@ -60,4 +60,26 @@ describe("HomebrewDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("pre-fills the name, book and link for a published-book background", () => {
+    render(
+      <HomebrewDialog
+        request={{
+          category: "background",
+          fields: {
+            name: "Folk Hero",
+            basedOn: "Player's Handbook (2014)",
+            linkUrl: "https://dnd5e.wikidot.com/background:folk-hero",
+          },
+        }}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("Name")).toHaveValue("Folk Hero");
+    expect(screen.getByLabelText("Based on (optional)")).toHaveValue("Player's Handbook (2014)");
+    expect(screen.getByLabelText("Link (optional)")).toHaveValue(
+      "https://dnd5e.wikidot.com/background:folk-hero",
+    );
+  });
 });

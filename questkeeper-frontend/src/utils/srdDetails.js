@@ -335,6 +335,24 @@ export async function loadRaceDetails(raceId) {
 }
 
 export function mapRaceToPanel(data) {
+  // A published-book race: summary and link only (see bookRaces.js).
+  if (data.is_book_entry) {
+    return {
+      name: data.name,
+      category: "Race",
+      source: data.source,
+      sourceGroup: data.sourceGroup,
+      bookEntry: {
+        category: "race",
+        name: data.name,
+        book: data.book,
+        summary: data.summary,
+        linkUrl: data.link_url,
+        openVersion: data.open_version,
+      },
+    };
+  }
+
   const abilityBonuses = formatAbilityBonuses(data);
 
   const languageNames = listNames(data.languages);
@@ -412,6 +430,26 @@ export function mapSubclassToPanel(data) {
 // personality tables, and describe gear and tools in sentences, so every
 // field here is optional.
 export function mapBackgroundToPanel(data) {
+  // A published-book background: summary and link only (see bookBackgrounds.js).
+  if (data.is_book_entry) {
+    return {
+      name: data.name,
+      category: "Background",
+      edition: "2014",
+      source: data.source,
+      sourceGroup: data.sourceGroup,
+      bookEntry: {
+        category: "background",
+        name: data.name,
+        book: data.book,
+        summary: data.summary,
+        linkUrl: data.link_url,
+        variantOf: data.variant_of,
+        openVersion: data.open_version,
+      },
+    };
+  }
+
   const fixedLanguages = listNames(data.languages);
   const languageChoices = data.language_options?.choose ?? 0;
   // "Thieves' Cant", "2 of your choice", or both joined with "plus".

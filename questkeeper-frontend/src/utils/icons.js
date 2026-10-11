@@ -31,7 +31,13 @@ function normalizeId(id) {
 }
 
 export function getRaceIcon(raceId) {
-  return raceIcons[`../assets/icons/races/${normalizeId(raceId)}.png`];
+  const id = normalizeId(raceId);
+  // Published-book and Tome of Heroes entries share the canonical race art.
+  const canonicalId = id.replace(/^(book|toh)-/, "");
+  return (
+    raceIcons[`../assets/icons/races/${id}.png`] ??
+    raceIcons[`../assets/icons/races/${canonicalId}.png`]
+  );
 }
 
 export function getClassIcon(classId) {
