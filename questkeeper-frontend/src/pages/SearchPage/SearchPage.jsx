@@ -13,6 +13,7 @@ import {
   loadRaceDetails,
   mapClassToPanel,
   mapRaceToPanel,
+  mapBackgroundToPanel,
   mapSpellToPanel,
 } from "../../utils/srdDetails";
 import SearchForm from "../../components/SearchForm/SearchForm";
@@ -48,6 +49,7 @@ function SearchPage() {
           index: item.index,
           name: item.name,
           category: "Race",
+          source: item.source,
           description: "Select this race to view more details.",
           url: item.url,
         }));
@@ -64,6 +66,7 @@ function SearchPage() {
           index: item.index,
           name: item.name,
           category: "Background",
+          source: item.source,
           description: "Select this background to view more details.",
           url: item.url,
         }));
@@ -101,30 +104,7 @@ function SearchPage() {
 
     if (category === "Class") return mapClassToPanel(data);
 
-    if (category === "Background") {
-      const startingProficiencies = data.starting_proficiencies.map(
-        (item) => item.name,
-      );
-
-      const startingEquipment = data.starting_equipment.map(
-        (item) => `${item.equipment.name} x${item.quantity}`,
-      );
-
-      return {
-        name: data.name,
-        category,
-        startingProficiencies,
-        languages: `Choose ${data.language_options.choose} languages`,
-        startingEquipment,
-        startingGold: `${data.starting_gold.quantity} ${data.starting_gold.unit}`,
-        featureName: data.feature.name,
-        featureDescription: data.feature.desc.join(" "),
-        personalityTraits: `Choose ${data.personality_traits.choose}`,
-        ideals: `Choose ${data.ideals.choose}`,
-        bonds: `Choose ${data.bonds.choose}`,
-        flaws: `Choose ${data.flaws.choose}`,
-      };
-    }
+    if (category === "Background") return mapBackgroundToPanel(data);
 
     if (category === "Spell") return mapSpellToPanel(data);
 

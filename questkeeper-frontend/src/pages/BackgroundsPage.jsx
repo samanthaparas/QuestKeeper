@@ -1,35 +1,11 @@
 import { useEffect, useState } from "react";
 import { getBackgrounds, getBackgroundDetails } from "../utils/api";
+import { mapBackgroundToPanel } from "../utils/srdDetails";
 import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
 import "../pages/SearchPage/SearchPage.css";
 import Button from "../components/Button/Button";
-
-function formatBackground2014(data) {
-  const startingProficiencies = data.starting_proficiencies.map(
-    (item) => item.name,
-  );
-  const startingEquipment = data.starting_equipment.map(
-    (item) => `${item.equipment.name} x${item.quantity}`,
-  );
-
-  return {
-    name: data.name,
-    category: "Background",
-    edition: "2014",
-    startingProficiencies,
-    languages: `Choose ${data.language_options.choose} languages`,
-    startingEquipment,
-    startingGold: `${data.starting_gold.quantity} ${data.starting_gold.unit}`,
-    featureName: data.feature.name,
-    featureDescription: data.feature.desc.join(" "),
-    personalityTraits: `Choose ${data.personality_traits.choose}`,
-    ideals: `Choose ${data.ideals.choose}`,
-    bonds: `Choose ${data.bonds.choose}`,
-    flaws: `Choose ${data.flaws.choose}`,
-  };
-}
 
 function formatBackground2024(data) {
   const abilityScoreNames = data.ability_scores.map((a) => a.name).join(", ");
@@ -62,6 +38,7 @@ function BackgroundsPage() {
           name: item.name,
           category: "Background",
           edition: item.edition,
+          source: item.source,
           description: "Select this background to view more details.",
           url: item.url,
         }));
@@ -97,7 +74,7 @@ function BackgroundsPage() {
         const formattedBackground =
           result.edition === "2024"
             ? formatBackground2024(data)
-            : formatBackground2014(data);
+            : mapBackgroundToPanel(data);
 
         setSelectedResult({
           ...formattedBackground,
@@ -123,8 +100,9 @@ function BackgroundsPage() {
         </p>
 
         <p className="search-page__note">
-          Includes both the 2014 and 2024 SRD rulesets, labeled by edition -
-          character creation currently only uses 2014 backgrounds.
+          Includes the 2014 and 2024 SRD rulesets plus backgrounds from Tome of
+          Heroes, Open5e and the Tal'Dorei Campaign Setting, each labeled by
+          its source. Character creation uses the 2014-rules backgrounds.
         </p>
 
         <SearchForm

@@ -200,6 +200,42 @@ describe("mergeSubrace", () => {
     const race = { name: "Human", abilityScoreIncreases: {} };
     expect(mergeSubrace(race, null)).toBe(race);
   });
+
+  it("keeps a subrace's own ability pick (Delver: STR or DEX)", () => {
+    const race = { name: "Drow", abilityScoreIncreases: { intelligence: 2 } };
+    const pick = {
+      choose: 1,
+      options: [
+        { ability: "strength", bonus: 1 },
+        { ability: "dexterity", bonus: 1 },
+      ],
+    };
+    const result = mergeSubrace(race, {
+      id: "toh_delver",
+      name: "Delver",
+      abilityScoreIncreases: {},
+      abilityScoreChoice: pick,
+    });
+    expect(result.abilityScoreChoice).toEqual(pick);
+  });
+
+  it("adds up matching picks from race and subrace (Gearforged + Human Chassis)", () => {
+    const anyAbility = ["strength", "dexterity", "constitution"].map(
+      (ability) => ({ ability, bonus: 1 }),
+    );
+    const race = {
+      name: "Gearforged",
+      abilityScoreIncreases: {},
+      abilityScoreChoice: { choose: 2, options: anyAbility },
+    };
+    const result = mergeSubrace(race, {
+      id: "toh_human-chassis",
+      name: "Human Chassis",
+      abilityScoreIncreases: {},
+      abilityScoreChoice: { choose: 1, options: anyAbility },
+    });
+    expect(result.abilityScoreChoice).toEqual({ choose: 3, options: anyAbility });
+  });
 });
 
 describe("applyAbilityScoreChoice", () => {
@@ -1334,6 +1370,15 @@ describe("buildStartingLanguages", () => {
     ).toBe(
       "Common, Elvish\nChoose 1 more (your race)\nChoose 2 more (Acolyte)",
     );
+  });
+
+  it("includes languages a background always grants", () => {
+    expect(
+      buildStartingLanguages({
+        raceLanguages: [{ name: "Common" }],
+        backgroundLanguages: ["Thieves' Cant"],
+      }),
+    ).toBe("Common, Thieves' Cant");
   });
 
   it("is blank when there is nothing to say", () => {

@@ -1,0 +1,20 @@
+.source-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--qk-moss);
+  border-radius: 999px;
+  background-color: var(--qk-moss-soft);
+  color: var(--qk-text);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* SRD is the default, so it sits back visually. */
+.source-badge--srd {
+  border-color: var(--qk-border);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text-muted);
+}

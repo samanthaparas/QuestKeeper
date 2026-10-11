@@ -86,6 +86,7 @@ function PickerStep({
                   name: item.name,
                   category,
                   index: item.index,
+                  source: item.source,
                   tagline: getTagline?.(item),
                 }}
                 isSelected={selectedIndex === item.index}

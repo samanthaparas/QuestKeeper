@@ -372,8 +372,32 @@ export function mergeSubrace(race, subrace) {
     name: subrace.name,
     subrace: { id: subrace.id, name: subrace.name },
     abilityScoreIncreases,
+    abilityScoreChoice: mergeAbilityScoreChoices(
+      race.abilityScoreChoice,
+      subrace.abilityScoreChoice,
+    ),
     traits: [...(race.traits ?? []), ...(subrace.traits ?? [])],
   };
+}
+
+// Some Open5e subraces add their own "pick an ability" (Delver: STR or DEX).
+// When race and subrace offer the same kind of pick (Gearforged's two +1s
+// plus Human Chassis's one), they add up to one bigger pick.
+function mergeAbilityScoreChoices(raceChoice, subraceChoice) {
+  if (!subraceChoice) return raceChoice ?? null;
+  if (!raceChoice) return subraceChoice;
+
+  const sameOptions = (choice) =>
+    choice.options.map((option) => `${option.ability}+${option.bonus}`).join();
+  if (sameOptions(raceChoice) === sameOptions(subraceChoice)) {
+    return {
+      ...raceChoice,
+      choose: raceChoice.choose + subraceChoice.choose,
+    };
+  }
+
+  // No current race/subrace pair hits this; the subrace's pick wins.
+  return subraceChoice;
 }
 
 export function getStartingHitPoints(hitDie, conModifier) {
@@ -653,10 +677,14 @@ export function findInventoryWeapons(
 export function buildStartingLanguages({
   raceLanguages = [],
   raceChoices = 0,
+  backgroundLanguages = [],
   backgroundChoices = 0,
   backgroundName,
 }) {
-  const known = raceLanguages.map((language) => language.name ?? language);
+  // Fixed languages from both race and background (e.g. Thieves' Cant).
+  const known = [...raceLanguages, ...backgroundLanguages].map(
+    (language) => language.name ?? language,
+  );
   const lines = [known.join(", ")].filter(Boolean);
   if (raceChoices > 0) lines.push(`Choose ${raceChoices} more (your race)`);
   if (backgroundChoices > 0) {

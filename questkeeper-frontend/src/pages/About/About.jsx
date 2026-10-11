@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import "./About.css";
 
 function About() {
@@ -44,6 +45,25 @@ function About() {
           >
             Creative Commons Attribution 4.0 International License
           </a>
+          .
+        </p>
+        <p className="about__credits-text">
+          Extra races, subraces, backgrounds and subclasses come from Tome of
+          Heroes (Kobold Press), the Tal'Dorei Campaign Setting (Green Ronin
+          Publishing) and Open5e's own originals, through{" "}
+          <a
+            className="about__link"
+            href="https://open5e.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Open5e
+          </a>
+          , under the Open Game License 1.0a. Each option is badged with its
+          book, and the full credits and license text are on the{" "}
+          <Link className="about__link" to="/attributions">
+            Attributions page
+          </Link>
           .
         </p>
         <p className="about__credits-text">

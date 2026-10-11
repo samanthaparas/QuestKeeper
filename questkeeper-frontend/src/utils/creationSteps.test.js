@@ -134,6 +134,17 @@ describe("getReviewIssues", () => {
     expect(issues.find((issue) => issue.step === "classSkills").message).toBe("Choose 1 more skill");
   });
 
+  it("asks for a background's own skill pick until it is made", () => {
+    const innkeeper = { id: "toh_innkeeper", name: "Innkeeper", skillChoice: { choose: 1 } };
+
+    expect(getReviewIssues({ ...complete, background: innkeeper })).toEqual([
+      { step: "classSkills", message: "Choose your Innkeeper skill" },
+    ]);
+    expect(
+      getReviewIssues({ ...complete, background: innkeeper, backgroundSkills: [{ index: "persuasion" }] }),
+    ).toEqual([]);
+  });
+
   it("does not ask for steps that do not apply to this character", () => {
     expect(getReviewIssues({ ...complete, spellChoices: null }).map((issue) => issue.step)).not.toContain(
       "classSpells",

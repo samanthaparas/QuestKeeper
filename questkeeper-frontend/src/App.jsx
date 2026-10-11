@@ -2,6 +2,7 @@ import { Routes, Route, Link } from "react-router-dom";
 import Header from "./components/Header/Header";
 import Home from "./pages/Home/Home";
 import About from "./pages/About/About";
+import AttributionsPage from "./pages/AttributionsPage/AttributionsPage";
 import SearchPage from "./pages/SearchPage/SearchPage";
 import RacesPage from "./pages/RacesPage";
 import ClassesPage from "./pages/ClassesPage";
@@ -92,6 +93,7 @@ function App() {
           }
         />
         <Route path="/about" element={<About />} />
+        <Route path="/attributions" element={<AttributionsPage />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/guide" element={<Guide />} />
         <Route path="*" element={<NotFound />} />

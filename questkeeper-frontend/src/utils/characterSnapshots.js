@@ -26,27 +26,38 @@ function mapStartingEquipment(raw) {
   }));
 }
 
-export function mapRaceToSnapshot(raw) {
-  const abilityScoreIncreases = raw.ability_bonuses.reduce((acc, item) => {
+// { strength: 2 } from the API's [{ ability_score: { name: "STR" }, bonus: 2 }]
+function mapAbilityScoreIncreases(raw) {
+  return (raw.ability_bonuses ?? []).reduce((acc, item) => {
     const abilityName = ABILITY_ABBREVIATION_TO_NAME[item.ability_score.name];
     acc[abilityName] = item.bonus;
     return acc;
   }, {});
+}
 
-  const abilityScoreChoice = raw.ability_bonus_options
-    ? {
-        choose: raw.ability_bonus_options.choose,
-        options: raw.ability_bonus_options.from.options.map((option) => ({
-          ability: ABILITY_ABBREVIATION_TO_NAME[option.ability_score.name],
-          bonus: option.bonus,
-        })),
-      }
-    : null;
+// "Pick N abilities to raise" (Half-Elf, Gearforged, Erina...), or null.
+function mapAbilityScoreChoice(raw) {
+  const options = raw.ability_bonus_options;
+  if (!options) return null;
+
+  return {
+    choose: options.choose,
+    options: options.from.options.map((option) => ({
+      ability: ABILITY_ABBREVIATION_TO_NAME[option.ability_score.name],
+      bonus: option.bonus,
+    })),
+  };
+}
+
+export function mapRaceToSnapshot(raw) {
+  const abilityScoreIncreases = mapAbilityScoreIncreases(raw);
+  const abilityScoreChoice = mapAbilityScoreChoice(raw);
 
   return {
     id: raw.index,
     name: raw.name,
-    source: "SRD 5.1",
+    // Which book this came from, shown on the sheet ("Tome of Heroes").
+    source: raw.source ?? "SRD 5.1",
     speed: raw.speed,
     abilityScoreIncreases,
     abilityScoreChoice,
@@ -68,7 +79,7 @@ export function mapClassToSnapshot(raw) {
   return {
     id: raw.index,
     name: raw.name,
-    source: "SRD 5.1",
+    source: raw.source ?? "SRD 5.1",
     hitDie: raw.hit_die,
     savingThrowProficiencies: raw.saving_throws.map(
       (item) => ABILITY_ABBREVIATION_TO_NAME[item.name],
@@ -84,28 +95,34 @@ export function mapBackgroundToSnapshot(raw) {
   return {
     id: raw.index,
     name: raw.name,
-    source: "SRD 5.1",
-    skillProficiencies: raw.starting_proficiencies.map((item) => ({
-      index: item.index.replace(/^skill-/, ""),
-      name: item.name.replace(/^Skill: /, ""),
-    })),
-    feature: raw.feature.name,
+    source: raw.source ?? "SRD 5.1",
+    skillProficiencies: (raw.starting_proficiencies ?? [])
+      .filter((item) => item.index.startsWith("skill-"))
+      .map((item) => ({
+        index: item.index.replace(/^skill-/, ""),
+        name: item.name.replace(/^Skill: /, ""),
+      })),
+    // Some Open5e backgrounds let you pick a skill (Innkeeper: Intimidation
+    // or Persuasion). Picked on the Skills step.
+    skillChoice: raw.skill_choice ?? null,
+    // Languages it always grants, like Thieves' Cant.
+    languages: (raw.languages ?? []).map((language) => language.name),
+    feature: raw.feature?.name ?? null,
     startingEquipment: mapStartingEquipment(raw),
+    // Open5e describes gear and tools in a sentence instead of an item list.
+    equipmentDescription: raw.equipment_description || null,
+    toolProficiencies: raw.tool_proficiencies_description || null,
   };
 }
 
 export function mapSubraceToSnapshot(raw) {
-  const abilityScoreIncreases = raw.ability_bonuses.reduce((acc, item) => {
-    const abilityName = ABILITY_ABBREVIATION_TO_NAME[item.ability_score.name];
-    acc[abilityName] = item.bonus;
-    return acc;
-  }, {});
-
   return {
     id: raw.index,
     name: raw.name,
-    abilityScoreIncreases,
-    traits: raw.racial_traits.map((trait) => trait.name),
+    source: raw.source ?? "SRD 5.1",
+    abilityScoreIncreases: mapAbilityScoreIncreases(raw),
+    abilityScoreChoice: mapAbilityScoreChoice(raw),
+    traits: (raw.racial_traits ?? []).map((trait) => trait.name),
   };
 }
 
@@ -113,6 +130,7 @@ export function mapSubclassToSnapshot(raw) {
   return {
     id: raw.index,
     name: raw.name,
+    source: raw.source ?? "SRD 5.1",
     flavor: raw.subclass_flavor,
   };
 }
