@@ -45,3 +45,18 @@ describe("sourceFilters", () => {
     ]);
   });
 });
+
+describe("source groups", () => {
+  it("groups entries that share a filter button", () => {
+    const items = [
+      { name: "Folk Hero", source: "Player's Handbook (2014)", sourceGroup: "Official books" },
+      { name: "City Watch", source: "Sword Coast Adventurer's Guide", sourceGroup: "Official books" },
+      { name: "Acolyte", source: "SRD 5.1" },
+    ];
+    expect(getSourceOptions(items)).toEqual([
+      { source: "SRD 5.1", count: 1 },
+      { source: "Official books", count: 2 },
+    ]);
+    expect(filterBySource(items, "Official books")).toHaveLength(2);
+  });
+});

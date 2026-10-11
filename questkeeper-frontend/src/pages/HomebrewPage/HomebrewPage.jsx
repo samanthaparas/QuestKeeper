@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { getRaces } from "../../utils/api";
 import {
@@ -23,10 +24,19 @@ import "./HomebrewPage.css";
 // share with you, and who you share yours with.
 function HomebrewPage() {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [entries, setEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [form, setForm] = useState(null); // the open form, or null
+  // The open form, or null. Arriving from "Make it as homebrew" on the
+  // Backgrounds page opens it with the name, book and link filled in.
+  const [form, setForm] = useState(() => {
+    const prefill = location.state?.newHomebrew;
+    if (!prefill?.category) return null;
+    const { category, ...fields } = prefill;
+    return { ...emptyHomebrewForm(category), ...fields };
+  });
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [srdRaces, setSrdRaces] = useState([]);
   const [ownerLabels, setOwnerLabels] = useState({}); // owner id -> "Sam"
@@ -37,6 +47,11 @@ function HomebrewPage() {
       .catch((loadError) => setError(loadError.message))
       .finally(() => setIsLoading(false));
   }, []);
+
+  // Forget the pre-fill once used, so a page refresh doesn't reopen the form.
+  useEffect(() => {
+    if (location.state?.newHomebrew) navigate(".", { replace: true, state: null });
+  }, [location.state, navigate]);
 
   useEffect(() => {
     loadEntries();

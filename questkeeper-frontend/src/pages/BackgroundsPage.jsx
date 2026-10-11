@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getBackgrounds, getBackgroundDetails } from "../utils/api";
 import { mapBackgroundToPanel } from "../utils/srdDetails";
+import { getCardPreview } from "../utils/beginnerGuidance";
 import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
@@ -43,6 +44,8 @@ function BackgroundsPage() {
           category: "Background",
           edition: item.edition,
           source: item.source,
+          sourceGroup: item.sourceGroup,
+          preview: getCardPreview("Background", item),
           description: "Select this background to view more details.",
           url: item.url,
         }));
@@ -106,9 +109,11 @@ function BackgroundsPage() {
         </p>
 
         <p className="search-page__note">
-          Includes the 2014 and 2024 SRD rulesets plus backgrounds from Tome of
-          Heroes, Open5e and the Tal'Dorei Campaign Setting, each labeled by
-          its source. Character creation uses the 2014-rules backgrounds.
+          Includes the 2014 and 2024 SRD rulesets, backgrounds from Tome of
+          Heroes, Open5e and the Tal'Dorei Campaign Setting, and the backgrounds
+          from the official books (with a short summary and a link to their full
+          rules). Each is labeled by its source. Character creation uses the
+          2014-rules backgrounds.
         </p>
 
         <SearchForm

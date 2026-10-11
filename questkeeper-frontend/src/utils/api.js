@@ -1,5 +1,11 @@
 import { loadHomebrew } from "./homebrewCache";
 import {
+  isBookEntryId,
+  findBookBackground,
+  listBookBackgrounds,
+} from "./bookBackgrounds";
+import { findBookRace, listBookRaces } from "./bookRaces";
+import {
   isHomebrewId,
   findHomebrew,
   findHomebrewTrait,
@@ -57,14 +63,20 @@ async function findInHomebrew(index, find) {
   return found;
 }
 
+// SRD, Open5e, homebrew and published-book races (names, summaries, links).
 export function getRaces() {
   return withHomebrewItems(
     requestJson("/races", "Failed to fetch races:"),
-    (entries) => listHomebrew(entries, "race"),
+    (entries) => [...listHomebrew(entries, "race"), ...listBookRaces()],
   );
 }
 
 export async function getRaceDetails(raceId) {
+  if (isBookEntryId(raceId)) {
+    const entry = findBookRace(raceId);
+    if (!entry) throw new Error(`Book race ${raceId} not found`);
+    return entry;
+  }
   if (isHomebrewId(raceId)) return findInHomebrew(raceId, findHomebrew);
 
   // SRD/Open5e races also list any homebrew subraces made for them.
@@ -100,21 +112,32 @@ export async function getClassDetails(classId) {
     : data;
 }
 
-// Homebrew backgrounds follow the 2014 rules, so they join that list only.
+// Homebrew and published-book backgrounds follow the 2014 rules, so they
+// join that list only. Book entries are names, summaries and links (see
+// bookBackgrounds.js); they're the same for everyone, logged in or not.
 export function getBackgrounds(edition) {
   return withHomebrewItems(
     requestJson(`/backgrounds${editionQuery(edition)}`, "Failed to fetch backgrounds:"),
     (entries) =>
       edition === "2024"
         ? []
-        : listHomebrew(entries, "background").map((item) => ({
-            ...item,
-            edition: "2014",
-          })),
+        : [
+            ...listHomebrew(entries, "background").map((item) => ({
+              ...item,
+              edition: "2014",
+            })),
+            ...listBookBackgrounds(),
+          ],
   );
 }
 
 export function getBackgroundDetails(backgroundId, edition) {
+  if (isBookEntryId(backgroundId)) {
+    const entry = findBookBackground(backgroundId);
+    return entry
+      ? Promise.resolve(entry)
+      : Promise.reject(new Error(`Book background ${backgroundId} not found`));
+  }
   if (isHomebrewId(backgroundId)) {
     return findInHomebrew(backgroundId, findHomebrew);
   }
@@ -256,6 +279,8 @@ export async function getSubclassFeatures(subclassId) {
 }
 
 export async function getRaceTraits(raceId) {
+  // Book races have no rules in QuestKeeper, so no traits to list.
+  if (isBookEntryId(raceId)) return [];
   if (isHomebrewId(raceId)) {
     return (await findInHomebrew(raceId, findHomebrew)).traits;
   }

@@ -2,13 +2,18 @@
   display: inline-block;
   padding: 1px 8px;
   border: 1px solid var(--qk-moss);
-  border-radius: 999px;
+  /* Pill-shaped on one line, still tidy if a long book name wraps. */
+  border-radius: 12px;
   background-color: var(--qk-moss-soft);
   color: var(--qk-text);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.6;
-  white-space: nowrap;
+  /* Long names ("Mordenkainen Presents: Monsters of the Multiverse") wrap
+     inside the card instead of spilling out of it. */
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
   vertical-align: middle;
 }
 
@@ -17,4 +22,11 @@
   border-color: var(--qk-border);
   background-color: var(--qk-surface-muted);
   color: var(--qk-text-muted);
+}
+
+/* Published books we link to but can't include. */
+.source-badge--official {
+  border-color: var(--qk-brass);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
 }

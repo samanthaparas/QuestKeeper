@@ -108,4 +108,28 @@ describe("HomebrewPage", () => {
     expect(deleteHomebrew).toHaveBeenCalledWith("r2");
     expect(screen.queryByText("Bat Folk")).not.toBeInTheDocument();
   });
+
+  it("opens a pre-filled form when sent from a book background", async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: "/homebrew",
+            state: {
+              newHomebrew: {
+                category: "background",
+                name: "City Watch",
+                basedOn: "Sword Coast Adventurer's Guide",
+                linkUrl: "https://dnd5e.wikidot.com/background:city-watch",
+              },
+            },
+          },
+        ]}
+      >
+        <HomebrewPage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByLabelText("Name")).toHaveValue("City Watch");
+    expect(screen.getByRole("button", { name: "Save background" })).toBeInTheDocument();
+  });
 });

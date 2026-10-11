@@ -17,6 +17,7 @@ import {
   mapSpellToPanel,
 } from "../../utils/srdDetails";
 import SearchForm from "../../components/SearchForm/SearchForm";
+import { getCardPreview } from "../../utils/beginnerGuidance";
 import DetailPanel from "../../components/DetailPanel/DetailPanel";
 import ResultCard from "../../components/ResultCard/ResultCard";
 import SourceFilter from "../../components/SourceFilter/SourceFilter";
@@ -45,6 +46,7 @@ function SearchPage() {
           index: item.index,
           name: item.name,
           category: "Class",
+          preview: getCardPreview("Class", item),
           description: "Select this class to view more details.",
           url: item.url,
         }));
@@ -54,6 +56,8 @@ function SearchPage() {
           name: item.name,
           category: "Race",
           source: item.source,
+          sourceGroup: item.sourceGroup,
+          preview: getCardPreview("Race", item),
           description: "Select this race to view more details.",
           url: item.url,
         }));
@@ -71,6 +75,8 @@ function SearchPage() {
           name: item.name,
           category: "Background",
           source: item.source,
+          sourceGroup: item.sourceGroup,
+          preview: getCardPreview("Background", item),
           description: "Select this background to view more details.",
           url: item.url,
         }));

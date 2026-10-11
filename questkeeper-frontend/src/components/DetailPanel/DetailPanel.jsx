@@ -1,4 +1,6 @@
 import SourceBadge from "../SourceBadge/SourceBadge";
+import BookEntryPanel from "../BookEntryPanel/BookEntryPanel";
+import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 import "./DetailPanel.css";
 
 const NEW_ISSUE_URL = "https://github.com/samanthaparas/QuestKeeper/issues/new";
@@ -77,7 +79,10 @@ function DetailPanel({ selectedResult, actions }) {
         {selectedResult.source ? (
           <>
             {" "}
-            <SourceBadge source={selectedResult.source} />
+            <SourceBadge
+              source={selectedResult.source}
+              official={selectedResult.sourceGroup === OFFICIAL_BOOKS_GROUP}
+            />
           </>
         ) : (
           selectedResult.edition && ` · ${selectedResult.edition} SRD`
@@ -135,7 +140,7 @@ function DetailPanel({ selectedResult, actions }) {
         </div>
       )}
 
-      {selectedResult.category === "Race" && (
+      {selectedResult.category === "Race" && !selectedResult.bookEntry && (
         <>
           <p>
             <strong>Speed:</strong> {selectedResult.speed}
@@ -287,7 +292,10 @@ function DetailPanel({ selectedResult, actions }) {
         </>
       )}
 
+      {selectedResult.bookEntry && <BookEntryPanel entry={selectedResult.bookEntry} />}
+
       {selectedResult.category === "Background" &&
+        !selectedResult.bookEntry &&
         selectedResult.edition !== "2024" && (
           <>
             <p>

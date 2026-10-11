@@ -3,7 +3,9 @@ import {
   getClassIcon,
   getBackgroundIcon,
 } from "../../utils/icons";
+import { useId } from "react";
 import SourceBadge from "../SourceBadge/SourceBadge";
+import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 import "./ResultCard.css";
 
 const ICON_RESOLVERS = {
@@ -13,6 +15,7 @@ const ICON_RESOLVERS = {
 };
 
 function ResultCard({ result, onClick, isSelected }) {
+  const previewId = useId();
   const resolveIcon = ICON_RESOLVERS[result.category];
   const iconSrc = resolveIcon ? resolveIcon(result.index) : null;
 
@@ -21,6 +24,7 @@ function ResultCard({ result, onClick, isSelected }) {
       className={`result-card ${isSelected ? "result-card--selected" : ""}`}
       type="button"
       onClick={onClick}
+      aria-describedby={result.preview ? previewId : undefined}
     >
       {iconSrc && (
         <img
@@ -38,7 +42,10 @@ function ResultCard({ result, onClick, isSelected }) {
           {result.source ? (
             <>
               {" "}
-              <SourceBadge source={result.source} />
+              <SourceBadge
+                source={result.source}
+                official={result.sourceGroup === OFFICIAL_BOOKS_GROUP}
+              />
             </>
           ) : (
             result.edition && ` · ${result.edition} SRD`
@@ -48,6 +55,21 @@ function ResultCard({ result, onClick, isSelected }) {
           <p className="result-card__tagline">{result.tagline}</p>
         )}
       </div>
+
+      {/* Hover or keyboard-focus preview: covers this card with its name and
+          summary, so it's clear which card it belongs to. */}
+      {result.preview && (
+        <span className="result-card__preview" aria-hidden="true">
+          <span className="result-card__preview-name">{result.name}</span>
+          <span>{result.preview}</span>
+        </span>
+      )}
+      {/* The same summary for screen readers, as the card's description. */}
+      {result.preview && (
+        <span id={previewId} hidden>
+          {result.preview}
+        </span>
+      )}
     </button>
   );
 }

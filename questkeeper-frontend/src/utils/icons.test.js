@@ -7,8 +7,22 @@ import {
   getSpellEffectIcon,
   getUiIcon,
 } from "./icons";
+import { BOOK_RACES } from "./bookRaces";
 
 describe("getRaceIcon", () => {
+  it("resolves every published-book race", () => {
+    for (const race of BOOK_RACES) {
+      expect(getRaceIcon(race.index), race.name).toBeTruthy();
+    }
+  });
+
+  it("resolves all Tome of Heroes races and shares Minotaur art", () => {
+    for (const id of ["alseid", "catfolk", "darakhul", "derro", "drow", "erina", "gearforged", "minotaur", "mushroomfolk", "satarre"]) {
+      expect(getRaceIcon(`toh_${id}`), id).toBeTruthy();
+    }
+    expect(getRaceIcon("toh_minotaur")).toBe(getRaceIcon("book_minotaur"));
+  });
+
   it("resolves a known race id", () => {
     expect(getRaceIcon("half-elf")).toBeTruthy();
   });

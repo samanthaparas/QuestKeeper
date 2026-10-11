@@ -1,8 +1,9 @@
 // Helpers for filtering lists by the book an entry comes from.
 
 // Entries without a source (e.g. spells, classes) are core SRD content.
+// Some entries share one filter button across many books ("Official books").
 export function getSourceLabel(item) {
-  return item?.source ?? "SRD";
+  return item?.sourceGroup ?? item?.source ?? "SRD";
 }
 
 // SRD first, then the other books A-Z, so the core rules always lead.

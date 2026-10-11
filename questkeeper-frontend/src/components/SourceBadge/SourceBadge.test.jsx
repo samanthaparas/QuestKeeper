@@ -20,3 +20,10 @@ describe("SourceBadge", () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+describe("SourceBadge for published books", () => {
+  it("uses the official style", () => {
+    render(<SourceBadge source="Player's Handbook (2014)" official />);
+    expect(screen.getByText("Player's Handbook (2014)")).toHaveClass("source-badge--official");
+  });
+});

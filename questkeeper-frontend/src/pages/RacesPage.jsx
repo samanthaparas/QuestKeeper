@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getRaces } from "../utils/api";
 import { loadRaceDetails, mapRaceToPanel } from "../utils/srdDetails";
-import { getRaceGuidance } from "../utils/beginnerGuidance";
+import { getRaceGuidance, getCardPreview } from "../utils/beginnerGuidance";
 import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
@@ -27,6 +27,8 @@ function RacesPage() {
           name: item.name,
           category: "Race",
           source: item.source,
+          sourceGroup: item.sourceGroup,
+          preview: getCardPreview("Race", item),
           description: "Select this race to view more details.",
           tagline: getRaceGuidance(item.index)?.tagline,
           url: item.url,
@@ -77,7 +79,8 @@ function RacesPage() {
 
         <p className="search-page__description">
           A race represents your character's ancestry and natural traits. Choose
-          this first when creating a character.
+          this first when creating a character. Races from the official books
+          have a short summary and a link to their full rules.
         </p>
 
         <SearchForm
