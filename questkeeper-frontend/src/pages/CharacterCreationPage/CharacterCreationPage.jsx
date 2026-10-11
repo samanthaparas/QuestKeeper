@@ -75,6 +75,8 @@ import EquipmentChoiceStep from "../../components/EquipmentChoiceStep/EquipmentC
 import { parseEquipmentChoices } from "../../utils/equipmentChoices";
 import CreationTips from "../../components/CreationTips/CreationTips";
 import Button from "../../components/Button/Button";
+import HomebrewDialog from "../../components/HomebrewDialog/HomebrewDialog";
+import { toHomebrewIndex } from "../../utils/homebrewMappers";
 
 const mapRaceToDetailPanelResult = mapRaceToPanel;
 const mapClassToDetailPanelResult = mapClassToPanel;
@@ -105,6 +107,11 @@ function CharacterCreationPage() {
   // Starting-gear choices and the gear they add (null until the Gear step).
   const [equipmentSelections, setEquipmentSelections] = useState(null);
   const [chosenEquipment, setChosenEquipment] = useState([]);
+  // "Make your own": the open homebrew pop-up, the entry just made (shown
+  // selected in its picker), and a counter that reloads the pickers.
+  const [homebrewRequest, setHomebrewRequest] = useState(null);
+  const [madePick, setMadePick] = useState(null); // { step, raw }
+  const [pickerVersion, setPickerVersion] = useState(0);
 
   const finalRace = mergeSubrace(race, subrace);
   const equipmentGroups = [
@@ -159,6 +166,7 @@ function CharacterCreationPage() {
   // Moving anywhere clears "I came here from Review" once we are back on it.
   function moveTo(key) {
     setStepKey(key);
+    setMadePick(null);
     if (key === "review") setCameFromReview(false);
   }
 
@@ -175,6 +183,36 @@ function CharacterCreationPage() {
   function editFromReview(key) {
     setCameFromReview(true);
     setStepKey(key);
+  }
+
+  // After "Make your own" saves: reload what lists it, then show it selected.
+  async function handleHomebrewCreated(saved) {
+    setHomebrewRequest(null);
+    const index = toHomebrewIndex(saved.id);
+
+    try {
+      let raw;
+      if (saved.category === "race") {
+        raw = await loadRaceDetails(index);
+      } else if (saved.category === "subrace") {
+        // The subrace list comes from the race, so reload the race first.
+        setRaceRaw(await loadRaceDetails(race.id));
+        raw = await getSubraceDetails(index);
+      } else if (saved.category === "subclass") {
+        setClassRaw(await loadClassDetails(characterClass.id));
+        raw = await getSubclassDetails(index);
+      } else {
+        raw = await getBackgroundDetails(index);
+      }
+      setMadePick({ step: stepKey, raw });
+    } finally {
+      setPickerVersion((version) => version + 1);
+    }
+  }
+
+  // The picker's starting selection: the entry just made, or the saved choice.
+  function pickerStart(step, chosenRaw) {
+    return madePick?.step === step ? madePick.raw : chosenRaw;
   }
 
   // The step list depends on the choice just made, so work out "next" from
@@ -394,6 +432,9 @@ function CharacterCreationPage() {
 
               {step === "race" && (
                 <PickerStep
+                  key={`race-${pickerVersion}`}
+                  onMakeOwn={() => setHomebrewRequest({ category: "race" })}
+                  makeOwnLabel="Make your own race"
                   title="Choose a Race"
                   description="Your character's race shapes their natural traits and abilities. Pick one to read what it offers before you commit."
                   category="Race"
@@ -402,7 +443,7 @@ function CharacterCreationPage() {
                   mapToDetailPanelResult={mapRaceToDetailPanelResult}
                   mapToSnapshot={mapRaceToSnapshot}
                   getTagline={(item) => getRaceGuidance(item.index)?.tagline}
-                  initialSelectedRaw={raceRaw}
+                  initialSelectedRaw={pickerStart("race", raceRaw)}
                   onChoose={(snapshot, raw) => {
                     setRace(snapshot);
                     setRaceRaw(raw);
@@ -422,6 +463,15 @@ function CharacterCreationPage() {
 
               {step === "subrace" && (
                 <PickerStep
+                  key={`subrace-${pickerVersion}`}
+                  onMakeOwn={() =>
+                    setHomebrewRequest({
+                      category: "subrace",
+                      data: { parentRace: race.id, parentRaceName: race.name },
+                      raceOptions: [{ index: race.id, name: race.name }],
+                    })
+                  }
+                  makeOwnLabel={`Make your own ${race?.name ?? ""} subrace`}
                   title="Choose a Subrace"
                   description={`${race?.name ?? "Your race"} has specific variants with their own traits and bonuses.`}
                   category="Subrace"
@@ -429,7 +479,7 @@ function CharacterCreationPage() {
                   fetchDetails={getSubraceDetails}
                   mapToDetailPanelResult={mapSubraceToPanel}
                   mapToSnapshot={mapSubraceToSnapshot}
-                  initialSelectedRaw={subraceRaw}
+                  initialSelectedRaw={pickerStart("subrace", subraceRaw)}
                   emptyMessage={`${race?.name ?? "This race"} has no subraces to choose from.`}
                   onChoose={(snapshot, raw) => {
                     setSubrace(snapshot);
@@ -497,6 +547,18 @@ function CharacterCreationPage() {
 
               {step === "subclass" && (
                 <PickerStep
+                  key={`subclass-${pickerVersion}`}
+                  // Only offered when the subclass is picked now (level 1).
+                  onMakeOwn={
+                    getSubclassLevel(characterClass?.id) === 1
+                      ? () =>
+                          setHomebrewRequest({
+                            category: "subclass",
+                            data: { parentClass: characterClass.id },
+                          })
+                      : undefined
+                  }
+                  makeOwnLabel={`Make your own ${characterClass?.name ?? ""} subclass`}
                   title="Choose a Subclass"
                   description={
                     getSubclassLevel(characterClass?.id) === 1
@@ -514,7 +576,7 @@ function CharacterCreationPage() {
                   fetchDetails={getSubclassDetails}
                   mapToDetailPanelResult={mapSubclassToPanel}
                   mapToSnapshot={mapSubclassToSnapshot}
-                  initialSelectedRaw={subclassRaw}
+                  initialSelectedRaw={pickerStart("subclass", subclassRaw)}
                   emptyMessage={`${characterClass?.name ?? "This class"} chooses a subclass later as you level up, not at creation.`}
                   onChoose={(snapshot, raw) => {
                     setSubclass(snapshot);
@@ -571,6 +633,9 @@ function CharacterCreationPage() {
 
               {step === "background" && (
                 <PickerStep
+                  key={`background-${pickerVersion}`}
+                  onMakeOwn={() => setHomebrewRequest({ category: "background" })}
+                  makeOwnLabel="Make your own background"
                   title="Choose a Background"
                   description="Your character's background covers their life before adventuring, including free skills and equipment."
                   category="Background"
@@ -578,7 +643,7 @@ function CharacterCreationPage() {
                   fetchDetails={getBackgroundDetails}
                   mapToDetailPanelResult={mapBackgroundToPanel}
                   mapToSnapshot={mapBackgroundToSnapshot}
-                  initialSelectedRaw={backgroundRaw}
+                  initialSelectedRaw={pickerStart("background", backgroundRaw)}
                   onChoose={(snapshot, raw) => {
                     setBackground(snapshot);
                     setBackgroundRaw(raw);
@@ -709,6 +774,11 @@ function CharacterCreationPage() {
           </div>
         </div>
       </div>
+      <HomebrewDialog
+        request={homebrewRequest}
+        onClose={() => setHomebrewRequest(null)}
+        onCreated={handleHomebrewCreated}
+      />
     </main>
   );
 }

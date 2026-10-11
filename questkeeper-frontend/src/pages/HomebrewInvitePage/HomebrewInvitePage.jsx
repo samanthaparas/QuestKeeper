@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getInvite, acceptInvite } from "../../utils/homebrewStore";
+import { refreshHomebrew } from "../../utils/homebrewCache";
 import Button from "../../components/Button/Button";
 import "./HomebrewInvitePage.css";
 
@@ -31,6 +32,8 @@ function HomebrewInvitePage() {
     setIsAccepting(true);
     try {
       await acceptInvite(code);
+      // Their homebrew should show up in pickers straight away.
+      refreshHomebrew();
       navigate("/homebrew");
     } catch (acceptError) {
       setError(acceptError.message ?? "Could not accept the invite.");
