@@ -10,6 +10,11 @@ function feedbackUrl({ name, category }) {
   return `${NEW_ISSUE_URL}?title=${encodeURIComponent(`Feedback: ${about}`)}`;
 }
 
+// Only real web links become clickable (never "javascript:" and the like).
+function isWebLink(url) {
+  return /^https?:\/\//i.test(url ?? "");
+}
+
 // Paragraphs and simple tables from the SRD text (spell descriptions, etc.).
 export function SrdBlocks({ blocks }) {
   return blocks.map((block, index) =>
@@ -78,6 +83,23 @@ function DetailPanel({ selectedResult, actions }) {
           selectedResult.edition && ` · ${selectedResult.edition} SRD`
         )}
       </p>
+
+      {/* Homebrew: what it's based on, and a link to the full write-up. */}
+      {(selectedResult.basedOn || isWebLink(selectedResult.linkUrl)) && (
+        <p className="detail-panel__based-on">
+          {selectedResult.basedOn && <>Based on {selectedResult.basedOn}</>}
+          {selectedResult.basedOn && isWebLink(selectedResult.linkUrl) && " · "}
+          {isWebLink(selectedResult.linkUrl) && (
+            <a
+              href={selectedResult.linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View the source
+            </a>
+          )}
+        </p>
+      )}
 
       {/* A heads-up when the open data is missing something (e.g. Darakhul's speed). */}
       {selectedResult.dmNote && (
@@ -411,9 +433,25 @@ function DetailPanel({ selectedResult, actions }) {
       )}
 
       {selectedResult.category === "Subclass" && (
-        <p>
-          <strong>{selectedResult.flavor}</strong>
-        </p>
+        <>
+          <p>
+            <strong>{selectedResult.flavor}</strong>
+          </p>
+
+          {selectedResult.features?.length > 0 && (
+            <ul className="detail-panel__list detail-panel__list--rich">
+              {selectedResult.features.map((feature, index) => (
+                <li key={`${feature.name}-${index}`}>
+                  <strong>
+                    {feature.name}
+                    {feature.level ? ` (level ${feature.level})` : ""}.
+                  </strong>{" "}
+                  {feature.description}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
 
       {selectedResult.category === "Spell" && selectedResult.facts && (

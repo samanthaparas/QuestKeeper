@@ -360,6 +360,10 @@ export function mapRaceToPanel(data) {
     category: "Race",
     source: data.source,
     dmNote: data.dm_note,
+    // Homebrew extras: the author's summary, what it's based on, and a link.
+    description: data.summary || undefined,
+    basedOn: data.based_on,
+    linkUrl: data.link_url,
     speed: data.speed,
     size: data.size,
     sizeDescription: data.size_description,
@@ -378,6 +382,8 @@ export function mapSubraceToPanel(data) {
     name: data.name,
     category: "Subrace",
     source: data.source,
+    basedOn: data.based_on,
+    linkUrl: data.link_url,
     description: descriptionFromSrd(data.desc),
     abilityBonuses: formatAbilityBonuses(data),
     traits: (data.racial_traits ?? []).map((trait) => trait.name),
@@ -389,8 +395,16 @@ export function mapSubclassToPanel(data) {
     name: data.name,
     category: "Subclass",
     source: data.source,
+    basedOn: data.based_on,
+    linkUrl: data.link_url,
     description: toLines(data.desc).join(" "),
     flavor: data.subclass_flavor,
+    // Open5e and homebrew subclasses include their features; the SRD's don't.
+    features: (data.features ?? []).map((feature) => ({
+      name: feature.name,
+      level: feature.level,
+      description: descriptionFromSrd(feature.desc),
+    })),
   };
 }
 
@@ -421,6 +435,9 @@ export function mapBackgroundToPanel(data) {
     category: "Background",
     edition: "2014",
     source: data.source,
+    description: data.summary || undefined,
+    basedOn: data.based_on,
+    linkUrl: data.link_url,
     startingProficiencies: (data.starting_proficiencies ?? []).map(
       (item) => item.name,
     ),

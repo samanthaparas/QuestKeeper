@@ -900,12 +900,13 @@ describe("subrace and subclass panels", () => {
         desc: ["Sneaky.", "Very sneaky."],
         subclass_flavor: "Roguish Archetype",
       }),
-    ).toEqual({
+    ).toMatchObject({
       name: "Cat Burglar",
       category: "Subclass",
       source: "Tome of Heroes",
       description: "Sneaky. Very sneaky.",
       flavor: "Roguish Archetype",
+      features: [],
     });
   });
 });

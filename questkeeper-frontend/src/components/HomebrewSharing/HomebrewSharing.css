@@ -1,0 +1,140 @@
+.homebrew-sharing {
+  display: grid;
+  gap: 16px;
+  padding: 20px 24px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.homebrew-sharing__title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 22px;
+}
+
+.homebrew-sharing__intro,
+.homebrew-sharing__hint,
+.homebrew-sharing__empty {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.homebrew-sharing__error {
+  margin: 0;
+  color: var(--qk-danger);
+  font-weight: 600;
+}
+
+/* Each part (tables, invites, people) sits in its own light box. */
+.homebrew-sharing__block {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface-muted);
+}
+
+.homebrew-sharing__heading {
+  margin: 0;
+  font-size: 16px;
+}
+
+.homebrew-sharing__check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.homebrew-sharing__tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background-color: var(--qk-moss-soft);
+  color: var(--qk-moss);
+  font-size: 12px;
+}
+
+.homebrew-sharing__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.homebrew-sharing__field {
+  display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.homebrew-sharing__label {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.homebrew-sharing__input {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: #fff;
+  color: var(--qk-text);
+  font: inherit;
+}
+
+/* The new link: wraps on phones instead of running off the screen. */
+.homebrew-sharing__link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.homebrew-sharing__code {
+  flex: 1 1 240px;
+  padding: 8px 10px;
+  border-radius: var(--qk-radius-small);
+  background-color: #fff;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.homebrew-sharing__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.homebrew-sharing__item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.homebrew-sharing__meta {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.homebrew-sharing__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .homebrew-sharing {
+    padding: 16px;
+  }
+}

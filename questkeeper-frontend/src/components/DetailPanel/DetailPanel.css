@@ -45,6 +45,16 @@
   line-height: 1.6;
 }
 
+.detail-panel__based-on {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.detail-panel__based-on a {
+  color: var(--qk-terracotta-hover);
+  font-weight: 600;
+}
+
 /* Heads-up box, e.g. "check this race's speed with your DM". */
 .detail-panel__note {
   padding: 10px 14px;

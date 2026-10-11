@@ -1,0 +1,152 @@
+.homebrew-page {
+  min-height: 100vh;
+  background-color: var(--qk-background);
+  color: var(--qk-text);
+  padding: 48px 32px;
+}
+
+.homebrew-page__content {
+  max-width: var(--qk-content-width);
+  margin: 0 auto;
+  display: grid;
+  gap: 24px;
+}
+
+.homebrew-page__title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 36px;
+}
+
+.homebrew-page__description {
+  max-width: var(--qk-reading-width);
+  margin: 0;
+  line-height: 1.6;
+  color: var(--qk-text-muted);
+}
+
+.homebrew-page__error {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--qk-danger);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-danger);
+}
+
+.homebrew-page__new {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.homebrew-page__new-label {
+  font-weight: 700;
+}
+
+.homebrew-page__section-title {
+  margin: 0 0 12px;
+  font-family: var(--qk-font-display);
+  font-size: 22px;
+}
+
+/* Same pill look as the source filter on the reference pages. */
+.homebrew-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.homebrew-page__filter {
+  padding: 6px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.homebrew-page__filter--active {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+}
+
+.homebrew-page__filter:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.homebrew-page__empty {
+  margin: 0;
+  color: var(--qk-text-muted);
+}
+
+.homebrew-page__list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.homebrew-page__item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.homebrew-page__item-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.homebrew-page__item-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.homebrew-page__tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.homebrew-page__tag--shared {
+  background-color: var(--qk-moss-soft);
+  color: var(--qk-moss);
+}
+
+.homebrew-page__item-meta {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.homebrew-page__item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .homebrew-page {
+    padding: 24px 16px;
+  }
+}
