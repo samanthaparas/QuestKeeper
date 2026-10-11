@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { to: "/characters", label: "My Characters" },
   { to: "/tables", label: "Tables" },
   { to: "/library", label: "Monster Library" },
+  { to: "/homebrew", label: "Homebrew" },
   { to: "/about", label: "About" },
 ];
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { signIn, signUp } from "../../utils/auth";
 import Button from "../../components/Button/Button";
 import "./AuthPage.css";
@@ -11,6 +11,7 @@ function AuthPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -27,7 +28,11 @@ function AuthPage() {
       return;
     }
 
-    navigate("/characters");
+    // Back to the page that sent them here (only QuestKeeper's own pages).
+    const from = location.state?.from;
+    navigate(typeof from === "string" && from.startsWith("/") && !from.startsWith("//")
+      ? from
+      : "/characters");
   }
 
   return (

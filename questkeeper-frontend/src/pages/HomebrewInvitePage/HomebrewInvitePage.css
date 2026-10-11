@@ -1,0 +1,51 @@
+.homebrew-invite {
+  min-height: 70vh;
+  padding: 48px 16px;
+  background-color: var(--qk-background);
+  color: var(--qk-text);
+}
+
+.homebrew-invite__card {
+  display: grid;
+  gap: 16px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 24px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.homebrew-invite__title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 30px;
+}
+
+.homebrew-invite__text {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.homebrew-invite__hint {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.homebrew-invite__hint a {
+  color: var(--qk-terracotta-hover);
+  font-weight: 600;
+}
+
+.homebrew-invite__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.homebrew-invite__error {
+  margin: 0;
+  color: var(--qk-danger);
+  font-weight: 600;
+}

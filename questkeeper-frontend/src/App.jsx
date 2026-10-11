@@ -14,6 +14,8 @@ import CharacterSheetPage from "./pages/CharacterSheetPage/CharacterSheetPage";
 import TablesPage from "./pages/TablesPage/TablesPage";
 import TablePage from "./pages/TablePage/TablePage";
 import LibraryPage from "./pages/LibraryPage/LibraryPage";
+import HomebrewPage from "./pages/HomebrewPage/HomebrewPage";
+import HomebrewInvitePage from "./pages/HomebrewInvitePage/HomebrewInvitePage";
 import Guide from "./pages/Guide/Guide";
 import AuthPage from "./pages/AuthPage/AuthPage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
@@ -89,6 +91,22 @@ function App() {
           element={
             <ProtectedRoute>
               <LibraryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/homebrew"
+          element={
+            <ProtectedRoute>
+              <HomebrewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/homebrew/invite/:code"
+          element={
+            <ProtectedRoute>
+              <HomebrewInvitePage />
             </ProtectedRoute>
           }
         />
