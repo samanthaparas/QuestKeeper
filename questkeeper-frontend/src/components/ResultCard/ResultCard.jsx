@@ -3,6 +3,7 @@ import {
   getClassIcon,
   getBackgroundIcon,
 } from "../../utils/icons";
+import SourceBadge from "../SourceBadge/SourceBadge";
 import "./ResultCard.css";
 
 const ICON_RESOLVERS = {
@@ -33,7 +34,15 @@ function ResultCard({ result, onClick, isSelected }) {
         <h3 className="result-card__name">{result.name}</h3>
         <p className="result-card__type">
           {result.category}
-          {result.edition && ` · ${result.edition} SRD`}
+          {/* The badge names the book, so the "· 2014 SRD" text is only a fallback. */}
+          {result.source ? (
+            <>
+              {" "}
+              <SourceBadge source={result.source} />
+            </>
+          ) : (
+            result.edition && ` · ${result.edition} SRD`
+          )}
         </p>
         {result.tagline && (
           <p className="result-card__tagline">{result.tagline}</p>

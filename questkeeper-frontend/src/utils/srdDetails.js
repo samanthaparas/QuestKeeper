@@ -289,9 +289,38 @@ function listNames(items) {
   return (items ?? []).map((item) => item.name).join(", ");
 }
 
+// "DEX +2, plus +1 to 1 other abilities of your choice (WIS or CHA)". Names
+// the options only when there are just a few (Erina, Delver).
+function formatAbilityBonuses(data) {
+  const parts = (data.ability_bonuses ?? []).map(
+    (ability) => `${ability.ability_score.name} +${ability.bonus}`,
+  );
+
+  const choice = data.ability_bonus_options;
+  if (choice) {
+    const options = choice.from?.options ?? [];
+    const bonus = options[0]?.bonus ?? 1;
+    const names = options
+      .map((option) => option.ability_score?.name)
+      .filter(Boolean);
+    const limited =
+      names.length > 0 && names.length <= 3 ? ` (${names.join(" or ")})` : "";
+    const other = parts.length > 0 ? "other " : "";
+    parts.push(
+      `${parts.length > 0 ? "plus " : ""}+${bonus} to ${choice.choose} ${other}abilities of your choice${limited}`,
+    );
+  }
+
+  return parts.join(", ");
+}
+
 // A race, plus the full text of each of its racial traits.
 export async function loadRaceDetails(raceId) {
   const race = await getRaceDetails(raceId);
+
+  // Open5e races arrive with their trait text already included.
+  if (race.traitDetails?.length > 0) return race;
+
   const results = await Promise.allSettled(
     (race.traits ?? []).map((trait) => getTraitDetails(trait.index)),
   );
@@ -305,13 +334,7 @@ export async function loadRaceDetails(raceId) {
 }
 
 export function mapRaceToPanel(data) {
-  const bonuses = (data.ability_bonuses ?? []).map(
-    (ability) => `${ability.ability_score.name} +${ability.bonus}`,
-  );
-  const choice = data.ability_bonus_options;
-  const abilityBonuses = choice
-    ? `${bonuses.join(", ")}, plus +${choice.from.options[0]?.bonus ?? 1} to ${choice.choose} other abilities of your choice`
-    : bonuses.join(", ");
+  const abilityBonuses = formatAbilityBonuses(data);
 
   const languageNames = listNames(data.languages);
   const extraLanguages = data.language_options?.choose;
@@ -334,6 +357,8 @@ export function mapRaceToPanel(data) {
   return {
     name: data.name,
     category: "Race",
+    source: data.source,
+    dmNote: data.dm_note,
     speed: data.speed,
     size: data.size,
     sizeDescription: data.size_description,
@@ -344,6 +369,76 @@ export function mapRaceToPanel(data) {
     traits,
     subraces: listNames(data.subraces),
     guidance: getRaceGuidance(data.index),
+  };
+}
+
+export function mapSubraceToPanel(data) {
+  return {
+    name: data.name,
+    category: "Subrace",
+    source: data.source,
+    description: descriptionFromSrd(data.desc),
+    abilityBonuses: formatAbilityBonuses(data),
+    traits: (data.racial_traits ?? []).map((trait) => trait.name),
+  };
+}
+
+export function mapSubclassToPanel(data) {
+  return {
+    name: data.name,
+    category: "Subclass",
+    source: data.source,
+    description: toLines(data.desc).join(" "),
+    flavor: data.subclass_flavor,
+  };
+}
+
+// Works for SRD 2014 and Open5e backgrounds. Open5e ones have no gold or
+// personality tables, and describe gear and tools in sentences, so every
+// field here is optional.
+export function mapBackgroundToPanel(data) {
+  const fixedLanguages = listNames(data.languages);
+  const languageChoices = data.language_options?.choose ?? 0;
+  // "Thieves' Cant", "2 of your choice", or both joined with "plus".
+  const languages = [
+    fixedLanguages,
+    languageChoices > 0 ? `${languageChoices} of your choice` : "",
+  ]
+    .filter(Boolean)
+    .join(", plus ");
+
+  const skillChoice = data.skill_choice
+    ? `Choose ${data.skill_choice.choose}: ${data.skill_choice.options
+        .map((option) => option.name)
+        .join(" or ")}`
+    : null;
+
+  const choose = (table) => (table ? `Choose ${table.choose}` : null);
+
+  return {
+    name: data.name,
+    category: "Background",
+    edition: "2014",
+    source: data.source,
+    startingProficiencies: (data.starting_proficiencies ?? []).map(
+      (item) => item.name,
+    ),
+    skillChoice,
+    tools: data.tool_proficiencies_description || null,
+    languages: languages || null,
+    startingEquipment: (data.starting_equipment ?? []).map(
+      (item) => `${item.equipment.name} x${item.quantity}`,
+    ),
+    equipmentText: data.equipment_description || null,
+    startingGold: data.starting_gold
+      ? `${data.starting_gold.quantity} ${data.starting_gold.unit}`
+      : null,
+    featureName: data.feature?.name ?? null,
+    featureDescription: toLines(data.feature?.desc).join(" "),
+    personalityTraits: choose(data.personality_traits),
+    ideals: choose(data.ideals),
+    bonds: choose(data.bonds),
+    flaws: choose(data.flaws),
   };
 }
 

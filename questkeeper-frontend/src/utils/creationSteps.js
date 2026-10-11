@@ -71,6 +71,7 @@ export function getReviewIssues({
   subclass,
   background,
   classSkills = [],
+  backgroundSkills = [],
   spellChoices,
   abilityScores,
   equipmentChosen = false,
@@ -91,6 +92,12 @@ export function getReviewIssues({
   if (characterClass && classSkills.length < skillsNeeded) {
     const missing = skillsNeeded - classSkills.length;
     add("classSkills", `Choose ${missing} more skill${missing === 1 ? "" : "s"}`);
+  }
+
+  // Backgrounds like Innkeeper add their own skill pick on the Skills step.
+  const backgroundNeeded = background?.skillChoice?.choose ?? 0;
+  if (background && backgroundSkills.length < backgroundNeeded) {
+    add("classSkills", `Choose your ${background.name} skill`);
   }
 
   if (steps.includes("classSpells") && !spellChoices) {

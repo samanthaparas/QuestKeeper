@@ -45,6 +45,52 @@ export const RACE_GUIDANCE = {
     tagline: "Devilish, with innate magic",
     goodIf: "a devilish look, resistance to fire, and a little built-in magic",
   },
+
+  // Tome of Heroes races (via Open5e), keyed by their Open5e IDs.
+  toh_alseid: {
+    tagline: "Swift deer-folk of the forest",
+    goodIf: "to be fast on four hooves and at home in the wild woods",
+  },
+  toh_catfolk: {
+    tagline: "Nimble hunter with claws",
+    goodIf: "to be quick and stealthy, with claws and sharp senses",
+  },
+  toh_darakhul: {
+    tagline: "Undead ghoul who keeps their mind",
+    goodIf:
+      "to play a dark, undead character who is hard to kill but hates sunlight",
+  },
+  toh_derro: {
+    tagline: "Small, strange and unpredictable",
+    goodIf:
+      "to be a small, slightly unhinged underground dweller who shrugs off magic",
+  },
+  toh_drow: {
+    tagline: "Shadow elf from deep below",
+    goodIf:
+      "to be a sharp-minded elf from the underground with great dark vision",
+  },
+  toh_erina: {
+    tagline: "Spiky, friendly hedgehog-folk",
+    goodIf: "to be small, social and tough, with spines and a knack for digging",
+  },
+  toh_gearforged: {
+    tagline: "A soul in a clockwork body",
+    goodIf:
+      "to be a living machine that doesn't need to eat or breathe, built from any ancestry",
+  },
+  toh_minotaur: {
+    tagline: "Horned charger with a sense of direction",
+    goodIf: "to be big and strong, charging in with horns and never getting lost",
+  },
+  toh_mushroomfolk: {
+    tagline: "Calm, hardy fungus-folk",
+    goodIf: "to play something truly unusual: a patient, hardy mushroom person",
+  },
+  toh_satarre: {
+    tagline: "Lanky keeper of dark secrets",
+    goodIf: "to be a tough, clever outsider drawn to death and forbidden lore",
+  },
 };
 
 export const CLASS_GUIDANCE = {

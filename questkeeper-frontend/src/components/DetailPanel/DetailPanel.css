@@ -45,6 +45,17 @@
   line-height: 1.6;
 }
 
+/* Heads-up box, e.g. "check this race's speed with your DM". */
+.detail-panel__note {
+  padding: 10px 14px;
+  border-left: 4px solid var(--qk-brass);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .detail-panel p {
   margin: 0 0 14px;
   color: var(--qk-text);

@@ -1,3 +1,4 @@
+import SourceBadge from "../SourceBadge/SourceBadge";
 import "./DetailPanel.css";
 
 const NEW_ISSUE_URL = "https://github.com/samanthaparas/QuestKeeper/issues/new";
@@ -68,8 +69,20 @@ function DetailPanel({ selectedResult, actions }) {
 
       <p className="detail-panel__type">
         {selectedResult.category}
-        {selectedResult.edition && ` · ${selectedResult.edition} SRD`}
+        {selectedResult.source ? (
+          <>
+            {" "}
+            <SourceBadge source={selectedResult.source} />
+          </>
+        ) : (
+          selectedResult.edition && ` · ${selectedResult.edition} SRD`
+        )}
       </p>
+
+      {/* A heads-up when the open data is missing something (e.g. Darakhul's speed). */}
+      {selectedResult.dmNote && (
+        <p className="detail-panel__note">{selectedResult.dmNote}</p>
+      )}
 
       {selectedResult.description && (
         <p className="detail-panel__description">
@@ -249,46 +262,81 @@ function DetailPanel({ selectedResult, actions }) {
               ))}
             </ul>
 
-            <p>
-              <strong>Languages:</strong> {selectedResult.languages}
-            </p>
+            {/* e.g. Innkeeper: "Choose 1: Intimidation or Persuasion" */}
+            {selectedResult.skillChoice && (
+              <p>
+                <strong>Skill Choice:</strong> {selectedResult.skillChoice}
+              </p>
+            )}
 
-            <p>
-              <strong>Starting Equipment:</strong>
-            </p>
+            {selectedResult.tools && (
+              <p>
+                <strong>Tools:</strong> {selectedResult.tools}
+              </p>
+            )}
 
-            <ul className="detail-panel__list detail-panel__list--chips">
-              {selectedResult.startingEquipment?.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+            {selectedResult.languages && (
+              <p>
+                <strong>Languages:</strong> {selectedResult.languages}
+              </p>
+            )}
 
-            <p>
-              <strong>Starting Gold:</strong> {selectedResult.startingGold}
-            </p>
+            {(selectedResult.startingEquipment?.length > 0 ||
+              selectedResult.equipmentText) && (
+              <>
+                <p>
+                  <strong>Starting Equipment:</strong>
+                </p>
 
-            <p>
-              <strong>Feature:</strong> {selectedResult.featureName}
-            </p>
+                {/* SRD lists items; Open5e describes the gear in a sentence. */}
+                {selectedResult.startingEquipment?.length > 0 ? (
+                  <ul className="detail-panel__list detail-panel__list--chips">
+                    {selectedResult.startingEquipment.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>{selectedResult.equipmentText}</p>
+                )}
+              </>
+            )}
 
-            <p>{selectedResult.featureDescription}</p>
+            {selectedResult.startingGold && (
+              <p>
+                <strong>Starting Gold:</strong> {selectedResult.startingGold}
+              </p>
+            )}
 
-            <p>
-              <strong>Personality Traits:</strong>{" "}
-              {selectedResult.personalityTraits}
-            </p>
+            {selectedResult.featureName && (
+              <>
+                <p>
+                  <strong>Feature:</strong> {selectedResult.featureName}
+                </p>
 
-            <p>
-              <strong>Ideals:</strong> {selectedResult.ideals}
-            </p>
+                <p>{selectedResult.featureDescription}</p>
+              </>
+            )}
 
-            <p>
-              <strong>Bonds:</strong> {selectedResult.bonds}
-            </p>
+            {selectedResult.personalityTraits && (
+              <>
+                <p>
+                  <strong>Personality Traits:</strong>{" "}
+                  {selectedResult.personalityTraits}
+                </p>
 
-            <p>
-              <strong>Flaws:</strong> {selectedResult.flaws}
-            </p>
+                <p>
+                  <strong>Ideals:</strong> {selectedResult.ideals}
+                </p>
+
+                <p>
+                  <strong>Bonds:</strong> {selectedResult.bonds}
+                </p>
+
+                <p>
+                  <strong>Flaws:</strong> {selectedResult.flaws}
+                </p>
+              </>
+            )}
           </>
         )}
 

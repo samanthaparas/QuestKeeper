@@ -79,3 +79,8 @@
   border-color: var(--qk-terracotta);
   background-color: var(--qk-terracotta-soft);
 }
+
+/* The background's skill pick sits above the class's, with a gap. */
+.class-skill-choice-step__section {
+  margin-bottom: 32px;
+}

@@ -50,6 +50,9 @@ import {
   loadClassDetails,
   mapRaceToPanel,
   mapClassToPanel,
+  mapSubraceToPanel,
+  mapSubclassToPanel,
+  mapBackgroundToPanel,
 } from "../../utils/srdDetails";
 import PickerStep from "../../components/PickerStep/PickerStep";
 import AbilityScoreStep from "../../components/AbilityScoreStep/AbilityScoreStep";
@@ -76,53 +79,6 @@ import Button from "../../components/Button/Button";
 const mapRaceToDetailPanelResult = mapRaceToPanel;
 const mapClassToDetailPanelResult = mapClassToPanel;
 
-function mapSubraceToDetailPanelResult(data) {
-  const abilityBonuses = data.ability_bonuses
-    .map((ability) => `${ability.ability_score.name} +${ability.bonus}`)
-    .join(", ");
-
-  return {
-    name: data.name,
-    category: "Subrace",
-    description: data.desc,
-    abilityBonuses,
-    traits: data.racial_traits.map((trait) => trait.name),
-  };
-}
-
-function mapSubclassToDetailPanelResult(data) {
-  return {
-    name: data.name,
-    category: "Subclass",
-    description: data.desc.join(" "),
-    flavor: data.subclass_flavor,
-  };
-}
-
-function mapBackgroundToDetailPanelResult(data) {
-  const startingProficiencies = data.starting_proficiencies.map(
-    (item) => item.name,
-  );
-  const startingEquipment = data.starting_equipment.map(
-    (item) => `${item.equipment.name} x${item.quantity}`,
-  );
-
-  return {
-    name: data.name,
-    category: "Background",
-    startingProficiencies,
-    languages: `Choose ${data.language_options.choose} languages`,
-    startingEquipment,
-    startingGold: `${data.starting_gold.quantity} ${data.starting_gold.unit}`,
-    featureName: data.feature.name,
-    featureDescription: data.feature.desc.join(" "),
-    personalityTraits: `Choose ${data.personality_traits.choose}`,
-    ideals: `Choose ${data.ideals.choose}`,
-    bonds: `Choose ${data.bonds.choose}`,
-    flaws: `Choose ${data.flaws.choose}`,
-  };
-}
-
 function CharacterCreationPage() {
   const navigate = useNavigate();
   const [stepKey, setStepKey] = useState("name");
@@ -132,6 +88,8 @@ function CharacterCreationPage() {
   const [background, setBackground] = useState(null);
   const [abilityScores, setAbilityScores] = useState(null);
   const [classSkills, setClassSkills] = useState([]);
+  // Skills picked from a background's own choice (Innkeeper, Lyceum Student).
+  const [backgroundSkills, setBackgroundSkills] = useState([]);
   const [spellChoices, setSpellChoices] = useState(null);
   const [raceRaw, setRaceRaw] = useState(null);
   const [classRaw, setClassRaw] = useState(null);
@@ -173,6 +131,7 @@ function CharacterCreationPage() {
     subclass,
     background,
     classSkills,
+    backgroundSkills,
     spellChoices,
     abilityScores,
     equipmentChosen: equipmentSelections !== null,
@@ -252,7 +211,7 @@ function CharacterCreationPage() {
     (background?.skillProficiencies ?? []).forEach((skill) => {
       skills[skill.index] = skill.name;
     });
-    classSkills.forEach((skill) => {
+    [...backgroundSkills, ...classSkills].forEach((skill) => {
       skills[skill.index] = skill.name;
     });
 
@@ -312,10 +271,28 @@ function CharacterCreationPage() {
     const languages = buildStartingLanguages({
       raceLanguages: raceRaw?.languages,
       raceChoices: raceRaw?.language_options?.choose ?? 0,
+      backgroundLanguages: background?.languages ?? [],
       backgroundChoices: backgroundRaw?.language_options?.choose ?? 0,
       backgroundName: background?.name,
     });
-    const proficiencies = buildStartingProficiencies(classProficiencies);
+    const proficiencies = [
+      ...buildStartingProficiencies(classProficiencies),
+      // Open5e backgrounds describe tools in a sentence; keep it as one entry.
+      ...(background?.toolProficiencies &&
+      !/^no additional/i.test(background.toolProficiencies)
+        ? [
+            {
+              index: crypto.randomUUID(),
+              name: background.toolProficiencies,
+              description: `From your background (${background.name})`,
+            },
+          ]
+        : []),
+    ];
+    // Same for gear: it can't become item rows, so it goes in the notes.
+    const notes = background?.equipmentDescription
+      ? `Starting gear from ${background.name}: ${background.equipmentDescription}`
+      : "";
 
     const sheet = createCharacterSheet({
       name,
@@ -323,6 +300,7 @@ function CharacterCreationPage() {
       attacks,
       languages,
       proficiencies,
+      notes,
       race: finalRace,
       class: finalClass,
       background,
@@ -449,7 +427,7 @@ function CharacterCreationPage() {
                   category="Subrace"
                   fetchList={() => Promise.resolve(raceRaw?.subraces ?? [])}
                   fetchDetails={getSubraceDetails}
-                  mapToDetailPanelResult={mapSubraceToDetailPanelResult}
+                  mapToDetailPanelResult={mapSubraceToPanel}
                   mapToSnapshot={mapSubraceToSnapshot}
                   initialSelectedRaw={subraceRaw}
                   emptyMessage={`${race?.name ?? "This race"} has no subraces to choose from.`}
@@ -534,7 +512,7 @@ function CharacterCreationPage() {
                     )
                   }
                   fetchDetails={getSubclassDetails}
-                  mapToDetailPanelResult={mapSubclassToDetailPanelResult}
+                  mapToDetailPanelResult={mapSubclassToPanel}
                   mapToSnapshot={mapSubclassToSnapshot}
                   initialSelectedRaw={subclassRaw}
                   emptyMessage={`${characterClass?.name ?? "This class"} chooses a subclass later as you level up, not at creation.`}
@@ -555,8 +533,17 @@ function CharacterCreationPage() {
                   grantedSkills={background?.skillProficiencies ?? []}
                   grantedFrom={background?.name}
                   initialSelected={classSkills.map((s) => s.index)}
-                  onNext={(selected) => {
+                  backgroundChoice={
+                    background?.skillChoice
+                      ? { from: background.name, ...background.skillChoice }
+                      : null
+                  }
+                  initialBackgroundSelected={backgroundSkills.map(
+                    (s) => s.index,
+                  )}
+                  onNext={(selected, fromBackground = []) => {
                     setClassSkills(selected);
+                    setBackgroundSkills(fromBackground);
                     goNext("classSkills");
                   }}
                   onBack={goBack}
@@ -589,7 +576,7 @@ function CharacterCreationPage() {
                   category="Background"
                   fetchList={getBackgrounds}
                   fetchDetails={getBackgroundDetails}
-                  mapToDetailPanelResult={mapBackgroundToDetailPanelResult}
+                  mapToDetailPanelResult={mapBackgroundToPanel}
                   mapToSnapshot={mapBackgroundToSnapshot}
                   initialSelectedRaw={backgroundRaw}
                   onChoose={(snapshot, raw) => {
@@ -605,6 +592,8 @@ function CharacterCreationPage() {
                     setClassSkills((chosen) =>
                       chosen.filter((skill) => !granted.has(skill.index)),
                     );
+                    // A new background means a new (or no) skill pick.
+                    setBackgroundSkills([]);
                     goNext("background");
                   }}
                   onBack={goBack}
@@ -663,7 +652,10 @@ function CharacterCreationPage() {
                   background={background}
                   abilityScores={abilityScores}
                   skills={[
-                    ...(background?.skillProficiencies ?? []).map((skill) => ({
+                    ...[
+                      ...(background?.skillProficiencies ?? []),
+                      ...backgroundSkills,
+                    ].map((skill) => ({
                       ...skill,
                       from: background.name,
                     })),

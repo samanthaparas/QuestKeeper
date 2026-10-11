@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import "./Footer.css";
 
 function Footer() {
@@ -17,6 +18,13 @@ function Footer() {
         >
           Tell us
         </a>
+      </p>
+
+      {/* The licenses ask for credits to be easy to find, so they're linked here. */}
+      <p className="footer__feedback">
+        <Link className="footer__link" to="/attributions">
+          Sources &amp; licenses
+        </Link>
       </p>
 
       <p className="footer__copyright">© 2026 QuestKeeper</p>

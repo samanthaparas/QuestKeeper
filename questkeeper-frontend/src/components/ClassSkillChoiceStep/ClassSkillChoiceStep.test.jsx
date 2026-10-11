@@ -64,4 +64,51 @@ describe("ClassSkillChoiceStep", () => {
       "class-skill-choice-step__checkbox--locked",
     );
   });
+
+  describe("with a background skill pick", () => {
+    const innkeeperChoice = {
+      from: "Innkeeper",
+      choose: 1,
+      options: [
+        { index: "history", name: "History" },
+        { index: "persuasion", name: "Persuasion" },
+      ],
+    };
+
+    it("waits for both picks and sends the background one separately", async () => {
+      const onNext = vi.fn();
+      renderStep({ grantedSkills: [], backgroundChoice: innkeeperChoice, onNext });
+
+      expect(screen.getByText(/Innkeeper lets you choose 1 skill/)).toBeInTheDocument();
+
+      // The background list comes first, so its History box is the first one.
+      const [backgroundHistory] = screen.getAllByRole("checkbox", { name: /History/ });
+      await userEvent.click(backgroundHistory);
+      await userEvent.click(screen.getByRole("checkbox", { name: /Athletics/ }));
+      expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+
+      await userEvent.click(screen.getByRole("checkbox", { name: /Insight/ }));
+      await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
+      expect(onNext).toHaveBeenCalledWith(
+        [
+          { index: "athletics", name: "Athletics" },
+          { index: "insight", name: "Insight" },
+        ],
+        [{ index: "history", name: "History" }],
+      );
+    });
+
+    it("locks a skill in the class list once the background picked it", async () => {
+      renderStep({ grantedSkills: [], backgroundChoice: innkeeperChoice });
+
+      const [backgroundHistory, classHistory] = screen.getAllByRole("checkbox", {
+        name: /History/,
+      });
+      await userEvent.click(backgroundHistory);
+
+      expect(classHistory).toBeDisabled();
+      expect(screen.getByText("Already from Innkeeper")).toBeInTheDocument();
+    });
+  });
 });

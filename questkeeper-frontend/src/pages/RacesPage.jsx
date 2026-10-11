@@ -22,6 +22,7 @@ function RacesPage() {
           index: item.index,
           name: item.name,
           category: "Race",
+          source: item.source,
           description: "Select this race to view more details.",
           tagline: getRaceGuidance(item.index)?.tagline,
           url: item.url,

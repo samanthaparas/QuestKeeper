@@ -91,7 +91,11 @@ import {
   mapClassToPanel,
   describeClassSpellcasting,
   mapSpellToPanel,
+  mapSubraceToPanel,
+  mapSubclassToPanel,
+  mapBackgroundToPanel,
 } from "./srdDetails";
+import { getRaceDetails, getTraitDetails } from "./api";
 describe("normalizeItemName", () => {
   it("ignores capitals and extra spaces", () => {
     expect(normalizeItemName("  Fire   Bolt ")).toBe("fire bolt");
@@ -807,6 +811,160 @@ describe("race detail panel", () => {
       traits: [{ name: "Trance" }],
     });
     expect(panel.traits).toEqual([{ name: "Trance", description: "" }]);
+  });
+});
+
+describe("Open5e race detail panel", () => {
+  const gearforged = {
+    index: "toh_gearforged",
+    name: "Gearforged",
+    source: "Tome of Heroes",
+    dm_note: "Check speed with your DM.",
+    ability_bonuses: [],
+    ability_bonus_options: {
+      choose: 2,
+      from: {
+        options: ["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((name) => ({
+          ability_score: { name },
+          bonus: 1,
+        })),
+      },
+    },
+    traitDetails: [{ index: "toh_gearforged.living-construct", name: "Living Construct", desc: ["No food needed."] }],
+  };
+
+  it("skips the per-trait lookups when trait text came with the race", async () => {
+    getRaceDetails.mockResolvedValueOnce(gearforged);
+    getTraitDetails.mockClear();
+
+    const race = await loadRaceDetails("toh_gearforged");
+
+    expect(race).toBe(gearforged);
+    expect(getTraitDetails).not.toHaveBeenCalled();
+  });
+
+  it("shows the source, the DM note and a choice-only bonus line", () => {
+    const panel = mapRaceToPanel(gearforged);
+
+    expect(panel.source).toBe("Tome of Heroes");
+    expect(panel.dmNote).toBe("Check speed with your DM.");
+    expect(panel.abilityBonuses).toBe("+1 to 2 abilities of your choice");
+    expect(panel.traits).toEqual([
+      { name: "Living Construct", description: "No food needed." },
+    ]);
+  });
+
+  it("names the options when only a few abilities are allowed", () => {
+    const panel = mapRaceToPanel({
+      name: "Erina",
+      ability_bonuses: [{ ability_score: { name: "DEX" }, bonus: 2 }],
+      ability_bonus_options: {
+        choose: 1,
+        from: {
+          options: [
+            { ability_score: { name: "WIS" }, bonus: 1 },
+            { ability_score: { name: "CHA" }, bonus: 1 },
+          ],
+        },
+      },
+    });
+    expect(panel.abilityBonuses).toBe(
+      "DEX +2, plus +1 to 1 other abilities of your choice (WIS or CHA)",
+    );
+  });
+});
+
+describe("subrace and subclass panels", () => {
+  it("maps a subrace with its source and bonuses", () => {
+    expect(
+      mapSubraceToPanel({
+        name: "Malkin",
+        source: "Tome of Heroes",
+        desc: "",
+        ability_bonuses: [{ ability_score: { name: "INT" }, bonus: 1 }],
+        racial_traits: [{ name: "Curiously Clever" }],
+      }),
+    ).toMatchObject({
+      category: "Subrace",
+      source: "Tome of Heroes",
+      abilityBonuses: "INT +1",
+      traits: ["Curiously Clever"],
+    });
+  });
+
+  it("maps a subclass", () => {
+    expect(
+      mapSubclassToPanel({
+        name: "Cat Burglar",
+        source: "Tome of Heroes",
+        desc: ["Sneaky.", "Very sneaky."],
+        subclass_flavor: "Roguish Archetype",
+      }),
+    ).toEqual({
+      name: "Cat Burglar",
+      category: "Subclass",
+      source: "Tome of Heroes",
+      description: "Sneaky. Very sneaky.",
+      flavor: "Roguish Archetype",
+    });
+  });
+});
+
+describe("background detail panel", () => {
+  it("shows an SRD background the same way as before", () => {
+    const panel = mapBackgroundToPanel({
+      name: "Acolyte",
+      source: "SRD 5.1",
+      starting_proficiencies: [{ name: "Skill: Insight" }],
+      language_options: { choose: 2 },
+      starting_equipment: [{ equipment: { name: "Holy Symbol" }, quantity: 1 }],
+      starting_gold: { quantity: 15, unit: "gp" },
+      feature: { name: "Shelter of the Faithful", desc: ["Temples help you."] },
+      personality_traits: { choose: 2 },
+      ideals: { choose: 1 },
+      bonds: { choose: 1 },
+      flaws: { choose: 1 },
+    });
+
+    expect(panel).toMatchObject({
+      startingProficiencies: ["Skill: Insight"],
+      languages: "2 of your choice",
+      startingEquipment: ["Holy Symbol x1"],
+      startingGold: "15 gp",
+      featureName: "Shelter of the Faithful",
+      featureDescription: "Temples help you.",
+      personalityTraits: "Choose 2",
+    });
+  });
+
+  it("handles an Open5e background with a skill pick and gear as text", () => {
+    const panel = mapBackgroundToPanel({
+      name: "Crime Syndicate Member",
+      source: "Tal'Dorei Campaign Setting",
+      starting_proficiencies: [{ name: "Skill: Deception" }],
+      skill_choice: {
+        choose: 1,
+        options: [
+          { index: "sleight-of-hand", name: "Sleight of Hand" },
+          { index: "stealth", name: "Stealth" },
+        ],
+      },
+      languages: [{ name: "Thieves' Cant" }],
+      language_options: { choose: 0 },
+      starting_equipment: [],
+      equipment_description: "Dark clothes and 10 gp.",
+      tool_proficiencies_description: "One of Thieves' Tools or a Disguise Kit.",
+      feature: { name: "A Favor In Turn", desc: ["Call in favors."] },
+    });
+
+    expect(panel).toMatchObject({
+      skillChoice: "Choose 1: Sleight of Hand or Stealth",
+      languages: "Thieves' Cant",
+      equipmentText: "Dark clothes and 10 gp.",
+      tools: "One of Thieves' Tools or a Disguise Kit.",
+      startingGold: null,
+      personalityTraits: null,
+    });
   });
 });
 
