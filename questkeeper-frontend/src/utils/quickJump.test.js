@@ -8,6 +8,7 @@ import {
   saveRecent,
   scoreEntry,
 } from "./quickJump";
+import { installFakeStorage } from "../test/fakeStorage";
 
 const entry = (label, category = "Spells", extra = {}) => ({
   id: `${category}:${label}`,
@@ -73,7 +74,9 @@ describe("rankResults", () => {
 });
 
 describe("recent picks", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    installFakeStorage();
+  });
 
   it("keeps the newest five with no repeats", () => {
     ["A", "B", "C", "D", "E", "F", "B"].forEach((label) => saveRecent(entry(label)));
@@ -84,7 +87,7 @@ describe("recent picks", () => {
   });
 
   it("ignores saved data it can't read", () => {
-    localStorage.setItem("qk-quick-jump-recent", "not json");
+    window.localStorage.setItem("qk-quick-jump-recent", "not json");
     expect(loadRecent()).toEqual([]);
   });
 });

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import QuickJump from "./QuickJump";
+import { installFakeStorage } from "../../test/fakeStorage";
 
 vi.mock("../../context/useAuth", () => ({ useAuth: () => ({ user: { id: "me" } }) }));
 
@@ -49,7 +50,9 @@ async function settle() {
 
 const searchBox = () => screen.getByRole("combobox");
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  installFakeStorage();
+});
 
 describe("QuickJump", () => {
   it("opens from the button, with every page listed before typing", async () => {
