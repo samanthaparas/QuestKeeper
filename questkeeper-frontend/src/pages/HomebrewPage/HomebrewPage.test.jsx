@@ -132,4 +132,29 @@ describe("HomebrewPage", () => {
     expect(await screen.findByLabelText("Name")).toHaveValue("City Watch");
     expect(screen.getByRole("button", { name: "Save background" })).toBeInTheDocument();
   });
+
+  it("files a book subclass under its class when pre-filled", async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: "/homebrew",
+            state: {
+              newHomebrew: {
+                category: "subclass",
+                name: "Swashbuckler",
+                basedOn: "Xanathar's Guide to Everything",
+                linkUrl: "https://dnd5e.wikidot.com/rogue:swashbuckler",
+                data: { parentClass: "rogue" },
+              },
+            },
+          },
+        ]}
+      >
+        <HomebrewPage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByLabelText("Name")).toHaveValue("Swashbuckler");
+    expect(screen.getByLabelText("Which class is this for?")).toHaveValue("rogue");
+  });
 });

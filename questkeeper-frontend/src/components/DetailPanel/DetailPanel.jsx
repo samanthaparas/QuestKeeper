@@ -1,5 +1,6 @@
 import SourceBadge from "../SourceBadge/SourceBadge";
 import BookEntryPanel from "../BookEntryPanel/BookEntryPanel";
+import SubclassBrowser from "../SubclassBrowser/SubclassBrowser";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 import "./DetailPanel.css";
 
@@ -54,7 +55,9 @@ export function SrdBlocks({ blocks }) {
 // `actions`: an optional single React node rendered next to the title
 // (e.g. PickerStep's Choose button). Not a multi-action slot — there's no
 // defined layout/ordering for more than one element here.
-function DetailPanel({ selectedResult, actions }) {
+// inPicker: shown inside a character-creation picker (book entries then don't
+// link away to My Homebrew, which would lose the player's progress).
+function DetailPanel({ selectedResult, actions, inPicker = false }) {
   if (!selectedResult) {
     return (
       <section className="detail-panel">
@@ -202,7 +205,7 @@ function DetailPanel({ selectedResult, actions }) {
         </>
       )}
 
-      {selectedResult.category === "Class" && (
+      {selectedResult.category === "Class" && !selectedResult.bookEntry && (
         <>
           <p>
             <strong>Hit Die:</strong> {selectedResult.hitDie}
@@ -270,29 +273,20 @@ function DetailPanel({ selectedResult, actions }) {
             </p>
           )}
 
-          {selectedResult.subclassGroups?.length > 1 ? (
-            <>
-              <p>
-                <strong>Subclasses:</strong>
-              </p>
-              {/* One line per book: badge, then that book's subclasses. */}
-              <ul className="detail-panel__list detail-panel__list--rich">
-                {selectedResult.subclassGroups.map((group) => (
-                  <li key={group.source}>
-                    <SourceBadge source={group.source} /> {group.names}
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <p>
-              <strong>Subclasses:</strong> {selectedResult.subclasses}
-            </p>
-          )}
         </>
       )}
 
       {selectedResult.bookEntry && <BookEntryPanel entry={selectedResult.bookEntry} />}
+
+      {/* Every class (SRD or book) has its subclasses in tabs by source.
+          The key starts it fresh for each class. */}
+      {selectedResult.category === "Class" && selectedResult.subclassGroups?.length > 0 && (
+        <SubclassBrowser
+          key={selectedResult.name}
+          groups={selectedResult.subclassGroups}
+          inPicker={inPicker}
+        />
+      )}
 
       {selectedResult.category === "Background" &&
         !selectedResult.bookEntry &&

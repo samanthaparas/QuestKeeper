@@ -29,6 +29,11 @@ import {
 import "./LevelUpWizard.css";
 import Button from "../Button/Button";
 import SourceBadge from "../SourceBadge/SourceBadge";
+import BookEntryPanel from "../BookEntryPanel/BookEntryPanel";
+import HomebrewDialog from "../HomebrewDialog/HomebrewDialog";
+import { mapSubclassToPanel } from "../../utils/srdDetails";
+import { toHomebrewIndex } from "../../utils/homebrewMappers";
+import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 
 function LevelUpWizard({ sheet, onComplete, onCancel }) {
   const targetLevel = sheet.level + 1;
@@ -60,6 +65,10 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
   const [subclassFeatures, setSubclassFeatures] = useState([]);
   const [isSubclassLoading, setIsSubclassLoading] = useState(true);
   const [subclassError, setSubclassError] = useState("");
+  // "Make it as homebrew" for a book subclass: the open pop-up, and a counter
+  // that reloads the list so the new homebrew shows up.
+  const [homebrewRequest, setHomebrewRequest] = useState(null);
+  const [subclassListVersion, setSubclassListVersion] = useState(0);
 
   const [classSpells, setClassSpells] = useState([]);
   const [isSpellsLoading, setIsSpellsLoading] = useState(true);
@@ -125,7 +134,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
         ),
       )
       .finally(() => setIsSubclassLoading(false));
-  }, [currentStep?.key, sheet.class]);
+  }, [currentStep?.key, sheet.class, subclassListVersion]);
 
   // Load the picked subclass's description and its feature list.
   useEffect(() => {
@@ -154,6 +163,19 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
   const isSubclassDetailLoading =
     Boolean(selectedSubclassIndex) &&
     classSubclass?.index !== selectedSubclassIndex;
+
+  // A published-book subclass: only a summary and link, so it can't be chosen
+  // as-is; it can be rebuilt as homebrew instead.
+  const bookSubclass = classSubclass?.is_book_entry
+    ? { ...mapSubclassToPanel(classSubclass).bookEntry, inPicker: true }
+    : null;
+
+  // The homebrew version was saved: reload the list and select it.
+  function handleHomebrewCreated(saved) {
+    setHomebrewRequest(null);
+    setSubclassListVersion((version) => version + 1);
+    setSelectedSubclassIndex(toHomebrewIndex(saved.id));
+  }
 
   useEffect(() => {
     Promise.all([getFeats(), getFeats("2024")])
@@ -602,7 +624,10 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
                   />
                   <span className="level-up-wizard__ability-checkbox-text">
                     <span>{option.name}</span>
-                    <SourceBadge source={option.source} />
+                    <SourceBadge
+                      source={option.source}
+                      official={option.sourceGroup === OFFICIAL_BOOKS_GROUP}
+                    />
                   </span>
                 </label>
               ))}
@@ -611,7 +636,14 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
 
           {isSubclassDetailLoading && <p>Loading details...</p>}
 
-          {classSubclass && !isSubclassDetailLoading && (
+          {bookSubclass && !isSubclassDetailLoading && (
+            <div className="level-up-wizard__feat-card">
+              <h4>{classSubclass.name}</h4>
+              <BookEntryPanel entry={bookSubclass} />
+            </div>
+          )}
+
+          {classSubclass && !bookSubclass && !isSubclassDetailLoading && (
             <div className="level-up-wizard__feat-card">
               <h4>{classSubclass.name}</h4>
               <p>
@@ -641,19 +673,45 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
             </div>
           )}
 
-          <Button
-            disabled={!classSubclass || isSubclassDetailLoading}
-            onClick={() =>
-              completeStep({
-                id: classSubclass.index,
-                name: classSubclass.name,
-                source: classSubclass.source ?? "SRD 5.1",
-                flavor: classSubclass.subclass_flavor,
-              })
-            }
-          >
-            Choose {classSubclass?.name ?? "a subclass"}
-          </Button>
+          {bookSubclass ? (
+            bookSubclass.canMakeHomebrew && (
+              <Button
+                onClick={() =>
+                  setHomebrewRequest({
+                    category: "subclass",
+                    fields: {
+                      name: classSubclass.name,
+                      basedOn: classSubclass.book,
+                      linkUrl: classSubclass.link_url,
+                    },
+                    data: { parentClass: sheet.class.id },
+                  })
+                }
+              >
+                Make it as homebrew
+              </Button>
+            )
+          ) : (
+            <Button
+              disabled={!classSubclass || isSubclassDetailLoading}
+              onClick={() =>
+                completeStep({
+                  id: classSubclass.index,
+                  name: classSubclass.name,
+                  source: classSubclass.source ?? "SRD 5.1",
+                  flavor: classSubclass.subclass_flavor,
+                })
+              }
+            >
+              Choose {classSubclass?.name ?? "a subclass"}
+            </Button>
+          )}
+
+          <HomebrewDialog
+            request={homebrewRequest}
+            onClose={() => setHomebrewRequest(null)}
+            onCreated={handleHomebrewCreated}
+          />
         </div>
       )}
 

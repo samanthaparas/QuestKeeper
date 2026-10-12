@@ -14,6 +14,8 @@ import {
   getClassDetails,
   getSubclassFeatures,
   getFeatureDetails,
+  getClasses,
+  getSubclassDetails,
 } from "./api";
 
 const homebrew = [
@@ -35,6 +37,7 @@ const backend = {
   "/backgrounds": [{ index: "acolyte", name: "Acolyte" }],
   "/backgrounds?edition=2024": [{ index: "sage", name: "Sage" }],
   "/classes/cleric": { index: "cleric", subclasses: [{ index: "life", name: "Life" }] },
+  "/classes": [{ index: "cleric", name: "Cleric" }],
 };
 
 beforeEach(() => {
@@ -111,7 +114,8 @@ describe("api with homebrew", () => {
 
   it("adds homebrew subclasses to their class, with their features", async () => {
     const cleric = await getClassDetails("cleric");
-    expect(cleric.subclasses.map((subclass) => subclass.name)).toEqual(["Life", "Dusk Domain"]);
+    const notBooks = cleric.subclasses.filter((subclass) => !subclass.index.startsWith("book_"));
+    expect(notBooks.map((subclass) => subclass.name)).toEqual(["Life", "Dusk Domain"]);
 
     const [feature] = await getSubclassFeatures("hb_c1");
     expect(feature).toMatchObject({ name: "Dusk Sight", level: 1 });
@@ -126,5 +130,17 @@ describe("api with homebrew", () => {
     loadHomebrew.mockResolvedValue([]);
     const notBooks = (await getRaces()).filter((race) => !race.index.startsWith("book_"));
     expect(notBooks.map((race) => race.name)).toEqual(["Elf", "Tiefling"]);
+  });
+
+  it("adds the book classes and book subclasses, answered without the backend", async () => {
+    expect((await getClasses()).map((item) => item.name)).toEqual(["Artificer", "Blood Hunter", "Cleric"]);
+    const cleric = await getClassDetails("cleric");
+    expect(cleric.subclasses.map((subclass) => subclass.name)).toContain("Twilight Domain");
+
+    vi.mocked(fetch).mockClear();
+    expect((await getClassDetails("book_artificer")).name).toBe("Artificer");
+    expect((await getSubclassDetails("book_cleric-twilight-domain")).book).toBe("Tasha's Cauldron of Everything");
+    expect(await getSubclassFeatures("book_cleric-twilight-domain")).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

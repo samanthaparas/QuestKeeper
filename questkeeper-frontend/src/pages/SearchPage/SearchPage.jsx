@@ -46,6 +46,8 @@ function SearchPage() {
           index: item.index,
           name: item.name,
           category: "Class",
+          source: item.source,
+          sourceGroup: item.sourceGroup,
           preview: getCardPreview("Class", item),
           description: "Select this class to view more details.",
           url: item.url,

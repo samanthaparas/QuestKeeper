@@ -53,4 +53,14 @@ describe("bookRaces", () => {
     expect(panel.speed).toBeUndefined();
     expect(findBookRace("book_nope")).toBeNull();
   });
+
+  it("gives every race a short tagline for the list", () => {
+    for (const race of BOOK_RACES) {
+      expect(race.tagline, race.name).toBeTruthy();
+      expect(race.tagline.length, race.name).toBeLessThan(40);
+    }
+    expect(listBookRaces().find((race) => race.name === "Tabaxi").tagline).toBe(
+      "Curious, wandering cat-folk",
+    );
+  });
 });

@@ -6,6 +6,12 @@ import {
 } from "./bookBackgrounds";
 import { findBookRace, listBookRaces } from "./bookRaces";
 import {
+  findBookClass,
+  findBookSubclass,
+  getBookSubclassRefs,
+  listBookClasses,
+} from "./bookSubclasses";
+import {
   isHomebrewId,
   findHomebrew,
   findHomebrewTrait,
@@ -93,12 +99,22 @@ export async function getRaceDetails(raceId) {
     : race;
 }
 
-export function getClasses() {
-  return requestJson("/classes", "Failed to fetch classes:");
+// The 12 SRD classes plus the book classes (Artificer, Blood Hunter), which
+// have a summary and a link only.
+export async function getClasses() {
+  const classes = await requestJson("/classes", "Failed to fetch classes:");
+  // The backend doesn't label classes; they're all SRD 5.1.
+  const srd = classes.map((item) => ({ ...item, source: item.source ?? "SRD 5.1" }));
+  return [...srd, ...listBookClasses()].sort(byName);
 }
 
-// Classes are SRD only, but their subclass list includes homebrew ones.
+// SRD classes list their SRD, Open5e, homebrew and book subclasses.
 export async function getClassDetails(classId) {
+  if (isBookEntryId(classId)) {
+    const entry = findBookClass(classId);
+    if (!entry) throw new Error(`Book class ${classId} not found`);
+    return entry;
+  }
   const [data, entries] = await Promise.all([
     requestJson(
       `/classes/${encodeURIComponent(classId)}`,
@@ -106,7 +122,10 @@ export async function getClassDetails(classId) {
     ),
     loadHomebrew(),
   ]);
-  const extra = getHomebrewSubclassRefs(entries, classId);
+  const extra = [
+    ...getHomebrewSubclassRefs(entries, classId),
+    ...getBookSubclassRefs(classId),
+  ];
   return extra.length > 0
     ? { ...data, subclasses: [...(data.subclasses ?? []), ...extra] }
     : data;
@@ -180,6 +199,8 @@ export function getClassSpells(classId) {
 }
 
 export function getClassLevel(classId, level) {
+  // Book classes have no rules in QuestKeeper.
+  if (isBookEntryId(classId)) return Promise.reject(new Error("No levels for book classes"));
   return requestJson(
     `/classes/${encodeURIComponent(classId)}/levels/${encodeURIComponent(level)}`,
     `Failed to fetch level ${level} details for class ${classId}:`,
@@ -195,6 +216,12 @@ export function getSubraceDetails(subraceId) {
 }
 
 export function getSubclassDetails(subclassId) {
+  if (isBookEntryId(subclassId)) {
+    const entry = findBookSubclass(subclassId);
+    return entry
+      ? Promise.resolve(entry)
+      : Promise.reject(new Error(`Book subclass ${subclassId} not found`));
+  }
   if (isHomebrewId(subclassId)) {
     return findInHomebrew(subclassId, findHomebrew);
   }
@@ -261,6 +288,7 @@ export function getMagicItemDetails(magicItemId, edition) {
 }
 
 export function getClassFeatures(classId) {
+  if (isBookEntryId(classId)) return Promise.resolve([]);
   return requestJson(
     `/classes/${encodeURIComponent(classId)}/features`,
     `Failed to fetch features for class ${classId}:`,
@@ -268,6 +296,8 @@ export function getClassFeatures(classId) {
 }
 
 export async function getSubclassFeatures(subclassId) {
+  // Book subclasses have no features in QuestKeeper.
+  if (isBookEntryId(subclassId)) return [];
   if (isHomebrewId(subclassId)) {
     const subclass = await findInHomebrew(subclassId, findHomebrew);
     return subclass.features.map(({ index, name, level }) => ({ index, name, level }));
