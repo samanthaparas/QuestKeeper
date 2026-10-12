@@ -35,52 +35,58 @@ export function isOpen5eId(id) {
   );
 }
 
-// Open5e splits long lists into pages, each pointing to the next one. This
-// follows those links until every page has been collected.
-async function fetchAllPages(firstUrl) {
-  const results = [];
-  let url = firstUrl;
+async function fetchPage(url) {
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
 
-  while (url) {
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-
-    if (!response.ok) {
-      const error = new Error("Unable to retrieve content from Open5e.");
-      // 502 means "a server we depend on failed", which is the honest answer
-      // here; the problem is Open5e's, not the player's request.
-      error.statusCode = 502;
-      throw error;
-    }
-
-    const page = await response.json();
-    results.push(...(page.results ?? []));
-    url = page.next;
+  if (!response.ok) {
+    const error = new Error("Unable to retrieve content from Open5e.");
+    // 502 means "a server we depend on failed", which is the honest answer
+    // here; the problem is Open5e's, not the player's request.
+    error.statusCode = 502;
+    throw error;
   }
 
-  return results;
+  return response.json();
 }
 
-// Gets every entry of one kind ("species", "backgrounds" or "classes") from
-// the allowed books, using the saved copy when it is still fresh.
-export function fetchOpen5eResource(resource) {
-  const saved = cache.get(resource);
+// Open5e splits long lists into pages. The first page says how many results
+// there are, so the rest are fetched at the same time instead of one by one.
+async function fetchAllPages(firstUrl, pageSize) {
+  const first = await fetchPage(firstUrl);
+  const pageCount = Math.ceil((first.count ?? 0) / pageSize);
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, pageCount - 1) }, (_, i) =>
+      fetchPage(`${firstUrl}&page=${i + 2}`),
+    ),
+  );
+  return [first, ...rest].flatMap((page) => page.results ?? []);
+}
+
+// Gets every entry of one kind ("species", "backgrounds", "classes",
+// "magicitems") from the allowed books, using the saved copy when it is still
+// fresh. `sourceKeys` picks other books (the magic items catalog uses the SRD
+// and Vault of Magic).
+export function fetchOpen5eResource(resource, sourceKeys = Object.keys(OPEN5E_SOURCES)) {
+  const sources = sourceKeys.join(",");
+  const cacheKey = `${resource}:${sources}`;
+  const saved = cache.get(cacheKey);
   if (saved && saved.expiresAt > Date.now()) return saved.promise;
 
-  const sources = Object.keys(OPEN5E_SOURCES).join(",");
-  const url = `${BASE_URL}/${resource}/?document__key__in=${sources}&limit=200`;
+  const pageSize = 500;
+  const url = `${BASE_URL}/${resource}/?document__key__in=${sources}&limit=${pageSize}`;
 
-  const promise = fetchAllPages(url).catch((error) => {
+  const promise = fetchAllPages(url, pageSize).catch((error) => {
     // Don't keep a failed request around, or every visitor for the next six
     // hours would get the same error. The next request tries again.
-    cache.delete(resource);
+    cache.delete(cacheKey);
     throw error;
   });
 
   // Saving the request itself (not just its answer) means that if several
   // people open a page at the same moment, Open5e is only asked once.
-  cache.set(resource, { promise, expiresAt: Date.now() + CACHE_TTL_MS });
+  cache.set(cacheKey, { promise, expiresAt: Date.now() + CACHE_TTL_MS });
   return promise;
 }
 

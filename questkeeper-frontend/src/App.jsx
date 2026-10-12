@@ -8,6 +8,7 @@ import RacesPage from "./pages/RacesPage";
 import ClassesPage from "./pages/ClassesPage";
 import SpellsPage from "./pages/SpellsPage";
 import BackgroundsPage from "./pages/BackgroundsPage";
+import MagicItemsPage from "./pages/MagicItemsPage/MagicItemsPage";
 import CharacterCreationPage from "./pages/CharacterCreationPage/CharacterCreationPage";
 import CharactersPage from "./pages/CharactersPage/CharactersPage";
 import CharacterSheetPage from "./pages/CharacterSheetPage/CharacterSheetPage";
@@ -46,6 +47,7 @@ function App() {
         <Route path="/classes" element={<ClassesPage />} />
         <Route path="/spells" element={<SpellsPage />} />
         <Route path="/backgrounds" element={<BackgroundsPage />} />
+        <Route path="/magic-items" element={<MagicItemsPage />} />
         <Route
           path="/characters"
           element={
