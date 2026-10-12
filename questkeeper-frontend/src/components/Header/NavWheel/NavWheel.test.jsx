@@ -92,37 +92,78 @@ describe("NavWheel", () => {
     fireEvent.keyDown(document.activeElement, { key: "Home" });
     expect(screen.getByRole("link", { name: "Home" })).toHaveFocus();
   });
+  it("runs a button row's action instead of following a link", () => {
+    const onSelect = vi.fn();
+    const onBack = vi.fn();
+    renderWithRouter(
+      <NavWheel
+        links={[{ id: "explore", label: "Explore ›", onSelect, current: true }, ...LINKS]}
+        onBack={onBack}
+      />,
+    );
+
+    const explore = screen.getByRole("button", { name: "Explore ›" });
+    expect(explore).toHaveClass("active");
+    fireEvent.click(explore);
+    expect(onSelect).toHaveBeenCalledTimes(1);
+
+    // ← goes back up a level.
+    fireEvent.keyDown(explore, { key: "ArrowLeft" });
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("Navigation picks the right menu", () => {
-  it("shows the normal row of links on wide screens", () => {
+  it("shows the three menus on wide screens, each opening its pages", () => {
     mockMedia({ narrow: false });
-    renderWithRouter(<Navigation isMenuOpen />);
+    renderWithRouter(<Navigation />);
 
     expect(document.querySelector(".nav-wheel")).toBeNull();
-    expect(screen.getAllByRole("link")).toHaveLength(12);
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(
+      ["Explore", "My Adventures", "Help"],
+    );
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Explore" }));
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual([
+      expect.stringContaining("Races"),
+      expect.stringContaining("Classes"),
+      expect.stringContaining("Backgrounds"),
+      expect.stringContaining("Spells"),
+      expect.stringContaining("Magic Items"),
+    ]);
   });
 
-  it("shows the wheel on narrow screens once the menu is open", () => {
+  it("shows the three menus on the wheel, then a menu's pages", () => {
     mockMedia({ narrow: true });
     renderWithRouter(<Navigation isMenuOpen />, "/spells");
 
     expect(document.querySelector(".nav-wheel")).not.toBeNull();
+    const explore = screen.getByRole("button", { name: "Explore ›" });
+    // Spells is in Explore, so Explore gets the dot.
+    expect(explore).toHaveClass("active");
+
+    fireEvent.click(explore);
     expect(screen.getByRole("link", { name: "Spells" })).toHaveClass("active");
+    expect(screen.getAllByRole("link")).toHaveLength(5);
+
+    fireEvent.click(screen.getByRole("button", { name: "‹ All menus" }));
+    expect(screen.getByRole("button", { name: "Help ›" })).toBeInTheDocument();
   });
 
-  it("keeps a plain list for people who prefer less motion", () => {
+  it("keeps a plain list, grouped by menu, for people who prefer less motion", () => {
     mockMedia({ narrow: true, reduceMotion: true });
     renderWithRouter(<Navigation isMenuOpen />);
 
     expect(document.querySelector(".nav-wheel")).toBeNull();
-    expect(screen.getAllByRole("link")).toHaveLength(12);
+    expect(screen.getAllByRole("link")).toHaveLength(11);
+    expect(screen.getByRole("region", { name: "My Adventures" })).toBeInTheDocument();
   });
 
   it("closes the menu when a link in the plain list is picked", () => {
-    mockMedia({ narrow: false });
+    mockMedia({ narrow: true });
     const onNavigate = vi.fn();
-    renderWithRouter(<Navigation isMenuOpen onNavigate={onNavigate} />);
+    renderWithRouter(<Navigation onNavigate={onNavigate} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Races" }));
     expect(onNavigate).toHaveBeenCalledTimes(1);
