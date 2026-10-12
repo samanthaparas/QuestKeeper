@@ -2,6 +2,10 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+// The wizard can open the homebrew pop-up, which loads the Supabase client.
+// CI has no Supabase settings, so give it a stand-in.
+vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
+
 // Fake API answers: a Rogue with the SRD Thief and Tome of Heroes' Cat Burglar.
 vi.mock("../../utils/api", () => ({
   getFeats: vi.fn().mockResolvedValue([]),
