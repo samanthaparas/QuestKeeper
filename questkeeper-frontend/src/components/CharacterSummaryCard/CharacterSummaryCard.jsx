@@ -86,7 +86,7 @@ function CharacterSummaryCard({ sheet, playerName }) {
         <div className="character-summary__stat">
           <span className="character-summary__stat-label">Inspiration</span>
           <span className="character-summary__stat-value">
-            {sheet.inspiration ?? 0}
+            {sheet.inspiration > 0 ? "Yes" : "No"}
           </span>
         </div>
       </div>

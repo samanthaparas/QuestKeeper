@@ -168,40 +168,43 @@ function EquipmentChoiceStep({
                   : `${sourceName}: choice ${groupIndex + 1}`}
               </legend>
 
-              {single
-                ? renderPicks(group, group.options[0])
-                : group.options.map((option, optionIndex) => {
-                    const isChosen = selected?.optionId === option.id;
-                    return (
-                      <div
-                        className={`equipment-step__option${isChosen ? " equipment-step__option--chosen" : ""}`}
-                        key={option.id}
-                      >
-                        <label className="equipment-step__option-label">
-                          <input
-                            type="radio"
-                            name={group.id}
-                            checked={isChosen}
-                            onChange={() => chooseOption(group, option)}
-                          />
-                          <span>
-                            <span className="equipment-step__letter">
-                              ({"abcdef"[optionIndex]})
-                            </span>{" "}
-                            {describeOption(option)}
-                            {option.requires && (
-                              <span className="equipment-step__note">
-                                Only if you&apos;re trained with{" "}
-                                {option.requires}. Check your class and subclass
-                                proficiencies.
-                              </span>
-                            )}
-                          </span>
-                        </label>
-                        {isChosen && renderPicks(group, option)}
-                      </div>
-                    );
-                  })}
+              {/* The title sits above this box, not on its border. */}
+              <div className="equipment-step__box">
+                {single
+                  ? renderPicks(group, group.options[0])
+                  : group.options.map((option, optionIndex) => {
+                      const isChosen = selected?.optionId === option.id;
+                      return (
+                        <div
+                          className={`equipment-step__option${isChosen ? " equipment-step__option--chosen" : ""}`}
+                          key={option.id}
+                        >
+                          <label className="equipment-step__option-label">
+                            <input
+                              type="radio"
+                              name={group.id}
+                              checked={isChosen}
+                              onChange={() => chooseOption(group, option)}
+                            />
+                            <span>
+                              <span className="equipment-step__letter">
+                                ({"abcdef"[optionIndex]})
+                              </span>{" "}
+                              {describeOption(option)}
+                              {option.requires && (
+                                <span className="equipment-step__note">
+                                  Only if you&apos;re trained with{" "}
+                                  {option.requires}. Check your class and
+                                  subclass proficiencies.
+                                </span>
+                              )}
+                            </span>
+                          </label>
+                          {isChosen && renderPicks(group, option)}
+                        </div>
+                      );
+                    })}
+              </div>
             </fieldset>
           );
         })}

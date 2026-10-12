@@ -325,7 +325,8 @@ describe("Stats | Skills switch on narrower screens", () => {
     renderSheet(makeSheet());
 
     expect(await screen.findByRole("heading", { name: "Skills" })).toBeInTheDocument();
-    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+    // (Inspiration is a switch too, so look for the Stats | Skills one.)
+    expect(screen.queryByRole("switch", { name: "Show skills" })).not.toBeInTheDocument();
   });
 });
 
@@ -341,4 +342,41 @@ it("labels each attack value so phones can show it without the header row", asyn
     "Damage",
     "Type",
   ]);
+});
+
+it("switches inspiration on and off, since you only hold one", async () => {
+  const user = userEvent.setup();
+  renderSheet(makeSheet());
+
+  const inspiration = await screen.findByRole("switch", { name: /Inspiration/ });
+  expect(inspiration).toHaveAttribute("aria-checked", "false");
+
+  await user.click(inspiration);
+  expect(inspiration).toHaveAttribute("aria-checked", "true");
+
+  await user.click(inspiration);
+  expect(inspiration).toHaveAttribute("aria-checked", "false");
+});
+
+it("treats an older sheet's inspiration count as on", async () => {
+  renderSheet(makeSheet({ inspiration: 2 }));
+  expect(await screen.findByRole("switch", { name: /Inspiration/ })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+});
+
+it("shows the proficiency bonus by the Skills title", async () => {
+  renderSheet(makeSheet());
+  const heading = await screen.findByRole("heading", { name: "Skills" });
+  expect(heading.parentElement).toHaveTextContent("Prof +2");
+});
+
+it("keeps Level and a length-limited Subclass in the Story tab", async () => {
+  const user = userEvent.setup();
+  renderSheet(makeSheet());
+
+  await user.click(await screen.findByRole("tab", { name: /Story/ }));
+  expect(screen.getByLabelText("Level")).toHaveValue(3);
+  expect(screen.getByLabelText("Subclass")).toHaveAttribute("maxLength", "32");
 });
