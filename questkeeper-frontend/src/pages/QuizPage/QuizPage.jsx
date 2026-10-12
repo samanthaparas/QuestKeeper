@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { QUESTIONS } from "../../utils/quizData";
 import {
   MIN_ANSWERS,
@@ -52,9 +57,30 @@ function QuizPage() {
   const heroName = location.state?.name ?? "";
   const [answers, setAnswers] = useState(loadAnswers);
   const firstUnanswered = answers.findIndex((choice) => choice == null);
-  const [view, setView] = useState(() =>
+  // The results have their own address (/quiz?view=results), so the
+  // browser's Back button returns to them from a book page.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [step, setStep] = useState(() =>
     answeredCount(answers) > 0 ? "question" : "intro",
   );
+  const view =
+    searchParams.get("view") === "results" &&
+    answeredCount(answers) >= MIN_ANSWERS
+      ? "results"
+      : step;
+
+  // Showing the results is a new page in the browser's history; leaving them
+  // goes back to the questions. The hero's name (from character creation)
+  // comes along either way.
+  function setView(next) {
+    if (next === "results") {
+      setSearchParams({ view: "results" }, { state: location.state });
+    } else {
+      setStep(next);
+      if (searchParams.get("view"))
+        setSearchParams({}, { state: location.state });
+    }
+  }
   const [index, setIndex] = useState(() =>
     firstUnanswered === -1 ? QUESTIONS.length - 1 : firstUnanswered,
   );
@@ -341,11 +367,20 @@ function ResultCard({ result, onUse }) {
   );
 }
 
+// A book option worth reading about. Its page shows "Back to your quiz
+// results", and the browser's Back button returns here too.
 function BookPick({ kind, entry, to }) {
   return (
     <li className="quiz__book">
       <span className="quiz__book-kind">{kind}</span>
-      <Link className="quiz__book-name" to={to}>
+      <Link
+        className="quiz__book-name"
+        to={to}
+        state={{
+          backTo: "/quiz?view=results",
+          backLabel: "Back to your quiz results",
+        }}
+      >
         {entry.name}
       </Link>
       <span className="quiz__book-summary">{entry.summary}</span>
