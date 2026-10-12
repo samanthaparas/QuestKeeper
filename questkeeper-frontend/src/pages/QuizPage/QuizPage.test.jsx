@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import QuizPage from "./QuizPage";
+import BackLink from "../../components/BackLink/BackLink";
 import { installFakeStorage } from "../../test/fakeStorage";
 
 function Landed() {
@@ -92,5 +93,29 @@ describe("QuizPage", () => {
 
     renderQuiz();
     expect(screen.getByText("Question 4 of 20")).toBeInTheDocument();
+  });
+
+  it("comes back to the results from a book page, by its back button or the browser's", async () => {
+    render(
+      <MemoryRouter initialEntries={["/quiz"]}>
+        <BackLink />
+        <Routes>
+          <Route path="/quiz" element={<QuizPage />} />
+          <Route path="*" element={<Landed />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Start the quiz" }));
+    await answerFirst(5);
+    await userEvent.click(screen.getByRole("button", { name: "See my results" }));
+
+    const firstBook = document.querySelector(".quiz__book-name");
+    await userEvent.click(firstBook);
+    expect(screen.getByTestId("landed")).toHaveTextContent(/^\/(races|backgrounds|classes) /);
+
+    await userEvent.click(screen.getByRole("link", { name: "← Back to your quiz results" }));
+    expect(screen.getByText("Three heroes that fit you")).toBeInTheDocument();
+    // No back button on the quiz itself.
+    expect(screen.queryByRole("link", { name: /Back to your quiz results/ })).toBeNull();
   });
 });

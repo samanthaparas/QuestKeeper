@@ -19,6 +19,7 @@ import HomebrewPage from "./pages/HomebrewPage/HomebrewPage";
 import HomebrewInvitePage from "./pages/HomebrewInvitePage/HomebrewInvitePage";
 import Guide from "./pages/Guide/Guide";
 import QuizPage from "./pages/QuizPage/QuizPage";
+import BackLink from "./components/BackLink/BackLink";
 import AuthPage from "./pages/AuthPage/AuthPage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 
@@ -40,6 +41,8 @@ function App() {
   return (
     <>
       <Header />
+      {/* "← Back to your quiz results" and the like, when a link set one. */}
+      <BackLink />
 
       <Routes>
         <Route path="/" element={<Home />} />
