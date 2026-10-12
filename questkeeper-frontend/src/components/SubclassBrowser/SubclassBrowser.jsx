@@ -3,6 +3,7 @@ import { getSubclassDetails } from "../../utils/api";
 import { mapSubclassToPanel } from "../../utils/srdDetails";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 import BookEntryPanel from "../BookEntryPanel/BookEntryPanel";
+import RulesText from "../RulesText/RulesText";
 import StartFromButton from "../HomebrewStart/StartFromButton";
 import "./SubclassBrowser.css";
 
@@ -132,7 +133,11 @@ function SubclassDetail({ panel, inPicker }) {
               <StartFromButton startFrom={panel.startFrom} />
             </div>
           )}
-          {panel.description && <p className="subclass-browser__description">{panel.description}</p>}
+          {panel.description && (
+            <p className="subclass-browser__description">
+              <RulesText text={panel.description} />
+            </p>
+          )}
           {panel.features?.length > 0 && (
             <ul className="subclass-browser__features">
               {panel.features.map((feature, index) => (
@@ -141,7 +146,7 @@ function SubclassDetail({ panel, inPicker }) {
                     {feature.name}
                     {feature.level ? ` (level ${feature.level})` : ""}.
                   </strong>{" "}
-                  {feature.description}
+                  <RulesText text={feature.description} />
                 </li>
               ))}
             </ul>

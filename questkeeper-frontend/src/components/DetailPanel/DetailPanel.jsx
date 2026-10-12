@@ -1,6 +1,7 @@
 import SourceBadge from "../SourceBadge/SourceBadge";
 import BookEntryPanel from "../BookEntryPanel/BookEntryPanel";
 import SubclassBrowser from "../SubclassBrowser/SubclassBrowser";
+import RulesText from "../RulesText/RulesText";
 import StartFromButton from "../HomebrewStart/StartFromButton";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 import "./DetailPanel.css";
@@ -23,7 +24,9 @@ function isWebLink(url) {
 export function SrdBlocks({ blocks }) {
   return blocks.map((block, index) =>
     typeof block === "string" ? (
-      <p key={index}>{block}</p>
+      <p key={index}>
+        <RulesText text={block} />
+      </p>
     ) : (
       <div className="detail-panel__table-wrapper" key={index}>
         <table className="detail-panel__table">
@@ -97,10 +100,10 @@ function DetailPanel({ selectedResult, actions, inPicker = false }) {
           version. (Pickers offer this next to their Choose button instead.) */}
       {selectedResult.startFrom && !inPicker && (
         <div className="detail-panel__start">
-          <StartFromButton startFrom={selectedResult.startFrom} />
-          <span className="detail-panel__start-hint">
-            Copies everything into a new homebrew {selectedResult.category.toLowerCase()} for you to change.
-          </span>
+          <StartFromButton
+            startFrom={selectedResult.startFrom}
+            hint={`Copies everything into a new homebrew ${selectedResult.category.toLowerCase()} for you to change.`}
+          />
         </div>
       )}
 
@@ -128,7 +131,7 @@ function DetailPanel({ selectedResult, actions, inPicker = false }) {
 
       {selectedResult.description && (
         <p className="detail-panel__description">
-          {selectedResult.description}
+          <RulesText text={selectedResult.description} />
         </p>
       )}
 
@@ -196,7 +199,7 @@ function DetailPanel({ selectedResult, actions, inPicker = false }) {
               <ul className="detail-panel__list detail-panel__list--rich">
                 {selectedResult.traits.map((trait) => (
                   <li key={trait.name}>
-                    <strong>{trait.name}.</strong> {trait.description}
+                    <strong>{trait.name}.</strong> <RulesText text={trait.description} />
                   </li>
                 ))}
               </ul>
@@ -229,7 +232,8 @@ function DetailPanel({ selectedResult, actions, inPicker = false }) {
 
           {selectedResult.spellcasting && (
             <p>
-              <strong>Spellcasting:</strong> {selectedResult.spellcasting}
+              <strong>Spellcasting:</strong>{" "}
+              <RulesText text={selectedResult.spellcasting} />
             </p>
           )}
 
@@ -242,7 +246,7 @@ function DetailPanel({ selectedResult, actions, inPicker = false }) {
               <ul className="detail-panel__list detail-panel__list--rich">
                 {selectedResult.levelOneFeatures.map((feature) => (
                   <li key={feature.name}>
-                    <strong>{feature.name}.</strong> {feature.description}
+                    <strong>{feature.name}.</strong> <RulesText text={feature.description} />
                   </li>
                 ))}
               </ul>
@@ -366,7 +370,9 @@ function DetailPanel({ selectedResult, actions, inPicker = false }) {
                   <strong>Feature:</strong> {selectedResult.featureName}
                 </p>
 
-                <p>{selectedResult.featureDescription}</p>
+                <p>
+                  <RulesText text={selectedResult.featureDescription} />
+                </p>
               </>
             )}
 
@@ -461,7 +467,7 @@ function DetailPanel({ selectedResult, actions, inPicker = false }) {
                     {feature.name}
                     {feature.level ? ` (level ${feature.level})` : ""}.
                   </strong>{" "}
-                  {feature.description}
+                  <RulesText text={feature.description} />
                 </li>
               ))}
             </ul>

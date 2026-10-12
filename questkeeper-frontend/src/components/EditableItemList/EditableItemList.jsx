@@ -1,4 +1,5 @@
 import { useState, useId } from "react";
+import RulesText from "../RulesText/RulesText";
 import "../../pages/CharacterSheetPage/CharacterSheetPage.css";
 import Button from "../Button/Button";
 
@@ -230,7 +231,10 @@ function EditableItemList({
             {isExpanded && (
               <ul className="character-sheet__attacks-notes-list">
                 {formatNotesLines(notes).map((line, i) => (
-                  <li key={i}>{line}</li>
+                  // Rules words in the notes explain themselves on hover.
+                  <li key={i}>
+                    <RulesText text={line} />
+                  </li>
                 ))}
               </ul>
             )}

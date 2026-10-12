@@ -179,6 +179,11 @@
   margin: 4px 0 16px;
 }
 
+/* Signed out, the button hides itself, so the row takes no space. */
+.detail-panel__start:empty {
+  display: none;
+}
+
 .detail-panel__start-hint {
   color: var(--qk-text-muted);
   font-size: 13px;
