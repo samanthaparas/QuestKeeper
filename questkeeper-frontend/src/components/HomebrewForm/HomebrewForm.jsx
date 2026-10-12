@@ -14,6 +14,8 @@ import {
 import Button from "../Button/Button";
 import DetailPanel from "../DetailPanel/DetailPanel";
 import CategoryFields from "./CategoryFields";
+import PasteFill from "./PasteFill";
+import { applySuggestions } from "../../utils/homebrewPaste";
 import "./HomebrewForm.css";
 
 const PANEL_MAPPERS = {
@@ -33,6 +35,10 @@ function HomebrewForm({ initialForm, raceOptions = [], onSave, onCancel }) {
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  // Text pasted into "Fill in from pasted text", shown beside the form as a
+  // reference while writing descriptions. Never saved.
+  const [reference, setReference] = useState(null);
+  const [asideView, setAsideView] = useState("preview"); // or "reference"
 
   const label = CATEGORY_LABELS[form.category];
   const preview = PANEL_MAPPERS[form.category](previewHomebrew(form));
@@ -70,6 +76,17 @@ function HomebrewForm({ initialForm, raceOptions = [], onSave, onCancel }) {
           short summary and the numbers, plus a link to where your group reads the
           full rules. Please don't paste the book's text.
         </p>
+
+        <PasteFill
+          category={form.category}
+          onFill={(parsed, keys) =>
+            setForm((previous) => ({ ...previous, data: applySuggestions(previous.data, parsed, keys) }))
+          }
+          onReference={(sections) => {
+            setReference(sections);
+            setAsideView(sections ? "reference" : "preview");
+          }}
+        />
 
         <label className="homebrew-form__field" htmlFor="homebrew-name">
           <span className="homebrew-form__label">Name</span>
@@ -168,8 +185,43 @@ function HomebrewForm({ initialForm, raceOptions = [], onSave, onCancel }) {
       </form>
 
       <aside className="homebrew-form__preview" aria-label="Preview">
-        <p className="homebrew-form__preview-label">Preview</p>
-        <DetailPanel selectedResult={preview} />
+        {reference ? (
+          // With pasted text: switch between it and the preview.
+          <div className="homebrew-form__aside-tabs" role="group" aria-label="Show beside the form">
+            {[
+              ["reference", "Your pasted text"],
+              ["preview", "Preview"],
+            ].map(([view, viewLabel]) => (
+              <button
+                key={view}
+                type="button"
+                className="homebrew-form__aside-tab"
+                aria-pressed={asideView === view}
+                onClick={() => setAsideView(view)}
+              >
+                {viewLabel}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="homebrew-form__preview-label">Preview</p>
+        )}
+
+        {reference && asideView === "reference" ? (
+          <section className="homebrew-form__reference" aria-label="Your pasted text">
+            <p className="homebrew-form__hint">
+              For reference while you write. It isn&apos;t saved.
+            </p>
+            {reference.map((section, index) => (
+              <div key={index} className="homebrew-form__reference-section">
+                {section.name && <h3>{section.name}</h3>}
+                {section.text && <p>{section.text}</p>}
+              </div>
+            ))}
+          </section>
+        ) : (
+          <DetailPanel selectedResult={preview} />
+        )}
       </aside>
     </div>
   );

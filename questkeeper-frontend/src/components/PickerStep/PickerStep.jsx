@@ -3,6 +3,7 @@ import ResultCard from "../ResultCard/ResultCard";
 import DetailPanel from "../DetailPanel/DetailPanel";
 import "./PickerStep.css";
 import Button from "../Button/Button";
+import StartFromButton from "../HomebrewStart/StartFromButton";
 import SourceFilter from "../SourceFilter/SourceFilter";
 import { filterBySource } from "../../utils/sourceFilters";
 import { getCardPreview } from "../../utils/beginnerGuidance";
@@ -28,6 +29,9 @@ function PickerStep({
   // Published-book entries can't be chosen directly; this rebuilds one as
   // homebrew instead (gets the selected entry).
   onMakeHomebrewFrom,
+  // Free (SRD/Open5e) entries can be copied into a homebrew form to make
+  // your own version (gets the filled-in form values).
+  onStartFrom,
 }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,7 +48,15 @@ function PickerStep({
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   // "all" or one book name, picked with the SourceFilter buttons.
   const [sourceFilter, setSourceFilter] = useState("all");
-  const visibleItems = filterBySource(items, sourceFilter);
+  // Book entries with no way to pick them here (like Artificer: homebrew
+  // can't build whole classes yet) are read-only. They go last, so the
+  // choosable options come first.
+  const isReadOnly = (item) =>
+    String(item?.index ?? "").startsWith("book_") && !onMakeHomebrewFrom;
+  const visibleItems = [...filterBySource(items, sourceFilter)].sort(
+    (a, b) => Number(isReadOnly(a)) - Number(isReadOnly(b)),
+  );
+  const selectedIsReadOnly = Boolean(selectedRaw?.is_book_entry) && !onMakeHomebrewFrom;
 
   useEffect(() => {
     fetchList()
@@ -118,7 +130,10 @@ function PickerStep({
                   source: item.source,
                   sourceGroup: item.sourceGroup,
                   preview: getCardPreview(category, item),
-                  tagline: getTagline?.(item),
+                  // Read-only entries say so right on the card.
+                  tagline: isReadOnly(item)
+                    ? "Read only: can't be picked yet"
+                    : getTagline?.(item),
                 }}
                 isSelected={selectedIndex === item.index}
                 onClick={() => handleSelect(item)}
@@ -127,6 +142,15 @@ function PickerStep({
           </div>
 
           <div className="picker-step__detail">
+            {selectedIsReadOnly && !isDetailLoading && (
+              <p className="picker-step__read-only" role="note">
+                <strong>Can&apos;t be picked yet.</strong> QuestKeeper
+                doesn&apos;t have this {category.toLowerCase()}&apos;s rules
+                (the book&apos;s text is copyrighted), so it&apos;s here to read
+                about for now.
+              </p>
+            )}
+
             {isDetailLoading && (
               <p className="picker-step__status">Loading details...</p>
             )}
@@ -139,7 +163,10 @@ function PickerStep({
                 selectedDetail?.bookEntry
                   ? {
                       ...selectedDetail,
-                      bookEntry: { ...selectedDetail.bookEntry, inPicker: true },
+                      bookEntry: {
+                        ...selectedDetail.bookEntry,
+                        inPicker: true,
+                      },
                     }
                   : selectedDetail
               }
@@ -155,12 +182,21 @@ function PickerStep({
                       </Button>
                     )
                   ) : (
-                    <Button
-                      className="picker-step__confirm-position"
-                      onClick={handleConfirm}
-                    >
-                      Choose {selectedDetail.name}
-                    </Button>
+                    <>
+                      <Button
+                        className="picker-step__confirm-position"
+                        onClick={handleConfirm}
+                      >
+                        Choose {selectedDetail.name}
+                      </Button>
+                      {onStartFrom && selectedDetail.startFrom && (
+                        <StartFromButton
+                          startFrom={selectedDetail.startFrom}
+                          onStart={onStartFrom}
+                          label="Make my own version"
+                        />
+                      )}
+                    </>
                   )
                 ) : null
               }
