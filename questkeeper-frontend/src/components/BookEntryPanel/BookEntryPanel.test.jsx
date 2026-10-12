@@ -55,18 +55,6 @@ describe("BookEntryPanel", () => {
     expect(screen.getByRole("link", { name: "Make it as homebrew" })).toHaveAttribute("href", "/homebrew");
   });
 
-  it("explains that whole classes can't be homebrew yet", () => {
-    renderPanel({
-      category: "class",
-      name: "Artificer",
-      book: "Tasha's Cauldron of Everything",
-      summary: "Inventors.",
-      linkUrl: "https://dnd5e.wikidot.com/artificer",
-    });
-    expect(screen.queryByRole("link", { name: "Make it as homebrew" })).not.toBeInTheDocument();
-    expect(screen.getByText(/can't build whole classes yet/)).toBeInTheDocument();
-  });
-
   it("names a subclass's class and sends it to the subclass form", () => {
     renderPanel({
       category: "subclass",
@@ -83,7 +71,7 @@ describe("BookEntryPanel", () => {
     expect(screen.getByText(/features, with the level each one is gained/)).toBeInTheDocument();
   });
 
-  it("explains when a subclass's class has no rules yet", () => {
+  it("asks for the homebrew class first for a book class's subclass", () => {
     renderPanel({
       category: "subclass",
       name: "Armorer",
@@ -92,9 +80,22 @@ describe("BookEntryPanel", () => {
       linkUrl: "https://dnd5e.wikidot.com/artificer:armorer",
       classIndex: "artificer",
       className: "Artificer",
-      canMakeHomebrew: false,
+      canMakeHomebrew: true,
     });
-    expect(screen.queryByRole("link", { name: "Make it as homebrew" })).not.toBeInTheDocument();
-    expect(screen.getByText(/class QuestKeeper doesn't have rules for yet/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Make it as homebrew" })).toBeInTheDocument();
+    expect(screen.getByText(/Make your homebrew Artificer first/)).toBeInTheDocument();
+  });
+
+  it("lets a whole book class become homebrew", () => {
+    renderPanel({
+      category: "class",
+      name: "Artificer",
+      book: "Tasha's Cauldron of Everything",
+      summary: "Magical inventors.",
+      linkUrl: "https://dnd5e.wikidot.com/artificer",
+      classIndex: "artificer",
+    });
+    expect(screen.getByRole("link", { name: "Make it as homebrew" })).toBeInTheDocument();
+    expect(screen.getByText(/hit die, proficiencies, spellcasting/)).toBeInTheDocument();
   });
 });

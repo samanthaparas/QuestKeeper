@@ -41,12 +41,12 @@ export function getVisibleSteps({
   if (getSubraceCantripTraitId(subrace?.id)) steps.push("subraceCantrip");
 
   steps.push("class");
-  if (getSubclassLevel(characterClass?.id) === 1) steps.push("subclass");
+  if (getSubclassLevel(characterClass) === 1) steps.push("subclass");
 
   steps.push("background", "classSkills");
 
   if (
-    getSpellcastingType(characterClass?.id) &&
+    getSpellcastingType(characterClass) &&
     !NO_LEVEL_ONE_SPELLS.has(characterClass?.id)
   ) {
     steps.push("classSpells");

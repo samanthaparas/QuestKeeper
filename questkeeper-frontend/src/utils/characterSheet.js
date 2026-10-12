@@ -129,8 +129,47 @@ export const SUBCLASS_LEVEL_BY_CLASS = {
   rogue: 3,
 };
 
-export function getSubclassLevel(classId) {
-  return SUBCLASS_LEVEL_BY_CLASS[classId] ?? null;
+// --- Class rules ---------------------------------------------------------------
+// The SRD classes' rules are looked up by their ID ("wizard"). Homebrew
+// classes carry their own on the class itself, so every helper below takes
+// either an ID or a class object: a sheet's class snapshot ({ id,
+// spellcastingType, casterProgression... }) or a raw class from the API
+// ({ index, spellcasting_type, caster_progression... }).
+
+// How a class gets spell slots: "full" (Wizard), "half" (Paladin, from level
+// 2), "half-early" (half slots from level 1, like the Artificer), "pact"
+// (Warlock) or "none".
+const SRD_PROGRESSION = {
+  bard: "full",
+  cleric: "full",
+  druid: "full",
+  sorcerer: "full",
+  wizard: "full",
+  paladin: "half",
+  ranger: "half",
+  warlock: "pact",
+};
+
+export const CASTER_PROGRESSIONS = ["none", "full", "half", "half-early", "pact"];
+
+function classRules(classRef) {
+  const isObject = classRef !== null && typeof classRef === "object";
+  const id = isObject ? (classRef.id ?? classRef.index) : classRef;
+  const pick = (camel, snake, fallback) =>
+    (isObject ? (classRef[camel] ?? classRef[snake]) : undefined) ?? fallback;
+
+  const progression = pick("casterProgression", "caster_progression", SRD_PROGRESSION[id] ?? "none");
+  return {
+    id,
+    type: pick("spellcastingType", "spellcasting_type", SPELLCASTING_BY_CLASS[id]?.type ?? null),
+    ability: pick("spellcastingAbility", "spellcasting_ability", SPELLCASTING_BY_CLASS[id]?.ability ?? null),
+    progression: CASTER_PROGRESSIONS.includes(progression) ? progression : "none",
+    subclassLevel: pick("subclassLevel", "subclass_level", SUBCLASS_LEVEL_BY_CLASS[id] ?? null),
+  };
+}
+
+export function getSubclassLevel(classRef) {
+  return classRules(classRef).subclassLevel;
 }
 
 // Only High Elf currently grants a choosable free cantrip via a racial
@@ -154,23 +193,24 @@ export function getSubraceCantripTraitId(subraceId) {
   return SUBRACE_CANTRIP_TRAITS[subraceId] ?? null;
 }
 
-export function getSpellcastingType(classId) {
-  return SPELLCASTING_BY_CLASS[classId]?.type ?? null;
+export function getSpellcastingType(classRef) {
+  return classRules(classRef).type;
 }
 
-export function getSpellcastingAbility(classId) {
-  return SPELLCASTING_BY_CLASS[classId]?.ability ?? null;
+export function getSpellcastingAbility(classRef) {
+  return classRules(classRef).ability;
 }
 
-export function getStartingSpellCounts(classId, levelOneSpellcasting) {
+export function getStartingSpellCounts(classRef, levelOneSpellcasting) {
   const cantrips = levelOneSpellcasting?.cantrips_known ?? 0;
-  if (cantrips === 0) return { cantrips: 0, spells: 0 };
+  const known = levelOneSpellcasting?.spells_known ?? 0;
+  if (cantrips === 0 && known === 0) return { cantrips: 0, spells: 0 };
 
-  if (classId === "wizard") return { cantrips, spells: 6 };
-  if (getSpellcastingType(classId) === "prepared")
+  if (classRules(classRef).id === "wizard") return { cantrips, spells: 6 };
+  if (getSpellcastingType(classRef) === "prepared")
     return { cantrips, spells: 0 };
 
-  return { cantrips, spells: levelOneSpellcasting?.spells_known ?? 0 };
+  return { cantrips, spells: known };
 }
 
 export function getFeatDescriptionLines(feat) {
@@ -180,11 +220,11 @@ export function getFeatDescriptionLines(feat) {
 }
 
 export function buildStartingSpellcasting(
-  classId,
+  classRef,
   chosenCantrips,
   chosenSpells,
 ) {
-  const type = getSpellcastingType(classId);
+  const type = getSpellcastingType(classRef);
   if (!type) return null;
 
   const toEntry = (spell) => ({
@@ -201,7 +241,7 @@ export function buildStartingSpellcasting(
       cantripsKnown: chosenCantrips.map(toEntry),
       spellsKnown: chosenSpells.map(toEntry),
     },
-    classId,
+    classRef,
     1,
   );
 }
@@ -709,7 +749,7 @@ export const ABILITY_SCORE_IMPROVEMENT_LEVELS = [4, 8, 12, 16, 19];
 export function getLevelUpStepKeys(targetLevel, characterClass) {
   const steps = ["hitPoints"];
 
-  if (getSubclassLevel(characterClass?.id) === targetLevel) {
+  if (getSubclassLevel(characterClass) === targetLevel) {
     steps.push("subclass");
   }
 
@@ -822,10 +862,10 @@ export function finalizeLevelUp(sheet) {
     ? addSpellToSpellcasting(sheet.spellcasting, sheet.class, spellStep.data)
     : sheet.spellcasting;
 
-  const spellcasting = getSpellcastingType(characterClass?.id)
+  const spellcasting = getSpellcastingType(characterClass)
     ? applySpellSlotProgression(
         spellcastingAfterSpellStep,
-        characterClass.id,
+        characterClass,
         pendingLevelUp.targetLevel,
       )
     : spellcastingAfterSpellStep;
@@ -1334,15 +1374,6 @@ const FULL_CASTER_SLOT_TABLE = {
   20: [4, 3, 3, 3, 3, 2, 2, 1, 1],
 };
 
-const HALF_CASTER_CLASSES = new Set(["paladin", "ranger"]);
-const FULL_CASTER_CLASSES = new Set([
-  "bard",
-  "cleric",
-  "druid",
-  "sorcerer",
-  "wizard",
-]);
-
 // Warlock Pact Magic: a handful of slots that are all the same spell level,
 // which itself scales with character level - a completely different system
 // from every other caster, but it still fits the existing 9-row
@@ -1370,25 +1401,28 @@ const WARLOCK_PACT_MAGIC_TABLE = {
   20: { slots: 4, slotLevel: 5 },
 };
 
-export function getSpellSlotProgression(classId, level) {
+export function getSpellSlotProgression(classRef, level) {
   const clampedLevel = Math.max(1, Math.min(20, level));
   const emptyRows = () =>
     Array.from({ length: 9 }, (_, i) => ({ level: i + 1, max: 0 }));
+  const { progression } = classRules(classRef);
 
-  if (classId === "warlock") {
+  if (progression === "pact") {
     const { slots, slotLevel } = WARLOCK_PACT_MAGIC_TABLE[clampedLevel];
     return emptyRows().map((row) =>
       row.level === slotLevel ? { ...row, max: slots } : row,
     );
   }
 
-  if (HALF_CASTER_CLASSES.has(classId)) {
-    if (clampedLevel < 2) return emptyRows();
+  // Half casters: Paladins and Rangers from level 2; "half-early" (like the
+  // Artificer) the same table but starting at level 1.
+  if (progression === "half" || progression === "half-early") {
+    if (progression === "half" && clampedLevel < 2) return emptyRows();
     const row = FULL_CASTER_SLOT_TABLE[Math.ceil(clampedLevel / 2)];
     return row.map((max, i) => ({ level: i + 1, max }));
   }
 
-  if (FULL_CASTER_CLASSES.has(classId)) {
+  if (progression === "full") {
     const row = FULL_CASTER_SLOT_TABLE[clampedLevel];
     return row.map((max, i) => ({ level: i + 1, max }));
   }
@@ -1396,10 +1430,10 @@ export function getSpellSlotProgression(classId, level) {
   return emptyRows();
 }
 
-export function applySpellSlotProgression(spellcasting, classId, level) {
-  const progression = getSpellSlotProgression(classId, level);
+export function applySpellSlotProgression(spellcasting, classRef, level) {
+  const progression = getSpellSlotProgression(classRef, level);
   const base = spellcasting ?? {
-    type: getSpellcastingType(classId) ?? "known",
+    type: getSpellcastingType(classRef) ?? "known",
     cantripsKnown: [],
     spellsKnown: [],
   };

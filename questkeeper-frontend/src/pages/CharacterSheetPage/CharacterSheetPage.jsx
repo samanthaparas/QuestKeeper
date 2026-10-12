@@ -796,7 +796,7 @@ function CharacterSheetPage() {
   const proficiencyBonus = getProficiencyBonus(sheet.level);
   const { combat } = sheet;
   const spellcastingAbility =
-    sheet.class?.spellcastingAbility ?? getSpellcastingAbility(sheet.class?.id);
+    sheet.class?.spellcastingAbility ?? getSpellcastingAbility(sheet.class ?? null);
   const hasSpellcasting =
     Boolean(spellcastingAbility) ||
     (sheet.spellcasting?.cantripsKnown?.length ?? 0) > 0 ||

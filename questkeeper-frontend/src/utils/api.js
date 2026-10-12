@@ -99,13 +99,16 @@ export async function getRaceDetails(raceId) {
     : race;
 }
 
-// The 12 SRD classes plus the book classes (Artificer, Blood Hunter), which
-// have a summary and a link only.
+// The 12 SRD classes, homebrew classes, and the book classes (Artificer,
+// Blood Hunter), which have a summary and a link only.
 export async function getClasses() {
-  const classes = await requestJson("/classes", "Failed to fetch classes:");
+  const [classes, entries] = await Promise.all([
+    requestJson("/classes", "Failed to fetch classes:"),
+    loadHomebrew(),
+  ]);
   // The backend doesn't label classes; they're all SRD 5.1.
   const srd = classes.map((item) => ({ ...item, source: item.source ?? "SRD 5.1" }));
-  return [...srd, ...listBookClasses()].sort(byName);
+  return [...srd, ...listHomebrew(entries, "class"), ...listBookClasses()].sort(byName);
 }
 
 // SRD classes list their SRD, Open5e, homebrew and book subclasses.
@@ -114,6 +117,13 @@ export async function getClassDetails(classId) {
     const entry = findBookClass(classId);
     if (!entry) throw new Error(`Book class ${classId} not found`);
     return entry;
+  }
+  // A homebrew class lists its homebrew subclasses, plus the book subclasses
+  // of the class it rebuilds (a homebrew Artificer lists the Artificer's).
+  if (isHomebrewId(classId)) {
+    const homebrewClass = await findInHomebrew(classId, findHomebrew);
+    const bookRefs = homebrewClass.book_class ? getBookSubclassRefs(homebrewClass.book_class) : [];
+    return { ...homebrewClass, subclasses: [...homebrewClass.subclasses, ...bookRefs] };
   }
   const [data, entries] = await Promise.all([
     requestJson(
@@ -191,16 +201,35 @@ export function getFeatDetails(featId, edition) {
   );
 }
 
-export function getClassSpells(classId) {
+export async function getClassSpells(classId) {
+  // A homebrew class uses the spell list of the SRD class it picked.
+  if (isHomebrewId(classId)) {
+    const homebrewClass = await findInHomebrew(classId, findHomebrew);
+    if (!homebrewClass.spell_list) return [];
+    classId = homebrewClass.spell_list;
+  }
   return requestJson(
     `/classes/${encodeURIComponent(classId)}/spells`,
     `Failed to fetch spell list for class ${classId}:`,
   );
 }
 
-export function getClassLevel(classId, level) {
+export async function getClassLevel(classId, level) {
   // Book classes have no rules in QuestKeeper.
-  if (isBookEntryId(classId)) return Promise.reject(new Error("No levels for book classes"));
+  if (isBookEntryId(classId)) throw new Error("No levels for book classes");
+  // A homebrew class's level, in the SRD's level shape.
+  if (isHomebrewId(classId)) {
+    const homebrewClass = await findInHomebrew(classId, findHomebrew);
+    const atLevel = Number(level);
+    return {
+      level: atLevel,
+      prof_bonus: Math.ceil(atLevel / 4) + 1,
+      features: homebrewClass.features
+        .filter((feature) => feature.level === atLevel)
+        .map(({ index, name }) => ({ index, name })),
+      spellcasting: atLevel === 1 ? homebrewClass.levelOneSpellcasting : null,
+    };
+  }
   return requestJson(
     `/classes/${encodeURIComponent(classId)}/levels/${encodeURIComponent(level)}`,
     `Failed to fetch level ${level} details for class ${classId}:`,
@@ -300,8 +329,12 @@ export function getMagicItemDetails(magicItemId, edition) {
   );
 }
 
-export function getClassFeatures(classId) {
-  if (isBookEntryId(classId)) return Promise.resolve([]);
+export async function getClassFeatures(classId) {
+  if (isBookEntryId(classId)) return [];
+  if (isHomebrewId(classId)) {
+    const homebrewClass = await findInHomebrew(classId, findHomebrew);
+    return homebrewClass.features.map(({ index, name, level }) => ({ index, name, level }));
+  }
   return requestJson(
     `/classes/${encodeURIComponent(classId)}/features`,
     `Failed to fetch features for class ${classId}:`,

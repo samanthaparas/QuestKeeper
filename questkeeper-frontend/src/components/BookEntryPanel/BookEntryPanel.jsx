@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { CLASS_IDS } from "../../utils/homebrewMappers";
 import "./BookEntryPanel.css";
 
 // What players see for an option from a published book QuestKeeper can't
@@ -17,19 +18,18 @@ const HOMEBREW_HINTS = {
   background: "Add the skills, languages, gear and feature in your own words",
   race: "Add the speed, size, ability bonuses and traits in your own words",
   subclass: "Add its features, with the level each one is gained, in your own words",
+  class: "Add its hit die, proficiencies, spellcasting and features by level in your own words",
 };
 
-// Whether this entry can become homebrew: whole classes can't yet, and
-// subclasses only when they belong to one of the 12 SRD classes.
-function canMakeHomebrew(entry) {
-  if (entry.category === "class") return false;
-  if (entry.category === "subclass") return Boolean(entry.canMakeHomebrew);
-  return true;
-}
-
+// Every book entry can be rebuilt as homebrew. canMakeHomebrew: false still
+// turns it off for an entry that shouldn't offer it.
 function BookEntryPanel({ entry }) {
   const category = entry.category ?? "background";
-  const homebrewable = canMakeHomebrew(entry);
+  const homebrewable = entry.canMakeHomebrew !== false;
+  // A subclass of a book class (an Artificer one) belongs to the player's
+  // homebrew version of that class, so that comes first.
+  const needsHomebrewClass =
+    category === "subclass" && entry.classIndex && !CLASS_IDS.includes(entry.classIndex);
 
   return (
     <div className="book-entry">
@@ -69,8 +69,12 @@ function BookEntryPanel({ entry }) {
                 name: entry.name,
                 basedOn: entry.book,
                 linkUrl: entry.linkUrl,
-                // A subclass is filed under its class in the homebrew form.
-                ...(category === "subclass" ? { data: { parentClass: entry.classIndex } } : {}),
+                // A subclass is filed under its class in the homebrew form; a
+                // class remembers which book class it rebuilds.
+                ...(category === "subclass" && !needsHomebrewClass
+                  ? { data: { parentClass: entry.classIndex } }
+                  : {}),
+                ...(category === "class" ? { data: { bookClass: entry.classIndex } } : {}),
               },
             }}
           >
@@ -79,17 +83,15 @@ function BookEntryPanel({ entry }) {
         )}
       </div>
 
-      {homebrewable ? (
+      {homebrewable && (
         <p className="book-entry__hint">
           "Make it as homebrew" opens a form with the name and link filled in.{" "}
-          {HOMEBREW_HINTS[category] ?? HOMEBREW_HINTS.background}, and it's ready
-          to use in your characters.
-        </p>
-      ) : (
-        <p className="book-entry__hint">
-          {category === "class"
-            ? "Homebrew can't build whole classes yet, so this class can't be picked in character creation for now. Its subclasses are listed below."
-            : "This subclass belongs to a class QuestKeeper doesn't have rules for yet, so it can't be made into homebrew for now."}
+          {HOMEBREW_HINTS[category] ?? HOMEBREW_HINTS.background} (or paste the
+          rules for QuestKeeper to fill in the numbers), and it's ready to use
+          in your characters.
+          {needsHomebrewClass && entry.className && (
+            <> Make your homebrew {entry.className} first, then choose it as this subclass&apos;s class.</>
+          )}
         </p>
       )}
     </div>

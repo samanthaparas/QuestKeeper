@@ -74,6 +74,8 @@ function HomebrewPage() {
 
   // Homebrew races first, so a homebrew subrace can belong to one.
   const raceOptions = [...listHomebrew(entries, "race"), ...srdRaces];
+  // Homebrew classes can have homebrew subclasses too.
+  const classOptions = listHomebrew(entries, "class");
 
   async function handleSave(entry) {
     if (form.id) {
@@ -139,6 +141,7 @@ function HomebrewPage() {
             key={form.id ?? `new-${form.category}`}
             initialForm={form}
             raceOptions={raceOptions}
+            classOptions={classOptions}
             onSave={handleSave}
             onCancel={() => setForm(null)}
           />

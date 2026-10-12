@@ -76,7 +76,7 @@ import { parseEquipmentChoices } from "../../utils/equipmentChoices";
 import CreationTips from "../../components/CreationTips/CreationTips";
 import Button from "../../components/Button/Button";
 import HomebrewDialog from "../../components/HomebrewDialog/HomebrewDialog";
-import { toHomebrewIndex } from "../../utils/homebrewMappers";
+import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
 
 const mapRaceToDetailPanelResult = mapRaceToPanel;
 const mapClassToDetailPanelResult = mapClassToPanel;
@@ -193,6 +193,11 @@ function CharacterCreationPage() {
     setHomebrewRequest({ category, fields, data, ...extra });
   }
 
+  // A homebrew class, offered in the subclass form's "which class?" list.
+  const homebrewClassOptions = isHomebrewId(characterClass?.id)
+    ? [{ index: characterClass.id, name: characterClass.name }]
+    : [];
+
   async function handleHomebrewCreated(saved) {
     setHomebrewRequest(null);
     const index = toHomebrewIndex(saved.id);
@@ -205,6 +210,8 @@ function CharacterCreationPage() {
         // The subrace list comes from the race, so reload the race first.
         setRaceRaw(await loadRaceDetails(race.id));
         raw = await getSubraceDetails(index);
+      } else if (saved.category === "class") {
+        raw = await loadClassDetails(index);
       } else if (saved.category === "subclass") {
         setClassRaw(await loadClassDetails(characterClass.id));
         raw = await getSubclassDetails(index);
@@ -267,7 +274,7 @@ function CharacterCreationPage() {
     ];
 
     const spellcasting = buildStartingSpellcasting(
-      characterClass?.id,
+      characterClass,
       spellChoices?.cantrips ?? [],
       spellChoices?.spells ?? [],
     );
@@ -335,9 +342,14 @@ function CharacterCreationPage() {
         : []),
     ];
     // Same for gear: it can't become item rows, so it goes in the notes.
-    const notes = background?.equipmentDescription
-      ? `Starting gear from ${background.name}: ${background.equipmentDescription}`
-      : "";
+    const notes = [
+      characterClass?.equipmentDescription &&
+        `Starting gear from ${characterClass.name}: ${characterClass.equipmentDescription}`,
+      background?.equipmentDescription &&
+        `Starting gear from ${background.name}: ${background.equipmentDescription}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
     const sheet = createCharacterSheet({
       name,
@@ -537,6 +549,22 @@ function CharacterCreationPage() {
 
               {step === "class" && (
                 <PickerStep
+                  key={`class-${pickerVersion}`}
+                  onMakeOwn={() => setHomebrewRequest({ category: "class" })}
+                  makeOwnLabel="Make your own class"
+                  // A book class (Artificer) rebuilt as homebrew: its name,
+                  // book and link filled in, and its book subclasses kept.
+                  onMakeHomebrewFrom={(book) =>
+                    setHomebrewRequest({
+                      category: "class",
+                      fields: {
+                        name: book.name,
+                        basedOn: book.book,
+                        linkUrl: book.link_url,
+                      },
+                      data: { bookClass: book.index.replace(/^book_/, "") },
+                    })
+                  }
                   title="Choose a Class"
                   description="Your character's class is what they do best in a fight or a tough situation. Pick one to see how it plays before you commit."
                   category="Class"
@@ -545,7 +573,7 @@ function CharacterCreationPage() {
                   mapToDetailPanelResult={mapClassToDetailPanelResult}
                   mapToSnapshot={mapClassToSnapshot}
                   getTagline={(item) => getClassGuidance(item.index)?.tagline}
-                  initialSelectedRaw={classRaw}
+                  initialSelectedRaw={pickerStart("class", classRaw)}
                   onChoose={(snapshot, raw) => {
                     setCharacterClass(snapshot);
                     setClassRaw(raw);
@@ -575,17 +603,21 @@ function CharacterCreationPage() {
                   key={`subclass-${pickerVersion}`}
                   // Only offered when the subclass is picked now (level 1).
                   onMakeOwn={
-                    getSubclassLevel(characterClass?.id) === 1
+                    getSubclassLevel(characterClass) === 1
                       ? () =>
                           setHomebrewRequest({
                             category: "subclass",
-                            data: { parentClass: characterClass.id },
+                            data: {
+                              parentClass: characterClass.id,
+                              parentClassName: characterClass.name,
+                            },
+                            classOptions: homebrewClassOptions,
                           })
                       : undefined
                   }
                   makeOwnLabel={`Make your own ${characterClass?.name ?? ""} subclass`}
                   onStartFrom={
-                    getSubclassLevel(characterClass?.id) === 1
+                    getSubclassLevel(characterClass) === 1
                       ? startHomebrewFrom
                       : undefined
                   }
@@ -597,19 +629,23 @@ function CharacterCreationPage() {
                         basedOn: book.book,
                         linkUrl: book.link_url,
                       },
-                      data: { parentClass: characterClass.id },
+                      data: {
+                        parentClass: characterClass.id,
+                        parentClassName: characterClass.name,
+                      },
+                      classOptions: homebrewClassOptions,
                     })
                   }
                   title="Choose a Subclass"
                   description={
-                    getSubclassLevel(characterClass?.id) === 1
+                    getSubclassLevel(characterClass) === 1
                       ? `${characterClass?.name ?? "Your class"}'s specialization shapes how you play. Pick one now.`
                       : `${characterClass?.name ?? "This class"} chooses a subclass later as you level up, not at creation.`
                   }
                   category="Subclass"
                   fetchList={() =>
                     Promise.resolve(
-                      getSubclassLevel(characterClass?.id) === 1
+                      getSubclassLevel(characterClass) === 1
                         ? (classRaw?.subclasses ?? [])
                         : [],
                     )

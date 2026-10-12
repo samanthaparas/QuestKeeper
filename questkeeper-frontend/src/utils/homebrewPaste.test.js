@@ -132,4 +132,48 @@ describe("applySuggestions", () => {
       { name: "Soft Step", description: "" },
     ]);
   });
+
+  it("reads a class's basics, spellcasting, features and subclass level", () => {
+    const CLASS = `Hit Dice: 1d8 per tinkerer level
+Armor: Light armor, shields
+Weapons: Simple weapons
+Tools: None
+Saving Throws: Constitution, Intelligence
+Skills: Choose two from Arcana, History, Nature
+Equipment
+You start with the following equipment:
+a light crossbow and 20 bolts
+a dungeoneer's pack
+Gadgets
+At 1st level, you can make small gadgets.
+Spellcasting
+You cast spells through your tools.
+Cantrips (0-Level Spells)
+At 1st level, you know two cantrips of your choice.
+You prepare the list of tinkerer spells, equal to half your tinkerer level, rounded down.
+Intelligence is your spellcasting ability for your tinkerer spells.
+Tinker Specialist
+At 3rd level, you choose the type of specialist you are.
+Ability Score Improvement
+When you reach 4th level, you can increase one ability score.`;
+    const { data } = parsePastedText("class", CLASS);
+
+    expect(data).toMatchObject({
+      hitDie: 8,
+      savingThrows: ["con", "int"],
+      skillChoice: { choose: 2, from: ["arcana", "history", "nature"] },
+      armor: "Light armor, shields",
+      weapons: "Simple weapons",
+      equipment: "a light crossbow and 20 bolts, a dungeoneer's pack",
+      progression: "half-early",
+      spellcastingAbility: "intelligence",
+      spellcastingType: "prepared",
+      cantripsAtFirst: 2,
+      subclassLevel: 3,
+      subclassFlavor: "Tinker Specialist",
+    });
+    expect(data.tools).toBeUndefined();
+    // The spellcasting parts and Ability Score Improvement aren't features.
+    expect(data.features.map((feature) => feature.name)).toEqual(["Gadgets", "Tinker Specialist"]);
+  });
 });

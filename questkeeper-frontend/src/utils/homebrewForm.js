@@ -7,6 +7,7 @@ import {
   toHomebrewRace,
   toHomebrewSubrace,
   toHomebrewBackground,
+  toHomebrewClass,
   toHomebrewSubclass,
 } from "./homebrewMappers";
 
@@ -14,6 +15,7 @@ export const CATEGORY_LABELS = {
   race: "Race",
   subrace: "Subrace",
   background: "Background",
+  class: "Class",
   subclass: "Subclass",
 };
 
@@ -43,8 +45,28 @@ const BLANK_DATA = {
     equipment: "",
     feature: { name: "", description: "" },
   },
+  class: {
+    hitDie: 8,
+    savingThrows: [],
+    skillChoice: { choose: 2, from: [] },
+    armor: "",
+    weapons: "",
+    tools: "",
+    equipment: "",
+    progression: "none",
+    spellcastingAbility: "intelligence",
+    spellcastingType: "prepared",
+    spellList: "wizard",
+    cantripsAtFirst: 0,
+    spellsKnownAtFirst: 0,
+    subclassLevel: 3,
+    subclassFlavor: "",
+    features: [{ name: "", level: 1, description: "" }],
+    bookClass: "",
+  },
   subclass: {
     parentClass: "",
+    parentClassName: "",
     features: [{ name: "", level: 3, description: "" }],
   },
 };
@@ -112,6 +134,9 @@ export function validateHomebrewForm(form) {
   if (form.category === "subrace" && !form.data.parentRace) {
     return "Choose which race this subrace belongs to.";
   }
+  if (form.category === "class" && form.data.savingThrows.length !== 2) {
+    return "Pick the class's two saving throws.";
+  }
   if (form.category === "subclass" && !form.data.parentClass) {
     return "Choose which class this subclass is for.";
   }
@@ -122,6 +147,7 @@ const CONVERTERS = {
   race: toHomebrewRace,
   subrace: toHomebrewSubrace,
   background: toHomebrewBackground,
+  class: toHomebrewClass,
   subclass: toHomebrewSubclass,
 };
 
