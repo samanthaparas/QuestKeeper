@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import RollButton from "../RollDock/RollButton";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
 import { findSrdMatches, formatSpellDetails } from "../../utils/srdDetails";
@@ -87,11 +88,16 @@ function CharacterSheetSpellsTab({
             </div>
             <div className="character-sheet__stat-box">
               <span className="character-sheet__stat-label">Spell Attack</span>
-              <span className="character-sheet__stat-value">
+              {/* Tap to roll a spell attack. */}
+              <RollButton
+                label="Spell attack"
+                bonus={getSpellAttackModifier(abilityScore, proficiencyBonus)}
+                className="character-sheet__stat-value"
+              >
                 {formatModifier(
                   getSpellAttackModifier(abilityScore, proficiencyBonus),
                 )}
-              </span>
+              </RollButton>
             </div>
           </div>
         </section>

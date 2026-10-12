@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { parseDamage } from "../../utils/attacks";
+import RollButton from "../RollDock/RollButton";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
@@ -176,13 +178,34 @@ function CharacterSheetActionsTab({
           },
         ]}
         columns={[
+          // Tap the to-hit to roll the attack, or the damage to roll it.
           {
             key: "toHit",
             label: "To Hit",
             width: "70px",
-            format: (item) => formatModifier(item.toHit),
+            format: (item) => (
+              <RollButton
+                label={`${item.name} attack`}
+                bonus={Number(item.toHit) || 0}
+                attack={{ name: item.name, damage: item.damage }}
+              >
+                {formatModifier(item.toHit)}
+              </RollButton>
+            ),
           },
-          { key: "damage", label: "Damage", width: "100px" },
+          {
+            key: "damage",
+            label: "Damage",
+            width: "100px",
+            format: (item) =>
+              parseDamage(item.damage) ? (
+                <RollButton label={`${item.name} damage`} damage={item.damage}>
+                  {item.damage}
+                </RollButton>
+              ) : (
+                item.damage
+              ),
+          },
           { key: "damageType", label: "Type", width: "110px" },
         ]}
         emptyText="Weapons and other attacks go here. Tap Add Weapon and start typing a weapon's name: its damage fills in for you. Attack spells like Fire Bolt live on the Spells tab."

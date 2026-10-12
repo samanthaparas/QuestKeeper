@@ -1633,3 +1633,42 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
 .character-sheet__vitals--skills > :not(.character-sheet__identity) {
   display: none;
 }
+
+/* ---------- Click to roll ---------- */
+/* Room at the bottom so the roll bar never covers the last row. */
+.character-sheet {
+  padding-bottom: 96px;
+}
+
+/* A save: the proficiency dot, then the Save badge that rolls. */
+.character-sheet__save {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.character-sheet__save-dot {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 2px solid var(--qk-terracotta);
+  border-radius: 50%;
+  background-color: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.character-sheet__save-dot[aria-pressed="true"] {
+  background-color: var(--qk-terracotta);
+}
+
+.character-sheet__save-dot:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* The Save badge is the roll button; no dotted underline on it. */
+.character-sheet__ability-save-badge {
+  text-decoration: none;
+}

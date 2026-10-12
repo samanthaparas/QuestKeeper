@@ -3,11 +3,16 @@ import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useTableTurn } from "../../hooks/useTableTurn";
+import { useSheetRolls } from "../../hooks/useSheetRolls";
+import RollButton from "../../components/RollDock/RollButton";
+import RollDock from "../../components/RollDock/RollDock";
+import { RollContext } from "../../components/RollDock/rollContext";
 import { applyDamageToHitPoints } from "../../utils/attacks";
 import { getCharacter, saveCharacter } from "../../utils/characterStore";
 import {
   ABILITY_SCORES,
   ABILITY_ABBREVIATIONS,
+  ABILITY_LABELS,
   SKILLS,
   getAbilityModifier,
   getSkillModifier,
@@ -84,7 +89,7 @@ const SHEET_TERMS = [
   ["Hit Dice", "Dice you can spend on a short rest to heal."],
   [
     "Save",
-    "Saving throw bonus, used to resist spells and effects. Click it to mark a save as proficient, and use the bonus box for flat extras.",
+    "Saving throw bonus, used to resist spells and effects. Tap it to roll the save; tap the dot beside it to mark the save as proficient. Use the bonus box for flat extras.",
   ],
   [
     "P / E (skills)",
@@ -118,6 +123,9 @@ function CharacterSheetPage() {
   const [activeSlotLevels, setActiveSlotLevels] = useState(() => new Set());
   const [attackWith, setAttackWith] = useState(null);
   const tableCombat = useTableTurn(sheet?.id);
+  // Click-to-roll: any bonus on the sheet rolls, and can be shared with the
+  // character's table.
+  const roller = useSheetRolls(sheet?.id, sheet?.name);
 
   const saveTimeoutRef = useRef(null);
   const pendingUpdateRef = useRef(null);
@@ -879,9 +887,13 @@ function CharacterSheetPage() {
                   }
                 />
               )}
-              <span className="character-sheet__skill-modifier">
+              <RollButton
+                label={skill.name}
+                bonus={modifier}
+                className="character-sheet__skill-modifier"
+              >
                 {formatModifier(modifier)}
-              </span>
+              </RollButton>
             </li>
           );
         })}
@@ -889,7 +901,7 @@ function CharacterSheetPage() {
     </section>
   );
 
-  return (
+  const sheetPage = (
     <main className="character-sheet" onChange={stripLeadingZeros}>
       <TurnBanner
         combat={tableCombat}
@@ -1086,12 +1098,14 @@ function CharacterSheetPage() {
                   </label>
 
                   <label className="character-sheet__vital">
-                    <span
+                    {/* Tap "Init" to roll initiative. */}
+                    <RollButton
+                      label="Initiative"
+                      bonus={combat.initiative}
                       className="character-sheet__vital-label"
-                      title="Initiative bonus: added to your d20 roll to decide who acts first."
                     >
                       Init
-                    </span>
+                    </RollButton>
                     <input
                       type="number"
                       className="character-sheet__vital-input"
@@ -1176,26 +1190,40 @@ function CharacterSheetPage() {
                             min={1}
                             max={30}
                           />
-                          <span className="character-sheet__ability-modifier">
-                            {formatModifier(modifier)}
-                          </span>
-                          <button
-                            type="button"
-                            className={`character-sheet__ability-save-badge${
-                              isSaveProficient
-                                ? ""
-                                : " character-sheet__ability-save-badge--plain"
-                            }`}
-                            aria-pressed={Boolean(isSaveProficient)}
-                            title={
-                              isSaveProficient
-                                ? "Proficient in this saving throw - click to remove"
-                                : "Not proficient - click to add"
-                            }
-                            onClick={() => handleSaveToggle(ability)}
+                          <RollButton
+                            label={`${ABILITY_LABELS[ability]} check`}
+                            bonus={modifier}
+                            className="character-sheet__ability-modifier"
                           >
-                            Save {formatModifier(saveBonus)}
-                          </button>
+                            {formatModifier(modifier)}
+                          </RollButton>
+                          {/* The dot marks the save as proficient; the badge
+                              rolls it. */}
+                          <span className="character-sheet__save">
+                            <button
+                              type="button"
+                              className="character-sheet__save-dot"
+                              aria-pressed={Boolean(isSaveProficient)}
+                              aria-label={`${ABILITY_LABELS[ability]} save proficiency`}
+                              title={
+                                isSaveProficient
+                                  ? "Proficient in this saving throw - click to remove"
+                                  : "Not proficient - click to add"
+                              }
+                              onClick={() => handleSaveToggle(ability)}
+                            />
+                            <RollButton
+                              label={`${ABILITY_LABELS[ability]} save`}
+                              bonus={saveBonus}
+                              className={`character-sheet__ability-save-badge${
+                                isSaveProficient
+                                  ? ""
+                                  : " character-sheet__ability-save-badge--plain"
+                              }`}
+                            >
+                              Save {formatModifier(saveBonus)}
+                            </RollButton>
+                          </span>
                         </div>
                       );
                     })}
@@ -1225,9 +1253,9 @@ function CharacterSheetPage() {
                       />
                     </label>
                     <p className="character-sheet__ability-hint">
-                      Tip: click a Save badge to mark that saving throw as
-                      proficient. Use the bonus box for extras like a Paladin's
-                      Aura of Protection.
+                      Tip: tap any bonus to roll it. The dot beside a Save marks
+                      that saving throw as proficient. Use the bonus box for
+                      extras like a Paladin's Aura of Protection.
                     </p>
                   </div>
                 </section>
@@ -1470,8 +1498,12 @@ function CharacterSheetPage() {
           </>
         )}
       </div>
+      <RollDock />
     </main>
   );
+
+  // Every rollable number on the page reads the roller from here.
+  return <RollContext.Provider value={roller}>{sheetPage}</RollContext.Provider>;
 }
 
 export default CharacterSheetPage;
