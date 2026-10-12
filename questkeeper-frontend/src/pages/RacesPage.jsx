@@ -9,6 +9,7 @@ import SourceFilter from "../components/SourceFilter/SourceFilter";
 import { filterBySource } from "../utils/sourceFilters";
 import "../pages/SearchPage/SearchPage.css";
 import Button from "../components/Button/Button";
+import { useOpenFromLink } from "../hooks/useOpenFromLink";
 
 function RacesPage() {
   const [raceResults, setRaceResults] = useState([]);
@@ -72,6 +73,9 @@ function RacesPage() {
         setApiError("Unable to load race details. Please try again later.");
       });
   }
+
+  // Links like quick-jump's "/races?open=elf" open that race.
+  useOpenFromLink({ items: raceResults, ready: !isLoading, onOpen: handleResultClick });
 
   return (
     <main className="search-page">

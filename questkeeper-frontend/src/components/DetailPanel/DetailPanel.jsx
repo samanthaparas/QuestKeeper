@@ -279,11 +279,12 @@ function DetailPanel({ selectedResult, actions, inPicker = false }) {
       {selectedResult.bookEntry && <BookEntryPanel entry={selectedResult.bookEntry} />}
 
       {/* Every class (SRD or book) has its subclasses in tabs by source.
-          The key starts it fresh for each class. */}
+          The key starts it fresh for each class (and each linked subclass). */}
       {selectedResult.category === "Class" && selectedResult.subclassGroups?.length > 0 && (
         <SubclassBrowser
-          key={selectedResult.name}
+          key={`${selectedResult.name}:${selectedResult.initialSubclass ?? ""}`}
           groups={selectedResult.subclassGroups}
+          initialIndex={selectedResult.initialSubclass}
           inPicker={inPicker}
         />
       )}

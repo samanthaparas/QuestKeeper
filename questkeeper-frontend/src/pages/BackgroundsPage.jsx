@@ -9,6 +9,7 @@ import SourceFilter from "../components/SourceFilter/SourceFilter";
 import { filterBySource } from "../utils/sourceFilters";
 import "../pages/SearchPage/SearchPage.css";
 import Button from "../components/Button/Button";
+import { useOpenFromLink } from "../hooks/useOpenFromLink";
 
 function formatBackground2024(data) {
   const abilityScoreNames = data.ability_scores.map((a) => a.name).join(", ");
@@ -97,6 +98,17 @@ function BackgroundsPage() {
         );
       });
   }
+
+  // Links like quick-jump's "/backgrounds?open=acolyte&edition=2024" open
+  // that background (the same name can be in both rule sets).
+  useOpenFromLink({
+    items: backgroundResults,
+    ready: !isLoading,
+    onOpen: handleResultClick,
+    matches: (item, params) =>
+      item.index === params.get("open") &&
+      (item.edition === "2024" ? "2024" : "2014") === (params.get("edition") ?? "2014"),
+  });
 
   return (
     <main className="search-page">

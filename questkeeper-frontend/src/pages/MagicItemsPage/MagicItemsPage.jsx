@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getMagicItemCatalog } from "../../utils/api";
+import { useOpenFromLink } from "../../hooks/useOpenFromLink";
 import { BOOK_MAGIC_ITEMS } from "../../utils/bookMagicItems";
 import {
   filterMagicItems,
@@ -44,6 +45,10 @@ function MagicItemsPage() {
   const results = useMemo(() => filterMagicItems(allItems, filters), [allItems, filters]);
   const visible = results.slice(0, visibleCount);
   const remaining = results.length - visible.length;
+
+  // Links like quick-jump's "/magic-items?open=..." open that item. Waits for
+  // the catalog, since the book items are there from the start.
+  useOpenFromLink({ items: allItems, ready: !isLoading, onOpen: setSelected });
 
   function updateFilters(next) {
     setSearchParams(filtersToParams(next), { replace: true });

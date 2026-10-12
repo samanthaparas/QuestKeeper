@@ -9,6 +9,7 @@ import "../pages/SearchPage/SearchPage.css";
 import Button from "../components/Button/Button";
 import SourceFilter from "../components/SourceFilter/SourceFilter";
 import { filterBySource } from "../utils/sourceFilters";
+import { useOpenFromLink } from "../hooks/useOpenFromLink";
 
 function ClassesPage() {
   const [classResults, setClassResults] = useState([]);
@@ -61,18 +62,27 @@ function ClassesPage() {
     setSelectedResult(null);
   }
 
-  function handleResultClick(result) {
+  // subclassIndex: open the class with this subclass's tab showing.
+  function handleResultClick(result, subclassIndex) {
     setSelectedResult(result);
 
     loadClassDetails(result.index)
       .then((data) => {
-        setSelectedResult(mapClassToPanel(data));
+        setSelectedResult({ ...mapClassToPanel(data), initialSubclass: subclassIndex });
         setApiError("");
       })
       .catch(() => {
         setApiError("Unable to load class details. Please try again later.");
       });
   }
+
+  // Links like quick-jump's "/classes?open=wizard&subclass=evocation" open
+  // that class, at that subclass.
+  useOpenFromLink({
+    items: classResults,
+    ready: !isLoading,
+    onOpen: (item, params) => handleResultClick(item, params.get("subclass") ?? undefined),
+  });
 
   return (
     <main className="search-page">

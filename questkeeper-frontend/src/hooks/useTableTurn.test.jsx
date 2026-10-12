@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useTableTurn } from "./useTableTurn";
 import { endMyTurn, getActiveCombatForCharacter } from "../utils/tableStore";
+import { installFakeStorage } from "../test/fakeStorage";
 
 vi.mock("../utils/supabaseClient", () => ({ supabase: {} }));
 vi.mock("../context/useAuth", () => ({ useAuth: () => ({ user: { id: "u1" } }) }));
@@ -10,30 +11,6 @@ vi.mock("../utils/tableStore", () => ({
   getActiveCombatForCharacter: vi.fn(),
   subscribeToTable: vi.fn(() => () => {}),
 }));
-
-// Newer Node versions ship their own incomplete localStorage that can shadow the
-// test environment's, so this test brings a tiny in-memory one. That keeps it
-// passing on any Node version (CI runs a newer Node than a laptop might).
-function installFakeStorage() {
-  const data = new Map();
-  const fake = {
-    getItem: (key) => (data.has(key) ? data.get(key) : null),
-    setItem: (key, value) => {
-      data.set(key, String(value));
-    },
-    removeItem: (key) => {
-      data.delete(key);
-    },
-    clear: () => data.clear(),
-  };
-
-  vi.stubGlobal("localStorage", fake);
-  try {
-    Object.defineProperty(window, "localStorage", { value: fake, configurable: true });
-  } catch {
-    // The stubbed global above is enough where window is the global object.
-  }
-}
 
 function combatFor(tableId, tableName) {
   return {

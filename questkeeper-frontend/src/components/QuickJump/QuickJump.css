@@ -1,0 +1,265 @@
+/* --- The header button ---------------------------------------------------- */
+
+.quick-jump__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-background);
+  color: var(--qk-text-muted);
+  font-family: var(--qk-font-body);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.quick-jump__button:hover {
+  border-color: var(--qk-terracotta);
+  color: var(--qk-text);
+}
+
+.quick-jump__button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 3px;
+}
+
+.quick-jump__icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.quick-jump__kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 6px;
+  border: 1px solid var(--qk-border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text-muted);
+  font-family: var(--qk-font-body);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* Phones: just the magnifying glass (shortcuts need a keyboard anyway). */
+@media (max-width: 920px) {
+  .quick-jump__button {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: end;
+    width: 40px;
+    min-height: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .quick-jump__button-text,
+  .quick-jump__button .quick-jump__kbd {
+    display: none;
+  }
+}
+
+/* --- The dialog ------------------------------------------------------------ */
+
+.quick-jump__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 10vh 16px 16px;
+  background-color: rgba(52, 38, 31, 0.38);
+}
+
+.quick-jump__dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 100%);
+  max-height: min(560px, 80vh);
+  overflow: hidden;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-large);
+  background-color: var(--qk-surface);
+  box-shadow: 0 24px 48px var(--qk-shadow);
+  animation: quick-jump-in 0.16s ease-out;
+}
+
+@keyframes quick-jump-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quick-jump__dialog {
+    animation: none;
+  }
+}
+
+.quick-jump__field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--qk-border);
+  color: var(--qk-text-muted);
+}
+
+.quick-jump__field .quick-jump__icon {
+  width: 20px;
+  height: 20px;
+}
+
+.quick-jump__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--qk-text);
+  font-family: var(--qk-font-body);
+  /* 16px or more stops phones zooming in on the box. */
+  font-size: 17px;
+  outline: none;
+}
+
+.quick-jump__input::placeholder {
+  color: var(--qk-text-muted);
+}
+
+.quick-jump__results {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px 8px 10px;
+}
+
+.quick-jump__section + .quick-jump__section {
+  margin-top: 6px;
+}
+
+.quick-jump__section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 4px;
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.quick-jump__clear {
+  padding: 2px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--qk-terracotta);
+  font-family: var(--qk-font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.quick-jump__clear:hover {
+  background-color: var(--qk-surface-muted);
+}
+
+.quick-jump__clear:focus-visible {
+  outline: 2px solid var(--qk-focus);
+}
+
+.quick-jump__option {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--qk-radius-control);
+  cursor: pointer;
+}
+
+.quick-jump__option--active {
+  background-color: var(--qk-terracotta-soft);
+}
+
+.quick-jump__label {
+  color: var(--qk-text);
+  font-weight: 700;
+}
+
+.quick-jump__option--active .quick-jump__label {
+  color: var(--qk-terracotta-hover);
+}
+
+.quick-jump__hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-jump__more {
+  color: var(--qk-terracotta);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.quick-jump__kind {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.quick-jump__status {
+  margin: 0;
+  padding: 18px 10px;
+  color: var(--qk-text-muted);
+  text-align: center;
+}
+
+.quick-jump__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--qk-border);
+  background-color: var(--qk-background);
+  color: var(--qk-text-muted);
+  font-size: 12px;
+}
+
+.quick-jump__loading {
+  margin-left: auto;
+}
+
+/* No keyboard hints on touch screens. */
+@media (hover: none) {
+  .quick-jump__footer {
+    display: none;
+  }
+}

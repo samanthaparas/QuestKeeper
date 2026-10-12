@@ -52,18 +52,40 @@ async function fetchBasicSpellList() {
   return data.results;
 }
 
+// The spell list takes the D&D 5e API about ten seconds to build, and the
+// SRD spells don't change, so it's saved for 6 hours (like the Open5e lists).
+const SPELL_LIST_TTL_MS = 6 * 60 * 60 * 1000;
+let savedSpellList = null; // { promise, expiresAt }
+
+async function loadSpellList() {
+  try {
+    return await fetchSpellListWithFilters();
+  } catch (graphqlError) {
+    // Fall back to the plain list so the page still works, just with
+    // fewer filters (level only).
+    console.warn(graphqlError.message);
+    return fetchBasicSpellList();
+  }
+}
+
+// The spell list, from the saved copy while it's fresh. Saving the request
+// itself means visitors arriving at the same moment share one fetch.
+export function fetchSpellList() {
+  if (savedSpellList && savedSpellList.expiresAt > Date.now()) {
+    return savedSpellList.promise;
+  }
+  const promise = loadSpellList().catch((error) => {
+    // Don't keep a failure; the next visitor tries again.
+    savedSpellList = null;
+    throw error;
+  });
+  savedSpellList = { promise, expiresAt: Date.now() + SPELL_LIST_TTL_MS };
+  return promise;
+}
+
 export async function getSpells(req, res, next) {
   try {
-    let spells;
-
-    try {
-      spells = await fetchSpellListWithFilters();
-    } catch (graphqlError) {
-      // Fall back to the plain list so the page still works, just with
-      // fewer filters (level only).
-      console.warn(graphqlError.message);
-      spells = await fetchBasicSpellList();
-    }
+    const spells = await fetchSpellList();
 
     res.status(200).json({
       data: spells,
