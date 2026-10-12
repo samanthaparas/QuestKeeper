@@ -33,26 +33,32 @@ export async function listTablePeople(tableId) {
   ];
 }
 
-// The conversations I can read at this table, newest first, with who's in
-// each, the latest message, and how many I haven't read.
-export async function listConversations(tableId, myId) {
-  const conversations = unwrap(
-    await supabase
-      .from("table_conversations")
-      .select("id, everyone, created_by, last_message_at, table_conversation_members(user_id, last_read_at)")
-      .eq("table_id", tableId)
-      .order("last_message_at", { ascending: false }),
+// Every table I run or sit at: [{ id, name }], newest first.
+export async function listMyTables() {
+  return unwrap(
+    await supabase.from("game_tables").select("id, name").order("created_at", { ascending: false }),
   );
+}
+
+// The conversations I can read (at one table, or at all of them), newest
+// first, with their table, who's in each, the latest message, and how many I
+// haven't read.
+export async function listConversations(tableId, myId) {
+  let conversationQuery = supabase
+    .from("table_conversations")
+    .select("id, table_id, everyone, created_by, last_message_at, table_conversation_members(user_id, last_read_at)")
+    .order("last_message_at", { ascending: false });
+  if (tableId) conversationQuery = conversationQuery.eq("table_id", tableId);
+  const conversations = unwrap(await conversationQuery);
   if (conversations.length === 0) return [];
 
-  const messages = unwrap(
-    await supabase
-      .from("table_messages")
-      .select("id, conversation_id, sender_id, body, image_path, created_at")
-      .eq("table_id", tableId)
-      .order("created_at", { ascending: false })
-      .limit(500),
-  );
+  let messageQuery = supabase
+    .from("table_messages")
+    .select("id, conversation_id, sender_id, body, image_path, created_at")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (tableId) messageQuery = messageQuery.eq("table_id", tableId);
+  const messages = unwrap(await messageQuery);
 
   return conversations.map((conversation) => {
     const members = conversation.table_conversation_members ?? [];
@@ -60,6 +66,7 @@ export async function listConversations(tableId, myId) {
     const own = messages.filter((message) => message.conversation_id === conversation.id);
     return {
       id: conversation.id,
+      tableId: conversation.table_id,
       everyone: conversation.everyone,
       memberIds: members.map((member) => member.user_id),
       lastMessage: own[0] ?? null,
@@ -126,14 +133,15 @@ export async function getMessageImageUrl(path) {
   return data.signedUrl;
 }
 
-// Calls onMessage for each new message I'm allowed to read at this table.
+// Calls onMessage for each new message I'm allowed to read (row-level
+// security decides which ones reach me), at every table I'm at.
 // Returns a function that stops listening.
-export function subscribeToMessages(tableId, onMessage) {
+export function subscribeToMessages(onMessage) {
   const channel = supabase
-    .channel(`messages-${tableId}`)
+    .channel("my-messages")
     .on(
       "postgres_changes",
-      { event: "INSERT", schema: "public", table: "table_messages", filter: `table_id=eq.${tableId}` },
+      { event: "INSERT", schema: "public", table: "table_messages" },
       (payload) => onMessage(payload.new),
     )
     .subscribe();

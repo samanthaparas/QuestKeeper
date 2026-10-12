@@ -7,7 +7,6 @@ import { useSheetRolls } from "../../hooks/useSheetRolls";
 import RollButton from "../../components/RollDock/RollButton";
 import RollDock from "../../components/RollDock/RollDock";
 import { RollContext } from "../../components/RollDock/rollContext";
-import TableMessages from "../../components/TableMessages/TableMessages";
 import { applyDamageToHitPoints } from "../../utils/attacks";
 import { getCharacter, saveCharacter } from "../../utils/characterStore";
 import {
@@ -1200,7 +1199,11 @@ function CharacterSheetPage() {
                           </RollButton>
                           {/* The dot marks the save as proficient; the badge
                               rolls it. */}
-                          <span className="character-sheet__save">
+                          <span
+                            className={`character-sheet__save${
+                              isSaveProficient ? " character-sheet__save--proficient" : ""
+                            }`}
+                          >
                             <button
                               type="button"
                               className="character-sheet__save-dot"
@@ -1500,8 +1503,6 @@ function CharacterSheetPage() {
         )}
       </div>
       <RollDock />
-      {/* Secret messages at this character's table (when seated at one). */}
-      <TableMessages tableId={roller.tableId} tableName={roller.tableName} myId={user?.id} raised />
     </main>
   );
 

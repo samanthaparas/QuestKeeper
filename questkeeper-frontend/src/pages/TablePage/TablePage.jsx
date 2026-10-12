@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
-import TableMessages from "../../components/TableMessages/TableMessages";
 import { useTable } from "../../hooks/useTable";
 import { getCharacter, getCharactersByIds } from "../../utils/characterStore";
 import {
@@ -744,8 +743,6 @@ function TablePage() {
 
   return (
     <main className="table-page">
-      {/* Secret messages with the whole party, a few people, or one. */}
-      <TableMessages tableId={table.id} tableName={table.name} myId={user?.id} />
       <div className="table-page__content">
         <Link className="table-page__back" to="/tables">
           ← All tables

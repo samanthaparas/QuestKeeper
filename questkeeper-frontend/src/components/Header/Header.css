@@ -65,6 +65,13 @@
   gap: 16px;
 }
 
+/* Messages and Log In / Log Out sit together. */
+.header__account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 /* Log In / Log Out. It's a link when signed out and a button when signed
    in, so it sets its own box (inline-flex) instead of relying on either. */
 .header__profile {
@@ -176,10 +183,14 @@
     display: contents;
   }
 
-  .header__profile {
+  .header__account {
     grid-column: 3;
     grid-row: 1;
     justify-self: end;
+    gap: 8px;
+  }
+
+  .header__profile {
     min-height: 40px;
     padding: 0 16px;
     font-size: 14px;
