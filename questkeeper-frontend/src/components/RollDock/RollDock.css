@@ -303,6 +303,37 @@
 
 /* With the advantage line showing, the bar is two lines: rounder corners
    suit it better than a pill. */
-.roll-dock__bar:has(.roll-dock__mode-hint) {
+.roll-dock__bar:has(.roll-dock__mode-hint),
+.roll-dock__bar:has(.roll-dock__condition) {
   border-radius: var(--qk-radius-card);
+}
+
+/* "Poisoned: disadvantage on attack rolls and ability checks." */
+.roll-dock__condition {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 8px;
+  color: #3d2a52;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.roll-dock__condition-use {
+  min-height: 24px;
+  padding: 0 10px;
+  border: 1px solid #7a5a9a;
+  border-radius: 999px;
+  background-color: #ece3f3;
+  color: #3d2a52;
+  font: inherit;
+  cursor: pointer;
+}
+
+.roll-dock__condition-use:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
 }

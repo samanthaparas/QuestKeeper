@@ -7,6 +7,8 @@ import { useSheetRolls } from "../../hooks/useSheetRolls";
 import RollButton from "../../components/RollDock/RollButton";
 import RollDock from "../../components/RollDock/RollDock";
 import { RollContext } from "../../components/RollDock/rollContext";
+import ConditionBadges from "../../components/ConditionBadges/ConditionBadges";
+import { rollNotesFor } from "../../utils/conditions";
 import { applyDamageToHitPoints } from "../../utils/attacks";
 import { getCharacter, saveCharacter } from "../../utils/characterStore";
 import {
@@ -322,6 +324,11 @@ function CharacterSheetPage() {
   // Saved as 1 or 0, which older sheets (with a number box) also used.
   function handleInspirationToggle() {
     persistSheet({ ...sheet, inspiration: sheet.inspiration > 0 ? 0 : 1 });
+  }
+
+  // Prone, Poisoned, Exhaustion 2...
+  function handleConditionsChange(conditions) {
+    persistSheet({ ...sheet, conditions });
   }
 
   function handleGoldChange(value) {
@@ -1233,6 +1240,14 @@ function CharacterSheetPage() {
                     })}
                   </div>
 
+                  {/* Conditions, with what each one does on hover or tap. */}
+                  <div className="character-sheet__conditions">
+                    <ConditionBadges
+                      conditions={sheet.conditions ?? []}
+                      onChange={handleConditionsChange}
+                    />
+                  </div>
+
                   <div className="character-sheet__ability-extras">
                     <label className="character-sheet__save-bonus">
                       Temporary AC bonus
@@ -1507,7 +1522,14 @@ function CharacterSheetPage() {
   );
 
   // Every rollable number on the page reads the roller from here.
-  return <RollContext.Provider value={roller}>{sheetPage}</RollContext.Provider>;
+  // The roll bar also reminds you of conditions that change your rolls.
+  return (
+    <RollContext.Provider
+      value={{ ...roller, conditionNotes: rollNotesFor(sheet.conditions ?? []) }}
+    >
+      {sheetPage}
+    </RollContext.Provider>
+  );
 }
 
 export default CharacterSheetPage;

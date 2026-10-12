@@ -461,3 +461,17 @@ describe("spell slot and resource pips", () => {
     expect(screen.getByLabelText("Lay on Hands left")).toHaveValue(60);
   });
 });
+
+describe("conditions on the sheet", () => {
+  it("marks a condition, and the roll bar offers disadvantage for it", async () => {
+    const user = userEvent.setup();
+    renderSheet(makeSheet());
+
+    await user.click(await screen.findByRole("button", { name: "+ Condition" }));
+    await user.click(screen.getByRole("button", { name: /^Poisoned/ }));
+
+    expect(screen.getByText(/Poisoned: disadvantage on attack rolls and ability checks\./)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Use Disadvantage" }));
+    expect(screen.getByRole("radio", { name: "Disadvantage" })).toHaveAttribute("aria-checked", "true");
+  });
+});

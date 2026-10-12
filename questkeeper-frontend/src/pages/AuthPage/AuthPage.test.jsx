@@ -35,12 +35,12 @@ describe("AuthPage", () => {
   it("goes back where the player was headed, with what they were carrying (a quiz build)", async () => {
     renderLogin({ from: "/characters/new", fromState: { quizBuild: "iron-guardian", name: "Bram" } });
     await logIn();
-    expect(screen.getByTestId("landed")).toHaveTextContent('/characters/new {"quizBuild":"iron-guardian","name":"Bram"}');
+    expect(await screen.findByTestId("landed")).toHaveTextContent('/characters/new {"quizBuild":"iron-guardian","name":"Bram"}');
   });
 
   it("never follows a link off QuestKeeper", async () => {
     renderLogin({ from: "//evil.example", fromState: { anything: true } });
     await logIn();
-    expect(screen.getByTestId("landed")).toHaveTextContent("/characters null");
+    expect(await screen.findByTestId("landed")).toHaveTextContent("/characters null");
   });
 });

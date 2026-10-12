@@ -1,3 +1,4 @@
+import { afterLongRest } from "./conditions";
 export const ABILITY_SCORES = [
   "strength",
   "dexterity",
@@ -1138,6 +1139,10 @@ export function applyRest(sheet, restType) {
     ...sheet,
     resources,
     spellcasting,
+    // A long rest also takes away one level of exhaustion.
+    ...(restType === "long" && sheet.conditions
+      ? { conditions: afterLongRest(sheet.conditions) }
+      : {}),
     combat: {
       ...sheet.combat,
       hitPoints,
