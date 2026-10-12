@@ -99,3 +99,12 @@
   font-size: 12px;
   text-align: center;
 }
+
+/* Rows that open a menu instead of a page. */
+.nav-wheel__link--button {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}

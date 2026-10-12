@@ -18,7 +18,13 @@ const SPIN_MS = 280;
 // The links stay ordinary links in order, so screen readers and the Tab key
 // see a normal list. The tilt is set straight on each link's style while
 // scrolling (no React state), so spinning never re-renders.
-function NavWheel({ links, activeIndex = 0, onNavigate }) {
+//
+// A row is a page link ({ to, label }) or a button that does something
+// ({ id, label, onSelect, current }), like opening one of the menus.
+// current: the button leads to the page you're on (it gets the dot).
+// onBack: what ← does (going back up from a menu's pages).
+// focusOnOpen: move keyboard focus to the centred row when the wheel appears.
+function NavWheel({ links, activeIndex = 0, onNavigate, onBack, focusOnOpen = false }) {
   const viewportRef = useRef(null);
   const itemRefs = useRef([]);
   const frame = useRef(0);
@@ -86,6 +92,9 @@ function NavWheel({ links, activeIndex = 0, onNavigate }) {
     }
 
     centreOnCurrentPage();
+    if (focusOnOpen) {
+      itemRefs.current[activeIndex]?.focus({ preventScroll: true });
+    }
     const viewport = viewportRef.current;
     let lastHeight = viewport?.clientHeight ?? 0;
     const observer =
@@ -112,21 +121,34 @@ function NavWheel({ links, activeIndex = 0, onNavigate }) {
     frame.current = requestAnimationFrame(paint);
   }
 
-  function handleClick(event, index, to) {
-    if (index === nearestIndex()) {
+  // Follow a link, or run a button's action.
+  function follow(link) {
+    if (link.onSelect) {
+      link.onSelect();
+    } else {
+      navigate(link.to);
       onNavigate?.();
+    }
+  }
+
+  function handleClick(event, index, link) {
+    if (index === nearestIndex()) {
+      if (link.onSelect) link.onSelect();
+      else onNavigate?.();
       return;
     }
-    // Spin the tapped link into the band, then follow it.
+    // Spin the tapped row into the band, then follow it.
     event.preventDefault();
     scrollToIndex(index, true);
-    setTimeout(() => {
-      navigate(to);
-      onNavigate?.();
-    }, SPIN_MS);
+    setTimeout(() => follow(link), SPIN_MS);
   }
 
   function handleKeyDown(event) {
+    if (event.key === "ArrowLeft" && onBack) {
+      event.preventDefault();
+      onBack();
+      return;
+    }
     const keys = { ArrowDown: 1, ArrowUp: -1 };
     if (!(event.key in keys) && event.key !== "Home" && event.key !== "End") {
       return;
@@ -157,26 +179,35 @@ function NavWheel({ links, activeIndex = 0, onNavigate }) {
         style={{ "--nav-wheel-row": `${ROW_HEIGHT}px` }}
       >
         <ul className="nav-wheel__list">
-          {links.map((link, index) => (
-            <li key={link.to} className="nav-wheel__row">
-              <NavLink
-                ref={(element) => {
-                  itemRefs.current[index] = element;
-                }}
-                className="nav-wheel__link"
-                to={link.to}
-                end={link.end}
-                onClick={(event) => handleClick(event, index, link.to)}
-                // Next frame, so the browser's own focus scroll (Tab key)
-                // doesn't cancel the smooth spin.
-                onFocus={() =>
-                  requestAnimationFrame(() => scrollToIndex(index, true))
-                }
-              >
-                {link.label}
-              </NavLink>
-            </li>
-          ))}
+          {links.map((link, index) => {
+            const rowProps = {
+              ref: (element) => {
+                itemRefs.current[index] = element;
+              },
+              onClick: (event) => handleClick(event, index, link),
+              // Next frame, so the browser's own focus scroll (Tab key)
+              // doesn't cancel the smooth spin.
+              onFocus: () =>
+                requestAnimationFrame(() => scrollToIndex(index, true)),
+            };
+            return (
+              <li key={link.to ?? link.id} className="nav-wheel__row">
+                {link.onSelect ? (
+                  <button
+                    {...rowProps}
+                    type="button"
+                    className={`nav-wheel__link nav-wheel__link--button${link.current ? " active" : ""}`}
+                  >
+                    {link.label}
+                  </button>
+                ) : (
+                  <NavLink {...rowProps} className="nav-wheel__link" to={link.to} end={link.end}>
+                    {link.label}
+                  </NavLink>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </div>
       <p className="nav-wheel__hint">Swipe or use ↑ ↓ to spin</p>
