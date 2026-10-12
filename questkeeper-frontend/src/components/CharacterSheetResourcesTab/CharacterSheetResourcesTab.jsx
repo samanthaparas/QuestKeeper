@@ -1,3 +1,4 @@
+import UsePips, { MAX_PIPS } from "../UsePips/UsePips";
 import EditableItemList from "../EditableItemList/EditableItemList";
 
 function CharacterSheetResourcesTab({
@@ -40,27 +41,39 @@ function CharacterSheetResourcesTab({
           placeholder: "Notes (optional) - one line per bullet point",
         },
       ]}
-      emptyText="Track anything with limited uses, like Channel Divinity, Lay on Hands or Second Wind. Tap Add Resource, give it a name and how many uses you get, then lower the number as you use them. It refills on the rest you pick."
+      emptyText="Track anything with limited uses, like Channel Divinity, Lay on Hands or Second Wind. Tap Add Resource, give it a name and how many uses you get, then tap a pip each time you use one. It refills on the rest you pick."
       addButtonLabel="Add Resource"
       onAdd={onResourceAdd}
       onUpdate={onResourceUpdate}
       onRemove={onResourceRemove}
       extraRowContent={(resource) => (
         <>
-          <span className="character-sheet__resource-count">
-            <input
-              type="number"
-              className="character-sheet__resource-input"
-              value={resource.current}
-              onChange={(e) =>
-                onResourceCurrentChange(resource.id, e.target.value)
-              }
-              min={0}
+          {/* A few uses (Channel Divinity): pips to tap. A big pool (Lay on
+              Hands): a number box. */}
+          {resource.max <= MAX_PIPS ? (
+            <UsePips
+              label={resource.name}
+              current={resource.current}
               max={resource.max}
+              onChange={(value) => onResourceCurrentChange(resource.id, value)}
             />
-            {" / "}
-            {resource.max}
-          </span>
+          ) : (
+            <span className="character-sheet__resource-count">
+              <input
+                type="number"
+                className="character-sheet__resource-input"
+                aria-label={`${resource.name} left`}
+                value={resource.current}
+                onChange={(e) =>
+                  onResourceCurrentChange(resource.id, e.target.value)
+                }
+                min={0}
+                max={resource.max}
+              />
+              {" / "}
+              {resource.max}
+            </span>
+          )}
           <span className="character-sheet__resource-reset">
             {resource.resetOn === "short" ? "Short Rest" : "Long Rest"}
           </span>

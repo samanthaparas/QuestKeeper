@@ -117,6 +117,24 @@
   color: var(--qk-text-muted);
 }
 
+.character-sheet__spell-slot-max {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--qk-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Max is rarely changed (Level Up sets it), so its box stays small. */
+.character-sheet__spell-slot-max input {
+  width: 38px;
+  min-height: 24px;
+  padding: 0 2px;
+  font-size: 13px;
+}
+
 .character-sheet__spell-slot-count {
   display: flex;
   align-items: center;
