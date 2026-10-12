@@ -69,6 +69,21 @@
   font-weight: 600;
 }
 
+.roll-dock__label {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Shown under the bar while Advantage or Disadvantage is picked. */
+.roll-dock__mode-hint {
+  flex-basis: 100%;
+  color: var(--qk-text);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+
 .roll-dock__modes {
   display: flex;
   gap: 2px;
@@ -284,4 +299,10 @@
   .roll-result {
     width: auto;
   }
+}
+
+/* With the advantage line showing, the bar is two lines: rounder corners
+   suit it better than a pill. */
+.roll-dock__bar:has(.roll-dock__mode-hint) {
+  border-radius: var(--qk-radius-card);
 }

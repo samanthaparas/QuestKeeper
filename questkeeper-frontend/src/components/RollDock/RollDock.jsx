@@ -3,6 +3,12 @@ import { useRoller } from "./rollContext";
 import "./RollDock.css";
 
 const MODE_LABELS = { normal: "Normal", advantage: "Advantage", disadvantage: "Disadvantage" };
+// What each mode does, on hover and under the bar while it's picked.
+const MODE_HINTS = {
+  normal: "One d20.",
+  advantage: "Next roll: two d20s, keep the higher. Then back to Normal.",
+  disadvantage: "Next roll: two d20s, keep the lower. Then back to Normal.",
+};
 // How long a roll stays up before tucking itself away.
 const SHOW_MS = 12000;
 
@@ -30,7 +36,10 @@ function RollDock() {
       {lastRoll && <RollResult key={lastRoll.id} roll={lastRoll} roller={roller} />}
 
       <div className="roll-dock__bar" role="group" aria-label="Dice rolls">
-        <span className="roll-dock__hint">Tap a bonus to roll</span>
+        <span className="roll-dock__hint">Tap any underlined + number to roll it</span>
+        <span className="roll-dock__label" aria-hidden="true">
+          Next d20:
+        </span>
         <div className="roll-dock__modes" role="radiogroup" aria-label="Next d20">
           {Object.entries(MODE_LABELS).map(([value, text]) => (
             <button
@@ -39,12 +48,19 @@ function RollDock() {
               role="radio"
               aria-checked={mode === value}
               className="roll-dock__mode"
+              title={MODE_HINTS[value]}
               onClick={() => setMode(value)}
             >
               {text}
             </button>
           ))}
         </div>
+        {/* Advantage or disadvantage says what it'll do, so it's never a mystery. */}
+        {mode !== "normal" && (
+          <span className="roll-dock__mode-hint" aria-live="polite">
+            {MODE_HINTS[mode]}
+          </span>
+        )}
         {tableName && (
           <label className="roll-dock__share">
             <input type="checkbox" checked={share} onChange={(event) => setShare(event.target.checked)} />

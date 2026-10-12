@@ -13,11 +13,20 @@ export function conversationTitle(conversation, people, myId) {
   return others.length > 0 ? others.join(", ") : "Just you";
 }
 
-// Who can read it, for the line under the title.
+// ["Dangit"] -> "Dangit"; ["DM", "Rook"] -> "DM and Rook";
+// ["DM", "Rook", "Wren"] -> "DM, Rook and Wren".
+export function joinNames(names) {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+
+// Who can read it, for the line under the title: "Only Dangit and you can
+// see these messages."
 export function whoCanSee(conversation, people, myId) {
   if (conversation.everyone) return "Everyone at this table can see these messages.";
-  const names = conversation.memberIds.map((id) => personName(people, id, myId));
-  return `Only ${names.join(", ")} can see these messages.`;
+  const others = conversation.memberIds.filter((id) => id !== myId).map((id) => personName(people, id, myId));
+  if (others.length === 0) return "Only you can see these messages.";
+  return `Only ${joinNames([...others, "you"])} can see these messages.`;
 }
 
 // "7:42 PM", or "Mon 7:42 PM" for an older one.

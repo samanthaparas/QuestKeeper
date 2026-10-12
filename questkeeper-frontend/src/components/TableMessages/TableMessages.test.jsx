@@ -63,7 +63,7 @@ describe("TableMessages", () => {
     expect(within(drawer).queryByRole("checkbox", { name: /Billie/ })).toBeNull();
     await userEvent.click(within(drawer).getByRole("checkbox", { name: /DM/ }));
     await userEvent.click(within(drawer).getByRole("checkbox", { name: /Rook/ }));
-    expect(drawer).toHaveTextContent("Only you and DM, Rook will see it, together.");
+    expect(drawer).toHaveTextContent("Only DM, Rook and you will see it, together.");
 
     await userEvent.click(within(drawer).getByRole("button", { name: "Write a message" }));
     expect(store.startConversation).toHaveBeenCalledWith("t1", { everyone: false, userIds: ["dm", "p2"] });
@@ -112,7 +112,7 @@ describe("TableMessages", () => {
 
     // Opening it marks it read and says who can see it.
     await userEvent.click(within(drawer).getByRole("button", { name: /^DM\. DM: Meet me/ }));
-    expect(within(drawer).getByText("Only You, DM can see these messages.")).toBeInTheDocument();
+    expect(within(drawer).getByText("Only DM and you can see these messages.")).toBeInTheDocument();
     await waitFor(() => expect(store.markConversationRead).toHaveBeenCalledWith("c1"));
   });
 
@@ -169,5 +169,19 @@ describe("TableMessages", () => {
     await userEvent.click(within(drawer).getByRole("checkbox", { name: /Rook/ }));
     await userEvent.click(within(drawer).getByRole("button", { name: "Write a message" }));
     expect(store.startConversation).toHaveBeenCalledWith("t1", { everyone: false, userIds: ["p2"] });
+  });
+});
+
+describe("who can see it", () => {
+  it("reads like a sentence", async () => {
+    const { joinNames, whoCanSee } = await import("./messageLabels");
+    expect(joinNames(["Dangit", "you"])).toBe("Dangit and you");
+    expect(joinNames(["DM", "Rook", "you"])).toBe("DM, Rook and you");
+    expect(whoCanSee({ everyone: false, memberIds: ["dm", ME] }, PEOPLE, ME)).toBe(
+      "Only DM and you can see these messages.",
+    );
+    expect(whoCanSee({ everyone: true, memberIds: [] }, PEOPLE, ME)).toBe(
+      "Everyone at this table can see these messages.",
+    );
   });
 });
