@@ -276,3 +276,47 @@
     gap: var(--qk-space-1);
   }
 }
+
+/* --- Rules words ---------------------------------------------------------- */
+.guide__words-filter {
+  display: grid;
+  gap: 4px;
+  max-width: 320px;
+  margin-bottom: var(--qk-space-4);
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.guide__words-filter input {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-background);
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 400;
+}
+
+.guide__words {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px 20px;
+  margin: 0;
+}
+
+.guide__word {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--qk-border);
+}
+
+.guide__word dt {
+  font-weight: 800;
+}
+
+.guide__word dd {
+  margin: 2px 0 0;
+  color: var(--qk-text-muted);
+  line-height: 1.45;
+}

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import DiceRoller from "../../components/DiceRoller/DiceRoller";
 import {
@@ -8,6 +8,7 @@ import {
   getAbilityModifier,
   formatModifier,
 } from "../../utils/characterSheet";
+import { RULES_WORDS } from "../../utils/rulesWords";
 import "./Guide.css";
 
 const SECTIONS = [
@@ -16,6 +17,7 @@ const SECTIONS = [
   { id: "turns", label: "Your turn" },
   { id: "tables", label: "At the table" },
   { id: "choices", label: "Your choices" },
+  { id: "rules-words", label: "Rules words" },
 ];
 
 const SCORE_BANDS = [6, 8, 10, 12, 14, 16, 18, 20].map((low) => ({
@@ -523,7 +525,56 @@ function Guide() {
           Build your hero
         </Link>
       </section>
+
+      <RulesWordsSection />
     </main>
+  );
+}
+
+// Every rules word QuestKeeper explains on hover, A to Z, with a filter box.
+function RulesWordsSection() {
+  const [filter, setFilter] = useState("");
+  const query = filter.trim().toLowerCase();
+  const shown = RULES_WORDS.filter(
+    (word) =>
+      !query ||
+      word.name.toLowerCase().includes(query) ||
+      word.meaning.toLowerCase().includes(query),
+  );
+
+  return (
+    <section
+      id="rules-words"
+      className="guide__section"
+      aria-labelledby="rules-words-title"
+    >
+      <h2 id="rules-words-title" className="guide__section-title">
+        Rules words
+      </h2>
+      <p>
+        Words with a dotted gold underline around QuestKeeper have a short
+        meaning behind them: hover, tap or tab to one to see it. Here they all
+        are in one place.
+      </p>
+      <label className="guide__words-filter">
+        <span>Find a word</span>
+        <input
+          type="search"
+          value={filter}
+          placeholder="e.g. prone, concentration"
+          onChange={(event) => setFilter(event.target.value)}
+        />
+      </label>
+      <dl className="guide__words">
+        {shown.map((word) => (
+          <div key={word.key} className="guide__word">
+            <dt>{word.name}</dt>
+            <dd>{word.meaning}</dd>
+          </div>
+        ))}
+      </dl>
+      {shown.length === 0 && <p>No rules word matches that yet.</p>}
+    </section>
   );
 }
 

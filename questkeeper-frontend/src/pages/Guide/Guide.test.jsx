@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import Guide from "./Guide";
 
@@ -36,5 +37,22 @@ describe("Guide", () => {
     );
 
     expect(scrolled).toEqual(["tables"]);
+  });
+});
+
+describe("Rules words section", () => {
+  it("lists every rules word and filters them", async () => {
+    render(
+      <MemoryRouter initialEntries={["/guide"]}>
+        <Guide />
+      </MemoryRouter>,
+    );
+
+    const section = screen.getByRole("region", { name: "Rules words" });
+    expect(within(section).getByText("Concentration")).toBeInTheDocument();
+
+    await userEvent.type(within(section).getByLabelText("Find a word"), "prone");
+    expect(within(section).getByText("Prone")).toBeInTheDocument();
+    expect(within(section).queryByText("Concentration")).toBeNull();
   });
 });

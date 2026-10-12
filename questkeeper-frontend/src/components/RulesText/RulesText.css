@@ -1,0 +1,80 @@
+/* A rules word: the text as it was, with a dotted underline to show there's
+   a meaning behind it. */
+.rule-term {
+  position: relative;
+  display: inline;
+}
+
+.rule-term__word {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  text-decoration: underline dotted var(--qk-brass);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+.rule-term__word:hover,
+.rule-term__word[aria-expanded="true"] {
+  color: var(--qk-terracotta-hover);
+}
+
+.rule-term__word:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
+/* The meaning, in a small card just under the word. */
+.rule-term__tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  display: grid;
+  gap: 4px;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border: 1px solid var(--qk-brass);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  box-shadow: 0 8px 20px var(--qk-shadow);
+  color: var(--qk-text);
+  font-family: var(--qk-font-body);
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+}
+
+.rule-term__name {
+  font-weight: 800;
+}
+
+.rule-term__more {
+  justify-self: start;
+  color: var(--qk-terracotta);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rule-term__tip {
+    animation: rule-term-in 0.15s ease-out;
+  }
+}
+
+@keyframes rule-term-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}

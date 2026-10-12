@@ -10,7 +10,8 @@ import Button from "../Button/Button";
 // startFrom: { category, index } from the detail panel.
 // onStart(prefill): used instead of going to My Homebrew (character creation
 // opens its own homebrew pop-up, so progress isn't lost).
-function StartFromButton({ startFrom, onStart, label = "Use as a starting point" }) {
+// hint: a line beside the button, shown only when the button is.
+function StartFromButton({ startFrom, onStart, label = "Use as a starting point", hint }) {
   const navigate = useNavigate();
   const signedIn = Boolean(useAuth()?.user);
   const [state, setState] = useState("idle"); // "loading" | "error"
@@ -40,6 +41,7 @@ function StartFromButton({ startFrom, onStart, label = "Use as a starting point"
       >
         {state === "loading" ? "Copying..." : label}
       </Button>
+      {hint && <span className="detail-panel__start-hint">{hint}</span>}
       {state === "error" && (
         <span className="start-from__error" role="alert">
           Couldn&apos;t copy it. Try again.
