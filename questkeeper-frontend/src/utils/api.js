@@ -273,6 +273,19 @@ export function getEquipmentCategory(categoryId) {
   );
 }
 
+// The Magic Items page: every open-licensed item with its filterable facts
+// (no descriptions; ask for one item to get its text).
+export function getMagicItemCatalog() {
+  return requestJson("/magic-items/catalog", "Failed to fetch the magic items catalog:");
+}
+
+export function getMagicItemCatalogEntry(itemIndex) {
+  return requestJson(
+    `/magic-items/catalog/${encodeURIComponent(itemIndex)}`,
+    `Failed to fetch magic item ${itemIndex}:`,
+  );
+}
+
 export function getMagicItems(edition) {
   return requestJson(
     `/magic-items${editionQuery(edition)}`,

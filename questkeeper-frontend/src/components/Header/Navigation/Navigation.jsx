@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { to: "/classes", label: "Classes" },
   { to: "/backgrounds", label: "Backgrounds" },
   { to: "/spells", label: "Spells" },
+  { to: "/magic-items", label: "Magic Items" },
   { to: "/characters", label: "My Characters" },
   { to: "/tables", label: "Tables" },
   { to: "/library", label: "Monster Library" },
@@ -18,7 +19,7 @@ const NAV_LINKS = [
 ];
 
 // Matches the header's collapse point in Header.css.
-const NARROW_QUERY = "(max-width: 1240px)";
+const NARROW_QUERY = "(max-width: 1380px)";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 function linkClass({ isActive }) {

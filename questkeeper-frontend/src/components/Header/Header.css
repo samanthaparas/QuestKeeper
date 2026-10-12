@@ -123,10 +123,10 @@
   outline-offset: 3px;
 }
 
-/* The full menu (logo, ten links, Log In/Log Out) needs about 1205px on one line.
-   Below 1240px it collapses behind the Menu button, leaving some room to
+/* The full menu (logo, twelve links, Log In/Log Out) needs about 1370px on one line.
+   Below 1380px it collapses behind the Menu button, leaving some room to
    spare. Re-measure if a link is added. */
-@media (max-width: 1240px) {
+@media (max-width: 1380px) {
   .header {
     display: grid;
     /* Equal side columns keep the logo centred; they size to their content

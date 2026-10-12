@@ -100,7 +100,7 @@ describe("Navigation picks the right menu", () => {
     renderWithRouter(<Navigation isMenuOpen />);
 
     expect(document.querySelector(".nav-wheel")).toBeNull();
-    expect(screen.getAllByRole("link")).toHaveLength(11);
+    expect(screen.getAllByRole("link")).toHaveLength(12);
   });
 
   it("shows the wheel on narrow screens once the menu is open", () => {
@@ -116,7 +116,7 @@ describe("Navigation picks the right menu", () => {
     renderWithRouter(<Navigation isMenuOpen />);
 
     expect(document.querySelector(".nav-wheel")).toBeNull();
-    expect(screen.getAllByRole("link")).toHaveLength(11);
+    expect(screen.getAllByRole("link")).toHaveLength(12);
   });
 
   it("closes the menu when a link in the plain list is picked", () => {

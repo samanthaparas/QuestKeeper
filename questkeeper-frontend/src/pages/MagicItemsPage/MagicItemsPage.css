@@ -1,0 +1,254 @@
+/* Rarity pills use D&D's usual rarity colors so they read at a glance. */
+.magic-item-rarity {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.magic-item-rarity--common { background: #ebe7e2; color: #4f4a45; }
+.magic-item-rarity--uncommon { background: #dbefdc; color: #1f6230; }
+.magic-item-rarity--rare { background: #dce6f7; color: #1d4b91; }
+.magic-item-rarity--very-rare { background: #ecdff5; color: #632a88; }
+.magic-item-rarity--legendary { background: #fbe4cd; color: #9a4700; }
+.magic-item-rarity--artifact { background: #f7d9d6; color: #962121; }
+.magic-item-rarity--unique,
+.magic-item-rarity--unknown { background: var(--qk-surface-muted); color: var(--qk-text-muted); }
+
+/* --- Search and filters ------------------------------------------------------- */
+
+.magic-items-page__search {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 760px);
+  margin: 0 auto 16px;
+}
+
+.magic-items-page__search-input {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 2px solid var(--qk-border);
+  border-radius: 15px;
+  background: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+.magic-items-page__search-input:focus-visible,
+.magic-item-filters__select:focus-visible,
+.magic-item-filters__chip:focus-visible,
+.magic-item-card:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.magic-item-filters {
+  width: min(100%, 760px);
+  margin: 0 auto 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background: var(--qk-surface);
+}
+
+.magic-item-filters__summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.magic-item-filters__body {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.magic-item-filters__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  gap: 10px 12px;
+}
+
+.magic-item-filters__field,
+.magic-item-filters__chips-row {
+  display: grid;
+  gap: 6px;
+}
+
+.magic-item-filters__label {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.magic-item-filters__select {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background: #fff;
+  color: var(--qk-text);
+  font: inherit;
+}
+
+.magic-item-filters__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.magic-item-filters__chip {
+  padding: 5px 11px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.magic-item-filters__chip--active {
+  border-color: var(--qk-terracotta);
+  background: var(--qk-terracotta-soft);
+}
+
+.magic-items-page__count {
+  width: min(100%, 760px);
+  margin: 0 auto 12px;
+  color: var(--qk-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Cards ------------------------------------------------------------------------ */
+
+.magic-item-card {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background: var(--qk-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  box-shadow: 0 4px 12px var(--qk-shadow);
+  cursor: pointer;
+}
+
+.magic-item-card:hover,
+.magic-item-card--selected {
+  border-color: var(--qk-terracotta);
+}
+
+.magic-item-card--selected {
+  background: var(--qk-terracotta-soft);
+}
+
+.magic-item-card__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 8px;
+}
+
+.magic-item-card__name {
+  font-family: var(--qk-font-display);
+  font-size: 17px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.magic-item-card__type,
+.magic-item-card__attune {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.magic-item-card__attune {
+  font-style: italic;
+}
+
+.magic-item-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.magic-item-tag {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--qk-surface-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+.magic-item-tag--consumable {
+  background: var(--qk-brass-soft);
+}
+
+/* --- Detail ------------------------------------------------------------------------ */
+
+.magic-item-detail {
+  display: grid;
+  gap: 12px;
+}
+
+.magic-item-detail__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.magic-item-detail__edition {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.magic-item-detail__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.magic-item-detail__facts dt {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.magic-item-detail__facts dd {
+  margin: 2px 0 0;
+}
+
+.magic-item-detail__text {
+  display: grid;
+  gap: 10px;
+  line-height: 1.6;
+}
+
+.magic-item-detail__version h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+  font-size: 16px;
+}
+
+.magic-item-detail__hint {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
