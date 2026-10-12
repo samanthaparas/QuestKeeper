@@ -428,3 +428,36 @@ describe("click to roll", () => {
     expect(screen.getByRole("region", { name: "Dagger damage (critical) roll" })).toHaveTextContent("10");
   });
 });
+
+describe("spell slot and resource pips", () => {
+  it("spends a spell slot with a tap", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet({ class: { id: "wizard", name: "Wizard", spellcastingType: "prepared", spellcastingAbility: "intelligence" } });
+    sheet.spellcasting = {
+      type: "prepared",
+      cantripsKnown: [],
+      spellsKnown: [],
+      spellSlots: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => ({ level, max: level === 1 ? 4 : 0, current: level === 1 ? 4 : 0 })),
+    };
+    renderSheet(sheet);
+
+    await user.click(await screen.findByRole("tab", { name: "Spells" }));
+    expect(screen.getByRole("group", { name: "Level 1 spell slots: 4 of 4 left" })).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /Spend one/ })[0]);
+    expect(screen.getByRole("group", { name: "Level 1 spell slots: 3 of 4 left" })).toBeInTheDocument();
+  });
+
+  it("uses pips for a few uses and a number box for a big pool", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet();
+    sheet.resources = [
+      { id: "r1", name: "Channel Divinity", max: 2, current: 2, resetOn: "short", notes: "" },
+      { id: "r2", name: "Lay on Hands", max: 75, current: 60, resetOn: "long", notes: "" },
+    ];
+    renderSheet(sheet);
+
+    await user.click(await screen.findByRole("tab", { name: "Resources" }));
+    expect(screen.getByRole("group", { name: "Channel Divinity: 2 of 2 left" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Lay on Hands left")).toHaveValue(60);
+  });
+});

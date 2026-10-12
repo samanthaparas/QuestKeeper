@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import UsePips, { MAX_PIPS } from "../UsePips/UsePips";
 import RollButton from "../RollDock/RollButton";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
@@ -114,10 +115,21 @@ function CharacterSheetSpellsTab({
                 <span className="character-sheet__spell-slot-label">
                   Level {slot.level}
                 </span>
-                <span className="character-sheet__spell-slot-count">
+                {/* Tap a pip to spend a slot or get one back. */}
+                {slot.max > 0 && slot.max <= MAX_PIPS ? (
+                  <UsePips
+                    label={`Level ${slot.level} spell slots`}
+                    current={slot.current}
+                    max={slot.max}
+                    onChange={(value) =>
+                      onSpellSlotChange(slot.level, "current", value)
+                    }
+                  />
+                ) : (
                   <input
                     type="number"
                     className="character-sheet__hp-input character-sheet__hp-input--tiny"
+                    aria-label={`Level ${slot.level} slots left`}
                     value={slot.current}
                     onChange={(e) =>
                       onSpellSlotChange(slot.level, "current", e.target.value)
@@ -125,7 +137,10 @@ function CharacterSheetSpellsTab({
                     min={0}
                     max={slot.max}
                   />
-                  {" / "}
+                )}
+                {/* How many slots of this level you have (Level Up sets it). */}
+                <label className="character-sheet__spell-slot-max">
+                  Max
                   <input
                     type="number"
                     className="character-sheet__hp-input character-sheet__hp-input--tiny"
@@ -135,7 +150,7 @@ function CharacterSheetSpellsTab({
                     }
                     min={0}
                   />
-                </span>
+                </label>
                 <button
                   type="button"
                   className="character-sheet__resource-remove"

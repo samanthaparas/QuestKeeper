@@ -1,0 +1,100 @@
+.use-pips {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.use-pips__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 190px;
+}
+
+/* A pip: a little gem. Lit is a filled terracotta gem; used is an empty
+   outline. The tap area is bigger than the gem itself. */
+.use-pips__pip {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 2px solid var(--qk-terracotta);
+  border-radius: 50%;
+  background-color: transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.use-pips__pip::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+}
+
+.use-pips__pip--lit {
+  background: radial-gradient(circle at 35% 30%, #e08a68, var(--qk-terracotta) 60%, var(--qk-terracotta-hover));
+  box-shadow: 0 1px 3px var(--qk-shadow);
+}
+
+.use-pips__pip--used {
+  border-color: var(--qk-border);
+  background-color: var(--qk-surface-muted);
+}
+
+.use-pips__pip:hover {
+  transform: scale(1.12);
+}
+
+.use-pips__pip:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.use-pips__count {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Spending one puffs out; getting them back lights them up in turn. */
+@media (prefers-reduced-motion: no-preference) {
+  .use-pips__pip--fresh {
+    animation: use-pip-light 0.3s ease-out backwards;
+    animation-delay: var(--pip-delay, 0ms);
+  }
+
+  .use-pips__pip--spent {
+    animation: use-pip-spend 0.3s ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .use-pips__pip {
+    transition: none;
+  }
+
+  .use-pips__pip:hover {
+    transform: none;
+  }
+}
+
+@keyframes use-pip-light {
+  from {
+    transform: scale(0.4);
+    opacity: 0.3;
+  }
+  60% {
+    transform: scale(1.2);
+  }
+}
+
+@keyframes use-pip-spend {
+  from {
+    transform: scale(1.25);
+    background-color: var(--qk-terracotta-soft);
+  }
+}
