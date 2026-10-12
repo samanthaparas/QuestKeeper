@@ -1,22 +1,30 @@
 import { useId, useRef, useState } from "react";
-import { useTableMessages } from "../../hooks/useTableMessages";
+import { Link, useLocation } from "react-router-dom";
+import { useMessages } from "../../hooks/useMessages";
 import { startConversation } from "../../utils/messageStore";
 import ConversationThread from "./ConversationThread";
 import { conversationTitle, personName } from "./messageLabels";
 import "./TableMessages.css";
 
-// Secret messages at a table: a Messages button (with an unread count) that
-// opens a side drawer. Anyone at the table can message the whole party, a
-// few people, or one person; only the people in a conversation can read it.
-//
-// raised: sit above the character sheet's roll bar on phones.
-function TableMessages({ tableId, tableName, myId, raised = false }) {
-  const messages = useTableMessages(tableId, myId);
+// "/tables/abc" -> "abc": on a table's page, new messages start there.
+function tableFromPath(pathname) {
+  return pathname.match(/^\/tables\/([^/]+)/)?.[1] ?? null;
+}
+
+// Secret messages, from the header on every page: an envelope with an
+// unread count that opens a side drawer with conversations from all your
+// tables. Anyone at a table can message the whole party, a few people, or
+// one person; only the people in a conversation can read it.
+function TableMessages({ myId }) {
+  const messages = useMessages(myId);
+  const { pathname } = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState({ name: "list" }); // list | new | thread
   const buttonRef = useRef(null);
   const titleId = useId();
   const { incoming, clearIncoming } = messages;
+
+  if (!myId) return null;
 
   function close() {
     setIsOpen(false);
@@ -25,19 +33,23 @@ function TableMessages({ tableId, tableName, myId, raised = false }) {
     buttonRef.current?.focus();
   }
 
-  if (!tableId || !myId) return null;
-
-  const fromName = incoming ? personName(messages.people, incoming.sender_id, myId) : "";
+  const tableName = (tableId) => messages.tables.find((table) => table.id === tableId)?.name ?? "A table";
+  const peopleAt = (tableId) => messages.peopleByTable[tableId] ?? [];
+  const fromName = incoming
+    ? personName(peopleAt(incoming.table_id), incoming.sender_id, myId)
+    : "";
+  const openConversation = messages.conversations.find((entry) => entry.id === view.id);
+  const unread = messages.unreadTotal;
 
   return (
     <>
       <button
         ref={buttonRef}
         type="button"
-        className={`table-messages__button${raised ? " table-messages__button--raised" : ""}${
-          incoming && !isOpen ? " table-messages__button--new" : ""
-        }`}
+        className={`table-messages__button${incoming && !isOpen ? " table-messages__button--new" : ""}`}
         aria-expanded={isOpen}
+        aria-label={unread > 0 ? `Messages, ${unread} unread` : "Messages"}
+        title="Messages"
         onClick={() => {
           if (isOpen) return close();
           clearIncoming();
@@ -49,10 +61,9 @@ function TableMessages({ tableId, tableName, myId, raised = false }) {
           <path d="M3 5h14v10H3z" />
           <path d="m3 5 7 6 7-6" />
         </svg>
-        Messages
-        {messages.unreadTotal > 0 && (
-          <span className="table-messages__badge" aria-label={`${messages.unreadTotal} unread`}>
-            {messages.unreadTotal}
+        {unread > 0 && (
+          <span className="table-messages__badge" aria-hidden="true">
+            {unread}
           </span>
         )}
       </button>
@@ -81,7 +92,10 @@ function TableMessages({ tableId, tableName, myId, raised = false }) {
               </button>
             )}
             <h2 id={titleId} className="table-messages__title">
-              Messages <span className="table-messages__table">· {tableName}</span>
+              Messages
+              {view.name === "thread" && openConversation && (
+                <span className="table-messages__table"> · {tableName(openConversation.tableId)}</span>
+              )}
             </h2>
             <button type="button" className="table-messages__close" aria-label="Close messages" onClick={close}>
               ×
@@ -94,33 +108,54 @@ function TableMessages({ tableId, tableName, myId, raised = false }) {
             </p>
           )}
 
-          {view.name === "list" && (
-            <ConversationList
-              messages={messages}
-              myId={myId}
-              onNew={() => setView({ name: "new" })}
-              onOpen={(id) => setView({ name: "thread", id })}
-            />
-          )}
-          {view.name === "new" && (
-            <NewConversation
-              tableId={tableId}
-              people={messages.people}
-              myId={myId}
-              onOpen={(id) => setView({ name: "thread", id })}
-            />
-          )}
-          {view.name === "thread" && (
-            <ConversationThread
-              // Fresh for each conversation opened.
-              key={view.id}
-              conversationId={view.id}
-              conversation={messages.conversations.find((entry) => entry.id === view.id)}
-              people={messages.people}
-              myId={myId}
-              version={messages.version}
-              onRead={messages.reload}
-            />
+          {messages.tables.length === 0 && !messages.error ? (
+            <div className="table-messages__body">
+              <p className="table-messages__empty">
+                Messages are for the people at your tables. Make a table, or join one with your
+                DM&apos;s code, and you can message the whole party, a few people, or just one.
+              </p>
+              <Link className="table-messages__primary table-messages__primary--link" to="/tables" onClick={close}>
+                Go to Tables
+              </Link>
+            </div>
+          ) : (
+            <>
+              {view.name === "list" && (
+                <ConversationList
+                  conversations={messages.conversations}
+                  showTable={messages.tables.length > 1}
+                  tableName={tableName}
+                  peopleAt={peopleAt}
+                  myId={myId}
+                  onNew={() => setView({ name: "new" })}
+                  onOpen={(id) => setView({ name: "thread", id })}
+                />
+              )}
+              {view.name === "new" && (
+                <NewConversation
+                  tables={messages.tables}
+                  startTableId={tableFromPath(pathname)}
+                  peopleAt={peopleAt}
+                  myId={myId}
+                  onOpen={(id) => {
+                    setView({ name: "thread", id });
+                    messages.reload();
+                  }}
+                />
+              )}
+              {view.name === "thread" && (
+                <ConversationThread
+                  // Fresh for each conversation opened.
+                  key={view.id}
+                  conversationId={view.id}
+                  conversation={openConversation}
+                  people={openConversation ? peopleAt(openConversation.tableId) : []}
+                  myId={myId}
+                  version={messages.version}
+                  onRead={messages.reload}
+                />
+              )}
+            </>
           )}
         </aside>
       )}
@@ -128,8 +163,7 @@ function TableMessages({ tableId, tableName, myId, raised = false }) {
   );
 }
 
-function ConversationList({ messages, myId, onNew, onOpen }) {
-  const { conversations, people } = messages;
+function ConversationList({ conversations, showTable, tableName, peopleAt, myId, onNew, onOpen }) {
   return (
     <div className="table-messages__body">
       <button type="button" className="table-messages__new" onClick={onNew}>
@@ -143,18 +177,20 @@ function ConversationList({ messages, myId, onNew, onOpen }) {
       ) : (
         <ul className="table-messages__list">
           {conversations.map((conversation) => {
+            const people = peopleAt(conversation.tableId);
             const last = conversation.lastMessage;
             const title = conversationTitle(conversation, people, myId);
             const preview = last
               ? `${personName(people, last.sender_id, myId)}: ${last.body || "Sent a picture"}`
               : "No messages yet";
+            const table = showTable ? tableName(conversation.tableId) : null;
             return (
               <li key={conversation.id}>
                 <button
                   type="button"
                   className={`table-messages__row${conversation.unread > 0 ? " table-messages__row--unread" : ""}`}
-                  // Read as one sentence: "DM. DM: Meet me later. 2 new".
-                  aria-label={[title, preview, conversation.unread > 0 && `${conversation.unread} new`]
+                  // Read as one sentence: "DM. Test night. DM: Meet me later. 2 new".
+                  aria-label={[title, table, preview, conversation.unread > 0 && `${conversation.unread} new`]
                     .filter(Boolean)
                     .join(". ")}
                   onClick={() => onOpen(conversation.id)}
@@ -162,6 +198,7 @@ function ConversationList({ messages, myId, onNew, onOpen }) {
                   {/* A wax seal marks unread conversations. */}
                   {conversation.unread > 0 && <span className="table-messages__seal" aria-hidden="true" />}
                   <span className="table-messages__row-title">{title}</span>
+                  {table && <span className="table-messages__row-table">{table}</span>}
                   <span className="table-messages__row-preview">{preview}</span>
                   {conversation.unread > 0 && (
                     <span className="table-messages__row-count">{conversation.unread} new</span>
@@ -176,13 +213,18 @@ function ConversationList({ messages, myId, onNew, onOpen }) {
   );
 }
 
-function NewConversation({ tableId, people, myId, onOpen }) {
+// Pick the table (when you're at more than one), then who should see it.
+function NewConversation({ tables, startTableId, peopleAt, myId, onOpen }) {
+  const [tableId, setTableId] = useState(
+    tables.some((table) => table.id === startTableId) ? startTableId : tables[0]?.id,
+  );
   const [everyone, setEveryone] = useState(false);
   const [picked, setPicked] = useState([]);
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const people = peopleAt(tableId);
   const others = people.filter((person) => person.userId !== myId);
-  const canStart = everyone || picked.length > 0;
+  const canStart = Boolean(tableId) && (everyone || picked.length > 0);
 
   async function handleStart() {
     setIsBusy(true);
@@ -197,6 +239,25 @@ function NewConversation({ tableId, people, myId, onOpen }) {
 
   return (
     <div className="table-messages__body">
+      {tables.length > 1 && (
+        <label className="table-messages__field">
+          <span>Which table?</span>
+          <select
+            value={tableId}
+            onChange={(event) => {
+              setTableId(event.target.value);
+              setPicked([]);
+            }}
+          >
+            {tables.map((table) => (
+              <option key={table.id} value={table.id}>
+                {table.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
       <fieldset className="table-messages__pick">
         <legend>Who should see it?</legend>
         <label className="table-messages__check">
@@ -227,7 +288,10 @@ function NewConversation({ tableId, people, myId, onOpen }) {
             </label>
           ))}
         {!everyone && others.length === 0 && (
-          <p className="table-messages__empty">Nobody else is at this table yet.</p>
+          <p className="table-messages__empty">
+            Nobody else is at this table yet. You can still message everyone, and people who join
+            later will see it.
+          </p>
         )}
       </fieldset>
       {!everyone && picked.length > 0 && (

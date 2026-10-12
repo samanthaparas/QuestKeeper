@@ -90,7 +90,6 @@ export function useSheetRolls(characterId, characterName) {
     dismiss: () => setLastRoll(null),
     roll,
     rollDamage,
-    tableId: table?.id ?? null,
     tableName: table?.name ?? null,
     share,
     sharing,

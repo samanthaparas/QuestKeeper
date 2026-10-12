@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import TableMessages from "./TableMessages";
 import * as store from "../../utils/messageStore";
 
 vi.mock("../../utils/messageStore", () => ({
+  listMyTables: vi.fn(),
   listTablePeople: vi.fn(),
   listConversations: vi.fn(),
   listMessages: vi.fn(),
@@ -27,6 +29,7 @@ const PEOPLE = [
 
 beforeEach(() => {
   vi.clearAllMocks();
+  store.listMyTables.mockResolvedValue([{ id: "t1", name: "Test night" }]);
   store.listTablePeople.mockResolvedValue(PEOPLE);
   store.listConversations.mockResolvedValue([]);
   store.listMessages.mockResolvedValue([]);
@@ -34,8 +37,16 @@ beforeEach(() => {
   store.sendMessage.mockResolvedValue("m1");
 });
 
-async function openDrawer() {
-  render(<TableMessages tableId="t1" tableName="Test night" myId={ME} />);
+function renderMessages(path = "/") {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <TableMessages myId={ME} />
+    </MemoryRouter>,
+  );
+}
+
+async function openDrawer(path) {
+  renderMessages(path);
   await waitFor(() => expect(store.listConversations).toHaveBeenCalled());
   await userEvent.click(screen.getByRole("button", { name: /Messages/ }));
   return screen.getByRole("complementary", { name: /Messages/ });
@@ -83,15 +94,16 @@ describe("TableMessages", () => {
     store.listConversations.mockResolvedValue([
       {
         id: "c1",
+        tableId: "t1",
         everyone: false,
         memberIds: [ME, "dm"],
         unread: 2,
         lastMessage: { sender_id: "dm", body: "Meet me after the session", image_path: null },
       },
-      { id: "c2", everyone: true, memberIds: [], unread: 0, lastMessage: { sender_id: "p2", body: "", image_path: "x" } },
+      { id: "c2", tableId: "t1", everyone: true, memberIds: [], unread: 0, lastMessage: { sender_id: "p2", body: "", image_path: "x" } },
     ]);
-    render(<TableMessages tableId="t1" tableName="Test night" myId={ME} />);
-    expect(await screen.findByLabelText("2 unread")).toBeInTheDocument();
+    renderMessages();
+    expect(await screen.findByRole("button", { name: "Messages, 2 unread" })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /Messages/ }));
     const drawer = screen.getByRole("complementary", { name: /Messages/ });
@@ -106,7 +118,7 @@ describe("TableMessages", () => {
 
   it("only takes pictures", async () => {
     store.listConversations.mockResolvedValue([
-      { id: "c1", everyone: true, memberIds: [], unread: 0, lastMessage: null },
+      { id: "c1", tableId: "t1", everyone: true, memberIds: [], unread: 0, lastMessage: null },
     ]);
     const drawer = await openDrawer();
     await userEvent.click(within(drawer).getByRole("button", { name: /Everyone at the table/ }));
@@ -122,8 +134,40 @@ describe("TableMessages", () => {
     expect(store.sendMessage).toHaveBeenCalledWith("c1", { body: "", imagePath: "c1/abc.png" });
   });
 
-  it("isn't shown when the character isn't at a table", () => {
-    render(<TableMessages tableId={null} tableName={null} myId={ME} />);
+  it("isn't shown when signed out", () => {
+    render(
+      <MemoryRouter>
+        <TableMessages myId={null} />
+      </MemoryRouter>,
+    );
     expect(screen.queryByRole("button", { name: /Messages/ })).toBeNull();
+  });
+
+  it("points to Tables when you're not at any table yet", async () => {
+    store.listMyTables.mockResolvedValue([]);
+    const drawer = await openDrawer();
+    expect(drawer).toHaveTextContent("Messages are for the people at your tables");
+    expect(within(drawer).getByRole("link", { name: "Go to Tables" })).toHaveAttribute("href", "/tables");
+  });
+
+  it("asks which table when you're at more than one, starting with the one you're on", async () => {
+    store.listMyTables.mockResolvedValue([
+      { id: "t1", name: "Test night" },
+      { id: "t2", name: "Friday Game" },
+    ]);
+    store.listTablePeople.mockImplementation((tableId) =>
+      Promise.resolve(tableId === "t2" ? [{ userId: "dm2", name: "DM", isDm: true }, { userId: ME, name: "Billie" }] : PEOPLE),
+    );
+    store.startConversation.mockResolvedValue("c9");
+    const drawer = await openDrawer("/tables/t2");
+    await waitFor(() => expect(store.listTablePeople).toHaveBeenCalledWith("t2"));
+    await userEvent.click(within(drawer).getByRole("button", { name: "+ New message" }));
+
+    expect(within(drawer).getByLabelText("Which table?")).toHaveValue("t2");
+    expect(within(drawer).queryByRole("checkbox", { name: /Rook/ })).toBeNull();
+    await userEvent.selectOptions(within(drawer).getByLabelText("Which table?"), "t1");
+    await userEvent.click(within(drawer).getByRole("checkbox", { name: /Rook/ }));
+    await userEvent.click(within(drawer).getByRole("button", { name: "Write a message" }));
+    expect(store.startConversation).toHaveBeenCalledWith("t1", { everyone: false, userIds: ["p2"] });
   });
 });

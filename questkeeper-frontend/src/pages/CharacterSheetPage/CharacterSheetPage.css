@@ -1640,27 +1640,62 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   padding-bottom: 96px;
 }
 
-/* A save: the proficiency dot, then the Save badge that rolls. */
+/* A save is one pill: the proficiency dot tucked inside on the left, then
+   "Save +3", which rolls. Kept as narrow as the old badge so the ability
+   cards don't spill out of their boxes. */
 .character-sheet__save {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+}
+
+.character-sheet__save--proficient {
+  background-color: var(--qk-terracotta);
+}
+
+.character-sheet__save .character-sheet__ability-save-badge {
+  margin-top: 0;
+  padding-left: 3px;
 }
 
 .character-sheet__save-dot {
   flex-shrink: 0;
-  width: 12px;
-  height: 12px;
+  width: 9px;
+  height: 9px;
+  margin-left: 6px;
   padding: 0;
-  border: 2px solid var(--qk-terracotta);
+  border: 1.5px solid var(--qk-terracotta);
   border-radius: 50%;
   background-color: transparent;
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
 
-.character-sheet__save-dot[aria-pressed="true"] {
-  background-color: var(--qk-terracotta);
+/* On the filled (proficient) pill the dot is white and filled. */
+.character-sheet__save--proficient .character-sheet__save-dot {
+  border-color: #fff;
+  background-color: #fff;
+}
+
+/* Bigger tap target than the dot itself, without taking more room. */
+.character-sheet__save-dot::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+.character-sheet__save-dot {
+  position: relative;
+}
+
+/* In the row of six ability cards, the Save pill drops under the score
+   when a card is too narrow, instead of overflowing. */
+.character-sheet__vitals .character-sheet__ability-card {
+  flex-wrap: wrap;
+  row-gap: 3px;
+  min-width: 0;
 }
 
 .character-sheet__save-dot:focus-visible {

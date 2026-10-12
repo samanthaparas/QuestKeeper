@@ -4,6 +4,7 @@ import { useAuth } from "../../context/useAuth";
 import { signOut } from "../../utils/auth";
 import Navigation from "./Navigation/Navigation";
 import QuickJump from "../QuickJump/QuickJump";
+import TableMessages from "../TableMessages/TableMessages";
 import logoIcon from "../../assets/brand/questkeeper-book-logo-64.png";
 import "./Header.css";
 
@@ -45,23 +46,27 @@ function Header() {
         {/* Search, with the "/" and ⌘K shortcuts. */}
         <QuickJump />
 
-        {!isLoading &&
-          (user ? (
-            <button
-              className="header__profile header__profile--signed-in"
-              type="button"
-              onClick={() => signOut()}
-            >
-              Log Out
-            </button>
-          ) : (
-            <Link
-              className="header__profile header__profile--signed-out"
-              to="/login"
-            >
-              Log In
-            </Link>
-          ))}
+        {/* Secret messages (when signed in), then Log In / Log Out. */}
+        <div className="header__account">
+          {user && <TableMessages myId={user.id} />}
+          {!isLoading &&
+            (user ? (
+              <button
+                className="header__profile header__profile--signed-in"
+                type="button"
+                onClick={() => signOut()}
+              >
+                Log Out
+              </button>
+            ) : (
+              <Link
+                className="header__profile header__profile--signed-out"
+                to="/login"
+              >
+                Log In
+              </Link>
+            ))}
+        </div>
       </div>
     </header>
   );
