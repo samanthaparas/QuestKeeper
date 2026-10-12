@@ -108,6 +108,11 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease;
 }
 
 .magic-item-filters__chip--active {
@@ -251,4 +256,30 @@
 .magic-item-detail__hint {
   color: var(--qk-text-muted);
   font-size: 13px;
+}
+
+.magic-item-card__type {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.magic-item-card__icon {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  object-fit: contain;
+}
+
+/* Choosing a card eases into its selected look, with the same soft ring as
+   the other pages' cards. */
+.magic-item-card {
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.magic-item-card--selected {
+  box-shadow: 0 0 0 3px var(--qk-terracotta-soft);
 }

@@ -2,6 +2,7 @@ import {
   getRaceIcon,
   getClassIcon,
   getBackgroundIcon,
+  getSpellSchoolIcon,
 } from "../../utils/icons";
 import { useId } from "react";
 import SourceBadge from "../SourceBadge/SourceBadge";
@@ -17,7 +18,12 @@ const ICON_RESOLVERS = {
 function ResultCard({ result, onClick, isSelected }) {
   const previewId = useId();
   const resolveIcon = ICON_RESOLVERS[result.category];
-  const iconSrc = resolveIcon ? resolveIcon(result.index) : null;
+  const schoolId = typeof result.school === "string"
+    ? result.school
+    : result.school?.index ?? result.school?.name;
+  const iconSrc = result.category === "Spell"
+    ? getSpellSchoolIcon(schoolId)
+    : resolveIcon ? resolveIcon(result.index) : null;
 
   return (
     <button
@@ -60,7 +66,11 @@ function ResultCard({ result, onClick, isSelected }) {
           summary, so it's clear which card it belongs to. */}
       {result.preview && (
         <span className="result-card__preview" aria-hidden="true">
-          <span className="result-card__preview-name">{result.name}</span>
+          {/* The card's icon comes along (small), since the preview covers it. */}
+          <span className="result-card__preview-name">
+            {iconSrc && <img className="result-card__preview-icon" src={iconSrc} alt="" />}
+            {result.name}
+          </span>
           <span>{result.preview}</span>
         </span>
       )}

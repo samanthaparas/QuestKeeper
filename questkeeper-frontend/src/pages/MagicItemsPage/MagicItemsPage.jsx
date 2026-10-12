@@ -121,7 +121,8 @@ function MagicItemsPage() {
                 <Button variant="secondary" className="search-page__back-button" onClick={() => setSelected(null)}>
                   Back to results
                 </Button>
-                <MagicItemDetail item={selected} />
+                {/* A new key per item replays the panel's opening animation. */}
+                <MagicItemDetail key={selected.index} item={selected} />
               </>
             ) : (
               <section className="detail-panel">
