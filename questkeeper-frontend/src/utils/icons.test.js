@@ -8,6 +8,7 @@ import {
   getUiIcon,
 } from "./icons";
 import { BOOK_RACES } from "./bookRaces";
+import { BOOK_BACKGROUNDS } from "./bookBackgrounds";
 
 describe("getRaceIcon", () => {
   it("resolves every published-book race", () => {
@@ -43,6 +44,20 @@ describe("getClassIcon", () => {
 });
 
 describe("getBackgroundIcon", () => {
+  it("resolves every published-book background", () => {
+    for (const background of BOOK_BACKGROUNDS) {
+      expect(getBackgroundIcon(background.index), background.name).toBeTruthy();
+    }
+  });
+
+  it("resolves curated sources and preserves existing artwork", () => {
+    for (const id of ["toh_innkeeper", "tdcs_elemental-warden", "open5e_con-artist"]) {
+      expect(getBackgroundIcon(id), id).toBeTruthy();
+    }
+    expect(getBackgroundIcon("book_criminal")).toBe(getBackgroundIcon("criminal"));
+    expect(getBackgroundIcon("not-a-background")).toBeUndefined();
+  });
+
   it("normalizes a spaced display name", () => {
     expect(getBackgroundIcon("Guild Artisan")).toBe(
       getBackgroundIcon("guild-artisan"),

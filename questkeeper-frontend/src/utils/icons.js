@@ -45,9 +45,13 @@ export function getClassIcon(classId) {
 }
 
 export function getBackgroundIcon(backgroundId) {
-  return backgroundIcons[
-    `../assets/icons/backgrounds/${normalizeId(backgroundId)}.png`
-  ];
+  const id = normalizeId(backgroundId);
+  // Source-specific entries share the canonical background artwork.
+  const canonicalId = id.replace(/^(book|toh|tdcs|open5e)-/, "");
+  return (
+    backgroundIcons[`../assets/icons/backgrounds/${id}.png`] ??
+    backgroundIcons[`../assets/icons/backgrounds/${canonicalId}.png`]
+  );
 }
 
 export function getSpellSchoolIcon(schoolId) {
