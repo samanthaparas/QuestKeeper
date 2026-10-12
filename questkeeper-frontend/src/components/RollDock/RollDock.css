@@ -1,0 +1,287 @@
+/* --- Rollable numbers on the sheet -------------------------------------- */
+/* They look like the number they replace, with a soft highlight on hover
+   and a dotted underline so they read as tappable. Written with :where so a
+   number's own styles (a Save badge's colors) win over these. */
+:where(.roll-button) {
+  padding: 0 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline dotted var(--qk-border);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+/* Plain numbers get a highlight; badges keep their own color and dim a
+   little. */
+:where(.roll-button:hover) {
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-terracotta-hover);
+}
+
+.roll-button:hover {
+  filter: brightness(0.96);
+}
+
+.roll-button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 1px;
+}
+
+/* --- The dock: latest roll above, controls below ------------------------- */
+.roll-dock {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+  pointer-events: none;
+}
+
+.roll-dock > * {
+  pointer-events: auto;
+}
+
+.roll-dock__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 10px;
+  padding: 6px 8px 6px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  box-shadow: 0 6px 16px var(--qk-shadow);
+  font-size: 13px;
+}
+
+.roll-dock__hint {
+  color: var(--qk-text-muted);
+  font-weight: 600;
+}
+
+.roll-dock__modes {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+}
+
+.roll-dock__mode {
+  min-height: 26px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.roll-dock__mode[aria-checked="true"] {
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+.roll-dock__mode:focus-visible,
+.roll-result__close:focus-visible,
+.roll-result__follow:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.roll-dock__share {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* --- The roll itself ------------------------------------------------------- */
+.roll-result {
+  position: relative;
+  width: 220px;
+  padding: 12px 16px 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+  box-shadow: 0 10px 24px var(--qk-shadow);
+  text-align: center;
+}
+
+.roll-result p {
+  margin: 0;
+}
+
+.roll-result__close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--qk-text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.roll-result__label {
+  padding: 0 18px;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.roll-result__total {
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.roll-result__detail {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.roll-result__die {
+  font-weight: 700;
+  color: var(--qk-text);
+}
+
+.roll-result__die--dropped {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.roll-result__note {
+  margin-top: 4px !important;
+  font-weight: 800;
+}
+
+.roll-result__follow {
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--qk-terracotta);
+  border-radius: 999px;
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-terracotta-hover);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.roll-result__status {
+  margin-top: 6px !important;
+  color: var(--qk-text-muted);
+  font-size: 11px;
+}
+
+/* A natural 20 glows gold; a natural 1 goes a little grey. */
+.roll-result--twenty {
+  border-color: var(--qk-brass);
+  background-color: var(--qk-brass-soft);
+}
+
+.roll-result--twenty .roll-result__note {
+  color: var(--qk-warning);
+}
+
+.roll-result--one .roll-result__total,
+.roll-result--one .roll-result__note {
+  color: var(--qk-text-muted);
+}
+
+/* Movement: the card pops up, a 20 bursts, a 1 wobbles. Off for reduced
+   motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .roll-result {
+    animation: roll-in 0.25s ease-out;
+  }
+
+  .roll-result--twenty .roll-result__total {
+    animation: roll-burst 0.6s ease-out;
+  }
+
+  .roll-result--one .roll-result__total {
+    animation: roll-wobble 0.5s ease-in-out;
+  }
+}
+
+@keyframes roll-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+
+@keyframes roll-burst {
+  0% {
+    transform: scale(0.6);
+  }
+  55% {
+    transform: scale(1.25);
+    text-shadow: 0 0 14px var(--qk-brass);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes roll-wobble {
+  0%,
+  100% {
+    transform: none;
+  }
+  30% {
+    transform: rotate(-6deg);
+  }
+  65% {
+    transform: rotate(4deg);
+  }
+}
+
+/* Phones: the dock spans the bottom, and the hint makes room. */
+@media (max-width: 600px) {
+  .roll-dock {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    justify-items: stretch;
+  }
+
+  .roll-dock__bar {
+    justify-content: center;
+    border-radius: var(--qk-radius-card);
+  }
+
+  .roll-dock__hint {
+    display: none;
+  }
+
+  .roll-result {
+    width: auto;
+  }
+}

@@ -233,6 +233,35 @@ export async function editCombatant({ id, name, maxHp, currentHp, armorClass, st
   );
 }
 
+// A dice roll in the table's activity log, for everyone at the table.
+export async function logRoll(tableId, { who, label, detail, total }) {
+  unwrap(
+    await supabase.rpc("log_roll", {
+      p_table_id: tableId,
+      p_who: who,
+      p_label: label,
+      p_detail: detail,
+      p_total: total,
+    }),
+  );
+}
+
+// Every table this character sits at, newest join first: [{ id, name }].
+export async function listCharacterTables(characterId) {
+  const memberships = unwrap(
+    await supabase
+      .from("table_members")
+      .select("table_id, joined_at")
+      .eq("character_id", characterId)
+      .order("joined_at", { ascending: false }),
+  );
+  if (memberships.length === 0) return [];
+
+  const ids = memberships.map((membership) => membership.table_id);
+  const tables = unwrap(await supabase.from("game_tables").select("id, name").in("id", ids));
+  return [...tables].sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+}
+
 // A free-form line in the activity log from the DM.
 export async function dmLog(tableId, message) {
   unwrap(await supabase.rpc("dm_log", { p_table_id: tableId, p_message: message }));

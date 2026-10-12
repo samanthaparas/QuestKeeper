@@ -112,19 +112,18 @@ it("a Long Rest clears temp HP", async () => {
   expect(screen.queryByText(/\+7 =/)).not.toBeInTheDocument();
 });
 
-it("toggles saving throw proficiency and updates the save bonus", async () => {
+it("toggles saving throw proficiency with the dot and updates the save bonus", async () => {
   const user = userEvent.setup();
   renderSheet(makeSheet());
 
-  const strengthSave = (
-    await screen.findAllByRole("button", { name: /^Save/ })
-  )[0];
-  expect(strengthSave).toHaveAttribute("aria-pressed", "false");
+  const proficiency = await screen.findByRole("button", { name: "Strength save proficiency" });
+  const strengthSave = screen.getByRole("button", { name: /^Roll Strength save/ });
+  expect(proficiency).toHaveAttribute("aria-pressed", "false");
   expect(strengthSave).toHaveTextContent("Save +0");
 
-  await user.click(strengthSave);
+  await user.click(proficiency);
 
-  expect(strengthSave).toHaveAttribute("aria-pressed", "true");
+  expect(proficiency).toHaveAttribute("aria-pressed", "true");
   expect(strengthSave).toHaveTextContent("Save +2");
 });
 
@@ -171,14 +170,14 @@ it("adds a bonus to all saves, like a Paladin's Aura of Protection", async () =>
   const user = userEvent.setup();
   renderSheet(makeSheet());
 
-  const saves = await screen.findAllByRole("button", { name: /^Save/ });
+  const saves = await screen.findAllByRole("button", { name: /^Roll \w+ save/ });
   expect(saves[0]).toHaveTextContent("Save +0");
 
   const bonus = screen.getByLabelText("Bonus to all saves");
   await user.clear(bonus);
   await user.type(bonus, "3");
 
-  for (const save of screen.getAllByRole("button", { name: /^Save/ })) {
+  for (const save of screen.getAllByRole("button", { name: /^Roll \w+ save/ })) {
     expect(save).toHaveTextContent("Save +3");
   }
 });
@@ -215,7 +214,8 @@ it("lets a player add a flat bonus to one skill", async () => {
   await user.type(bonus, "2");
 
   const row = bonus.closest("li");
-  expect(within(row).getByText("+2", { selector: "span" })).toBeInTheDocument();
+  // The skill's total is its roll button.
+  expect(within(row).getByRole("button", { name: "Roll Perception, +2" })).toHaveTextContent("+2");
 });
 
 it("shows the AC with a temporary bonus without changing the base AC", async () => {
@@ -379,4 +379,52 @@ it("keeps Level and a length-limited Subclass in the Story tab", async () => {
   await user.click(await screen.findByRole("tab", { name: /Story/ }));
   expect(screen.getByLabelText("Level")).toHaveValue(3);
   expect(screen.getByLabelText("Subclass")).toHaveAttribute("maxLength", "32");
+});
+
+describe("click to roll", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("rolls a skill with its bonus and shows the result", async () => {
+    const user = userEvent.setup();
+    // Every d20 lands on 11.
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    renderSheet(makeSheet());
+
+    await user.click(await screen.findByRole("button", { name: "Roll Stealth, +0" }));
+    const result = screen.getByRole("region", { name: "Stealth roll" });
+    expect(result).toHaveTextContent("11");
+    expect(result).toHaveTextContent("d20 11");
+    // Not seated at a table, so the roll stays private.
+    expect(result).toHaveTextContent("Only you saw this");
+  });
+
+  it("rolls with advantage once, then goes back to normal", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(Math, "random").mockReturnValueOnce(0.1).mockReturnValueOnce(0.9).mockReturnValue(0.5);
+    renderSheet(makeSheet());
+
+    await user.click(await screen.findByRole("radio", { name: "Advantage" }));
+    await user.click(screen.getByRole("button", { name: /^Roll Strength check/ }));
+
+    const result = screen.getByRole("region", { name: "Strength check roll" });
+    // Rolled a 3 and a 19, kept the 19.
+    expect(result).toHaveTextContent("19");
+    expect(within(result).getByText("3")).toHaveClass("roll-result__die--dropped");
+    expect(screen.getByRole("radio", { name: "Normal" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("offers critical damage after a natural 20 attack", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(Math, "random").mockReturnValue(0.99);
+    const sheet = makeSheet();
+    sheet.attacks = [{ index: "a1", name: "Dagger", toHit: 4, damage: "1d4+2", damageType: "Piercing", notes: "" }];
+    renderSheet(sheet);
+
+    await user.click(await screen.findByRole("button", { name: "Roll Dagger attack, +4" }));
+    expect(screen.getByRole("region", { name: "Dagger attack roll" })).toHaveTextContent("Natural 20!");
+
+    await user.click(screen.getByRole("button", { name: "Roll critical damage" }));
+    // Two d4s (both 4) + 2.
+    expect(screen.getByRole("region", { name: "Dagger damage (critical) roll" })).toHaveTextContent("10");
+  });
 });
