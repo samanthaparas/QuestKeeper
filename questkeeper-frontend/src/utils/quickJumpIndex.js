@@ -26,6 +26,7 @@ const EXTRA_PAGES = [
 ];
 
 const PAGE_KEYWORDS = {
+  "/quiz": ["quiz", "recommend", "suggest", "build", "what to play"],
   "/library": ["monsters", "bestiary", "creatures", "dm"],
   "/tables": ["games", "campaign", "party", "session", "dm"],
   "/homebrew": ["custom", "create", "share"],

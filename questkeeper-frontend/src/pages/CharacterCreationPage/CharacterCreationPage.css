@@ -88,3 +88,42 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Character quiz ------------------------------------------------------- */
+.character-creation__quiz-link {
+  margin: 20px 0 0;
+  color: var(--qk-text-muted);
+  font-size: 15px;
+}
+
+.character-creation__link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--qk-terracotta);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.character-creation__link-button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* "From the quiz: Lantern Scholar..." above the current step. */
+.character-creation__quiz-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-left: 4px solid var(--qk-brass);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+  line-height: 1.5;
+}

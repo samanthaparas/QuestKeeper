@@ -30,9 +30,8 @@ function AuthPage() {
 
     // Back to the page that sent them here (only QuestKeeper's own pages).
     const from = location.state?.from;
-    navigate(typeof from === "string" && from.startsWith("/") && !from.startsWith("//")
-      ? from
-      : "/characters");
+    const safe = typeof from === "string" && from.startsWith("/") && !from.startsWith("//");
+    navigate(safe ? from : "/characters", { state: safe ? (location.state?.fromState ?? null) : null });
   }
 
   return (

@@ -534,6 +534,13 @@ function Guide() {
         <Link className="guide__cta" to="/characters/new">
           Build your hero
         </Link>
+        <p className="guide__quiz">
+          Not sure what to play?{" "}
+          <Link className="guide__link" to="/quiz">
+            Take the character quiz
+          </Link>{" "}
+          for three builds that fit you.
+        </p>
       </section>
 
       <RulesWordsSection />
