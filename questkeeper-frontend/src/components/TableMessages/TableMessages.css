@@ -1,0 +1,475 @@
+/* --- The Messages button (bottom left) ------------------------------------ */
+.table-messages__button {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 41;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  box-shadow: 0 6px 16px var(--qk-shadow);
+  color: var(--qk-text);
+  font-family: var(--qk-font-body);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-messages__button:hover,
+.table-messages__button[aria-expanded="true"] {
+  border-color: var(--qk-terracotta);
+}
+
+.table-messages__button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 3px;
+}
+
+.table-messages__icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linejoin: round;
+}
+
+.table-messages__badge {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Something new arrived: the button glows gold. */
+.table-messages__button--new {
+  border-color: var(--qk-brass);
+  background-color: var(--qk-brass-soft);
+}
+
+/* Screen-reader-only announcement. */
+.table-messages__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- The drawer ------------------------------------------------------------- */
+.table-messages__drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  width: min(380px, 100vw);
+  border-right: 1px solid var(--qk-border);
+  background-color: var(--qk-surface);
+  box-shadow: 8px 0 28px var(--qk-shadow);
+}
+
+.table-messages__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--qk-border);
+}
+
+.table-messages__title {
+  flex: 1;
+  margin: 0;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 20px;
+}
+
+.table-messages__table {
+  color: var(--qk-text-muted);
+  font-family: var(--qk-font-body);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.table-messages__back {
+  flex-basis: 100%;
+  justify-self: start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--qk-terracotta);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.table-messages__close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--qk-text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.table-messages__close:hover {
+  background-color: var(--qk-surface-muted);
+}
+
+.table-messages__body,
+.table-messages__thread {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  overflow-y: auto;
+}
+
+.table-messages__thread {
+  padding-bottom: 0;
+}
+
+.table-messages__empty,
+.table-messages__privacy {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.table-messages__privacy {
+  padding: 6px 10px;
+  border-left: 3px solid var(--qk-brass);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+}
+
+.table-messages__error {
+  margin: 0;
+  color: var(--qk-danger);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* --- Buttons inside -------------------------------------------------------- */
+.table-messages__new,
+.table-messages__primary,
+.table-messages__secondary {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: var(--qk-radius-control);
+  font-family: var(--qk-font-body);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-messages__new,
+.table-messages__secondary {
+  border: 1px dashed var(--qk-terracotta);
+  background-color: transparent;
+  color: var(--qk-terracotta);
+}
+
+.table-messages__primary {
+  border: 1px solid var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+.table-messages__primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.table-messages__link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--qk-terracotta);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.table-messages__drawer button:focus-visible,
+.table-messages__drawer textarea:focus-visible,
+.table-messages__drawer input:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* --- Conversation list ------------------------------------------------------- */
+.table-messages__list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.table-messages__row {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-background);
+  color: var(--qk-text);
+  font-family: var(--qk-font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.table-messages__row:hover {
+  border-color: var(--qk-terracotta);
+}
+
+.table-messages__row--unread {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-surface);
+}
+
+.table-messages__row-title {
+  padding-right: 28px;
+  font-weight: 800;
+}
+
+.table-messages__row-preview {
+  overflow: hidden;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-messages__row-count {
+  color: var(--qk-terracotta-hover);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* A little wax seal on unread conversations. */
+.table-messages__seal {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #d0725a, var(--qk-terracotta) 55%, var(--qk-terracotta-hover));
+  box-shadow: 0 1px 2px var(--qk-shadow);
+}
+
+/* --- New conversation -------------------------------------------------------- */
+.table-messages__pick {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.table-messages__pick legend {
+  margin-bottom: 4px;
+  font-weight: 800;
+}
+
+.table-messages__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  cursor: pointer;
+}
+
+.table-messages__check input {
+  margin-top: 3px;
+}
+
+.table-messages__check span {
+  display: grid;
+}
+
+.table-messages__check small {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+}
+
+/* --- Messages ---------------------------------------------------------------- */
+.table-messages__messages {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.table-messages__message {
+  justify-self: start;
+  max-width: 85%;
+  padding: 8px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: 4px var(--qk-radius-card) var(--qk-radius-card) var(--qk-radius-card);
+  background-color: var(--qk-background);
+}
+
+.table-messages__message--mine {
+  justify-self: end;
+  border-color: var(--qk-terracotta-soft);
+  border-radius: var(--qk-radius-card) 4px var(--qk-radius-card) var(--qk-radius-card);
+  background-color: var(--qk-terracotta-soft);
+}
+
+.table-messages__meta {
+  display: block;
+  color: var(--qk-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.table-messages__text {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.table-messages__image-link {
+  display: block;
+  margin-top: 6px;
+}
+
+.table-messages__image {
+  display: block;
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: var(--qk-radius-small);
+  object-fit: contain;
+}
+
+/* --- Writing a message -------------------------------------------------------- */
+.table-messages__composer {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  gap: 8px;
+  margin: auto -16px 0;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--qk-border);
+  background-color: var(--qk-surface);
+}
+
+.table-messages__input {
+  width: 100%;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-background);
+  color: var(--qk-text);
+  font: inherit;
+}
+
+.table-messages__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.table-messages__file {
+  display: none;
+}
+
+.table-messages__attached {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* --- Motion (off for reduced motion) ------------------------------------------ */
+@media (prefers-reduced-motion: no-preference) {
+  .table-messages__drawer {
+    animation: table-messages-in 0.2s ease-out;
+  }
+
+  /* A new message nudges the button once. */
+  .table-messages__button--new {
+    animation: table-messages-nudge 0.6s ease-out;
+  }
+
+  /* Messages that were unread "unseal" as the conversation opens. */
+  .table-messages__message--new {
+    animation: table-messages-unseal 0.35s ease-out backwards;
+  }
+}
+
+@keyframes table-messages-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
+@keyframes table-messages-nudge {
+  0%,
+  100% {
+    transform: none;
+  }
+  30% {
+    transform: translateY(-4px) rotate(-3deg);
+  }
+  60% {
+    transform: translateY(-2px) rotate(2deg);
+  }
+}
+
+@keyframes table-messages-unseal {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+/* Phones: the drawer fills the screen; on the character sheet the button
+   sits above the roll bar. */
+@media (max-width: 600px) {
+  .table-messages__drawer {
+    width: 100vw;
+    border-right: none;
+  }
+
+  .table-messages__button {
+    left: 8px;
+    bottom: 8px;
+  }
+
+  .table-messages__button--raised {
+    bottom: 104px;
+  }
+}

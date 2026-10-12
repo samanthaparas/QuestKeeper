@@ -435,6 +435,16 @@ function Guide() {
           </li>
         </ol>
 
+        <h3 className="guide__subheading">Secret messages</h3>
+        <p>
+          Tap <strong>Messages</strong> (bottom left, on the table page and
+          your character sheet) to send a note to the whole party, a few
+          people, or just one, with a picture if you like, such as a map or a
+          handout. Only the people you pick can read it: players can message
+          each other without the DM, and the DM can pass a secret to one
+          player without the rest of the table knowing.
+        </p>
+
         <p className="guide__tip">
           <strong>If the Wi-Fi drops:</strong> keep playing with paper and real
           dice. QuestKeeper is a helper, not the rules. When it&apos;s back, the
