@@ -320,3 +320,8 @@
   color: var(--qk-text-muted);
   line-height: 1.45;
 }
+
+.guide__quiz {
+  margin-top: var(--qk-space-3);
+  color: var(--qk-text-muted);
+}

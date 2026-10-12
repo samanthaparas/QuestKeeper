@@ -156,7 +156,7 @@ describe("Navigation picks the right menu", () => {
     renderWithRouter(<Navigation isMenuOpen />);
 
     expect(document.querySelector(".nav-wheel")).toBeNull();
-    expect(screen.getAllByRole("link")).toHaveLength(11);
+    expect(screen.getAllByRole("link")).toHaveLength(12);
     expect(screen.getByRole("region", { name: "My Adventures" })).toBeInTheDocument();
   });
 

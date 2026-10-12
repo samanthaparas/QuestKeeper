@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   getRaces,
   getClasses,
@@ -77,14 +77,21 @@ import CreationTips from "../../components/CreationTips/CreationTips";
 import Button from "../../components/Button/Button";
 import HomebrewDialog from "../../components/HomebrewDialog/HomebrewDialog";
 import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
+import {
+  findQuizBuild,
+  loadQuizBuild,
+  standardArrayFor,
+} from "../../utils/quizBuild";
 
 const mapRaceToDetailPanelResult = mapRaceToPanel;
 const mapClassToDetailPanelResult = mapClassToPanel;
 
 function CharacterCreationPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [stepKey, setStepKey] = useState("name");
-  const [name, setName] = useState("");
+  // Arriving from the character quiz brings the hero's name along.
+  const [name, setName] = useState(() => location.state?.name ?? "");
   const [race, setRace] = useState(null);
   const [characterClass, setCharacterClass] = useState(null);
   const [background, setBackground] = useState(null);
@@ -112,6 +119,127 @@ function CharacterCreationPage() {
   const [homebrewRequest, setHomebrewRequest] = useState(null);
   const [madePick, setMadePick] = useState(null); // { step, raw }
   const [pickerVersion, setPickerVersion] = useState(0);
+
+  // "Use this build" from the character quiz: the build being filled in,
+  // and whether it's loading or failed to.
+  const [quizBuild, setQuizBuild] = useState(null);
+  const [quizStatus, setQuizStatus] = useState(() =>
+    location.state?.quizBuild ? "loading" : "idle",
+  );
+
+  useEffect(() => {
+    const build = findQuizBuild(location.state?.quizBuild);
+    if (!build) return undefined;
+    let ignore = false;
+    // Forget the request, so a refresh doesn't fill it in again.
+    navigate(".", { replace: true, state: null });
+
+    loadQuizBuild(build)
+      .then((loaded) => {
+        if (!ignore) applyQuizBuild(build, loaded);
+      })
+      .catch(() => !ignore && setQuizStatus("failed"));
+    return () => {
+      ignore = true;
+    };
+    // Only when the page opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fills in everything the build decides, the same way each picker would,
+  // and spreads the standard array over its two main abilities (confirmed on
+  // the Abilities step). Then jumps to the first step still to do.
+  function applyQuizBuild(
+    build,
+    {
+      raceRaw: newRace,
+      subraceRaw: newSubrace,
+      classRaw: newClass,
+      subclassRaw: newSubclass,
+      backgroundRaw: newBackground,
+    },
+  ) {
+    const raceSnapshot = mapRaceToSnapshot(newRace);
+    const subraceSnapshot = newSubrace
+      ? mapSubraceToSnapshot(newSubrace)
+      : null;
+    const classSnapshot = mapClassToSnapshot(newClass);
+    const subclassSnapshot = newSubclass
+      ? mapSubclassToSnapshot(newSubclass)
+      : null;
+    const backgroundSnapshot = mapBackgroundToSnapshot(newBackground);
+
+    setRace(raceSnapshot);
+    setRaceRaw(newRace);
+    setSubrace(subraceSnapshot);
+    setSubraceRaw(newSubrace);
+    setSubraceCantrip(getRaceFixedCantrip(raceSnapshot.id));
+    setCharacterClass(classSnapshot);
+    setClassRaw(newClass);
+    setClassSkills([]);
+    setSpellChoices(null);
+    setSubclass(subclassSnapshot);
+    setSubclassRaw(newSubclass);
+    setBackground(backgroundSnapshot);
+    setBackgroundRaw(newBackground);
+    setBackgroundSkills([]);
+    setEquipmentSelections(null);
+    setChosenEquipment([]);
+    setAbilityAssignments({
+      assignments: standardArrayFor(build.abilities),
+      scoreMethod: "standard",
+    });
+    setQuizBuild(build);
+    setQuizStatus("applied");
+
+    if (name.trim())
+      moveTo(
+        firstStepToDo({
+          newRace,
+          subraceSnapshot,
+          classSnapshot,
+          newClass,
+          newBackground,
+          backgroundSnapshot,
+          subclassSnapshot,
+        }),
+      );
+  }
+
+  // The first step a quiz build leaves for the player (skills, spells...).
+  function firstStepToDo({
+    newRace,
+    subraceSnapshot,
+    classSnapshot,
+    newClass,
+    newBackground,
+    backgroundSnapshot,
+    subclassSnapshot,
+  }) {
+    const nextSteps = getVisibleSteps({
+      raceRaw: newRace,
+      subrace: subraceSnapshot,
+      characterClass: classSnapshot,
+      hasEquipmentChoices:
+        parseEquipmentChoices(newClass, "class").length > 0 ||
+        parseEquipmentChoices(newBackground, "background").length > 0,
+    });
+    const todo = getReviewIssues({
+      steps: nextSteps,
+      race: newRace,
+      subrace: subraceSnapshot,
+      subraceCantrip: getRaceFixedCantrip(newRace.index),
+      characterClass: classSnapshot,
+      subclass: subclassSnapshot,
+      background: backgroundSnapshot,
+      classSkills: [],
+      backgroundSkills: [],
+      spellChoices: null,
+      abilityScores: null,
+      equipmentChosen: false,
+    });
+    return todo[0]?.step ?? "review";
+  }
 
   const finalRace = mergeSubrace(race, subrace);
   const equipmentGroups = [
@@ -401,6 +529,33 @@ function CharacterCreationPage() {
         />
 
         <div className="character-creation__content">
+          {quizStatus === "loading" && (
+            <div className="character-creation__quiz-banner" role="status">
+              Filling in your build from the quiz...
+            </div>
+          )}
+          {quizStatus === "failed" && (
+            <div className="character-creation__quiz-banner" role="alert">
+              Couldn&apos;t load that build right now. Pick your options as
+              usual, or try the quiz again later.
+            </div>
+          )}
+          {quizStatus === "applied" && quizBuild && (
+            <div className="character-creation__quiz-banner" role="status">
+              <span>
+                <strong>From the quiz: {quizBuild.name}.</strong> Race, class,
+                background and ability scores are filled in. Change anything you
+                like on its step.
+              </span>
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setQuizStatus("idle")}
+              >
+                Got it
+              </Button>
+            </div>
+          )}
           {cameFromReview && step !== "review" && (
             <div className="character-creation__edit-banner">
               <span>You're changing something from your review.</span>
@@ -441,11 +596,30 @@ function CharacterCreationPage() {
 
                     <Button
                       disabled={!name.trim()}
-                      onClick={() => goNext("name")}
+                      onClick={() =>
+                        // With a quiz build filled in, skip ahead to what's left.
+                        quizBuild && issues[0]
+                          ? moveTo(issues[0].step)
+                          : goNext("name")
+                      }
                     >
                       Next
                     </Button>
                   </div>
+
+                  {!quizBuild && (
+                    <p className="character-creation__quiz-link">
+                      Not sure what to play?{" "}
+                      <button
+                        type="button"
+                        className="character-creation__link-button"
+                        onClick={() => navigate("/quiz", { state: { name } })}
+                      >
+                        Take the character quiz
+                      </button>{" "}
+                      and get three builds that fit you.
+                    </p>
+                  )}
                 </div>
               )}
 

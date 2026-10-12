@@ -18,6 +18,7 @@ import LibraryPage from "./pages/LibraryPage/LibraryPage";
 import HomebrewPage from "./pages/HomebrewPage/HomebrewPage";
 import HomebrewInvitePage from "./pages/HomebrewInvitePage/HomebrewInvitePage";
 import Guide from "./pages/Guide/Guide";
+import QuizPage from "./pages/QuizPage/QuizPage";
 import AuthPage from "./pages/AuthPage/AuthPage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 
@@ -116,6 +117,7 @@ function App() {
         <Route path="/attributions" element={<AttributionsPage />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/guide" element={<Guide />} />
+        <Route path="/quiz" element={<QuizPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
