@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useMessages } from "../../hooks/useMessages";
 import { startConversation } from "../../utils/messageStore";
 import ConversationThread from "./ConversationThread";
-import { conversationTitle, personName } from "./messageLabels";
+import { conversationTitle, joinNames, personName } from "./messageLabels";
 import "./TableMessages.css";
 
 // "/tables/abc" -> "abc": on a table's page, new messages start there.
@@ -296,7 +296,7 @@ function NewConversation({ tables, startTableId, peopleAt, myId, onOpen }) {
       </fieldset>
       {!everyone && picked.length > 0 && (
         <p className="table-messages__privacy">
-          Only you and {picked.map((id) => personName(people, id, myId)).join(", ")} will see it
+          Only {joinNames([...picked.map((id) => personName(people, id, myId)), "you"])} will see it
           {picked.length > 1 ? ", together." : "."}
         </p>
       )}
