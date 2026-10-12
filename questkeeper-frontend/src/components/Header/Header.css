@@ -123,10 +123,10 @@
   outline-offset: 3px;
 }
 
-/* The full header (logo, three menus, Log In/Log Out) needs about 700px on
-   one line. Below 860px it collapses behind the Menu button, leaving room to
-   spare. Re-measure if a menu is added. */
-@media (max-width: 860px) {
+/* The full header (logo, three menus, Search, Log In/Log Out) needs about
+   850px on one line. Below 920px it collapses behind the Menu button,
+   leaving room to spare. Re-measure if a menu is added. */
+@media (max-width: 920px) {
   .header {
     display: grid;
     /* Equal side columns keep the logo centred; they size to their content
@@ -140,8 +140,12 @@
     min-height: 60px;
   }
 
+  /* Each item gets its own cell: Menu and Search on the left, the logo in
+     the middle, Log In/Log Out on the right. */
   .header__menu {
     display: block;
+    grid-column: 1;
+    grid-row: 1;
     justify-self: start;
     min-height: 40px;
     padding: 0;
@@ -154,6 +158,8 @@
   }
 
   .header__brand {
+    grid-column: 2;
+    grid-row: 1;
     justify-self: center;
   }
 

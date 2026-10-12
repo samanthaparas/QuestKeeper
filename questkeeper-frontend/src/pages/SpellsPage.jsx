@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSpells, getSpellDetails } from "../utils/api";
+import { useOpenFromLink } from "../hooks/useOpenFromLink";
 import { mapSpellToPanel } from "../utils/srdDetails";
 import {
   ALL,
@@ -115,6 +116,9 @@ function SpellsPage() {
         setApiError("Unable to load spell details. Please try again.");
       });
   }
+
+  // Links like quick-jump's "/spells?open=fireball" open that spell.
+  useOpenFromLink({ items: spellResults, ready: !isLoading, onOpen: handleResultClick });
 
   const showFilters = !isLoading && spellResults.length > 0;
 

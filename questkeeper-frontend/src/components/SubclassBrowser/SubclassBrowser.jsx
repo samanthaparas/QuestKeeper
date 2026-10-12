@@ -11,12 +11,16 @@ import "./SubclassBrowser.css";
 // after the first load, so players can compare many subclasses quickly.
 //
 // groups: [{ source, items: [{ index, name }] }] from mapClassToPanel.
+// initialIndex: a subclass to show first (a quick-jump search result).
 // inPicker: inside character creation, book entries don't link away to My
 // Homebrew (that would lose the player's progress).
-function SubclassBrowser({ groups, inPicker = false }) {
+function SubclassBrowser({ groups, initialIndex, inPicker = false }) {
   const baseId = useId();
-  const [activeSource, setActiveSource] = useState(groups[0]?.source);
-  const [selectedBySource, setSelectedBySource] = useState({}); // source -> index
+  const startGroup = groups.find((g) => g.items.some((item) => item.index === initialIndex));
+  const [activeSource, setActiveSource] = useState((startGroup ?? groups[0])?.source);
+  const [selectedBySource, setSelectedBySource] = useState(
+    startGroup ? { [startGroup.source]: initialIndex } : {},
+  ); // source -> index
   const [loaded, setLoaded] = useState({}); // index -> panel, or { error: true }
 
   const group = groups.find((g) => g.source === activeSource) ?? groups[0];

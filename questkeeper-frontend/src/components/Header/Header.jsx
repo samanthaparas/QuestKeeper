@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { signOut } from "../../utils/auth";
 import Navigation from "./Navigation/Navigation";
+import QuickJump from "../QuickJump/QuickJump";
 import logoIcon from "../../assets/brand/questkeeper-book-logo-64.png";
 import "./Header.css";
 
@@ -40,6 +41,9 @@ function Header() {
           isMenuOpen={isMenuOpen}
           onNavigate={() => setIsMenuOpen(false)}
         />
+
+        {/* Search, with the "/" and ⌘K shortcuts. */}
+        <QuickJump />
 
         {!isLoading &&
           (user ? (
