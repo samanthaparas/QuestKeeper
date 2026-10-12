@@ -45,7 +45,7 @@ function MagicItemDetail({ item }) {
   ].filter(([, value]) => value);
 
   return (
-    <section className="detail-panel magic-item-detail" aria-label={item.name}>
+    <section className="detail-panel detail-panel--enter magic-item-detail" aria-label={item.name}>
       <h2 className="detail-panel__title">{item.name}</h2>
       <p className="magic-item-detail__badges">
         <span className={rarityClass(item.rarity)}>{item.rarity}</span>{" "}

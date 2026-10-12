@@ -6,6 +6,7 @@ import {
   getSpellSchoolIcon,
   getSpellEffectIcon,
   getUiIcon,
+  getMagicItemIcon,
 } from "./icons";
 import { BOOK_RACES } from "./bookRaces";
 import { BOOK_BACKGROUNDS } from "./bookBackgrounds";
@@ -38,6 +39,13 @@ describe("getRaceIcon", () => {
 });
 
 describe("getClassIcon", () => {
+  it("resolves the additional book classes", () => {
+    for (const id of ["artificer", "blood-hunter"]) {
+      expect(getClassIcon(id), id).toBeTruthy();
+      expect(getClassIcon(`book_${id}`)).toBe(getClassIcon(id));
+    }
+  });
+
   it("resolves a known class id", () => {
     expect(getClassIcon("wizard")).toBeTruthy();
   });
@@ -80,5 +88,20 @@ describe("getSpellEffectIcon", () => {
 describe("getUiIcon", () => {
   it("resolves a known ui icon id", () => {
     expect(getUiIcon("dice")).toBeTruthy();
+  });
+});
+
+describe("getMagicItemIcon", () => {
+  it("resolves a distinct icon for each supported item type", () => {
+    const types = ["Wondrous Item", "Weapon", "Armor", "Shield", "Ring", "Potion", "Scroll", "Rod", "Staff", "Wand", "Ammunition"];
+    const icons = types.map((type) => getMagicItemIcon(type));
+    expect(icons.every(Boolean)).toBe(true);
+    expect(new Set(icons).size).toBe(types.length);
+  });
+
+  it("normalizes type names and uses the chest for unknown types", () => {
+    expect(getMagicItemIcon("SCROLL")).toBe(getMagicItemIcon("scroll"));
+    expect(getMagicItemIcon(undefined)).toBe(getMagicItemIcon("Wondrous Item"));
+    expect(getMagicItemIcon("Other")).toBe(getMagicItemIcon("Wondrous Item"));
   });
 });

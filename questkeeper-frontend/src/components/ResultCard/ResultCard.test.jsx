@@ -60,3 +60,13 @@ describe("ResultCard previews", () => {
     expect(document.querySelector(".result-card__preview")).toBeNull();
   });
 });
+
+describe("spell school icons", () => {
+  it("uses each spell's school instead of its spell id", () => {
+    for (const school of ["abjuration", "conjuration", "divination", "enchantment", "evocation", "illusion", "necromancy", "transmutation"]) {
+      const { container, unmount } = render(<ResultCard result={{ name: "Example spell", category: "Spell", index: "example-spell", school: { index: school } }} onClick={() => {}} />);
+      expect(container.querySelector("img")).toHaveAttribute("src", expect.stringContaining(`${school}.png`));
+      unmount();
+    }
+  });
+});

@@ -1,3 +1,7 @@
+const magicItemIcons = import.meta.glob("../assets/icons/magic-items/*.png", {
+  eager: true,
+  import: "default",
+});
 const raceIcons = import.meta.glob("../assets/icons/races/*.png", {
   eager: true,
   import: "default",
@@ -41,7 +45,12 @@ export function getRaceIcon(raceId) {
 }
 
 export function getClassIcon(classId) {
-  return classIcons[`../assets/icons/classes/${normalizeId(classId)}.png`];
+  const id = normalizeId(classId);
+  const canonicalId = id.replace(/^book-/, "");
+  return (
+    classIcons[`../assets/icons/classes/${id}.png`] ??
+    classIcons[`../assets/icons/classes/${canonicalId}.png`]
+  );
 }
 
 export function getBackgroundIcon(backgroundId) {
@@ -68,4 +77,11 @@ export function getSpellEffectIcon(effectId) {
 
 export function getUiIcon(iconId) {
   return uiIcons[`../assets/icons/ui/${normalizeId(iconId)}.png`];
+}
+
+export function getMagicItemIcon(type) {
+  return (
+    magicItemIcons[`../assets/icons/magic-items/${normalizeId(type)}.png`] ??
+    magicItemIcons["../assets/icons/magic-items/wondrous-item.png"]
+  );
 }

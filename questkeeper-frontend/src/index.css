@@ -100,3 +100,67 @@ h3,
   gap: 16px;
   flex-wrap: wrap;
 }
+
+/* --- Motion -------------------------------------------------------------------
+   Small, one-off movements that make the pages feel alive without getting in
+   the way: nothing loops, nothing shifts the layout (only transform and
+   opacity move), and all of it is skipped when the device asks for reduced
+   motion. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Card icons rock once, lifting a little, when the card is hovered or
+     focused, then settle back. The race, class and background previews
+     cover the card, so their small preview icon does the rocking. */
+  .result-card:hover .result-card__icon,
+  .result-card:focus-visible .result-card__icon,
+  .result-card:hover .result-card__preview-icon,
+  .result-card:focus-visible .result-card__preview-icon,
+  .magic-item-card:hover .magic-item-card__icon,
+  .magic-item-card:focus-visible .magic-item-card__icon {
+    animation: qk-icon-rock 0.6s ease-out;
+  }
+
+  /* A details panel fades and slides up a few pixels as it opens. */
+  .detail-panel--enter {
+    animation: qk-panel-in 0.22s ease-out;
+  }
+
+  /* The chosen card's ring grows in instead of appearing at once. */
+  .result-card--selected,
+  .magic-item-card--selected {
+    animation: qk-ring-in 0.25s ease-out;
+  }
+
+  /* Filter buttons press in slightly while clicked. */
+  .source-filter__button:active,
+  .magic-item-filters__chip:active {
+    transform: scale(0.96);
+  }
+}
+
+@keyframes qk-icon-rock {
+  0% {
+    transform: none;
+  }
+  30% {
+    transform: translateY(-2px) rotate(-3deg);
+  }
+  65% {
+    transform: translateY(-2px) rotate(2deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes qk-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes qk-ring-in {
+  from {
+    box-shadow: 0 0 0 0 var(--qk-terracotta-soft);
+  }
+}

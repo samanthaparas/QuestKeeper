@@ -58,7 +58,9 @@ export function SrdBlocks({ blocks }) {
 // defined layout/ordering for more than one element here.
 // inPicker: shown inside a character-creation picker (book entries then don't
 // link away to My Homebrew, which would lose the player's progress).
-function DetailPanel({ selectedResult, actions, inPicker = false }) {
+// animate: fade and slide in each time a different entry opens (off for the
+// homebrew form's live preview, which changes on every keystroke).
+function DetailPanel({ selectedResult, actions, inPicker = false, animate = true }) {
   if (!selectedResult) {
     return (
       <section className="detail-panel">
@@ -72,7 +74,11 @@ function DetailPanel({ selectedResult, actions, inPicker = false }) {
   }
 
   return (
-    <section className="detail-panel">
+    <section
+      // A new key per entry replays the opening animation.
+      key={animate ? selectedResult.name : undefined}
+      className={`detail-panel${animate ? " detail-panel--enter" : ""}`}
+    >
       <div className="flex-header-row detail-panel__header">
         <h2 className="detail-panel__title">{selectedResult.name}</h2>
         {actions}

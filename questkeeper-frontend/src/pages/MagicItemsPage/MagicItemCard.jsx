@@ -1,3 +1,4 @@
+import { getMagicItemIcon } from "../../utils/icons";
 import SourceBadge from "../../components/SourceBadge/SourceBadge";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 import { attunementLine, kindLine, rarityClass } from "../../utils/magicItemFilters";
@@ -21,9 +22,12 @@ function MagicItemCard({ item, isSelected, onSelect }) {
 
       {/* What it is: "Weapon · Longsword", "Wondrous Item · Worn: Shoulders" */}
       <span className="magic-item-card__type">
-        {item.type}
-        {kind && ` · ${kind}`}
-        {item.wornSlot && item.wornSlot !== item.type && item.wornSlot !== "Armor" && ` · Worn: ${item.wornSlot}`}
+        <img className="magic-item-card__icon" src={getMagicItemIcon(item.type)} alt="" aria-hidden="true" />
+        <span>
+          {item.type}
+          {kind && ` · ${kind}`}
+          {item.wornSlot && item.wornSlot !== item.type && item.wornSlot !== "Armor" && ` · Worn: ${item.wornSlot}`}
+        </span>
       </span>
 
       {attunement && <span className="magic-item-card__attune">{attunement}</span>}

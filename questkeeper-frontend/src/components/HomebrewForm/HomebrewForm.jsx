@@ -225,7 +225,7 @@ function HomebrewForm({ initialForm, raceOptions = [], classOptions = [], onSave
             ))}
           </section>
         ) : (
-          <DetailPanel selectedResult={preview} />
+          <DetailPanel selectedResult={preview} animate={false} />
         )}
       </aside>
     </div>
