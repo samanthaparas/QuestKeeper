@@ -71,4 +71,21 @@ describe("PickerStep", () => {
     await userEvent.click(makeIt);
     expect(onMakeHomebrewFrom).toHaveBeenCalledWith(book);
   });
+
+  it("puts read-only book entries last and says they can't be picked yet", async () => {
+    const artificer = { index: "book_artificer", name: "Artificer", is_book_entry: true };
+    renderPicker({
+      category: "Class",
+      fetchList: () => Promise.resolve([artificer, { index: "wizard", name: "Wizard" }]),
+      initialSelectedRaw: artificer,
+      mapToDetailPanelResult: (data) => ({ name: data.name, category: "Class" }),
+    });
+
+    await screen.findByRole("heading", { name: "Wizard" });
+    const cards = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
+    expect(cards).toEqual(["Wizard", "Artificer"]);
+    expect(screen.getByText("Read only: can't be picked yet")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent("Can't be picked yet.");
+    expect(screen.queryByRole("button", { name: /Choose Artificer|Make it as homebrew/ })).toBeNull();
+  });
 });

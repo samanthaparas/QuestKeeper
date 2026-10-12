@@ -6,6 +6,7 @@ import {
 } from "./characterSheet";
 import { getRaceGuidance, getClassGuidance } from "./beginnerGuidance";
 import { groupBySource } from "./sourceFilters";
+import { startFromFor } from "./homebrewMappers";
 import {
   getClassFeatures,
   getSubclassFeatures,
@@ -392,6 +393,8 @@ export function mapRaceToPanel(data) {
     traits,
     subraces: listNames(data.subraces),
     guidance: getRaceGuidance(data.index),
+    // Free options can be copied into homebrew ("Use as a starting point").
+    startFrom: startFromFor("race", data),
   };
 }
 
@@ -405,6 +408,7 @@ export function mapSubraceToPanel(data) {
     description: descriptionFromSrd(data.desc),
     abilityBonuses: formatAbilityBonuses(data),
     traits: (data.racial_traits ?? []).map((trait) => trait.name),
+    startFrom: startFromFor("subrace", data),
   };
 }
 
@@ -442,6 +446,7 @@ export function mapSubclassToPanel(data) {
       level: feature.level,
       description: descriptionFromSrd(feature.desc),
     })),
+    startFrom: startFromFor("subclass", data),
   };
 }
 
@@ -514,6 +519,7 @@ export function mapBackgroundToPanel(data) {
     ideals: choose(data.ideals),
     bonds: choose(data.bonds),
     flaws: choose(data.flaws),
+    startFrom: startFromFor("background", data),
   };
 }
 

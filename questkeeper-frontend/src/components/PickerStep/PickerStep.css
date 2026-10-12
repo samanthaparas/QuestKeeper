@@ -29,7 +29,8 @@
 
 .picker-step__layout {
   display: grid;
-  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+  /* 300px fits most book names on one line in a card's source badge. */
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
   gap: 32px;
   align-items: start;
 }
@@ -72,4 +73,16 @@
   margin: -8px 0 16px;
   color: var(--qk-text-muted);
   font-size: 14px;
+}
+
+/* "Can't be picked yet" above a read-only entry's details. */
+.picker-step__read-only {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-left: 4px solid var(--qk-brass);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+  font-size: 14px;
+  line-height: 1.5;
 }

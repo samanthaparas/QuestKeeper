@@ -186,6 +186,13 @@ function CharacterCreationPage() {
   }
 
   // After "Make your own" saves: reload what lists it, then show it selected.
+  // "Make my own version" of a free option: the homebrew pop-up opens with
+  // a copy of it filled in. `extra` adds pop-up options (a subrace's race).
+  function startHomebrewFrom(prefill, extra = {}) {
+    const { category, data, ...fields } = prefill;
+    setHomebrewRequest({ category, fields, data, ...extra });
+  }
+
   async function handleHomebrewCreated(saved) {
     setHomebrewRequest(null);
     const index = toHomebrewIndex(saved.id);
@@ -435,6 +442,7 @@ function CharacterCreationPage() {
                   key={`race-${pickerVersion}`}
                   onMakeOwn={() => setHomebrewRequest({ category: "race" })}
                   makeOwnLabel="Make your own race"
+                  onStartFrom={startHomebrewFrom}
                   onMakeHomebrewFrom={(book) =>
                     setHomebrewRequest({
                       category: "race",
@@ -484,6 +492,11 @@ function CharacterCreationPage() {
                     })
                   }
                   makeOwnLabel={`Make your own ${race?.name ?? ""} subrace`}
+                  onStartFrom={(prefill) =>
+                    startHomebrewFrom(prefill, {
+                      raceOptions: [{ index: race.id, name: race.name }],
+                    })
+                  }
                   title="Choose a Subrace"
                   description={`${race?.name ?? "Your race"} has specific variants with their own traits and bonuses.`}
                   category="Subrace"
@@ -571,6 +584,11 @@ function CharacterCreationPage() {
                       : undefined
                   }
                   makeOwnLabel={`Make your own ${characterClass?.name ?? ""} subclass`}
+                  onStartFrom={
+                    getSubclassLevel(characterClass?.id) === 1
+                      ? startHomebrewFrom
+                      : undefined
+                  }
                   onMakeHomebrewFrom={(book) =>
                     setHomebrewRequest({
                       category: "subclass",
@@ -657,7 +675,10 @@ function CharacterCreationPage() {
               {step === "background" && (
                 <PickerStep
                   key={`background-${pickerVersion}`}
-                  onMakeOwn={() => setHomebrewRequest({ category: "background" })}
+                  onStartFrom={startHomebrewFrom}
+                  onMakeOwn={() =>
+                    setHomebrewRequest({ category: "background" })
+                  }
                   makeOwnLabel="Make your own background"
                   onMakeHomebrewFrom={(book) =>
                     setHomebrewRequest({

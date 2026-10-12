@@ -50,6 +50,21 @@ const SKILL_NAMES = Object.fromEntries(
   SKILLS.map((skill) => [skill.index, skill.name]),
 );
 
+// --- Starting points -------------------------------------------------------------
+
+// Whether an option can be copied into a homebrew form ("Use as a starting
+// point"): only open-licensed SRD and Open5e entries, since book text isn't
+// ours to copy and homebrew can simply be edited. Backgrounds only for the
+// 2014 rules, and subclasses only for the 12 SRD classes, as homebrew allows.
+// Returns { category, index } for the detail panel, or undefined.
+export function startFromFor(category, data) {
+  const index = String(data?.index ?? "");
+  if (!index || index.startsWith("book_") || isHomebrewId(index) || data.is_book_entry) return undefined;
+  if (category === "background" && data.edition === "2024") return undefined;
+  if (category === "subclass" && data.class?.index && !CLASS_IDS.includes(data.class.index)) return undefined;
+  return { category, index };
+}
+
 // --- IDs ----------------------------------------------------------------------
 
 // Homebrew IDs start with "hb_" so they never clash with SRD ("elf") or

@@ -2,8 +2,9 @@
   display: inline-block;
   padding: 1px 8px;
   border: 1px solid var(--qk-moss);
-  /* Pill-shaped on one line, still tidy if a long book name wraps. */
-  border-radius: 12px;
+  /* Half the one-line height: a pill on one line, and a neat rounded tag
+     (not a bubble) when a long book name wraps onto two. */
+  border-radius: 9px;
   background-color: var(--qk-moss-soft);
   color: var(--qk-text);
   font-size: 11px;

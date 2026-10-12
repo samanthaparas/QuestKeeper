@@ -54,7 +54,13 @@
   font-family: var(--qk-font-display);
 }
 
+/* "Class [book badge]": a badge that doesn't fit beside the word moves to
+   its own line whole, instead of squeezing in and wrapping. */
 .result-card__type {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
   margin: 0;
   color: var(--qk-text-muted);
   font-size: 14px;

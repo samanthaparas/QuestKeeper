@@ -3,6 +3,7 @@ import { getSubclassDetails } from "../../utils/api";
 import { mapSubclassToPanel } from "../../utils/srdDetails";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 import BookEntryPanel from "../BookEntryPanel/BookEntryPanel";
+import StartFromButton from "../HomebrewStart/StartFromButton";
 import "./SubclassBrowser.css";
 
 // A class's subclasses, read right inside its details: one tab per source
@@ -126,6 +127,11 @@ function SubclassDetail({ panel, inPicker }) {
         <BookEntryPanel entry={{ ...panel.bookEntry, inPicker }} />
       ) : (
         <>
+          {panel.startFrom && !inPicker && (
+            <div className="detail-panel__start">
+              <StartFromButton startFrom={panel.startFrom} />
+            </div>
+          )}
           {panel.description && <p className="subclass-browser__description">{panel.description}</p>}
           {panel.features?.length > 0 && (
             <ul className="subclass-browser__features">

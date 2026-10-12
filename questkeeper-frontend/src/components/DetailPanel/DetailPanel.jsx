@@ -1,6 +1,7 @@
 import SourceBadge from "../SourceBadge/SourceBadge";
 import BookEntryPanel from "../BookEntryPanel/BookEntryPanel";
 import SubclassBrowser from "../SubclassBrowser/SubclassBrowser";
+import StartFromButton from "../HomebrewStart/StartFromButton";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 import "./DetailPanel.css";
 
@@ -91,6 +92,17 @@ function DetailPanel({ selectedResult, actions, inPicker = false }) {
           selectedResult.edition && ` · ${selectedResult.edition} SRD`
         )}
       </p>
+
+      {/* Free options can be copied into My Homebrew to make your own
+          version. (Pickers offer this next to their Choose button instead.) */}
+      {selectedResult.startFrom && !inPicker && (
+        <div className="detail-panel__start">
+          <StartFromButton startFrom={selectedResult.startFrom} />
+          <span className="detail-panel__start-hint">
+            Copies everything into a new homebrew {selectedResult.category.toLowerCase()} for you to change.
+          </span>
+        </div>
+      )}
 
       {/* Homebrew: what it's based on, and a link to the full write-up. */}
       {(selectedResult.basedOn || isWebLink(selectedResult.linkUrl)) && (
