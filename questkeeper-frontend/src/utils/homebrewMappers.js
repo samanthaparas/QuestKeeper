@@ -6,15 +6,25 @@
 // data, is_shared, owner_id }. `data` holds the category's numbers and lists;
 // cleanHomebrewData below says exactly what each category keeps.
 
-import { SKILLS } from "./characterSheet";
+import { SKILLS, getSpellSlotProgression } from "./characterSheet";
 
 export const HOMEBREW_SOURCE = "Homebrew";
 
 // The categories the builder supports today (the database allows more).
-export const HOMEBREW_CATEGORIES = ["race", "subrace", "background", "subclass"];
+export const HOMEBREW_CATEGORIES = ["race", "subrace", "background", "class", "subclass"];
 
 export const ABILITY_KEYS = ["str", "dex", "con", "int", "wis", "cha"];
 export const SIZES = ["Tiny", "Small", "Medium", "Large"];
+export const HIT_DICE = [6, 8, 10, 12];
+// Spell slot schedules a homebrew class can follow (see characterSheet.js).
+export const CASTER_PROGRESSION_LABELS = {
+  none: "No spellcasting",
+  full: "Full caster, like a Wizard",
+  half: "Half caster from level 2, like a Paladin",
+  "half-early": "Half caster from level 1, like an Artificer",
+  pact: "Pact Magic, like a Warlock",
+};
+const SPELL_ABILITIES = ["intelligence", "wisdom", "charisma"];
 export const CLASS_IDS = [
   "barbarian",
   "bard",
@@ -192,9 +202,47 @@ export function cleanHomebrewData(category, data = {}) {
     };
   }
 
+  if (category === "class") {
+    const progression = Object.keys(CASTER_PROGRESSION_LABELS).includes(data.progression)
+      ? data.progression
+      : "none";
+    return {
+      hitDie: HIT_DICE.includes(Number(data.hitDie)) ? Number(data.hitDie) : 8,
+      savingThrows: uniqueFrom(data.savingThrows, ABILITY_KEYS).slice(0, 2),
+      skillChoice: cleanSkillChoice(data.skillChoice),
+      armor: text(data.armor, 200),
+      weapons: text(data.weapons, 200),
+      tools: text(data.tools, 200),
+      equipment: text(data.equipment, 1000),
+      progression,
+      spellcastingAbility: SPELL_ABILITIES.includes(data.spellcastingAbility)
+        ? data.spellcastingAbility
+        : "intelligence",
+      spellcastingType: data.spellcastingType === "known" ? "known" : "prepared",
+      // Which SRD class's spell list it uses (the Artificer has its own, so
+      // players pick the closest).
+      spellList: CLASS_IDS.includes(data.spellList) ? data.spellList : "wizard",
+      cantripsAtFirst: wholeNumber(data.cantripsAtFirst, 0, 6, 0),
+      spellsKnownAtFirst: wholeNumber(data.spellsKnownAtFirst, 0, 10, 0),
+      subclassLevel: wholeNumber(data.subclassLevel, 1, 20, 3),
+      subclassFlavor: text(data.subclassFlavor, 40),
+      features: cleanNamedList(data.features, { max: 40, withLevel: true }).sort(
+        (a, b) => a.level - b.level,
+      ),
+      // The published-book class this rebuilds (e.g. "artificer"), so its
+      // book subclasses can be listed too.
+      bookClass: text(data.bookClass, 40),
+    };
+  }
+
   if (category === "subclass") {
     return {
-      parentClass: CLASS_IDS.includes(data.parentClass) ? data.parentClass : "",
+      // An SRD class ("wizard") or a homebrew class ("hb_...").
+      parentClass:
+        CLASS_IDS.includes(data.parentClass) || isHomebrewId(data.parentClass)
+          ? data.parentClass
+          : "",
+      parentClassName: text(data.parentClassName, 80),
       features: cleanNamedList(data.features, { max: 30, withLevel: true }).sort(
         (a, b) => a.level - b.level,
       ),
@@ -360,10 +408,16 @@ export function toHomebrewBackground(entry) {
 
 // --- Subclasses --------------------------------------------------------------------
 
-export function toHomebrewSubclass(entry) {
+export function toHomebrewSubclass(entry, allEntries = []) {
   const data = cleanHomebrewData("subclass", entry.data);
   const common = commonFields(entry);
+  // A homebrew class's own name and subclass word ("Specialist").
+  const parent = isHomebrewId(data.parentClass)
+    ? (allEntries ?? []).find((item) => toHomebrewIndex(item.id) === data.parentClass)
+    : null;
   const className =
+    parent?.name ||
+    data.parentClassName ||
     data.parentClass.charAt(0).toUpperCase() + data.parentClass.slice(1);
   const classRef = { index: data.parentClass, name: className };
   const subclassRef = { index: common.index, name: common.name };
@@ -371,7 +425,8 @@ export function toHomebrewSubclass(entry) {
   return {
     ...common,
     class: classRef,
-    subclass_flavor: SUBCLASS_FLAVOR_BY_CLASS[data.parentClass] ?? "Subclass",
+    subclass_flavor:
+      SUBCLASS_FLAVOR_BY_CLASS[data.parentClass] ?? (parent?.data?.subclassFlavor || "Subclass"),
     desc: toParagraphs(common.summary),
     spells: [],
     features: data.features.map((feature) => ({
@@ -391,12 +446,97 @@ export function getHomebrewSubclassRefs(entries, classIndex) {
     .map((entry) => toListItem(commonFields(entry)));
 }
 
+// --- Classes -------------------------------------------------------------------------
+
+const ABILITY_SHORT = Object.fromEntries(ABILITY_KEYS.map((key) => [key, key.toUpperCase()]));
+
+// "Light armor, medium armor, shields" -> one proficiency per item.
+function splitList(value) {
+  return String(value ?? "")
+    .split(/,|;|\band\b/)
+    .map((item) => item.trim())
+    .filter((item) => item && !/^none$/i.test(item));
+}
+
+// A homebrew class in the SRD's class shape, plus its own rules
+// (spellcasting, subclass level), which characterSheet.js reads from the
+// class instead of its built-in SRD tables.
+export function toHomebrewClass(entry, allEntries = []) {
+  const data = cleanHomebrewData("class", entry.data);
+  const common = commonFields(entry);
+  const classRef = { index: common.index, name: common.name };
+  const casts = data.progression !== "none";
+
+  const features = data.features.map((feature) => ({
+    index: `${common.index}.${slugify(feature.name)}-${feature.level}`,
+    name: feature.name,
+    level: feature.level,
+    class: classRef,
+    desc: toParagraphs(feature.description),
+  }));
+
+  return {
+    ...common,
+    desc: toParagraphs(common.summary),
+    hit_die: data.hitDie,
+    saving_throws: data.savingThrows.map((key) => ({ index: key, name: ABILITY_SHORT[key] })),
+    proficiencies: [
+      ...[data.armor, data.weapons, data.tools].flatMap(splitList),
+      ...data.savingThrows.map((key) => `Saving Throw: ${ABILITY_SHORT[key]}`),
+    ].map((name) => ({ index: slugify(name), name })),
+    proficiency_choices: data.skillChoice
+      ? [
+          {
+            desc: `Choose ${data.skillChoice.choose} from ${data.skillChoice.from
+              .map((skill) => SKILL_NAMES[skill])
+              .join(", ")}`,
+            choose: data.skillChoice.choose,
+            type: "proficiencies",
+            from: {
+              option_set_type: "options_array",
+              options: data.skillChoice.from.map((skill) => ({
+                option_type: "reference",
+                item: { index: `skill-${skill}`, name: `Skill: ${SKILL_NAMES[skill]}` },
+              })),
+            },
+          },
+        ]
+      : [],
+    starting_equipment: [],
+    starting_equipment_options: [],
+    equipment_description: data.equipment,
+    spellcasting_type: casts ? data.spellcastingType : null,
+    spellcasting_ability: casts ? data.spellcastingAbility : null,
+    caster_progression: data.progression,
+    spell_list: casts ? data.spellList : null,
+    cantrips_at_first: casts ? data.cantripsAtFirst : 0,
+    spells_known_at_first: casts ? data.spellsKnownAtFirst : 0,
+    // Level 1 numbers, in the shape the SRD's level data uses.
+    levelOneSpellcasting: casts
+      ? {
+          cantrips_known: data.cantripsAtFirst,
+          spells_known: data.spellcastingType === "known" ? data.spellsKnownAtFirst : 0,
+          spell_slots_level_1: getSpellSlotProgression({ casterProgression: data.progression }, 1)[0].max,
+        }
+      : null,
+    subclass_level: data.subclassLevel,
+    subclass_flavor: data.subclassFlavor || "Subclass",
+    book_class: data.bookClass || null,
+    features,
+    // Already known, so the class panel can show them without more lookups.
+    levelOneFeatures: features.filter((feature) => feature.level === 1),
+    laterFeatureNames: features.filter((feature) => feature.level > 1).map((feature) => feature.name),
+    subclasses: getHomebrewSubclassRefs(allEntries, common.index),
+  };
+}
+
 // --- Lookups by ID -----------------------------------------------------------------
 
 const CONVERTERS = {
   race: toHomebrewRace,
   subrace: toHomebrewSubrace,
   background: toHomebrewBackground,
+  class: toHomebrewClass,
   subclass: toHomebrewSubclass,
 };
 
@@ -425,7 +565,7 @@ export function findHomebrewTrait(entries, traitIndex) {
   };
 }
 
-// One feature of a homebrew subclass, in the SRD's feature shape.
+// One feature of a homebrew class or subclass, in the SRD's feature shape.
 export function findHomebrewFeature(entries, featureIndex) {
   const { parentIndex } = splitChildIndex(featureIndex);
   const subclass = findHomebrew(entries, parentIndex);

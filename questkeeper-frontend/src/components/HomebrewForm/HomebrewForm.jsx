@@ -9,6 +9,7 @@ import {
   mapRaceToPanel,
   mapSubraceToPanel,
   mapBackgroundToPanel,
+  mapClassToPanel,
   mapSubclassToPanel,
 } from "../../utils/srdDetails";
 import Button from "../Button/Button";
@@ -22,6 +23,7 @@ const PANEL_MAPPERS = {
   race: mapRaceToPanel,
   subrace: mapSubraceToPanel,
   background: mapBackgroundToPanel,
+  class: mapClassToPanel,
   subclass: mapSubclassToPanel,
 };
 
@@ -31,7 +33,9 @@ const PANEL_MAPPERS = {
 //
 // initialForm: from emptyHomebrewForm() or entryToForm().
 // onSave(entry): saves; may throw, and the message is shown.
-function HomebrewForm({ initialForm, raceOptions = [], onSave, onCancel }) {
+// classOptions: the player's homebrew classes (for "which class is this
+// subclass for?").
+function HomebrewForm({ initialForm, raceOptions = [], classOptions = [], onSave, onCancel }) {
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -142,6 +146,7 @@ function HomebrewForm({ initialForm, raceOptions = [], onSave, onCancel }) {
           category={form.category}
           data={form.data}
           raceOptions={raceOptions}
+          classOptions={classOptions}
           onChange={(data) => set({ data })}
         />
 

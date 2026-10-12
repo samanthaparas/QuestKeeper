@@ -35,14 +35,14 @@ function ClassSpellChoiceStep({
       .then(([spells, levelOne]) => {
         setClassSpells(spells);
         setSpellCounts(
-          getStartingSpellCounts(characterClass.id, levelOne.spellcasting),
+          getStartingSpellCounts(characterClass, levelOne.spellcasting),
         );
       })
       .catch(() =>
         setError("Unable to load spell list. Please try again later."),
       )
       .finally(() => setIsLoading(false));
-  }, [isCaster, characterClass?.id]);
+  }, [isCaster, characterClass]);
 
   const cantripOptions = classSpells.filter((spell) => spell.level === 0);
   const spellOptions = classSpells.filter((spell) => spell.level === 1);

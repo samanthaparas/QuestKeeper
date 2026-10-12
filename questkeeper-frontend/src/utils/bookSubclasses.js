@@ -188,11 +188,6 @@ function slug(text) {
 }
 
 const CLASS_NAMES = Object.fromEntries(CLASS_ENTRIES.map(([index, name]) => [index, name]));
-// The 12 SRD classes, the only ones homebrew subclasses can belong to today.
-const SRD_CLASS_IDS = [
-  "barbarian", "bard", "cleric", "druid", "fighter", "monk",
-  "paladin", "ranger", "rogue", "sorcerer", "warlock", "wizard",
-];
 const className = (index) => CLASS_NAMES[index] ?? index.charAt(0).toUpperCase() + index.slice(1);
 
 export const BOOK_SUBCLASSES = ENTRIES.map(([classIndex, name, book, page, summary]) => ({
@@ -206,8 +201,9 @@ export const BOOK_SUBCLASSES = ENTRIES.map(([classIndex, name, book, page, summa
   book,
   summary,
   link_url: `${WIKIDOT}${page}`,
-  // Only subclasses of SRD classes can be rebuilt as homebrew for now.
-  can_make_homebrew: SRD_CLASS_IDS.includes(classIndex),
+  // Every subclass can be rebuilt as homebrew: an Artificer one belongs to
+  // the player's homebrew Artificer.
+  can_make_homebrew: true,
   // No features: the book's rules aren't included.
   features: [],
 }));

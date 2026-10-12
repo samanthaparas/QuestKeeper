@@ -32,7 +32,7 @@ import SourceBadge from "../SourceBadge/SourceBadge";
 import BookEntryPanel from "../BookEntryPanel/BookEntryPanel";
 import HomebrewDialog from "../HomebrewDialog/HomebrewDialog";
 import { mapSubclassToPanel } from "../../utils/srdDetails";
-import { toHomebrewIndex } from "../../utils/homebrewMappers";
+import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 
 function LevelUpWizard({ sheet, onComplete, onCancel }) {
@@ -684,7 +684,11 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
                       basedOn: classSubclass.book,
                       linkUrl: classSubclass.link_url,
                     },
-                    data: { parentClass: sheet.class.id },
+                    data: { parentClass: sheet.class.id, parentClassName: sheet.class.name },
+                    // A homebrew class has to be in the form's class list.
+                    classOptions: isHomebrewId(sheet.class.id)
+                      ? [{ index: sheet.class.id, name: sheet.class.name }]
+                      : [],
                   })
                 }
               >

@@ -287,27 +287,177 @@ function parseBackground(sections, data, found) {
 
 // --- Subclasses ---------------------------------------------------------------------
 
-// Wikidot lists each feature as its name, then a line like "3rd-level Bard
-// College feature". Some pages write "Bonus Proficiencies (3rd level)".
-function parseSubclass(sections, data, found) {
+// Parts of a class's Spellcasting section, not features of their own.
+const SPELL_SUBHEADINGS =
+  /^(cantrips|preparing|spellcasting ability|ritual casting|spellcasting focus|spells known|spell slots|tools required|learning spells|your spellbook|the spellbook)/i;
+
+// Each feature with the level it's gained. Wikidot lists a feature as its
+// name, then a line like "3rd-level Bard College feature" or "At 3rd level,
+// ..."; some pages write "Bonus Proficiencies (3rd level)".
+function readFeatures(sections, { limit, skip = () => false }) {
   const features = [];
   for (const section of sections) {
+    if (skip(section)) continue;
     const inName = section.name.match(/^(.*?)\s*\((\d+)(?:st|nd|rd|th)[- ]level\)$/i);
-    // "3rd-level Bard College feature", "At 3rd level, ...", "Starting at 6th level"
     const inText = section.text.slice(0, 200).match(/\b(\d+)(?:st|nd|rd|th)[- ]level\b/i);
     if (inName) features.push({ name: inName[1], level: Number(inName[2]) });
     else if (section.name && inText) features.push({ name: section.name, level: Number(inText[1]) });
   }
-  if (features.length === 0) return;
-  data.features = features
-    .slice(0, 30)
+  // Each name once (pages often list them in a table first).
+  const seen = new Set();
+  return features
+    .filter((feature) => !seen.has(feature.name) && seen.add(feature.name))
+    .slice(0, limit)
     .map((feature) => ({ ...feature, description: "" }))
     .sort((a, b) => a.level - b.level);
+}
+
+function parseSubclass(sections, data, found) {
+  const features = readFeatures(sections, { limit: 30 });
+  if (features.length === 0) return;
+  data.features = features;
   found.push({
     key: "features",
     label: "Features",
     value: data.features.map((feature) => `${feature.name} (level ${feature.level})`).join(", "),
   });
+}
+
+// --- Classes -----------------------------------------------------------------------
+
+const SAVE_KEYS = Object.fromEntries(Object.entries(ABILITY_WORDS));
+
+// Spell slots, guessed from the page: Pact Magic (Warlock); a half caster
+// (it prepares "half your paladin level, rounded down", or its spellcasting
+// starts "by 2nd level"), from level 2 like a Paladin or from level 1 like
+// an Artificer; otherwise a full caster.
+function guessProgression(sections, text, casting) {
+  if (sections.some((section) => /^pact magic$/i.test(section.name))) return "pact";
+  const startsAtSecond = /\b(by|at|when you reach|reach)\b[^.]{0,40}\b2nd level\b/i.test(casting.text.slice(0, 300));
+  const isHalf = /half your \w+ level,? rounded down/i.test(text) || startsAtSecond;
+  if (isHalf) return startsAtSecond ? "half" : "half-early";
+  return "full";
+}
+
+const PROGRESSION_WORDS = {
+  full: "full caster",
+  half: "half caster from level 2",
+  "half-early": "half caster from level 1",
+  pact: "Pact Magic",
+};
+
+function parseClass(sections, data, found, text) {
+  const hitDie = text.match(/hit dice:\s*1d(\d+)/i);
+  if (hitDie && [6, 8, 10, 12].includes(Number(hitDie[1]))) {
+    data.hitDie = Number(hitDie[1]);
+    found.push({ key: "hitDie", label: "Hit die", value: `d${hitDie[1]}` });
+  }
+
+  const saves = findSection(sections, "saving throws");
+  const saveKeys = saves
+    ? Object.entries(SAVE_KEYS)
+        .filter(([word]) => new RegExp(`\\b${word}\\b`, "i").test(saves.text))
+        .map(([, key]) => key)
+        .slice(0, 2)
+    : [];
+  if (saveKeys.length > 0) {
+    data.savingThrows = saveKeys;
+    found.push({ key: "savingThrows", label: "Saving throws", value: saveKeys.map((key) => key.toUpperCase()).join(", ") });
+  }
+
+  const skills = findSection(sections, "skills");
+  if (skills) {
+    const options = SKILLS.filter((skill) => new RegExp(`\\b${skill.name}\\b`, "i").test(skills.text));
+    // "any three" -> every skill.
+    const from = /\bany\b/i.test(skills.text) && options.length === 0 ? SKILLS : options;
+    if (from.length > 0) {
+      const choose = Math.min(countFrom(skills.text) || 2, 4);
+      data.skillChoice = { choose, from: from.map((skill) => skill.index) };
+      found.push({ key: "skillChoice", label: "Skills", value: `Choose ${choose} from ${listNames(from.map((skill) => skill.name))}` });
+    }
+  }
+
+  for (const [key, heading] of [["armor", "armor"], ["weapons", "weapons"], ["tools", "tools"]]) {
+    const section = findSection(sections, heading);
+    const value = section?.text.split("\n")[0].trim();
+    if (value && !/^none\b/i.test(value)) {
+      data[key] = value.slice(0, 200);
+      found.push({ key, label: heading.charAt(0).toUpperCase() + heading.slice(1), value: data[key] });
+    }
+  }
+
+  // The gear list: the lines under "Equipment", minus the sentences around it.
+  const equipment = findSection(sections, "equipment");
+  if (equipment) {
+    const items = equipment.text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line && !/^(you start|alternatively|in addition)/i.test(line));
+    if (items.length > 0) {
+      data.equipment = cleanGear(items.join(", ")).slice(0, 1000);
+      found.push({ key: "equipment", label: "Starting gear", value: data.equipment });
+    }
+  }
+
+  const casting = sections.find((section) => /^(spellcasting|pact magic)$/i.test(section.name));
+  if (casting) {
+    const ability = text.match(/\b(intelligence|wisdom|charisma) is your spellcasting ability/i);
+    const cantrips = text.match(/you know (\w+) cantrips?/i);
+    const progression = guessProgression(sections, text, casting);
+    data.progression = progression;
+    if (ability) data.spellcastingAbility = ability[1].toLowerCase();
+    data.spellcastingType = /you prepare the list|prepare a list|choose a number of \w+ spells to prepare/i.test(text)
+      ? "prepared"
+      : "known";
+    if (cantrips) data.cantripsAtFirst = countFrom(cantrips[1]);
+    found.push({
+      key: "spellcasting",
+      label: "Spellcasting",
+      value: [
+        PROGRESSION_WORDS[progression],
+        ability && `casts with ${ability[1]}`,
+        data.spellcastingType === "prepared" ? "prepares spells" : "knows spells",
+        cantrips && `${data.cantripsAtFirst} cantrips at level 1`,
+      ]
+        .filter(Boolean)
+        .join(", ") + " (a guess from the text, so check it)",
+    });
+  }
+
+  const features = readFeatures(sections, {
+    limit: 40,
+    skip: (section) =>
+      SPELL_SUBHEADINGS.test(section.name) || /^ability score improvement$/i.test(section.name),
+  });
+  if (features.length > 0) {
+    data.features = features;
+    found.push({
+      key: "features",
+      label: "Features",
+      value: features.map((feature) => `${feature.name} (level ${feature.level})`).join(", "),
+    });
+  }
+
+  // The level a subclass is chosen: the feature named like one ("Sacred
+  // Oath", "Arcane Tradition", "Artificer Specialist"), or else the one that
+  // says "you choose" a type, path, tradition and so on.
+  const SUBCLASS_WORDS = "archetype|tradition|path|college|domain|circle|oath|conclave|origin|patron|specialist|order";
+  const isFeature = (section) => features.some((feature) => feature.name === section.name);
+  const subclassFeature =
+    sections.find(
+      (section) => isFeature(section) && new RegExp(`\\b(${SUBCLASS_WORDS})$`, "i").test(section.name),
+    ) ??
+    sections.find(
+      (section) =>
+        isFeature(section) &&
+        new RegExp(`\\bchoose\\b[^.]{0,60}\\b(type|subclass|${SUBCLASS_WORDS})`, "i").test(section.text.slice(0, 300)),
+    );
+  if (subclassFeature) {
+    const level = features.find((feature) => feature.name === subclassFeature.name).level;
+    data.subclassLevel = level;
+    data.subclassFlavor = subclassFeature.name.slice(0, 40);
+    found.push({ key: "subclass", label: "Subclass", value: `${subclassFeature.name}, chosen at level ${level}` });
+  }
 }
 
 const PARSERS = {
@@ -318,6 +468,7 @@ const PARSERS = {
     readTraits(sections, data, found);
   },
   background: parseBackground,
+  class: parseClass,
   subclass: parseSubclass,
 };
 
@@ -325,7 +476,7 @@ export function parsePastedText(category, text) {
   const sections = splitSections(text);
   const data = {};
   const found = [];
-  PARSERS[category]?.(sections, data, found);
+  PARSERS[category]?.(sections, data, found, String(text ?? ""));
   return { data, found, sections: sections.filter((section) => section.name || section.text) };
 }
 
@@ -333,6 +484,8 @@ export function parsePastedText(category, text) {
 const FIELDS_BY_KEY = {
   abilityBonuses: ["abilityBonuses"],
   abilityChoice: ["abilityBonuses", "abilityChoice"],
+  spellcasting: ["progression", "spellcastingAbility", "spellcastingType", "cantripsAtFirst"],
+  subclass: ["subclassLevel", "subclassFlavor"],
 };
 
 // Lists of traits or features: keep what the player already wrote, drop

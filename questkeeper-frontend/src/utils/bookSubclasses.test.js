@@ -50,10 +50,10 @@ describe("bookSubclasses", () => {
     expect(getBookSubclassRefs("blood-hunter")).toHaveLength(4);
   });
 
-  it("only lets subclasses of SRD classes become homebrew", () => {
+  it("lets every subclass become homebrew, book classes' included", () => {
     expect(findBookSubclass("book_rogue-swashbuckler").can_make_homebrew).toBe(true);
-    expect(findBookSubclass("book_artificer-armorer").can_make_homebrew).toBe(false);
-    expect(findBookSubclass("book_blood-hunter-order-of-the-lycan").can_make_homebrew).toBe(false);
+    expect(findBookSubclass("book_artificer-armorer").can_make_homebrew).toBe(true);
+    expect(findBookSubclass("book_blood-hunter-order-of-the-lycan").can_make_homebrew).toBe(true);
   });
 
   it("lists book subclasses per class, with hover previews in the Official books group", () => {

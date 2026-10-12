@@ -84,10 +84,15 @@ export function mapClassToSnapshot(raw) {
     savingThrowProficiencies: raw.saving_throws.map(
       (item) => ABILITY_ABBREVIATION_TO_NAME[item.name],
     ),
-    spellcastingType: getSpellcastingType(raw.index),
+    spellcastingType: getSpellcastingType(raw),
     skillChoice,
     startingEquipment: mapStartingEquipment(raw),
-    spellcastingAbility: getSpellcastingAbility(raw.index),
+    spellcastingAbility: getSpellcastingAbility(raw),
+    // Homebrew classes bring their own rules; SRD ones are looked up by ID.
+    ...(raw.caster_progression ? { casterProgression: raw.caster_progression } : {}),
+    ...(raw.subclass_level ? { subclassLevel: raw.subclass_level } : {}),
+    // Gear written as a sentence (homebrew), kept in the sheet's notes.
+    ...(raw.equipment_description ? { equipmentDescription: raw.equipment_description } : {}),
   };
 }
 

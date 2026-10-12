@@ -8,7 +8,8 @@ import "./HomebrewDialog.css";
 // The homebrew form in a pop-up, so players can make a missing option
 // without leaving character creation (and losing their progress).
 //
-// request: null (closed) or { category, data, fields, raceOptions }. `data`
+// request: null (closed) or { category, data, fields, raceOptions,
+// classOptions }. `data`
 // pre-fills category details (a subrace's parent race); `fields` pre-fills
 // the name, "Based on" and link (e.g. from a published-book background).
 // onCreated(entry): called with the saved entry.
@@ -56,6 +57,7 @@ function HomebrewDialog({ request, onClose, onCreated }) {
           <HomebrewForm
             initialForm={initialForm}
             raceOptions={request.raceOptions ?? []}
+            classOptions={request.classOptions ?? []}
             onSave={handleSave}
             onCancel={onClose}
           />

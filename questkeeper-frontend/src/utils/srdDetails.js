@@ -552,7 +552,7 @@ export async function loadClassDetails(classId) {
 
 // A plain sentence about how this class casts spells at level 1.
 export function describeClassSpellcasting(data) {
-  const ability = getSpellcastingAbility(data.index);
+  const ability = getSpellcastingAbility(data);
   if (!ability) return "";
 
   const label = ABILITY_LABELS[ability];
@@ -582,7 +582,7 @@ export function describeClassSpellcasting(data) {
       ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`
       : parts[0];
   const prepared =
-    getSpellcastingType(data.index) === "prepared"
+    getSpellcastingType(data) === "prepared"
       ? " You choose which spells to ready each day."
       : "";
 
@@ -613,6 +613,8 @@ export function mapClassToPanel(data) {
         book: data.book,
         summary: data.summary,
         linkUrl: data.link_url,
+        // "artificer", so a homebrew version can list the book's subclasses.
+        classIndex: data.index.replace(/^book_/, ""),
       },
       subclassFlavor: data.subclass_flavor,
       subclassGroups: groupSubclasses(data.subclasses),

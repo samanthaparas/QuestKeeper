@@ -16,9 +16,31 @@ import {
   getFeatureDetails,
   getClasses,
   getSubclassDetails,
+  getClassLevel,
+  getClassFeatures,
+  getClassSpells,
 } from "./api";
 
 const homebrew = [
+  {
+    id: "k1",
+    category: "class",
+    name: "Tinkerer",
+    data: {
+      hitDie: 8,
+      savingThrows: ["con", "int"],
+      progression: "half-early",
+      spellcastingType: "prepared",
+      spellList: "wizard",
+      cantripsAtFirst: 2,
+      bookClass: "artificer",
+      features: [
+        { name: "Magical Tinkering", level: 1, description: "Small magic." },
+        { name: "Infuse Item", level: 2, description: "Bigger magic." },
+      ],
+    },
+  },
+  { id: "k2", category: "subclass", name: "Gearwright", data: { parentClass: "hb_k1" } },
   { id: "r1", category: "race", name: "Owlfolk", data: { traits: [{ name: "Night Eyes" }] } },
   { id: "s1", category: "subrace", name: "Moon Elf", data: { parentRace: "elf" } },
   { id: "b1", category: "background", name: "Tavern Hand", data: {} },
@@ -38,6 +60,7 @@ const backend = {
   "/backgrounds?edition=2024": [{ index: "sage", name: "Sage" }],
   "/classes/cleric": { index: "cleric", subclasses: [{ index: "life", name: "Life" }] },
   "/classes": [{ index: "cleric", name: "Cleric" }],
+  "/classes/wizard/spells": [{ index: "fire-bolt", name: "Fire Bolt", level: 0 }],
 };
 
 beforeEach(() => {
@@ -133,7 +156,7 @@ describe("api with homebrew", () => {
   });
 
   it("adds the book classes and book subclasses, answered without the backend", async () => {
-    expect((await getClasses()).map((item) => item.name)).toEqual(["Artificer", "Blood Hunter", "Cleric"]);
+    expect((await getClasses()).map((item) => item.name)).toEqual(["Artificer", "Blood Hunter", "Cleric", "Tinkerer"]);
     const cleric = await getClassDetails("cleric");
     expect(cleric.subclasses.map((subclass) => subclass.name)).toContain("Twilight Domain");
 
@@ -142,5 +165,23 @@ describe("api with homebrew", () => {
     expect((await getSubclassDetails("book_cleric-twilight-domain")).book).toBe("Tasha's Cauldron of Everything");
     expect(await getSubclassFeatures("book_cleric-twilight-domain")).toEqual([]);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("answers a homebrew class's details, levels, features and spells", async () => {
+    const tinkerer = await getClassDetails("hb_k1");
+    expect(tinkerer).toMatchObject({ name: "Tinkerer", hit_die: 8, caster_progression: "half-early" });
+    // Its own homebrew subclass, plus the book Artificer's subclasses.
+    const names = tinkerer.subclasses.map((subclass) => subclass.name);
+    expect(names).toContain("Gearwright");
+    expect(names).toContain("Armorer");
+
+    const levelOne = await getClassLevel("hb_k1", 1);
+    expect(levelOne.features.map((feature) => feature.name)).toEqual(["Magical Tinkering"]);
+    expect(levelOne.spellcasting).toMatchObject({ cantrips_known: 2, spell_slots_level_1: 2 });
+
+    expect((await getClassFeatures("hb_k1")).map((feature) => feature.level)).toEqual([1, 2]);
+    expect((await getFeatureDetails("hb_k1.infuse-item-2")).desc).toEqual(["Bigger magic."]);
+    // Uses the Wizard's spell list.
+    expect(await getClassSpells("hb_k1")).toEqual([{ index: "fire-bolt", name: "Fire Bolt", level: 0 }]);
   });
 });
