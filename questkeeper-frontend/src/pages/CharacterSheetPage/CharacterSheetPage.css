@@ -1021,12 +1021,6 @@
   font-weight: 700;
 }
 
-.character-sheet__vital-static {
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 28px;
-  color: var(--qk-text);
-}
 
 /* Tab bar: tabs on the left, Level Up / rests on the right */
 .character-sheet__tabbar {
@@ -1054,15 +1048,105 @@
   margin-bottom: 4px;
 }
 
-.character-sheet__inspiration {
+/* Inspiration (an on/off switch) and Gold, side by side before the
+   Level Up and rest buttons. */
+.character-sheet__keepsakes {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-right: 4px;
 }
 
-.character-sheet__inspiration .character-sheet__vital-input {
-  min-height: 26px;
+.character-sheet__inspiration,
+.character-sheet__gold {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+}
+
+.character-sheet__gold .character-sheet__vital-input {
+  min-height: 24px;
+}
+
+.character-sheet__inspiration {
+  font-family: var(--qk-font-body);
+  cursor: pointer;
+}
+
+.character-sheet__inspiration:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* The switch: a little track with a knob that slides right when on. */
+.character-sheet__toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 30px;
+  height: 18px;
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+  transition: background-color 0.15s ease;
+}
+
+.character-sheet__toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--qk-surface);
+  box-shadow: 0 1px 2px var(--qk-shadow);
+  transition: transform 0.15s ease;
+}
+
+.character-sheet__inspiration[aria-checked="true"] {
+  border-color: var(--qk-brass);
+  background-color: var(--qk-brass-soft);
+}
+
+.character-sheet__inspiration[aria-checked="true"] .character-sheet__toggle {
+  background-color: var(--qk-brass);
+}
+
+.character-sheet__inspiration[aria-checked="true"] .character-sheet__toggle::after {
+  transform: translateX(12px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .character-sheet__toggle,
+  .character-sheet__toggle::after {
+    transition: none;
+  }
+}
+
+/* "Skills  Prof +2" on the left of the Skills header, Bonuses on the right. */
+.character-sheet__skills-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.character-sheet__prof {
+  padding: 2px 8px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.character-sheet__prof strong {
+  color: var(--qk-text);
 }
 
 .character-sheet__tabbar .qk-button {
@@ -1345,14 +1429,8 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   }
 
   .character-sheet__vital--hp,
-  .character-sheet__vital--hit-dice,
-  .character-sheet__vital--gold {
+  .character-sheet__vital--hit-dice {
     grid-column: span 2;
-  }
-
-  /* Gold has a double-width box here, so give big totals room. */
-  .character-sheet__vital--gold .character-sheet__vital-input {
-    width: 88px;
   }
 
   /* Each ability score stacks: name on top, score and modifier in the
@@ -1428,23 +1506,32 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
     color: var(--qk-surface);
   }
 
-  /* Actions: an even 2 x 2 grid —
-       [ Inspiration ] [ Level Up ]
-       [ Long Rest ]   [ Short Rest ] */
+  /* Actions:
+       [ Inspiration       ] [ Gold         ]
+       [ Level Up ] [ Long Rest ] [ Short Rest ] */
   .character-sheet__tabbar .character-sheet__actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
     margin-bottom: 0;
   }
 
-  .character-sheet__inspiration {
-    justify-content: center;
+  .character-sheet__keepsakes {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-right: 0;
+  }
+
+  .character-sheet__inspiration,
+  .character-sheet__gold {
+    justify-content: center;
     min-height: 40px;
-    border: 1px solid var(--qk-border);
-    border-radius: var(--qk-radius-control);
-    background-color: var(--qk-surface);
+  }
+
+  /* Gold has a whole half-row here, so give big totals room. */
+  .character-sheet__gold .character-sheet__vital-input {
+    width: 88px;
   }
 
   .character-sheet__tabbar .qk-button {

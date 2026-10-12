@@ -71,7 +71,7 @@ describe("HomebrewForm", () => {
 
   it("lets a background offer a skill pick", async () => {
     renderForm({ category: "background" });
-    await userEvent.click(screen.getByLabelText(/picks a skill from a list/));
+    await userEvent.click(screen.getByLabelText(/choose extra skills from a list/));
     expect(screen.getByText(/tick at least one skill/)).toBeInTheDocument();
   });
 });

@@ -170,13 +170,17 @@ function BackgroundFields({ data, set }) {
               set({ skillChoice: choice ? null : { choose: 1, from: [] } })
             }
           />
-          The player also picks a skill from a list
+          Let players choose extra skills from a list
         </label>
+        <p className="homebrew-form__hint">
+          On top of the skills above, players pick a set number from a short
+          list you choose (an Innkeeper picks 1 of 3, for example).
+        </p>
         {choice && (
           <>
             <NumberField
               id="homebrew-skill-choice-count"
-              label="How many"
+              label="How many skills they choose"
               min={1}
               max={4}
               value={choice.choose}

@@ -92,7 +92,7 @@ const SHEET_TERMS = [
   ],
   [
     "Inspiration",
-    "A reward from your DM for great roleplay. Spend it for advantage.",
+    "A reward from your DM for great roleplay. You can only hold one at a time: switch it on when you get it, and off when you spend it for advantage.",
   ],
   [
     "Long / Short Rest",
@@ -310,10 +310,10 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, languages: value });
   }
 
-  function handleInspirationChange(value) {
-    const numeric = Number(value);
-    if (Number.isNaN(numeric)) return;
-    persistSheet({ ...sheet, inspiration: numeric });
+  // You either have inspiration or you don't, so it's an on/off switch.
+  // Saved as 1 or 0, which older sheets (with a number box) also used.
+  function handleInspirationToggle() {
+    persistSheet({ ...sheet, inspiration: sheet.inspiration > 0 ? 0 : 1 });
   }
 
   function handleGoldChange(value) {
@@ -808,7 +808,16 @@ function CharacterSheetPage() {
   const skillsPanel = (
     <section className="character-sheet__section character-sheet__skills">
       <div className="character-sheet__section-header-row">
-        <h2 className="character-sheet__section-title">Skills</h2>
+        {/* Proficiency bonus sits by the title: it's what P adds to a skill. */}
+        <div className="character-sheet__skills-heading">
+          <h2 className="character-sheet__section-title">Skills</h2>
+          <span
+            className="character-sheet__prof"
+            title="Proficiency bonus: added to everything you are trained in. It grows as you level."
+          >
+            Prof <strong>+{proficiencyBonus}</strong>
+          </span>
+        </div>
         <button
           type="button"
           className="character-sheet__resource-remove"
@@ -1106,35 +1115,6 @@ function CharacterSheetPage() {
                     </span>
                   </div>
 
-                  <div className="character-sheet__vital">
-                    <span
-                      className="character-sheet__vital-label"
-                      title="Proficiency bonus: added to everything you are trained in. It grows as you level."
-                    >
-                      Prof
-                    </span>
-                    <span className="character-sheet__vital-static">
-                      +{proficiencyBonus}
-                    </span>
-                  </div>
-
-                  <label className="character-sheet__vital">
-                    <span
-                      className="character-sheet__vital-label"
-                      title="Use the Level Up button to gain a level properly. This box is for fixing a mistake."
-                    >
-                      Level
-                    </span>
-                    <input
-                      type="number"
-                      className="character-sheet__vital-input"
-                      value={sheet.level}
-                      onChange={(e) => handleLevelChange(e.target.value)}
-                      min={1}
-                      max={20}
-                    />
-                  </label>
-
                   <div className="character-sheet__vital character-sheet__vital--hit-dice">
                     <span className="character-sheet__vital-label">
                       Hit Dice
@@ -1164,17 +1144,6 @@ function CharacterSheetPage() {
                       />
                     </span>
                   </div>
-
-                  <label className="character-sheet__vital character-sheet__vital--gold">
-                    <span className="character-sheet__vital-label">Gold</span>
-                    <input
-                      type="number"
-                      className="character-sheet__vital-input character-sheet__vital-input--wide"
-                      value={sheet.gold ?? 0}
-                      onChange={(e) => handleGoldChange(e.target.value)}
-                      min={0}
-                    />
-                  </label>
 
                   <div className="character-sheet__abilities">
                     {ABILITY_SCORES.map((ability) => {
@@ -1284,20 +1253,37 @@ function CharacterSheetPage() {
                     hasSpellcasting={hasSpellcasting}
                   />
                   <div className="character-sheet__actions">
-                    <label className="character-sheet__inspiration">
-                      <span className="character-sheet__vital-label">
-                        Inspiration
-                      </span>
-                      <input
-                        type="number"
-                        className="character-sheet__vital-input"
-                        value={sheet.inspiration ?? 0}
-                        onChange={(e) =>
-                          handleInspirationChange(e.target.value)
-                        }
-                        min={0}
-                      />
-                    </label>
+                    {/* Inspiration and Gold share a row by the tabs. */}
+                    <div className="character-sheet__keepsakes">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={sheet.inspiration > 0}
+                        className="character-sheet__inspiration"
+                        title="You can hold one inspiration at a time. Switch it off when you spend it."
+                        onClick={handleInspirationToggle}
+                      >
+                        <span className="character-sheet__vital-label">
+                          Inspiration
+                        </span>
+                        <span
+                          className="character-sheet__toggle"
+                          aria-hidden="true"
+                        />
+                      </button>
+                      <label className="character-sheet__gold">
+                        <span className="character-sheet__vital-label">
+                          Gold
+                        </span>
+                        <input
+                          type="number"
+                          className="character-sheet__vital-input character-sheet__vital-input--wide"
+                          value={sheet.gold ?? 0}
+                          onChange={(e) => handleGoldChange(e.target.value)}
+                          min={0}
+                        />
+                      </label>
+                    </div>
                     <Button onClick={() => setIsLevelingUp(true)}>
                       Level Up
                     </Button>
@@ -1437,6 +1423,8 @@ function CharacterSheetPage() {
                       userId={user.id}
                       characterId={sheet.id}
                       name={sheet.name}
+                      level={sheet.level}
+                      onLevelChange={handleLevelChange}
                       details={{
                         race: sheet.race?.name ?? "",
                         className: sheet.class?.name ?? "",

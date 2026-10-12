@@ -30,20 +30,33 @@
   max-width: 640px;
 }
 
+/* Each choice: its title, then a box with the options. The fieldset itself
+   has no border, so the title sits above the box instead of on its line. */
 .equipment-step__group {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.equipment-step__legend {
+  /* Floating takes the legend out of the border, onto its own line. */
+  float: left;
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 0;
+  color: var(--qk-text);
+  font-weight: 700;
+}
+
+.equipment-step__box {
+  clear: both;
   display: grid;
   gap: 8px;
-  margin: 0;
   padding: 14px 16px;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-card);
   background-color: var(--qk-surface);
-}
-
-.equipment-step__legend {
-  padding: 0 6px;
-  color: var(--qk-text);
-  font-weight: 700;
 }
 
 .equipment-step__option {

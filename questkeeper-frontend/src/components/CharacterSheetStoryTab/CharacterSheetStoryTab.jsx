@@ -5,6 +5,8 @@ function CharacterSheetStoryTab({
   userId,
   characterId,
   name,
+  level,
+  onLevelChange,
   details,
   onDetailChange,
   portraitUrl,
@@ -28,12 +30,15 @@ function CharacterSheetStoryTab({
 }) {
   const isTrackingCreature = companionMode === "creature";
 
+  // [field, label, value, placeholder, longest allowed]. The limits keep the
+  // name line at the top of the sheet from wrapping onto many lines; the
+  // longest official subclass ("Path of the Ancestral Guardian") is 30.
   const detailFields = [
-    ["name", "Character name", name, ""],
-    ["race", "Race", details.race, "e.g. Human, or your own"],
-    ["class", "Class", details.className, "e.g. Artificer"],
-    ["subclass", "Subclass", details.subclass, "Optional"],
-    ["background", "Background", details.background, "e.g. Sage"],
+    ["name", "Character name", name, "", 60],
+    ["race", "Race", details.race, "e.g. Human, or your own", 40],
+    ["class", "Class", details.className, "e.g. Artificer", 30],
+    ["subclass", "Subclass", details.subclass, "Optional", 32],
+    ["background", "Background", details.background, "e.g. Sage", 40],
   ];
 
   return (
@@ -45,7 +50,7 @@ function CharacterSheetStoryTab({
           sheet matches your paper one.
         </p>
         <div className="character-sheet__hero-row">
-          {detailFields.map(([field, label, value, placeholder]) => (
+          {detailFields.map(([field, label, value, placeholder, maxLength]) => (
             <label className="character-sheet__stat-box" key={field}>
               <span className="character-sheet__stat-label">{label}</span>
               <input
@@ -53,10 +58,28 @@ function CharacterSheetStoryTab({
                 className="character-sheet__stat-input"
                 value={value ?? ""}
                 placeholder={placeholder}
+                maxLength={maxLength}
                 onChange={(e) => onDetailChange(field, e.target.value)}
               />
             </label>
           ))}
+
+          {/* Moved here from the top of the sheet: Level Up is the usual
+              way to change it, so this box is mostly for fixing mistakes. */}
+          <label
+            className="character-sheet__stat-box"
+            title="Use the Level Up button to gain a level properly. This box is for fixing a mistake."
+          >
+            <span className="character-sheet__stat-label">Level</span>
+            <input
+              type="number"
+              className="character-sheet__stat-input"
+              value={level ?? 1}
+              min={1}
+              max={20}
+              onChange={(e) => onLevelChange(e.target.value)}
+            />
+          </label>
 
           <label className="character-sheet__stat-box">
             <span className="character-sheet__stat-label">

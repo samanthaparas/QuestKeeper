@@ -46,7 +46,7 @@ export function AbilityBonusFields({ idPrefix, value = {}, onChange }) {
   return (
     <fieldset className="homebrew-form__group">
       <legend className="homebrew-form__label">
-        Fixed ability bonuses (leave the rest at 0)
+        Ability score bonuses everyone gets (leave the rest at 0)
       </legend>
       <div className="homebrew-form__ability-grid">
         {ABILITY_KEYS.map((key) => (
@@ -80,15 +80,19 @@ export function AbilityChoiceField({ idPrefix, value, onChange }) {
             onChange(isOn ? null : { choose: 1, bonus: 1, from: [...ABILITY_KEYS] })
           }
         />
-        The player also picks abilities to raise
+        Let players choose some ability bonuses themselves
       </label>
+      <p className="homebrew-form__hint">
+        For options like the Half-Elf, where players add +1 to two abilities
+        of their choice. Leave this off if every bonus is set above.
+      </p>
 
       {isOn && (
         <>
           <div className="homebrew-form__row">
             <NumberField
               id={`${idPrefix}-choice-count`}
-              label="How many"
+              label="How many abilities"
               min={1}
               max={6}
               value={choice.choose}
@@ -96,14 +100,18 @@ export function AbilityChoiceField({ idPrefix, value, onChange }) {
             />
             <NumberField
               id={`${idPrefix}-choice-bonus`}
-              label="By how much"
+              label="Bonus to each"
               min={1}
               max={3}
               value={choice.bonus}
               onChange={(bonus) => onChange({ ...choice, bonus })}
             />
           </div>
-          <p className="homebrew-form__hint">Which abilities can they pick?</p>
+          {/* The choice in one plain sentence, as players will see it. */}
+          <p className="homebrew-form__hint">
+            Players choose {choice.choose} {choice.choose === 1 ? "ability" : "abilities"} and
+            add +{choice.bonus} to {choice.choose === 1 ? "it" : "each"}. Which can they choose from?
+          </p>
           <div className="homebrew-form__checks">
             {ABILITY_KEYS.map((key) => (
               <label className="homebrew-form__check" key={key}>
