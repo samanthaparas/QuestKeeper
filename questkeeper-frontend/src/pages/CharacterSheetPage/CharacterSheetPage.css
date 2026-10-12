@@ -1725,3 +1725,10 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
 .character-sheet__ability-save-badge {
   text-decoration: none;
 }
+
+/* ---------- Conditions ---------- */
+/* Their own row in the stats block, under the ability scores. */
+.character-sheet__conditions {
+  flex: 1 1 100%;
+  padding: 2px 4px;
+}

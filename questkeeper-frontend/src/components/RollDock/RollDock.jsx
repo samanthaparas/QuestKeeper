@@ -29,7 +29,7 @@ function RollDock() {
   }, [rollId]);
 
   if (!roller) return null;
-  const { lastRoll, mode, setMode, tableName, share, setShare } = roller;
+  const { lastRoll, mode, setMode, tableName, share, setShare, conditionNotes = [] } = roller;
 
   return (
     <div className="roll-dock">
@@ -55,6 +55,17 @@ function RollDock() {
             </button>
           ))}
         </div>
+        {/* Conditions that change your rolls: "Poisoned: disadvantage on...". */}
+        {conditionNotes.length > 0 && (
+          <span className="roll-dock__condition">
+            {conditionNotes.map((entry) => `${entry.name}: ${entry.note}.`).join(" ")}
+            {mode !== "disadvantage" && (
+              <button type="button" className="roll-dock__condition-use" onClick={() => setMode("disadvantage")}>
+                Use Disadvantage
+              </button>
+            )}
+          </span>
+        )}
         {/* Advantage or disadvantage says what it'll do, so it's never a mystery. */}
         {mode !== "normal" && (
           <span className="roll-dock__mode-hint" aria-live="polite">

@@ -5,6 +5,7 @@ import {
   formatModifier,
   getEffectiveArmorClass,
 } from "../../utils/characterSheet";
+import ConditionBadges from "../ConditionBadges/ConditionBadges";
 import "./CharacterSummaryCard.css";
 
 function itemName(item) {
@@ -56,6 +57,9 @@ function CharacterSummaryCard({ sheet, playerName }) {
         </div>
         <span className="character-summary__badge">View only</span>
       </header>
+
+      {/* Conditions the player has marked (Prone, Poisoned...). */}
+      <ConditionBadges conditions={sheet.conditions ?? []} readOnly />
 
       <div className="character-summary__stats">
         <div className="character-summary__stat">

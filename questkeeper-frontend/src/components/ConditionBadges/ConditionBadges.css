@@ -1,0 +1,168 @@
+/* "Conditions: [Poisoned x] [Exhaustion 2 - + x] + Condition" */
+.condition-badges {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.condition-badges__label {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.condition-badges__none {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.condition-badges__list {
+  display: contents;
+  list-style: none;
+}
+
+/* A badge: deep purple, like a status effect, so it stands out from the
+   terracotta of the rest of the sheet. */
+.condition-badges__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 4px 0 10px;
+  border: 1px solid #7a5a9a;
+  border-radius: 999px;
+  background-color: #ece3f3;
+  color: #3d2a52;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.condition-badges__badge .rule-term__word {
+  text-decoration-color: #7a5a9a;
+}
+
+.condition-badges__steps {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.condition-badges__steps button,
+.condition-badges__remove {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.condition-badges__steps button:hover,
+.condition-badges__remove:hover {
+  background-color: rgba(61, 42, 82, 0.12);
+}
+
+.condition-badges__steps button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.condition-badges__badge button:focus-visible,
+.condition-badges__add-button:focus-visible,
+.condition-badges__option:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.condition-badges__add {
+  position: relative;
+}
+
+.condition-badges__add-button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px dashed var(--qk-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--qk-text-muted);
+  font-family: var(--qk-font-body);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.condition-badges__add-button:hover,
+.condition-badges__add-button[aria-expanded="true"] {
+  border-color: var(--qk-terracotta);
+  color: var(--qk-text);
+}
+
+/* The picker: every condition with what it does, so new players can pick
+   the right one. */
+.condition-badges__picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 35;
+  display: grid;
+  gap: 2px;
+  width: min(320px, calc(100vw - 32px));
+  max-height: 320px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+  box-shadow: 0 10px 24px var(--qk-shadow);
+}
+
+.condition-badges__option {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--qk-radius-control);
+  background: transparent;
+  color: var(--qk-text);
+  font-family: var(--qk-font-body);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.condition-badges__option:hover {
+  background-color: var(--qk-surface-muted);
+}
+
+.condition-badges__option span {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* A new badge pops in. Off for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .condition-badges__badge {
+    animation: condition-in 0.2s ease-out;
+  }
+}
+
+@keyframes condition-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
