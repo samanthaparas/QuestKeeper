@@ -2,7 +2,7 @@ services:
   - type: web
     name: questkeeper-api
     runtime: node
-    plan: free
+    plan: starter # paid plan, so the API never sleeps mid-session
     rootDir: questkeeper-backend
     buildCommand: npm ci --workspaces=false
     startCommand: npm start
