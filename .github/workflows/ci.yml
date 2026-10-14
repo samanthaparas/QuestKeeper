@@ -33,3 +33,26 @@ jobs:
 
       - name: Run backend tests
         run: npm run test --workspace questkeeper-backend -- run
+
+  # Installs the backend the same way Render does (its own lockfile, no
+  # workspaces), so a stale questkeeper-backend/package-lock.json fails here
+  # instead of breaking the deploy.
+  backend-deploy-install:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: questkeeper-backend
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 25
+
+      - name: Install like Render
+        run: npm ci --workspaces=false
+
+      - name: Run backend tests
+        run: npm test -- run
