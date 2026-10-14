@@ -1435,6 +1435,13 @@ export function getSpellSlotProgression(classRef, level) {
   return emptyRows();
 }
 
+// The highest spell level a class can cast at a character level, read from its
+// slot table: a level 5 Wizard gets 3, a level 5 Paladin 2. 0 = cantrips only.
+export function getMaxSpellLevel(classRef, level) {
+  const withSlots = getSpellSlotProgression(classRef, level).filter((row) => row.max > 0);
+  return withSlots.length ? withSlots[withSlots.length - 1].level : 0;
+}
+
 export function applySpellSlotProgression(spellcasting, classRef, level) {
   const progression = getSpellSlotProgression(classRef, level);
   const base = spellcasting ?? {

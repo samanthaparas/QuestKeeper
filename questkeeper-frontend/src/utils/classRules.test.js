@@ -8,6 +8,7 @@ import {
   getSubclassLevel,
   getLevelUpStepKeys,
   getStartingSpellCounts,
+  getMaxSpellLevel,
 } from "./characterSheet";
 import { mapClassToSnapshot } from "./characterSnapshots";
 import { toHomebrewClass } from "./homebrewMappers";
@@ -29,6 +30,23 @@ describe("class rules", () => {
     expect(firstLevelSlots(tinkerer, 1)).toBe(2);
     expect(firstLevelSlots(tinkerer, 3)).toBe(3);
     expect(getSpellSlotProgression(tinkerer, 5)[1].max).toBe(2);
+  });
+
+  it("caps learnable spell levels by each class's own slots", () => {
+    expect(getMaxSpellLevel("wizard", 5)).toBe(3);
+    expect(getMaxSpellLevel("wizard", 20)).toBe(9);
+    // Half casters lag behind: Paladin and Ranger get 2nd-level spells at 5, 5th at 17.
+    expect(getMaxSpellLevel("paladin", 1)).toBe(0);
+    expect(getMaxSpellLevel("paladin", 2)).toBe(1);
+    expect(getMaxSpellLevel("paladin", 5)).toBe(2);
+    expect(getMaxSpellLevel("ranger", 9)).toBe(3);
+    expect(getMaxSpellLevel("ranger", 20)).toBe(5);
+    // Warlock follows Pact Magic's slot level.
+    expect(getMaxSpellLevel("warlock", 3)).toBe(2);
+    expect(getMaxSpellLevel("warlock", 11)).toBe(5);
+    expect(getMaxSpellLevel({ id: "hb_1", casterProgression: "half-early" }, 3)).toBe(1);
+    expect(getMaxSpellLevel({ id: "hb_2", casterProgression: "half" }, 9)).toBe(3);
+    expect(getMaxSpellLevel("fighter", 10)).toBe(0);
   });
 
   it("reads a homebrew class's own rules, for snapshots and raw API classes", () => {
