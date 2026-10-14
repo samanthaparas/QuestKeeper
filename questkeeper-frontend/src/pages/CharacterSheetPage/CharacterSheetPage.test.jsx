@@ -57,6 +57,16 @@ describe("CharacterSheetPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers to join a table, with this character already picked", async () => {
+    const sheet = makeSheet();
+    renderSheet(sheet);
+
+    expect(await screen.findByRole("link", { name: "Join a table" })).toHaveAttribute(
+      "href",
+      `/games?character=${sheet.id}`,
+    );
+  });
+
   it("toggles skill proficiency and updates the modifier", async () => {
     const user = userEvent.setup();
     renderSheet(makeSheet());

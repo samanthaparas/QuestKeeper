@@ -7,7 +7,7 @@ import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import "./Navigation.css";
 
 // Matches the header's collapse point in Header.css.
-const NARROW_QUERY = "(max-width: 920px)";
+const NARROW_QUERY = "(max-width: 1040px)";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 function linkClass({ isActive }) {

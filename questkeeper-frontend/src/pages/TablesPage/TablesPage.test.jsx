@@ -15,24 +15,53 @@ vi.mock("../../utils/tableStore", () => ({
   listMyTables: vi.fn(),
 }));
 
-function renderPage() {
+function renderPage(mode, url = "/") {
   return render(
-    <MemoryRouter>
-      <TablesPage />
+    <MemoryRouter initialEntries={[url]}>
+      <TablesPage mode={mode} />
     </MemoryRouter>,
   );
 }
 
-describe("TablesPage errors", () => {
+const RUN = { id: "t1", name: "Final Fight", dm_id: "u1", join_code: "ABC123" };
+const PLAY = { id: "t2", name: "Friday Game", dm_id: "dm-2", join_code: "XYZ789" };
+
+describe("My Games (Adventurer)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    listMyTables.mockResolvedValue([]);
+    listMyTables.mockResolvedValue([RUN, PLAY]);
     listCharacters.mockResolvedValue([{ id: "c1", name: "Billie", level: 15, class: { name: "Paladin" } }]);
+  });
+
+  it("lists only the games you play in, linking to the game page", async () => {
+    renderPage("player");
+
+    expect(await screen.findByRole("link", { name: /Friday Game/ })).toHaveAttribute("href", "/games/t2");
+    expect(screen.queryByText("Final Fight")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Table name")).not.toBeInTheDocument();
+  });
+
+  it("picks the character when the sheet's Join a table link opened the page", async () => {
+    renderPage("player", "/games?character=c1");
+
+    expect(await screen.findByRole("option", { name: /Billie/ })).toBeInTheDocument();
+    expect(screen.getByLabelText("Your character")).toHaveValue("c1");
+  });
+
+  it("goes to the game page after joining", async () => {
+    joinTable.mockResolvedValue("t9");
+    renderPage("player");
+
+    await userEvent.type(await screen.findByLabelText("Join code from your DM"), "abc123");
+    await userEvent.selectOptions(screen.getByLabelText("Your character"), "c1");
+    await userEvent.click(screen.getByRole("button", { name: "Join table" }));
+
+    expect(joinTable).toHaveBeenCalledWith("ABC123", "c1");
   });
 
   it("shows a join error inside the join form, not at the top of the page", async () => {
     joinTable.mockRejectedValue(new Error("You run this table, so you cannot join it as a player"));
-    renderPage();
+    renderPage("player");
 
     await userEvent.type(await screen.findByLabelText("Join code from your DM"), "abc123");
     await userEvent.selectOptions(screen.getByLabelText("Your character"), "c1");
@@ -40,24 +69,48 @@ describe("TablesPage errors", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("You run this table");
-    const joinCard = screen.getByRole("heading", { name: "Join a table (player)" }).closest("form");
+    const joinCard = screen.getByRole("heading", { name: "Join a table" }).closest("form");
     expect(within(joinCard).getByRole("alert")).toBe(alert);
+  });
+
+  it("points DMs to their DM Screen", async () => {
+    renderPage("player");
+
+    expect(await screen.findByRole("link", { name: "Go to the DM Screen" })).toHaveAttribute("href", "/dm");
+  });
+});
+
+describe("DM Screen list (Dungeon Master)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    listMyTables.mockResolvedValue([RUN, PLAY]);
+    listCharacters.mockResolvedValue([]);
+  });
+
+  it("lists only the tables you run, with their join codes", async () => {
+    renderPage("dm");
+
+    const link = await screen.findByRole("link", { name: /Final Fight/ });
+    expect(link).toHaveAttribute("href", "/dm/tables/t1");
+    expect(link).toHaveTextContent("Join code ABC123");
+    expect(screen.queryByText("Friday Game")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Join code from your DM")).not.toBeInTheDocument();
   });
 
   it("shows a create error inside the create form", async () => {
     createTable.mockRejectedValue(new Error("Could not create that table"));
-    renderPage();
+    renderPage("dm");
 
     await userEvent.type(await screen.findByLabelText("Table name"), "Final Fight");
     await userEvent.click(screen.getByRole("button", { name: "Create table" }));
 
     const alert = await screen.findByRole("alert");
-    const createCard = screen.getByRole("heading", { name: "Run a table (DM)" }).closest("form");
+    const createCard = screen.getByRole("heading", { name: "Start a new table" }).closest("form");
     expect(within(createCard).getByRole("alert")).toBe(alert);
   });
 });
 
-describe("TablesPage help for new groups", () => {
+describe("help for new groups", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listCharacters.mockResolvedValue([]);
@@ -65,7 +118,7 @@ describe("TablesPage help for new groups", () => {
 
   it("explains how a game night works when you are not at any tables", async () => {
     listMyTables.mockResolvedValue([]);
-    renderPage();
+    renderPage("player");
 
     expect(await screen.findByText(/Here is how a game night works/)).toBeInTheDocument();
     expect(screen.getByText(/The DM creates a table/)).toBeInTheDocument();
@@ -76,10 +129,10 @@ describe("TablesPage help for new groups", () => {
   });
 
   it("drops the explainer once you are at a table", async () => {
-    listMyTables.mockResolvedValue([{ id: "t1", name: "Final Fight", dm_id: "u1" }]);
-    renderPage();
+    listMyTables.mockResolvedValue([PLAY]);
+    renderPage("player");
 
-    expect(await screen.findByText("Final Fight")).toBeInTheDocument();
+    expect(await screen.findByText("Friday Game")).toBeInTheDocument();
     expect(screen.queryByText(/Here is how a game night works/)).not.toBeInTheDocument();
   });
 });

@@ -6,9 +6,10 @@ import ConversationThread from "./ConversationThread";
 import { conversationTitle, joinNames, personName } from "./messageLabels";
 import "./TableMessages.css";
 
-// "/tables/abc" -> "abc": on a table's page, new messages start there.
+// "/games/abc", "/dm/tables/abc" (or an old "/tables/abc") -> "abc": on a
+// table's page, new messages start there.
 function tableFromPath(pathname) {
-  return pathname.match(/^\/tables\/([^/]+)/)?.[1] ?? null;
+  return pathname.match(/^\/(?:games|dm\/tables|tables)\/([^/]+)/)?.[1] ?? null;
 }
 
 // Secret messages, from the header on every page: an envelope with an
@@ -114,8 +115,8 @@ function TableMessages({ myId }) {
                 Messages are for the people at your tables. Make a table, or join one with your
                 DM&apos;s code, and you can message the whole party, a few people, or just one.
               </p>
-              <Link className="table-messages__primary table-messages__primary--link" to="/tables" onClick={close}>
-                Go to Tables
+              <Link className="table-messages__primary table-messages__primary--link" to="/games" onClick={close}>
+                Go to My Games
               </Link>
             </div>
           ) : (

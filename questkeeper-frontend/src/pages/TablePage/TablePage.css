@@ -587,3 +587,77 @@
   height: 18px;
   accent-color: var(--qk-terracotta);
 }
+
+/* The DM screen's tabs: Combat, Story, Players, Prep. */
+.table-page__tabs-bar {
+  display: grid;
+  gap: 8px;
+}
+
+.table-page__dm-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--qk-border);
+}
+
+.table-page__dm-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: -1px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--qk-radius-small) var(--qk-radius-small) 0 0;
+  background: none;
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-page__dm-tab:hover {
+  color: var(--qk-terracotta);
+}
+
+.table-page__dm-tab:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.table-page__dm-tab--active {
+  border-color: var(--qk-border);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+}
+
+/* How many attacks are waiting for the DM's call. */
+.table-page__dm-tab-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background-color: var(--qk-danger);
+  color: var(--qk-surface);
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
+
+/* On other tabs mid-fight: whose turn it is, and a way back to Combat. */
+.table-page__tab-turn {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.table-page__tab-turn-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qk-danger);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}

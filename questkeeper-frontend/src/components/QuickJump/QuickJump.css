@@ -57,7 +57,7 @@
 }
 
 /* Phones: just the magnifying glass (shortcuts need a keyboard anyway). */
-@media (max-width: 920px) {
+@media (max-width: 1040px) {
   .quick-jump__button {
     grid-column: 1;
     grid-row: 1;

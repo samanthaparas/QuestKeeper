@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useTable } from "../../hooks/useTable";
 import { getCharacter, getCharactersByIds } from "../../utils/characterStore";
@@ -52,9 +52,35 @@ import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttac
 import AddCombatantForm from "../../components/AddCombatantForm/AddCombatantForm";
 import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEditPanel";
 import PartyStrip from "../../components/PartyStrip/PartyStrip";
+import DmStoryTab from "../../components/DmStoryTab/DmStoryTab";
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
+// The DM screen's tabs. Story and Players are for between fights; Combat
+// and Prep for running one.
+const DM_TABS = [
+  { key: "combat", label: "Combat" },
+  { key: "story", label: "Story" },
+  { key: "players", label: "Players" },
+  { key: "prep", label: "Prep" },
+];
+
+function readDmTab(tableId) {
+  try {
+    return window.localStorage.getItem(`qk-dm-tab-${tableId}`);
+  } catch {
+    return null;
+  }
+}
+
+function writeDmTab(tableId, tab) {
+  try {
+    window.localStorage.setItem(`qk-dm-tab-${tableId}`, tab);
+  } catch {
+    // Remembering the tab is a convenience; it still works for this visit.
+  }
+}
+
 // After a nudge, the DM's Nudge buttons rest briefly so one tap can't spam.
 const NUDGE_COOLDOWN_MS = 4000;
 
@@ -466,6 +492,11 @@ function TablePage() {
   // Players: the party strip's mini sheets, when the DM shares them.
   const [partyMinis, setPartyMinis] = useState([]);
   const playersSectionRef = useRef(null);
+  const location = useLocation();
+  // DM screen tab: the DM's pick, remembered per table. Until they pick, it
+  // follows the fight: Prep with no fight, Combat once one starts.
+  const [tabPick, setTabPick] = useState(null);
+  const [seenCombat, setSeenCombat] = useState(null);
   const [myDexterity, setMyDexterity] = useState(10);
 
   const [templates, setTemplates] = useState([]);
@@ -566,6 +597,30 @@ function TablePage() {
     }
   }
 
+  // When a fight starts or ends while the page is open, jump to the
+  // matching tab. (Adjusting state during render, React's pattern for this.)
+  const combatOn = Boolean(table?.combat_active);
+  if (table && seenCombat !== combatOn) {
+    if (seenCombat !== null) {
+      const next = combatOn ? "combat" : "prep";
+      setTabPick(next);
+      writeDmTab(id, next);
+    }
+    setSeenCombat(combatOn);
+  }
+  const storedTab = readDmTab(id);
+  const dmTab =
+    tabPick ??
+    (DM_TABS.some((tab) => tab.key === storedTab) ? storedTab : null) ??
+    (combatOn ? "combat" : "prep");
+  // Players see every section; the DM sees the open tab's.
+  const onTab = (key) => !isDm || dmTab === key;
+
+  function pickTab(key) {
+    setTabPick(key);
+    writeDmTab(id, key);
+  }
+
   if (isLoading) {
     return (
       <main className="table-page">
@@ -581,10 +636,17 @@ function TablePage() {
           <p className="table-page__empty">
             {error || "This table was not found, or you are not part of it."}
           </p>
-          <Link to="/tables">Back to tables</Link>
+          <Link to="/games">Back to My Games</Link>
         </div>
       </main>
     );
+  }
+
+  // DMs run a table from /dm/tables/..., players play at /games/... . Old
+  // /tables/... links (and the wrong side) move to the right address.
+  const home = isDm ? `/dm/tables/${id}` : `/games/${id}`;
+  if (location.pathname !== home) {
+    return <Navigate to={home} replace />;
   }
 
   const ordered = sortCombatants(combatants);
@@ -625,9 +687,8 @@ function TablePage() {
     (player) => !monsters.some((monster) => monster.id === player.attack_target),
   );
   const visibleEvents = showAllEvents ? events : events.slice(0, 5);
-  // Once a fight starts, the monster form folds away to save room. The DM can
-  // still open it from the Combat header whenever they need another monster.
-  const monsterFormOpen = !table.combat_active || showMonsterForm;
+  // The monster form lives on the Prep tab. Mid-fight the DM can also open it
+  // on the Combat tab from the Combat header (showMonsterForm).
   const selectedSheet =
     characters.find((sheet) => sheet.id === selectedPlayerId) ?? characters[0];
   const partyRows = isDm
@@ -636,9 +697,10 @@ function TablePage() {
       ? partyMinis.map((sheet) => toPartyRow(sheet))
       : [];
 
-  // DM taps a name in the party strip: open that character's card below.
+  // DM taps a name in the party strip: open that character's card.
   function showPlayerCard(sheetId) {
     setSelectedPlayerId(sheetId);
+    pickTab("players");
     playersSectionRef.current?.scrollIntoView({
       behavior: prefersReducedMotion() ? "auto" : "smooth",
       block: "start",
@@ -790,15 +852,15 @@ function TablePage() {
   return (
     <main className="table-page">
       <div className="table-page__content">
-        <Link className="table-page__back" to="/tables">
-          ← All tables
+        <Link className="table-page__back" to={isDm ? "/dm" : "/games"}>
+          {isDm ? "← DM Screen" : "← My Games"}
         </Link>
 
         <header className="table-page__header">
           <div>
             <h1 className="table-page__title">{table.name}</h1>
             <p className="table-page__role">
-              {isDm ? "You are the DM" : "You are a player"} ·{" "}
+              {isDm ? "DM Screen" : "You are a player"} ·{" "}
               <Link className="table-page__guide-link" to="/guide?section=tables">
                 How tables work
               </Link>
@@ -855,7 +917,52 @@ function TablePage() {
           </section>
         )}
 
-        {isDm && !table.combat_active && (
+        {isDm && (
+          <div className="table-page__tabs-bar">
+            <div className="table-page__dm-tabs" role="tablist" aria-label="DM screen">
+              {DM_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  id={`dm-tab-${tab.key}`}
+                  aria-selected={dmTab === tab.key}
+                  className={`table-page__dm-tab${dmTab === tab.key ? " table-page__dm-tab--active" : ""}`}
+                  onClick={() => pickTab(tab.key)}
+                >
+                  {tab.label}
+                  {tab.key === "combat" && awaitingCall.length > 0 && (
+                    <span className="table-page__dm-tab-count" aria-label={`${awaitingCall.length} waiting`}>
+                      {awaitingCall.length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+            {table.combat_active && dmTab !== "combat" && (
+              <p className="table-page__tab-turn">
+                Round {table.round}
+                {now ? ` · ${now.name}'s turn` : ""}
+                {awaitingCall.length > 0 && (
+                  <>
+                    {" · "}
+                    <button type="button" className="table-page__tab-turn-link" onClick={() => pickTab("combat")}>
+                      {awaitingCall.length === 1 ? "1 attack needs your call" : `${awaitingCall.length} attacks need your call`}
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+        )}
+
+        {isDm && dmTab === "prep" && table.combat_active && (
+          <p className="table-page__hint">
+            The fight is on. Add more monsters here, or head to the Combat tab to run it.
+          </p>
+        )}
+
+        {isDm && dmTab === "prep" && !table.combat_active && (
           <section className="table-page__prep" aria-labelledby="prep-title">
             <h2 id="prep-title" className="table-page__prep-title">
               Before the fight
@@ -898,6 +1005,9 @@ function TablePage() {
           </section>
         )}
 
+        {/* Before a fight, Prep shows the initiative list too: setting up
+            means rolling initiative and starting combat. */}
+        {(onTab("combat") || (dmTab === "prep" && !table.combat_active)) && (
         <section className="table-page__combat">
           <div className="table-page__combat-head">
             <h2 className="table-page__section-title">Combat</h2>
@@ -1040,8 +1150,9 @@ function TablePage() {
             </p>
           )}
         </section>
+        )}
 
-        {isDm && monsterFormOpen && (
+        {isDm && (dmTab === "prep" || (dmTab === "combat" && table.combat_active && showMonsterForm)) && (
           <section className="table-page__section">
             <h2 className="table-page__section-title">Add monsters and NPCs</h2>
             <p className="table-page__hint">
@@ -1053,7 +1164,7 @@ function TablePage() {
           </section>
         )}
 
-        {isDm && orphanCalls.length > 0 && (
+        {isDm && dmTab === "combat" && orphanCalls.length > 0 && (
           <section className="table-page__section table-page__section--alert" role="alert">
             <h2 className="table-page__section-title">Waiting for your call</h2>
             {orphanCalls.map((player) => {
@@ -1085,7 +1196,7 @@ function TablePage() {
           </section>
         )}
 
-        {isDm && players.length > 0 && (
+        {isDm && dmTab === "combat" && players.length > 0 && (
           <section className="table-page__section">
             <h2 className="table-page__section-title">An enemy hits a player</h2>
             <p className="table-page__hint">
@@ -1135,7 +1246,9 @@ function TablePage() {
           </section>
         )}
 
-        {isDm && (
+        {isDm && dmTab === "story" && <DmStoryTab characters={characters} />}
+
+        {isDm && dmTab === "players" && (
           <section className="table-page__section" ref={playersSectionRef}>
             <h2 className="table-page__section-title">Your players</h2>
             {characters.length === 0 ? (
@@ -1227,7 +1340,7 @@ function TablePage() {
               onClick={async () => {
                 if (window.confirm(`Delete "${table.name}" for everyone? This cannot be undone.`)) {
                   await run(() => deleteTable(table.id));
-                  navigate("/tables");
+                  navigate("/dm");
                 }
               }}
             >
@@ -1239,7 +1352,7 @@ function TablePage() {
               onClick={async () => {
                 if (window.confirm("Leave this table?")) {
                   await run(() => leaveTable(table.id));
-                  navigate("/tables");
+                  navigate("/games");
                 }
               }}
             >

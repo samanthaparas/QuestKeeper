@@ -352,8 +352,9 @@ function Guide() {
         <h3 className="guide__subheading">If you are a player</h3>
         <ol className="guide__list">
           <li>
-            <strong>Join.</strong> On the <Link to="/tables">Tables</Link> page,
-            type the join code your DM gives you and pick your character.
+            <strong>Join.</strong> Open <Link to="/games">My Games</Link> (under
+            Adventurer), or tap <em>Join a table</em> on your character sheet,
+            then type the join code your DM gives you.
           </li>
           <li>
             <strong>Roll initiative.</strong> A <em>Roll initiative</em> box
@@ -399,7 +400,8 @@ function Guide() {
         <h3 className="guide__subheading">If you are the DM</h3>
         <ol className="guide__list">
           <li>
-            <strong>Create a table</strong> on the Tables page and share its
+            <strong>Create a table</strong> on your{" "}
+            <Link to="/dm">DM Screen</Link> (under Dungeon Master) and share its
             join code. Players can join any time, even mid-fight; latecomers
             roll initiative when they arrive.
           </li>
@@ -452,8 +454,8 @@ function Guide() {
           up.
         </p>
 
-        <Link className="guide__cta" to="/tables">
-          Go to Tables
+        <Link className="guide__cta" to="/games">
+          Go to My Games
         </Link>
       </section>
 
