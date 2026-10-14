@@ -1,0 +1,225 @@
+/* The table journal: a write box, then sessions of signed notes. */
+.table-journal {
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.table-journal__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.table-journal__title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 24px;
+}
+
+.table-journal__hint,
+.table-journal__empty {
+  margin: 0;
+  max-width: var(--qk-reading-width);
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.table-journal__composer,
+.table-journal__edit {
+  display: grid;
+  gap: 8px;
+}
+
+.table-journal__input {
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: #fff;
+  color: var(--qk-text);
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.table-journal__input:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 1px;
+}
+
+.table-journal__composer-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Whole table | Just me, as two joined pills. */
+.table-journal__visibility {
+  display: inline-flex;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-background);
+}
+
+.table-journal__choice {
+  position: relative;
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-journal__choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.table-journal__choice--on {
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  box-shadow: 0 1px 2px var(--qk-shadow);
+}
+
+.table-journal__choice:has(input:focus-visible) {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 1px;
+}
+
+.table-journal__error {
+  margin: 0;
+  color: var(--qk-danger);
+  font-weight: 700;
+}
+
+.table-journal__session {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--qk-border);
+}
+
+.table-journal__session-title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 18px;
+}
+
+.table-journal__session-day {
+  color: var(--qk-text-muted);
+  font-family: var(--qk-font-body);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.table-journal__entries {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.table-journal__entry {
+  display: grid;
+  gap: 4px;
+  padding: 10px 14px;
+  border: 1px solid var(--qk-border);
+  border-left: 4px solid var(--qk-moss);
+  border-radius: 0 var(--qk-radius-small) var(--qk-radius-small) 0;
+  background-color: var(--qk-background);
+}
+
+.table-journal__entry--dm {
+  border-left-color: var(--qk-terracotta);
+}
+
+.table-journal__entry--private {
+  border-style: dashed;
+  border-left-style: solid;
+  border-left-color: var(--qk-text-muted);
+}
+
+.table-journal__byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+}
+
+.table-journal__author {
+  font-family: var(--qk-font-display);
+  font-size: 16px;
+}
+
+.table-journal__stamp,
+.table-journal__private {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.table-journal__private {
+  font-weight: 700;
+}
+
+.table-journal__body {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.table-journal__actions,
+.table-journal__edit-buttons {
+  display: flex;
+  gap: 12px;
+  margin: 0;
+}
+
+.table-journal__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qk-terracotta);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-journal__link--danger {
+  color: var(--qk-danger);
+}
+
+.table-journal__link:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.table-journal__visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.table-journal__more {
+  justify-self: start;
+}

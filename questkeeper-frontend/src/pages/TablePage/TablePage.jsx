@@ -53,6 +53,7 @@ import AddCombatantForm from "../../components/AddCombatantForm/AddCombatantForm
 import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEditPanel";
 import PartyStrip from "../../components/PartyStrip/PartyStrip";
 import DmStoryTab from "../../components/DmStoryTab/DmStoryTab";
+import TableJournal from "../../components/TableJournal/TableJournal";
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
@@ -1248,6 +1249,16 @@ function TablePage() {
 
         {isDm && dmTab === "story" && <DmStoryTab characters={characters} />}
 
+        {/* The shared journal: the DM's Story tab, and every player's page. */}
+        {onTab("story") && (
+          <TableJournal
+            tableId={table.id}
+            userId={user?.id}
+            isDm={isDm}
+            sessionNumber={table.session_number ?? 1}
+          />
+        )}
+
         {isDm && dmTab === "players" && (
           <section className="table-page__section" ref={playersSectionRef}>
             <h2 className="table-page__section-title">Your players</h2>
@@ -1307,6 +1318,8 @@ function TablePage() {
           </p>
         )}
 
+        {/* The log is mostly about fights, so the DM sees it on Combat only. */}
+        {onTab("combat") && (
         <section className="table-page__section">
           <h2 className="table-page__section-title">Activity</h2>
           {events.length === 0 ? (
@@ -1332,6 +1345,7 @@ function TablePage() {
             </>
           )}
         </section>
+        )}
 
         <footer className="table-page__footer">
           {isDm ? (

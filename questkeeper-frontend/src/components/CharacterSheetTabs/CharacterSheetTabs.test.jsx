@@ -65,4 +65,16 @@ describe("CharacterSheetTabs", () => {
 
     expect(onSelect).toHaveBeenCalledWith("story");
   });
+
+  it("shows the Journal tab only while the character is at a table", () => {
+    const { rerender } = render(
+      <CharacterSheetTabs activeTab="actions" onSelect={() => {}} hasSpellcasting={false} />,
+    );
+    expect(screen.queryByRole("tab", { name: "Journal" })).not.toBeInTheDocument();
+
+    rerender(
+      <CharacterSheetTabs activeTab="actions" onSelect={() => {}} hasSpellcasting={false} hasTable />,
+    );
+    expect(screen.getByRole("tab", { name: "Journal" })).toBeInTheDocument();
+  });
 });

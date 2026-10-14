@@ -37,6 +37,16 @@ vi.mock("../../context/useAuth", () => ({
 
 vi.mock("../../hooks/useTable", () => ({ useTable: vi.fn() }));
 
+// The journal has its own tests; here it just needs to load quietly.
+vi.mock("../../utils/journalStore", () => ({
+  listJournal: vi.fn().mockResolvedValue([]),
+  addJournalEntry: vi.fn(),
+  updateJournalEntry: vi.fn(),
+  deleteJournalEntry: vi.fn(),
+  startNextSession: vi.fn(),
+  subscribeToJournal: vi.fn(() => () => {}),
+}));
+
 vi.mock("../../utils/characterStore", () => ({
   getCharacter: vi.fn().mockResolvedValue({ abilityScores: { dexterity: 14 } }),
   getCharactersByIds: vi.fn().mockResolvedValue([]),
@@ -1219,5 +1229,39 @@ describe("DM screen tabs", () => {
     renderPage();
 
     expect(screen.queryByRole("tablist", { name: "DM screen" })).not.toBeInTheDocument();
+  });
+});
+
+describe("table journal placement", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCharactersByIds.mockResolvedValue([]);
+  });
+
+  it("puts the journal on the DM's Story tab only", async () => {
+    mockTable({ isDm: true });
+    renderPage();
+
+    expect(screen.queryByRole("heading", { name: "Journal" })).not.toBeInTheDocument();
+    await openTab("Story");
+    expect(await screen.findByRole("heading", { name: "Journal" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start session 2" })).toBeInTheDocument();
+  });
+
+  it("shows players the journal without the session button", async () => {
+    mockTable({ isDm: false });
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Journal" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Start session/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps the activity log on the DM's Combat tab only", async () => {
+    mockTable({ isDm: true });
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: "Activity" })).toBeInTheDocument();
+    await openTab("Story");
+    expect(screen.queryByRole("heading", { name: "Activity" })).not.toBeInTheDocument();
   });
 });

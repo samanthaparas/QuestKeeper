@@ -259,7 +259,8 @@ export async function logRoll(tableId, { who, label, detail, total }) {
   );
 }
 
-// Every table this character sits at, newest join first: [{ id, name }].
+// Every table this character sits at, newest join first:
+// [{ id, name, session_number }].
 export async function listCharacterTables(characterId) {
   const memberships = unwrap(
     await supabase
@@ -271,7 +272,9 @@ export async function listCharacterTables(characterId) {
   if (memberships.length === 0) return [];
 
   const ids = memberships.map((membership) => membership.table_id);
-  const tables = unwrap(await supabase.from("game_tables").select("id, name").in("id", ids));
+  const tables = unwrap(
+    await supabase.from("game_tables").select("id, name, session_number").in("id", ids),
+  );
   return [...tables].sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
 }
 

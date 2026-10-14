@@ -7,11 +7,13 @@ const CHARACTER_SHEET_TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "features", label: "Features" },
   { key: "story", label: "Story" },
+  // The table's shared journal, only while the character is at a table.
+  { key: "journal", label: "Journal", tableOnly: true },
 ];
 
-function CharacterSheetTabs({ activeTab, onSelect, hasSpellcasting }) {
+function CharacterSheetTabs({ activeTab, onSelect, hasSpellcasting, hasTable = false }) {
   const tabs = CHARACTER_SHEET_TABS.filter(
-    (tab) => !tab.casterOnly || hasSpellcasting,
+    (tab) => (!tab.casterOnly || hasSpellcasting) && (!tab.tableOnly || hasTable),
   );
 
   return (

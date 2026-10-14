@@ -91,6 +91,7 @@ export function useSheetRolls(characterId, characterName) {
     roll,
     rollDamage,
     tableId: table?.id ?? null,
+    tableSession: table?.session_number ?? 1,
     tableName: table?.name ?? null,
     share,
     sharing,

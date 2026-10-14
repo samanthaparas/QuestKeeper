@@ -53,6 +53,7 @@ import {
 } from "../../utils/characterSheet";
 import LevelUpWizard from "../../components/LevelUpWizard/LevelUpWizard";
 import Button from "../../components/Button/Button";
+import TableJournal from "../../components/TableJournal/TableJournal";
 import TurnBanner from "../../components/TurnBanner/TurnBanner";
 import AttackPanel from "../../components/AttackPanel/AttackPanel";
 import ShortRestPanel from "../../components/ShortRestPanel/ShortRestPanel";
@@ -1312,6 +1313,7 @@ function CharacterSheetPage() {
                   <CharacterSheetTabs
                     activeTab={activeTab}
                     onSelect={setActiveTab}
+                    hasTable={Boolean(roller.tableId)}
                     hasSpellcasting={hasSpellcasting}
                   />
                   <div className="character-sheet__actions">
@@ -1477,6 +1479,15 @@ function CharacterSheetPage() {
                       onLanguagesChange={handleLanguagesChange}
                       size={sheet.size ?? "Medium"}
                       onSizeChange={handleSizeChange}
+                    />
+                  )}
+
+                  {activeTab === "journal" && roller.tableId && (
+                    <TableJournal
+                      tableId={roller.tableId}
+                      userId={user.id}
+                      isDm={false}
+                      sessionNumber={roller.tableSession}
                     />
                   )}
 
