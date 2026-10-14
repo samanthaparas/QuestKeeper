@@ -22,6 +22,12 @@ function CharacterSheetInventoryTab({
     );
   }
 
+  // Attuned items first, so the magic you're bonded to is always on top.
+  const sortedEquipment = [
+    ...equipment.filter((item) => item.attuned),
+    ...equipment.filter((item) => !item.attuned),
+  ];
+
   return (
     <section className="character-sheet__section">
       <p className="character-sheet__attunement-summary">
@@ -29,7 +35,7 @@ function CharacterSheetInventoryTab({
       </p>
       <EditableItemList
         title="Equipment"
-        items={equipment}
+        items={sortedEquipment}
         getItemId={(item) => item.index}
         fields={[
           {
@@ -65,26 +71,33 @@ function CharacterSheetInventoryTab({
         onNameClick={openItemDetails}
         extraRowContent={(item) => (
           <>
+            {/* "P" like the Skills list's proficiency dots; ★ for attunement.
+                Hover (or a screen reader) says which item and what it does. */}
             <button
               type="button"
-              className={`character-sheet__attune-toggle${
-                item.proficient ? " character-sheet__attune-toggle--active" : ""
+              className={`character-sheet__icon-toggle${
+                item.proficient ? " character-sheet__icon-toggle--on" : ""
               }`}
               aria-pressed={Boolean(item.proficient)}
+              aria-label={`Proficient with ${item.name}`}
+              title={item.proficient ? `Proficient with ${item.name}` : `Not proficient with ${item.name}. Tap if you are.`}
               onClick={() =>
                 onEquipmentProficientToggle(item.index, item.proficient)
               }
             >
-              {item.proficient ? "✓ Proficient" : "Proficient?"}
+              P
             </button>
             <button
               type="button"
-              className={`character-sheet__attune-toggle${
-                item.attuned ? " character-sheet__attune-toggle--active" : ""
+              className={`character-sheet__icon-toggle character-sheet__icon-toggle--star${
+                item.attuned ? " character-sheet__icon-toggle--on" : ""
               }`}
+              aria-pressed={Boolean(item.attuned)}
+              aria-label={`Attuned to ${item.name}`}
+              title={item.attuned ? `Attuned to ${item.name}` : `Attune to ${item.name} (up to 3 items)`}
               onClick={() => onEquipmentAttuneToggle(item.index, item.attuned)}
             >
-              {item.attuned ? "★ Attuned" : "☆ Attune"}
+              {item.attuned ? "★" : "☆"}
             </button>
           </>
         )}
