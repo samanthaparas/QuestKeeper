@@ -1,0 +1,35 @@
+import { describe, it, expect } from "vitest";
+import { formatStamp, groupBySession, wasEdited } from "./journal";
+
+const entry = (id, session, created_at, extra = {}) => ({
+  id,
+  session_number: session,
+  created_at,
+  updated_at: created_at,
+  ...extra,
+});
+
+describe("journal helpers", () => {
+  it("groups notes by session, newest session first, oldest note first inside", () => {
+    const groups = groupBySession([
+      entry("b", 1, "2026-10-12T02:10:00Z"),
+      entry("c", 2, "2026-10-19T01:00:00Z"),
+      entry("a", 1, "2026-10-12T01:00:00Z"),
+    ]);
+
+    expect(groups.map((group) => group.session)).toEqual([2, 1]);
+    expect(groups[1].entries.map((note) => note.id)).toEqual(["a", "b"]);
+    expect(groups[1].startedAt).toBe("2026-10-12T01:00:00Z");
+  });
+
+  it("writes a short day and time", () => {
+    // A Monday evening, read in the test's own time zone.
+    const local = new Date(2026, 9, 19, 20, 42);
+    expect(formatStamp(local)).toBe("Mon 8:42 pm");
+  });
+
+  it("only calls a note edited when it changed after the first minute", () => {
+    expect(wasEdited(entry("a", 1, "2026-10-19T01:00:00Z", { updated_at: "2026-10-19T01:00:30Z" }))).toBe(false);
+    expect(wasEdited(entry("a", 1, "2026-10-19T01:00:00Z", { updated_at: "2026-10-19T01:05:00Z" }))).toBe(true);
+  });
+});
