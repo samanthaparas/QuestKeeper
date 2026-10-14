@@ -19,6 +19,8 @@ import {
   endMyTurn,
   dmLog,
   resetEncounter,
+  getPartyStrip,
+  setShareParty,
 } from "../../utils/tableStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -40,6 +42,8 @@ vi.mock("../../utils/tableStore", () => ({
   createTemplate: vi.fn(),
   editCombatant: vi.fn().mockResolvedValue(undefined),
   endMyTurn: vi.fn().mockResolvedValue(undefined),
+  getPartyStrip: vi.fn().mockResolvedValue([]),
+  setShareParty: vi.fn().mockResolvedValue(undefined),
   listTemplates: vi.fn().mockResolvedValue([]),
   applyDamage: vi.fn().mockResolvedValue(undefined),
   deleteTable: vi.fn(),
@@ -1058,5 +1062,75 @@ describe("monster row layout", () => {
     expect(within(hp).getByRole("button", { name: "Damage" })).toBeInTheDocument();
     expect(within(hp).getByRole("button", { name: "Heal" })).toBeInTheDocument();
     expect(within(hp).queryByRole("button", { name: "Attack" })).not.toBeInTheDocument();
+  });
+});
+
+describe("party strip", () => {
+  const billieSheet = {
+    id: "char-1",
+    name: "Billie",
+    level: 3,
+    class: { name: "Rogue" },
+    combat: { hitPoints: { current: 7, max: 20, temporary: 0 }, armorClass: 14 },
+    abilityScores: { wisdom: 12, intelligence: 10 },
+    skills: { perception: true },
+    conditions: [{ key: "poisoned" }],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function partyStrip() {
+    return screen.getByRole("list", { name: "Party" });
+  }
+
+  it("shows the DM everyone's HP, AC, conditions and passive scores", async () => {
+    mockTable({ isDm: true, combatActive: false });
+    getCharactersByIds.mockResolvedValue([billieSheet]);
+    renderPage();
+
+    const strip = await screen.findByRole("list", { name: "Party" });
+    expect(within(strip).getByText(/7\/20/)).toBeInTheDocument();
+    expect(within(strip).getByText(/Bloodied/)).toBeInTheDocument();
+    expect(within(strip).getByText("14", { exact: false })).toBeInTheDocument();
+    expect(within(strip).getByText("Poisoned")).toBeInTheDocument();
+    // Wisdom 12 (+1) + proficiency 2 = 13 Perception, so passive 13.
+    expect(within(strip).getByText("Perception 13")).toBeInTheDocument();
+  });
+
+  it("lets the DM share the party with players", async () => {
+    mockTable({ isDm: true, combatActive: false });
+    getCharactersByIds.mockResolvedValue([billieSheet]);
+    renderPage();
+
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: /Let players see the party/ }),
+    );
+    expect(setShareParty).toHaveBeenCalledWith("t1", true);
+  });
+
+  it("stays hidden from players until the DM shares it", () => {
+    mockTable({ isDm: false });
+    renderPage();
+
+    expect(screen.queryByRole("list", { name: "Party" })).not.toBeInTheDocument();
+    expect(getPartyStrip).not.toHaveBeenCalled();
+  });
+
+  it("shows players HP, AC and conditions once shared, but no passives or switch", async () => {
+    mockTable({ isDm: false });
+    useTable.mockReturnValue({
+      ...currentTable,
+      table: { ...currentTable.table, share_party: true },
+    });
+    getPartyStrip.mockResolvedValue([billieSheet]);
+    renderPage();
+
+    await waitFor(() => expect(partyStrip()).toBeInTheDocument());
+    expect(getPartyStrip).toHaveBeenCalledWith("t1");
+    expect(within(partyStrip()).getByText(/7\/20/)).toBeInTheDocument();
+    expect(within(partyStrip()).queryByText(/Perception/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /Let players see the party/ })).not.toBeInTheDocument();
   });
 });

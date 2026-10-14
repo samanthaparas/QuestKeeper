@@ -1,0 +1,169 @@
+/* One row per character: name | HP bar | AC | passives | conditions.
+   Wraps onto two lines on narrow screens. */
+.party-strip {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.party-strip__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 10px 14px;
+  border: 1px solid var(--qk-border);
+  border-left: 5px solid var(--qk-moss);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface);
+}
+
+.party-strip__row--bloodied {
+  border-left-color: var(--qk-danger);
+}
+
+.party-strip__row--down {
+  border-left-color: var(--qk-text-muted);
+  background-color: var(--qk-surface-muted);
+}
+
+.party-strip__row--selected {
+  box-shadow: 0 0 0 2px var(--qk-focus);
+}
+
+.party-strip__who {
+  display: grid;
+  min-width: 140px;
+}
+
+.party-strip__name {
+  font-family: var(--qk-font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--qk-text);
+}
+
+.party-strip__name--button {
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--qk-border);
+  text-underline-offset: 3px;
+}
+
+.party-strip__name--button:hover {
+  color: var(--qk-terracotta);
+}
+
+.party-strip__name--button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.party-strip__summary {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.party-strip__label {
+  color: var(--qk-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.party-strip__hp {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 180px;
+  min-width: 160px;
+  max-width: 280px;
+}
+
+.party-strip__hp-text {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.party-strip__temp {
+  color: var(--qk-focus);
+  font-size: 13px;
+}
+
+.party-strip__health {
+  color: var(--qk-danger);
+  font-size: 13px;
+}
+
+.party-strip__row--down .party-strip__health {
+  color: var(--qk-text-muted);
+}
+
+.party-strip__bar {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+}
+
+.party-strip__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--qk-moss);
+  transition: width 400ms ease;
+}
+
+.party-strip__row--bloodied .party-strip__bar-fill {
+  background-color: var(--qk-danger);
+}
+
+.party-strip__ac {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.party-strip__passives {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 14px;
+}
+
+.party-strip__passive {
+  white-space: nowrap;
+}
+
+.party-strip__conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Same purple as the sheet's condition badges. */
+.party-strip__condition {
+  padding: 2px 10px;
+  border: 1px solid #7a5a9a;
+  border-radius: 999px;
+  background-color: #ece3f3;
+  color: #3d2a52;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .party-strip__bar-fill {
+    transition: none;
+  }
+}
