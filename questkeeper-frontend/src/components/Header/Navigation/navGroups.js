@@ -8,7 +8,7 @@ import {
 } from "../../../utils/icons";
 import bookIcon from "../../../assets/brand/questkeeper-book-logo-64.png";
 
-// The header's three menus and the pages in each. Home isn't listed: the
+// The header's menus and the pages in each. Home isn't listed: the
 // logo goes there. Hints are short on purpose (no counts, which go stale).
 // tag: a small label beside the name, e.g. who the page is mainly for.
 export const NAV_GROUPS = [
@@ -25,14 +25,22 @@ export const NAV_GROUPS = [
     ],
   },
   {
-    id: "adventures",
-    label: "My Adventures",
-    blurb: "Your heroes, your games, your creations",
+    id: "adventurer",
+    label: "Adventurer",
+    blurb: "Your heroes and the games they play in",
     items: [
       { to: "/characters", label: "My Characters", hint: "Build and track your heroes", icon: getUiIcon("character") },
+      { to: "/games", label: "My Games", hint: "Join a table and play", icon: getUiIcon("dice") },
       { to: "/homebrew", label: "Homebrew", hint: "Make and share your own options", icon: getUiIcon("notes") },
-      { to: "/tables", label: "Tables", hint: "Run or join a game night", icon: getUiIcon("dice") },
-      { to: "/library", label: "Monster Library", hint: "Creatures for your encounters", icon: getRaceIcon("bugbear"), tag: "For DMs" },
+    ],
+  },
+  {
+    id: "dm",
+    label: "Dungeon Master",
+    blurb: "Run the game for your table",
+    items: [
+      { to: "/dm", label: "DM Screen", hint: "The tables you run", icon: getClassIcon("wizard") },
+      { to: "/library", label: "Monster Library", hint: "Creatures for your encounters", icon: getRaceIcon("bugbear") },
     ],
   },
   {
@@ -47,7 +55,7 @@ export const NAV_GROUPS = [
   },
 ];
 
-// Whether a page belongs to a link ("/tables/abc" is under Tables).
+// Whether a page belongs to a link ("/games/abc" is under My Games).
 export function isUnder(pathname, to) {
   return pathname === to || pathname.startsWith(`${to}/`);
 }

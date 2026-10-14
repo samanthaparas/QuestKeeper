@@ -114,13 +114,13 @@ describe("NavWheel", () => {
 });
 
 describe("Navigation picks the right menu", () => {
-  it("shows the three menus on wide screens, each opening its pages", () => {
+  it("shows the four menus on wide screens, each opening its pages", () => {
     mockMedia({ narrow: false });
     renderWithRouter(<Navigation />);
 
     expect(document.querySelector(".nav-wheel")).toBeNull();
     expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(
-      ["Explore", "My Adventures", "Help"],
+      ["Explore", "Adventurer", "Dungeon Master", "Help"],
     );
     expect(screen.queryAllByRole("link")).toHaveLength(0);
 
@@ -134,7 +134,7 @@ describe("Navigation picks the right menu", () => {
     ]);
   });
 
-  it("shows the three menus on the wheel, then a menu's pages", () => {
+  it("shows the four menus on the wheel, then a menu's pages", () => {
     mockMedia({ narrow: true });
     renderWithRouter(<Navigation isMenuOpen />, "/spells");
 
@@ -156,8 +156,9 @@ describe("Navigation picks the right menu", () => {
     renderWithRouter(<Navigation isMenuOpen />);
 
     expect(document.querySelector(".nav-wheel")).toBeNull();
-    expect(screen.getAllByRole("link")).toHaveLength(12);
-    expect(screen.getByRole("region", { name: "My Adventures" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(13);
+    expect(screen.getByRole("region", { name: "Adventurer" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Dungeon Master" })).toBeInTheDocument();
   });
 
   it("closes the menu when a link in the plain list is picked", () => {

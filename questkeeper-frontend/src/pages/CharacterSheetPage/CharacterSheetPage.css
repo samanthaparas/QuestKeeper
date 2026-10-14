@@ -1732,3 +1732,15 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   flex: 1 1 100%;
   padding: 2px 4px;
 }
+
+/* "Playing at Test night · Open the game page" above the sheet. */
+.character-sheet__table-link {
+  margin: 0 0 12px;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.character-sheet__table-link a {
+  color: var(--qk-terracotta);
+  font-weight: 700;
+}

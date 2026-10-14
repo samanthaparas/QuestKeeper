@@ -60,3 +60,31 @@ export function toPartyRow(sheet, { withPassives = false } = {}) {
       : [],
   };
 }
+
+// Senses worth knowing in the dark, read from race traits and features
+// ("Darkvision", "Superior Darkvision", "Blindsight"...).
+const SENSE_PATTERN = /darkvision|blindsight|tremorsense|truesight/i;
+
+export function getSenses(sheet) {
+  const names = [
+    ...(sheet.race?.traits ?? []),
+    ...(sheet.features ?? []).map((feature) => feature?.name ?? feature),
+  ].filter((name) => typeof name === "string" && SENSE_PATTERN.test(name));
+  return [...new Set(names)];
+}
+
+// What a DM wants between fights: who notices things, who can read the
+// old script, who sees in the dark, and the hooks in each backstory.
+export function toStoryCard(sheet) {
+  return {
+    id: sheet.id,
+    name: sheet.name ?? "Adventurer",
+    summary: [sheet.race?.name, sheet.class?.name, sheet.background?.name].filter(Boolean).join(" · "),
+    passives: PASSIVE_SKILLS.map((skill) => ({ skill, score: getPassiveScore(sheet, skill) })),
+    languages: (sheet.languages ?? "").trim(),
+    senses: getSenses(sheet),
+    speed: sheet.combat?.speed ?? 30,
+    backstory: (sheet.backstory ?? "").trim(),
+    appearance: (sheet.appearance ?? "").trim(),
+  };
+}

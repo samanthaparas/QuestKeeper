@@ -916,6 +916,21 @@ function CharacterSheetPage() {
       />
 
       <div className="character-sheet__content">
+        {/* Where this character plays: a link to their game, or a way to join one. */}
+        <p className="character-sheet__table-link">
+          {roller.tableId ? (
+            <>
+              Playing at <strong>{roller.tableName}</strong> ·{" "}
+              <Link to={`/games/${roller.tableId}`}>Open the game page</Link>
+            </>
+          ) : (
+            <>
+              Not at a table yet ·{" "}
+              <Link to={`/games?character=${sheet.id}`}>Join a table</Link>
+            </>
+          )}
+        </p>
+
         {isLevelingUp && (
           <LevelUpWizard
             sheet={sheet}

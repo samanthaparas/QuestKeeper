@@ -143,11 +143,11 @@ describe("TableMessages", () => {
     expect(screen.queryByRole("button", { name: /Messages/ })).toBeNull();
   });
 
-  it("points to Tables when you're not at any table yet", async () => {
+  it("points to My Games when you're not at any table yet", async () => {
     store.listMyTables.mockResolvedValue([]);
     const drawer = await openDrawer();
     expect(drawer).toHaveTextContent("Messages are for the people at your tables");
-    expect(within(drawer).getByRole("link", { name: "Go to Tables" })).toHaveAttribute("href", "/tables");
+    expect(within(drawer).getByRole("link", { name: "Go to My Games" })).toHaveAttribute("href", "/games");
   });
 
   it("asks which table when you're at more than one, starting with the one you're on", async () => {
@@ -159,7 +159,7 @@ describe("TableMessages", () => {
       Promise.resolve(tableId === "t2" ? [{ userId: "dm2", name: "DM", isDm: true }, { userId: ME, name: "Billie" }] : PEOPLE),
     );
     store.startConversation.mockResolvedValue("c9");
-    const drawer = await openDrawer("/tables/t2");
+    const drawer = await openDrawer("/dm/tables/t2");
     await waitFor(() => expect(store.listTablePeople).toHaveBeenCalledWith("t2"));
     await userEvent.click(within(drawer).getByRole("button", { name: "+ New message" }));
 

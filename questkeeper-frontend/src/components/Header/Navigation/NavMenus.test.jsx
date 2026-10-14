@@ -32,20 +32,22 @@ describe("NavMenus", () => {
     expect(book()).toBeNull();
   });
 
-  it("tags Monster Library for DMs", () => {
+  it("keeps the DM's pages in their own Dungeon Master menu", () => {
     renderMenus();
-    fireEvent.click(screen.getByRole("button", { name: "My Adventures" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dungeon Master" }));
 
-    expect(screen.getByRole("link", { name: /Monster Library/ })).toHaveTextContent("For DMs");
+    expect(screen.getByRole("link", { name: /DM Screen/ })).toHaveAttribute("href", "/dm");
+    expect(screen.getByRole("link", { name: /Monster Library/ })).toHaveAttribute("href", "/library");
+    expect(screen.queryByRole("link", { name: /My Characters/ })).not.toBeInTheDocument();
   });
 
   it("highlights the menu and page you're on", () => {
-    renderMenus("/tables/abc");
-    const adventures = screen.getByRole("button", { name: "My Adventures" });
-    expect(adventures).toHaveClass("nav-menus__trigger--active");
+    renderMenus("/games/abc");
+    const adventurer = screen.getByRole("button", { name: "Adventurer" });
+    expect(adventurer).toHaveClass("nav-menus__trigger--active");
 
-    fireEvent.click(adventures);
-    expect(screen.getByRole("link", { name: /Tables/ })).toHaveClass("active");
+    fireEvent.click(adventurer);
+    expect(screen.getByRole("link", { name: /My Games/ })).toHaveClass("active");
   });
 
   it("closes after picking a page, on Esc, and on a click elsewhere", () => {
@@ -83,9 +85,9 @@ describe("NavMenus", () => {
     // → on a menu name moves to the next menu, keeping a menu open.
     explore().focus();
     fireEvent.keyDown(explore(), { key: "ArrowRight" });
-    const adventures = screen.getByRole("button", { name: "My Adventures" });
-    expect(adventures).toHaveFocus();
-    expect(adventures).toHaveAttribute("aria-expanded", "true");
+    const adventurer = screen.getByRole("button", { name: "Adventurer" });
+    expect(adventurer).toHaveFocus();
+    expect(adventurer).toHaveAttribute("aria-expanded", "true");
   });
 
   it("opens when the mouse rests on a menu name", () => {

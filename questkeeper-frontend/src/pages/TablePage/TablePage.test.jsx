@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import TablePage from "./TablePage";
+import { installFakeStorage } from "../../test/fakeStorage";
 import { useTable } from "../../hooks/useTable";
 import { getCharactersByIds } from "../../utils/characterStore";
 import {
@@ -24,6 +25,11 @@ import {
 } from "../../utils/tableStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
+
+// A fresh storage per test, so a DM tab picked in one test isn't remembered in the next.
+beforeEach(() => {
+  installFakeStorage();
+});
 
 vi.mock("../../context/useAuth", () => ({
   useAuth: () => ({ user: { id: "player-1" } }),
@@ -144,14 +150,27 @@ function withAlly(extra = {}) {
   });
 }
 
-function renderPage() {
-  return render(
+// Opens the old /tables/t1 address, so every test also checks the page
+// moves itself to /dm/tables/t1 (the DM) or /games/t1 (a player).
+function pageTree() {
+  return (
     <MemoryRouter initialEntries={["/tables/t1"]}>
       <Routes>
         <Route path="/tables/:id" element={<TablePage />} />
+        <Route path="/games/:id" element={<TablePage />} />
+        <Route path="/dm/tables/:id" element={<TablePage />} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
   );
+}
+
+function renderPage() {
+  return render(pageTree());
+}
+
+// The DM screen shows one tab at a time.
+async function openTab(name) {
+  await userEvent.click(screen.getByRole("tab", { name: new RegExp(`^${name}`) }));
 }
 
 describe("TablePage", () => {
@@ -430,6 +449,7 @@ describe("TablePage", () => {
         { id: "ch2", name: "Thorn", level: 3, abilityScores: {}, combat: {} },
       ]);
       renderPage();
+      await openTab("Players");
 
       expect(await screen.findByRole("tab", { name: "Billie" })).toHaveAttribute("aria-selected", "true");
       expect(screen.getByText("Level 5 · No race · No class")).toBeInTheDocument();
@@ -672,13 +692,7 @@ describe("rolling initiative for monsters", () => {
 
   it("rolls for every monster without an initiative and leaves the boss alone", async () => {
     setupFight();
-    render(
-      <MemoryRouter initialEntries={["/tables/t1"]}>
-        <Routes>
-          <Route path="/tables/:id" element={<TablePage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderPage();
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Roll initiative for 3 monsters" }),
@@ -693,13 +707,7 @@ describe("rolling initiative for monsters", () => {
 
   it("rolls for a single monster with its bonus and shows the roll", async () => {
     setupFight();
-    render(
-      <MemoryRouter initialEntries={["/tables/t1"]}>
-        <Routes>
-          <Route path="/tables/:id" element={<TablePage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderPage();
 
     await screen.findByText("Goblin 1");
     await userEvent.click(within(rowFor("Goblin 1")).getByRole("button", { name: "Roll d20" }));
@@ -715,13 +723,7 @@ describe("rolling initiative for monsters", () => {
       goblin(2),
       goblin(0, { id: "c-maccath", kind: "ally", name: "Maccath the Crimson" }),
     ];
-    render(
-      <MemoryRouter initialEntries={["/tables/t1"]}>
-        <Routes>
-          <Route path="/tables/:id" element={<TablePage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderPage();
 
     expect(
       await screen.findByRole("button", { name: "Roll initiative for 2 monsters and 1 NPC" }),
@@ -733,13 +735,7 @@ describe("rolling initiative for monsters", () => {
     currentTable.combatants = [
       goblin(0, { id: "c-maccath", kind: "ally", name: "Maccath the Crimson" }),
     ];
-    render(
-      <MemoryRouter initialEntries={["/tables/t1"]}>
-        <Routes>
-          <Route path="/tables/:id" element={<TablePage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderPage();
 
     expect(
       await screen.findByRole("button", { name: "Roll initiative for 1 NPC" }),
@@ -748,13 +744,7 @@ describe("rolling initiative for monsters", () => {
 
   it("hides the roll-all button when every monster already has an initiative", async () => {
     mockTable({ isDm: true, combatActive: false, currentId: null });
-    render(
-      <MemoryRouter initialEntries={["/tables/t1"]}>
-        <Routes>
-          <Route path="/tables/:id" element={<TablePage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderPage();
 
     await screen.findByText("Kobold");
     expect(screen.queryByRole("button", { name: /Roll initiative for/ })).not.toBeInTheDocument();
@@ -989,24 +979,12 @@ describe("nudge shake and cooldown", () => {
     expect(animate).toHaveBeenCalledTimes(1);
 
     // A refresh with the same nudge doesn't shake again...
-    rerender(
-      <MemoryRouter initialEntries={["/tables/t1"]}>
-        <Routes>
-          <Route path="/tables/:id" element={<TablePage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    rerender(pageTree());
     expect(animate).toHaveBeenCalledTimes(1);
 
     // ...but a second nudge does.
     playerWithEvents([nudgeFor("n2"), nudgeFor("n1")]);
-    rerender(
-      <MemoryRouter initialEntries={["/tables/t1"]}>
-        <Routes>
-          <Route path="/tables/:id" element={<TablePage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    rerender(pageTree());
     await waitFor(() => expect(animate).toHaveBeenCalledTimes(2));
   });
 
@@ -1132,5 +1110,114 @@ describe("party strip", () => {
     expect(within(partyStrip()).getByText(/7\/20/)).toBeInTheDocument();
     expect(within(partyStrip()).queryByText(/Perception/)).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: /Let players see the party/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("DM screen tabs", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCharactersByIds.mockResolvedValue([]);
+  });
+
+  function selectedTab() {
+    return screen.getAllByRole("tab").find(
+      (tab) => tab.id?.startsWith("dm-tab-") && tab.getAttribute("aria-selected") === "true",
+    );
+  }
+
+  it("opens on Prep with no fight, with the checklist and initiative list", () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    renderPage();
+
+    expect(selectedTab()).toHaveTextContent("Prep");
+    expect(screen.getByText("Before the fight")).toBeInTheDocument();
+    expect(screen.getByText("Add monsters and NPCs")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Initiative order" })).toBeInTheDocument();
+  });
+
+  it("opens on Combat during a fight", () => {
+    mockTable({ isDm: true });
+    renderPage();
+
+    expect(selectedTab()).toHaveTextContent("Combat");
+    expect(screen.queryByText("Add monsters and NPCs")).not.toBeInTheDocument();
+  });
+
+  it("remembers the DM's pick for this table", async () => {
+    mockTable({ isDm: true });
+    const { unmount } = renderPage();
+    await openTab("Story");
+    unmount();
+
+    renderPage();
+    expect(selectedTab()).toHaveTextContent("Story");
+  });
+
+  it("jumps to Combat when the fight starts, and keeps the turn in view on other tabs", async () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    const { rerender } = renderPage();
+    await openTab("Story");
+
+    mockTable({ isDm: true, combatActive: true });
+    rerender(pageTree());
+    expect(selectedTab()).toHaveTextContent("Combat");
+
+    await openTab("Story");
+    expect(screen.getByText(/Round 2 · Kobold's turn/)).toBeInTheDocument();
+  });
+
+  it("counts attacks waiting for the DM's call on the Combat tab", () => {
+    mockTable({ isDm: true });
+    useTable.mockReturnValue({
+      ...currentTable,
+      combatants: combatants.map((c) =>
+        c.id === "c-billie" ? { ...c, attack_state: "awaiting_dm", attack_target: "c-kobold" } : c,
+      ),
+    });
+    renderPage();
+
+    expect(screen.getByRole("tab", { name: /^Combat/ })).toHaveTextContent("1");
+  });
+
+  it("shows passives, languages and senses on the Story tab", async () => {
+    mockTable({ isDm: true });
+    getCharactersByIds.mockResolvedValue([
+      {
+        id: "char-1",
+        name: "Billie",
+        level: 3,
+        race: { name: "Tiefling", traits: ["Darkvision", "Hellish Resistance"] },
+        abilityScores: { wisdom: 14 },
+        skills: { perception: true },
+        languages: "Common, Infernal",
+        combat: { speed: 30, hitPoints: { current: 10, max: 10 } },
+      },
+    ]);
+    renderPage();
+    await openTab("Story");
+
+    expect(await screen.findByText("Common, Infernal")).toBeInTheDocument();
+    expect(screen.getByText("Darkvision")).toBeInTheDocument();
+    // Wis +2, proficiency +2: passive Perception 14.
+    expect(screen.getByText(/Perception 14 · Insight 12 · Investigation 10/)).toBeInTheDocument();
+  });
+
+  it("opens a character's card on the Players tab from the party strip", async () => {
+    mockTable({ isDm: true });
+    getCharactersByIds.mockResolvedValue([
+      { id: "char-1", name: "Billie", level: 5, abilityScores: {}, combat: {} },
+    ]);
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Billie" }));
+    expect(selectedTab()).toHaveTextContent("Players");
+    expect(screen.getByText("Level 5 · No race · No class")).toBeInTheDocument();
+  });
+
+  it("never shows players the tabs", () => {
+    mockTable({ isDm: false });
+    renderPage();
+
+    expect(screen.queryByRole("tablist", { name: "DM screen" })).not.toBeInTheDocument();
   });
 });

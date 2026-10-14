@@ -113,7 +113,7 @@ function LibraryPage() {
         <p className="library-page__description">
           Prepare monsters and friendly NPCs ahead of game night. Only you can see your
           library. Add anything in it to a fight from your table's "Add monsters and NPCs"
-          form. <Link to="/tables">Go to Tables</Link>
+          form. <Link to="/dm">Go to your DM Screen</Link>
         </p>
 
         {error && (

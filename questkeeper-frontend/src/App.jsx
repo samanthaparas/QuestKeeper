@@ -1,4 +1,4 @@
-import { Routes, Route, Link } from "react-router-dom";
+import { Routes, Route, Link, Navigate } from "react-router-dom";
 import Header from "./components/Header/Header";
 import Home from "./pages/Home/Home";
 import About from "./pages/About/About";
@@ -76,14 +76,42 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* Adventurers join and play at tables under /games; DMs run them
+            from /dm. Old /tables links still work: the list goes to My
+            Games, and a table page moves itself to the right side. */}
         <Route
-          path="/tables"
+          path="/games"
           element={
             <ProtectedRoute>
-              <TablesPage />
+              <TablesPage mode="player" />
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/games/:id"
+          element={
+            <ProtectedRoute>
+              <TablePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dm"
+          element={
+            <ProtectedRoute>
+              <TablesPage mode="dm" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dm/tables/:id"
+          element={
+            <ProtectedRoute>
+              <TablePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/tables" element={<Navigate to="/games" replace />} />
         <Route
           path="/tables/:id"
           element={
