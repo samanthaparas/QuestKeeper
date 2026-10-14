@@ -41,6 +41,19 @@ export async function deleteTable(id) {
   unwrap(await supabase.from("game_tables").delete().eq("id", id));
 }
 
+// DM's switch: let players see the party strip (everyone's HP, AC, conditions).
+export async function setShareParty(tableId, share) {
+  unwrap(
+    await supabase.from("game_tables").update({ share_party: share }).eq("id", tableId),
+  );
+}
+
+// The party strip's mini sheets (see 20261014_party_strip.sql). Only works
+// for the DM, or for players once the DM has shared the party.
+export async function getPartyStrip(tableId) {
+  return unwrap(await supabase.rpc("get_party_strip", { p_table_id: tableId })) ?? [];
+}
+
 // --- Players ----------------------------------------------------------------
 
 export async function joinTable(code, characterId) {

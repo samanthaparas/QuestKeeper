@@ -23,6 +23,7 @@ import {
   editCombatant,
   endCombat,
   endMyTurn,
+  getPartyStrip,
   leaveTable,
   listTemplates,
   postPlayerDamage,
@@ -31,6 +32,7 @@ import {
   resetEncounter,
   setCombatantInitiative,
   setMyInitiative,
+  setShareParty,
   startCombat,
 } from "../../utils/tableStore";
 import { isSameTemplate, pieceNames, readStatBlock, recentEventsFor } from "../../utils/statBlock";
@@ -43,11 +45,13 @@ import {
   nudgeMessage,
 } from "../../utils/tableGuidance";
 import { getAbilityModifier } from "../../utils/characterSheet";
+import { toPartyRow } from "../../utils/partyStrip";
 import Button from "../../components/Button/Button";
 import CharacterSummaryCard from "../../components/CharacterSummaryCard/CharacterSummaryCard";
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
 import AddCombatantForm from "../../components/AddCombatantForm/AddCombatantForm";
 import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEditPanel";
+import PartyStrip from "../../components/PartyStrip/PartyStrip";
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
@@ -459,6 +463,9 @@ function TablePage() {
 
   const [actionError, setActionError] = useState("");
   const [characters, setCharacters] = useState([]);
+  // Players: the party strip's mini sheets, when the DM shares them.
+  const [partyMinis, setPartyMinis] = useState([]);
+  const playersSectionRef = useRef(null);
   const [myDexterity, setMyDexterity] = useState(10);
 
   const [templates, setTemplates] = useState([]);
@@ -503,6 +510,31 @@ function TablePage() {
       clearInterval(timer);
     };
   }, [isDm, characterIds]);
+
+  // Player: load the party strip while the DM is sharing it.
+  const partyShared = Boolean(table?.share_party);
+
+  useEffect(() => {
+    if (isDm || !partyShared) return undefined;
+
+    let cancelled = false;
+
+    function load() {
+      getPartyStrip(id)
+        .then((minis) => {
+          if (!cancelled) setPartyMinis(minis);
+        })
+        .catch(() => {});
+    }
+
+    load();
+    const timer = setInterval(load, CHARACTER_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [isDm, partyShared, id, characterIds]);
 
   // DM: the saved monster library, for the "From my library" picker.
   useEffect(() => {
@@ -598,6 +630,20 @@ function TablePage() {
   const monsterFormOpen = !table.combat_active || showMonsterForm;
   const selectedSheet =
     characters.find((sheet) => sheet.id === selectedPlayerId) ?? characters[0];
+  const partyRows = isDm
+    ? characters.map((sheet) => toPartyRow(sheet, { withPassives: true }))
+    : partyShared
+      ? partyMinis.map((sheet) => toPartyRow(sheet))
+      : [];
+
+  // DM taps a name in the party strip: open that character's card below.
+  function showPlayerCard(sheetId) {
+    setSelectedPlayerId(sheetId);
+    playersSectionRef.current?.scrollIntoView({
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+      block: "start",
+    });
+  }
 
   // Adds one or several monsters or allies ("Goblin" x3 becomes Goblin 1, 2, 3).
   // Returns true on success so the form knows it can clear itself.
@@ -780,6 +826,33 @@ function TablePage() {
           <p className="table-page__error" role="alert">
             {actionError || error}
           </p>
+        )}
+
+        {(isDm ? characters.length > 0 : partyRows.length > 0) && (
+          <section className="table-page__party" aria-labelledby="party-title">
+            <div className="table-page__party-head">
+              <h2 id="party-title" className="table-page__section-title">
+                Party
+              </h2>
+              {isDm && (
+                <label className="table-page__party-share">
+                  <input
+                    type="checkbox"
+                    checked={partyShared}
+                    onChange={(event) =>
+                      run(() => setShareParty(table.id, event.target.checked))
+                    }
+                  />
+                  Let players see the party&apos;s HP, AC and conditions
+                </label>
+              )}
+            </div>
+            <PartyStrip
+              rows={partyRows}
+              onSelect={isDm ? showPlayerCard : undefined}
+              selectedId={isDm && selectedPlayerId !== "all" ? selectedSheet?.id : undefined}
+            />
+          </section>
         )}
 
         {isDm && !table.combat_active && (
@@ -1063,7 +1136,7 @@ function TablePage() {
         )}
 
         {isDm && (
-          <section className="table-page__section">
+          <section className="table-page__section" ref={playersSectionRef}>
             <h2 className="table-page__section-title">Your players</h2>
             {characters.length === 0 ? (
               <p className="table-page__empty">

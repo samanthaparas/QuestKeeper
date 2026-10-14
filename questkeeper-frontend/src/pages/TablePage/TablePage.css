@@ -558,3 +558,32 @@
   padding-left: 12px;
   border-left: 1px solid var(--qk-border);
 }
+
+/* The party strip at the top: everyone's HP, AC and conditions. */
+.table-page__party {
+  display: grid;
+  gap: 12px;
+}
+
+.table-page__party-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.table-page__party-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.table-page__party-share input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--qk-terracotta);
+}
