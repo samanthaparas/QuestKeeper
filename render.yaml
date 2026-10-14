@@ -2,7 +2,7 @@ services:
   - type: web
     name: questkeeper-api
     runtime: node
-    plan: starter # paid plan, so the API never sleeps mid-session
+    plan: free # back on free while Render fixes 502s on Starter; switch back when fixed
     rootDir: questkeeper-backend
     buildCommand: npm ci --workspaces=false
     startCommand: npm start
