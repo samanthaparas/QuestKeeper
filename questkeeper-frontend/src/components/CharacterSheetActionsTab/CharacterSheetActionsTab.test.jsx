@@ -169,4 +169,17 @@ describe("CharacterSheetActionsTab", () => {
     await user.click(summary);
     expect(details).toHaveAttribute("open");
   });
+
+  it("uses pencil and trash buttons named after the attack", async () => {
+    const onAttackRemove = vi.fn();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderTab({
+      attacks: [{ id: "a1", name: "Longsword", toHit: 5, damage: "1d8+3", damageType: "Slashing" }],
+      onAttackRemove,
+    });
+
+    expect(screen.getByRole("button", { name: "Edit Longsword" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Remove Longsword" }));
+    expect(onAttackRemove).toHaveBeenCalled();
+  });
 });

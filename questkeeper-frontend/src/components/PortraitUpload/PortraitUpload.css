@@ -80,3 +80,34 @@
   margin: 0;
   text-align: center;
 }
+
+/* The character sheet's side panel: a big rounded square instead of a coin. */
+.portrait-upload--large {
+  width: 100%;
+}
+
+.portrait-upload--large .portrait-upload__frame {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  max-width: 220px;
+  border-radius: var(--qk-radius-card);
+}
+
+.portrait-upload--large .portrait-upload__initials {
+  font-size: 56px;
+}
+
+.portrait-upload--tiny .portrait-upload__frame {
+  width: 44px;
+  height: 44px;
+  border-width: 1px;
+}
+
+.portrait-upload--tiny .portrait-upload__initials {
+  font-size: 18px;
+}
+
+.portrait-upload--tiny .portrait-upload__overlay {
+  font-size: 10px;
+}
