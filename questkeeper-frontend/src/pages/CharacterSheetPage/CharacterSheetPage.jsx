@@ -53,6 +53,8 @@ import {
 } from "../../utils/characterSheet";
 import LevelUpWizard from "../../components/LevelUpWizard/LevelUpWizard";
 import Button from "../../components/Button/Button";
+import CharacterDetailsDialog from "../../components/CharacterDetailsDialog/CharacterDetailsDialog";
+import PortraitUpload from "../../components/PortraitUpload/PortraitUpload";
 import TableJournal from "../../components/TableJournal/TableJournal";
 import TurnBanner from "../../components/TurnBanner/TurnBanner";
 import AttackPanel from "../../components/AttackPanel/AttackPanel";
@@ -117,12 +119,19 @@ function CharacterSheetPage() {
   // Below 1024px the skills list would sit under everything else, so a
   // Stats | Skills switch by the name flips the top of the sheet instead.
   const isCompact = useMediaQuery("(max-width: 1023px)");
+  // Wide screens get a third column on the right for the portrait and the
+  // quick controls, so the tabs fit on one line.
+  const isWide = useMediaQuery("(min-width: 1300px)");
+  // Phones keep them under the tabs, where they get a tidy grid of their own.
+  const isPhone = useMediaQuery("(max-width: 600px)");
+  const controlsPlace = isWide ? "side" : isPhone ? "tabbar" : "header";
   const [compactPanel, setCompactPanel] = useState("stats");
   const [isLevelingUp, setIsLevelingUp] = useState(false);
   const [showShortRest, setShowShortRest] = useState(false);
   const [restMessage, setRestMessage] = useState("");
   const [levelUpSummary, setLevelUpSummary] = useState(null);
   const [activeTab, setActiveTab] = useState("actions");
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [activeSlotLevels, setActiveSlotLevels] = useState(() => new Set());
   const [attackWith, setAttackWith] = useState(null);
   const tableCombat = useTableTurn(sheet?.id);
@@ -909,6 +918,117 @@ function CharacterSheetPage() {
     </section>
   );
 
+  // Below 1024px the skills share the top card: this pill flips between
+  // the stats and the skills. One button: a tap anywhere on the pill flips
+  // it, and the thumb slides to the side that's showing.
+  const panelSwitch = (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={compactPanel === "skills"}
+      aria-label="Show skills"
+      className={`character-sheet__panel-switch${
+        compactPanel === "skills"
+          ? " character-sheet__panel-switch--skills"
+          : ""
+      }`}
+      onClick={() =>
+        setCompactPanel((panel) =>
+          panel === "skills" ? "stats" : "skills",
+        )
+      }
+    >
+      <span
+        className="character-sheet__panel-switch-thumb"
+        aria-hidden="true"
+      />
+      <span
+        className="character-sheet__panel-switch-label character-sheet__panel-switch-label--stats"
+        aria-hidden="true"
+      >
+        Stats
+      </span>
+      <span
+        className="character-sheet__panel-switch-label character-sheet__panel-switch-label--skills"
+        aria-hidden="true"
+      >
+        Skills
+      </span>
+    </button>
+  );
+
+  // Inspiration, Gold, Level Up and the rests. Where they sit depends on the
+  // screen: a side panel on wide screens, the top card on laptops and
+  // tablets, and under the tabs on phones (see controlsPlace).
+  const quickControls = (
+    <div className="character-sheet__actions">
+      {/* Inspiration and Gold, then Level Up and the rests. */}
+      <div className="character-sheet__keepsakes">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={sheet.inspiration > 0}
+          className="character-sheet__inspiration"
+          title="You can hold one inspiration at a time. Switch it off when you spend it."
+          onClick={handleInspirationToggle}
+        >
+          <span className="character-sheet__vital-label">
+            Inspiration
+          </span>
+          <span
+            className="character-sheet__toggle"
+            aria-hidden="true"
+          />
+        </button>
+        <label className="character-sheet__gold">
+          <span className="character-sheet__vital-label">
+            Gold
+          </span>
+          <input
+            type="number"
+            className="character-sheet__vital-input character-sheet__vital-input--wide"
+            value={sheet.gold ?? 0}
+            onChange={(e) => handleGoldChange(e.target.value)}
+            min={0}
+          />
+        </label>
+      </div>
+      <Button onClick={() => setIsLevelingUp(true)}>
+        Level Up
+      </Button>
+      <Button variant="secondary" onClick={handleLongRest}>
+        Long Rest
+      </Button>
+      <Button
+        variant="secondary"
+        aria-expanded={showShortRest}
+        onClick={() => {
+          setRestMessage("");
+          setShowShortRest((open) => !open);
+        }}
+      >
+        Short Rest
+      </Button>
+    </div>
+  );
+
+  // Where this character plays: a link to their game, or a way to join one.
+  const tableLink = (
+    <p className="character-sheet__table-link">
+      {roller.tableId ? (
+        <>
+          Playing at <strong>{roller.tableName}</strong> ·{" "}
+          <Link to={`/games/${roller.tableId}`}>Open the game page</Link>
+        </>
+      ) : (
+        <>
+          Not at a table yet ·{" "}
+          <Link to={`/games?character=${sheet.id}`}>Join a table</Link>
+        </>
+      )}
+    </p>
+  );
+
   const sheetPage = (
     <main className="character-sheet" onChange={stripLeadingZeros}>
       <TurnBanner
@@ -917,20 +1037,7 @@ function CharacterSheetPage() {
       />
 
       <div className="character-sheet__content">
-        {/* Where this character plays: a link to their game, or a way to join one. */}
-        <p className="character-sheet__table-link">
-          {roller.tableId ? (
-            <>
-              Playing at <strong>{roller.tableName}</strong> ·{" "}
-              <Link to={`/games/${roller.tableId}`}>Open the game page</Link>
-            </>
-          ) : (
-            <>
-              Not at a table yet ·{" "}
-              <Link to={`/games?character=${sheet.id}`}>Join a table</Link>
-            </>
-          )}
-        </p>
+        {controlsPlace !== "side" && tableLink}
 
         {isLevelingUp && (
           <LevelUpWizard
@@ -999,42 +1106,17 @@ function CharacterSheetPage() {
                   }`}
                 >
                   <div className="character-sheet__identity">
-                    {isCompact && (
-                      // One button: a tap anywhere on the pill flips it, and the
-                      // thumb slides to the side that's showing.
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={compactPanel === "skills"}
-                        aria-label="Show skills"
-                        className={`character-sheet__panel-switch${
-                          compactPanel === "skills"
-                            ? " character-sheet__panel-switch--skills"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          setCompactPanel((panel) =>
-                            panel === "skills" ? "stats" : "skills",
-                          )
-                        }
-                      >
-                        <span
-                          className="character-sheet__panel-switch-thumb"
-                          aria-hidden="true"
-                        />
-                        <span
-                          className="character-sheet__panel-switch-label character-sheet__panel-switch-label--stats"
-                          aria-hidden="true"
-                        >
-                          Stats
-                        </span>
-                        <span
-                          className="character-sheet__panel-switch-label character-sheet__panel-switch-label--skills"
-                          aria-hidden="true"
-                        >
-                          Skills
-                        </span>
-                      </button>
+                    {isCompact && controlsPlace !== "header" && panelSwitch}
+                    {/* No side panel on smaller screens: a small portrait here instead. */}
+                    {controlsPlace !== "side" && (
+                      <PortraitUpload
+                        userId={user.id}
+                        characterId={sheet.id}
+                        name={sheet.name}
+                        portraitUrl={sheet.portraitUrl}
+                        onUpload={handlePortraitUpload}
+                        size="tiny"
+                      />
                     )}
                     <h1 className="character-sheet__title">{sheet.name}</h1>
                     <p className="character-sheet__subtitle">
@@ -1043,7 +1125,14 @@ function CharacterSheetPage() {
                       {sheet.class?.subclass?.name
                         ? ` (${sheet.class.subclass.name})`
                         : ""}{" "}
-                      · {sheet.background?.name ?? "No background"}
+                      · {sheet.background?.name ?? "No background"}{" "}
+                      <button
+                        type="button"
+                        className="character-sheet__edit-details"
+                        onClick={() => setIsEditingDetails(true)}
+                      >
+                        ✏️ Edit details
+                      </button>
                     </p>
                   </div>
 
@@ -1097,28 +1186,42 @@ function CharacterSheetPage() {
                     />
                   </label>
 
-                  <label className="character-sheet__vital">
+                  {/* AC, plus a small box for a temporary bonus (Haste, Shield of
+                      Faith). When the bonus isn't 0 the label shows the total. */}
+                  <div className="character-sheet__vital character-sheet__vital--ac">
                     <span
                       className="character-sheet__vital-label"
-                      title="Armor Class: an attack has to roll this number or higher to hit you."
+                      title="Armor Class: an attack has to roll this number or higher to hit you. The small box is a temporary bonus."
                     >
                       AC
                       {(sheet.acBonus ?? 0) !== 0 && (
                         <span className="character-sheet__vital-total">
-                          {" "}
-                          {formatModifier(sheet.acBonus)} ={" "}
-                          {getEffectiveArmorClass(sheet)}
+                          {" "}= {getEffectiveArmorClass(sheet)}
                         </span>
                       )}
                     </span>
-                    <input
-                      type="number"
-                      className="character-sheet__vital-input"
-                      value={combat.armorClass}
-                      onChange={(e) => handleArmorClassChange(e.target.value)}
-                      min={0}
-                    />
-                  </label>
+                    <span className="character-sheet__vital-value">
+                      <input
+                        type="number"
+                        className="character-sheet__vital-input"
+                        value={combat.armorClass}
+                        aria-label="Armor Class"
+                        onChange={(e) => handleArmorClassChange(e.target.value)}
+                        min={0}
+                      />
+                      <span className="character-sheet__ac-plus" aria-hidden="true">+</span>
+                      <input
+                        type="number"
+                        className={`character-sheet__vital-input character-sheet__ac-bonus${
+                          (sheet.acBonus ?? 0) !== 0 ? " character-sheet__ac-bonus--on" : ""
+                        }`}
+                        value={sheet.acBonus ?? 0}
+                        aria-label="Temporary AC bonus"
+                        title="Temporary AC bonus, like +2 from Haste. Set it back to 0 when it ends."
+                        onChange={(e) => handleAcBonusChange(e.target.value)}
+                      />
+                    </span>
+                  </div>
 
                   <label className="character-sheet__vital">
                     {/* Tap "Init" to roll initiative. */}
@@ -1182,6 +1285,21 @@ function CharacterSheetPage() {
                     </span>
                   </div>
 
+                  <div className="character-sheet__ability-row">
+                  {/* One bonus for every save, like a Paladin's Aura of Protection. */}
+                  <label
+                    className="character-sheet__all-saves"
+                    title="A flat extra added to every saving throw, like a Paladin's Aura of Protection"
+                  >
+                    <span className="character-sheet__vital-label">All saves</span>
+                    <input
+                      type="number"
+                      className="character-sheet__vital-input"
+                      value={sheet.saveBonus ?? 0}
+                      aria-label="Bonus to all saves"
+                      onChange={(e) => handleSaveBonusChange(e.target.value)}
+                    />
+                  </label>
                   <div className="character-sheet__abilities">
                     {ABILITY_SCORES.map((ability) => {
                       const score = sheet.abilityScores[ability];
@@ -1256,6 +1374,8 @@ function CharacterSheetPage() {
                     })}
                   </div>
 
+                  </div>
+
                   {/* Conditions, with what each one does on hover or tap. */}
                   <div className="character-sheet__conditions">
                     <ConditionBadges
@@ -1264,41 +1384,26 @@ function CharacterSheetPage() {
                     />
                   </div>
 
-                  <div className="character-sheet__ability-extras">
-                    <label className="character-sheet__save-bonus">
-                      Temporary AC bonus
-                      <input
-                        type="number"
-                        className="character-sheet__vital-input"
-                        value={sheet.acBonus ?? 0}
-                        aria-label="Temporary AC bonus"
-                        title="A flat extra added to your AC for now, like +2 from Haste. Set it back to 0 when it ends."
-                        onChange={(e) => handleAcBonusChange(e.target.value)}
-                      />
-                    </label>
-                    <label className="character-sheet__save-bonus">
-                      Bonus to all saves
-                      <input
-                        type="number"
-                        className="character-sheet__vital-input"
-                        value={sheet.saveBonus ?? 0}
-                        aria-label="Bonus to all saves"
-                        title="A flat extra added to every saving throw, like a Paladin's Aura of Protection"
-                        onChange={(e) => handleSaveBonusChange(e.target.value)}
-                      />
-                    </label>
-                    <p className="character-sheet__ability-hint">
-                      Tip: tap any bonus to roll it. The dot beside a Save marks
-                      that saving throw as proficient. Use the bonus box for
-                      extras like a Paladin's Aura of Protection.
-                    </p>
-                  </div>
+                  {controlsPlace === "header" && (
+                    <div className="character-sheet__ability-extras">
+                      {/* Tablets: the Stats | Skills pill leads this line, so it
+                          doesn't crowd the character's name. */}
+                      {isCompact && panelSwitch}
+                      {quickControls}
+                    </div>
+                  )}
                 </section>
 
                 {isCompact && compactPanel === "skills" && skillsPanel}
 
                 <details className="character-sheet__glossary">
                   <summary>What do these boxes mean?</summary>
+                  <p className="character-sheet__glossary-tip">
+                    Tip: tap any bonus to roll it. The dot beside a Save marks
+                    that saving throw as proficient. Use All saves for extras
+                    like a Paladin&apos;s Aura of Protection, and the small box
+                    beside AC for a temporary bonus like Haste.
+                  </p>
                   <dl>
                     {SHEET_TERMS.map(([term, meaning]) => (
                       <div key={term}>
@@ -1316,55 +1421,7 @@ function CharacterSheetPage() {
                     hasTable={Boolean(roller.tableId)}
                     hasSpellcasting={hasSpellcasting}
                   />
-                  <div className="character-sheet__actions">
-                    {/* Inspiration and Gold share a row by the tabs. */}
-                    <div className="character-sheet__keepsakes">
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={sheet.inspiration > 0}
-                        className="character-sheet__inspiration"
-                        title="You can hold one inspiration at a time. Switch it off when you spend it."
-                        onClick={handleInspirationToggle}
-                      >
-                        <span className="character-sheet__vital-label">
-                          Inspiration
-                        </span>
-                        <span
-                          className="character-sheet__toggle"
-                          aria-hidden="true"
-                        />
-                      </button>
-                      <label className="character-sheet__gold">
-                        <span className="character-sheet__vital-label">
-                          Gold
-                        </span>
-                        <input
-                          type="number"
-                          className="character-sheet__vital-input character-sheet__vital-input--wide"
-                          value={sheet.gold ?? 0}
-                          onChange={(e) => handleGoldChange(e.target.value)}
-                          min={0}
-                        />
-                      </label>
-                    </div>
-                    <Button onClick={() => setIsLevelingUp(true)}>
-                      Level Up
-                    </Button>
-                    <Button variant="secondary" onClick={handleLongRest}>
-                      Long Rest
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      aria-expanded={showShortRest}
-                      onClick={() => {
-                        setRestMessage("");
-                        setShowShortRest((open) => !open);
-                      }}
-                    >
-                      Short Rest
-                    </Button>
-                  </div>
+                  {controlsPlace === "tabbar" && quickControls}
                 </div>
 
                 {showShortRest && (
@@ -1493,26 +1550,6 @@ function CharacterSheetPage() {
 
                   {activeTab === "story" && (
                     <CharacterSheetStoryTab
-                      userId={user.id}
-                      characterId={sheet.id}
-                      name={sheet.name}
-                      level={sheet.level}
-                      onLevelChange={handleLevelChange}
-                      details={{
-                        race: sheet.race?.name ?? "",
-                        className: sheet.class?.name ?? "",
-                        subclass: sheet.class?.subclass?.name ?? "",
-                        background: sheet.background?.name ?? "",
-                        spellcastingAbility:
-                          sheet.class?.spellcastingAbility === undefined
-                            ? "default"
-                            : sheet.class.spellcastingAbility === ""
-                              ? "none"
-                              : sheet.class.spellcastingAbility,
-                      }}
-                      onDetailChange={handleDetailChange}
-                      portraitUrl={sheet.portraitUrl}
-                      onPortraitUpload={handlePortraitUpload}
                       backstory={sheet.backstory}
                       showBackstory={sheet.showBackstory !== false}
                       onBackstoryChange={handleBackstoryChange}
@@ -1539,10 +1576,46 @@ function CharacterSheetPage() {
                   )}
                 </div>
               </div>
+
+              {/* Wide screens: portrait and the quick controls on the right. */}
+              {controlsPlace === "side" && (
+                <aside className="character-sheet__side" aria-label="Portrait and quick controls">
+                  <PortraitUpload
+                    userId={user.id}
+                    characterId={sheet.id}
+                    name={sheet.name}
+                    portraitUrl={sheet.portraitUrl}
+                    onUpload={handlePortraitUpload}
+                    size="large"
+                  />
+                  {quickControls}
+                  {tableLink}
+                </aside>
+              )}
             </div>
           </>
         )}
       </div>
+      <CharacterDetailsDialog
+        isOpen={isEditingDetails}
+        onClose={() => setIsEditingDetails(false)}
+        name={sheet.name}
+        level={sheet.level}
+        onLevelChange={handleLevelChange}
+        details={{
+          race: sheet.race?.name ?? "",
+          className: sheet.class?.name ?? "",
+          subclass: sheet.class?.subclass?.name ?? "",
+          background: sheet.background?.name ?? "",
+          spellcastingAbility:
+            sheet.class?.spellcastingAbility === undefined
+              ? "default"
+              : sheet.class.spellcastingAbility === ""
+                ? "none"
+                : sheet.class.spellcastingAbility,
+        }}
+        onDetailChange={handleDetailChange}
+      />
       <RollDock />
     </main>
   );

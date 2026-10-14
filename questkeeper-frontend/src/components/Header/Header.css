@@ -210,3 +210,22 @@
     display: flex;
   }
 }
+
+/* Small phones, signed in: Menu, Search, the logo, Messages and Log Out all
+   share one row, so tighten the logo and Log Out a little. Without this the
+   Search button sat on top of "Menu" at 375px. */
+@media (max-width: 420px) {
+  .header {
+    column-gap: 8px;
+    padding: 12px 14px;
+  }
+
+  .header__title {
+    font-size: 16px;
+  }
+
+  .header__profile {
+    padding: 0 10px;
+    font-size: 13px;
+  }
+}

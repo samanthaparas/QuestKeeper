@@ -9,6 +9,14 @@ import { createCharacterSheet } from "../../utils/characterSheet";
 // --- Fakes for everything that would talk to the network ---
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
 
+// jsdom has no <dialog> pop-up support; open and close just flip the flag.
+HTMLDialogElement.prototype.showModal = function showModal() {
+  this.open = true;
+};
+HTMLDialogElement.prototype.close = function close() {
+  this.open = false;
+};
+
 vi.mock("../../utils/characterStore", () => ({
   getCharacter: vi.fn(),
   saveCharacter: vi.fn().mockResolvedValue({}),
@@ -147,7 +155,7 @@ it("lets the player retype race, class and background to match a paper sheet", a
     }),
   );
 
-  await user.click(await screen.findByRole("tab", { name: "Story" }));
+  await user.click(await screen.findByRole("button", { name: /Edit details/ }));
 
   const classInput = screen.getByLabelText("Class");
   await user.clear(classInput);
@@ -167,7 +175,7 @@ it("lets a homebrew class choose its own spellcasting ability", async () => {
 
   expect(screen.queryByRole("tab", { name: "Spells" })).not.toBeInTheDocument();
 
-  await user.click(await screen.findByRole("tab", { name: "Story" }));
+  await user.click(await screen.findByRole("button", { name: /Edit details/ }));
   await user.selectOptions(
     screen.getByLabelText("Spellcasting ability"),
     "intelligence",
@@ -238,8 +246,10 @@ it("shows the AC with a temporary bonus without changing the base AC", async () 
   await user.clear(bonus);
   await user.type(bonus, "2");
 
-  expect(screen.getByText(/\+2 = 23/)).toBeInTheDocument();
-  expect(screen.getByLabelText(/^AC/)).toHaveValue(21);
+  // The bonus box sits beside AC, and the label shows the total.
+  expect(screen.getByText(/= 23/)).toBeInTheDocument();
+  expect(screen.getByLabelText("Armor Class")).toHaveValue(21);
+  expect(bonus).toHaveClass("character-sheet__ac-bonus--on");
 });
 
 it("a Short Rest spends Hit Dice to heal and says what happened", async () => {
@@ -298,7 +308,7 @@ it("locks granted spells and lets the player lock or unlock any spell", async ()
   expect(screen.getByText("Light").closest("li")).toHaveTextContent("🔒 Locked");
 
   await user.click(within(screen.getByText("Thaumaturgy").closest("li")).getByRole("button", { name: "Unlock" }));
-  expect(within(screen.getByText("Thaumaturgy").closest("li")).getByRole("button", { name: "Edit" })).toBeInTheDocument();
+  expect(within(screen.getByText("Thaumaturgy").closest("li")).getByRole("button", { name: /^Edit/ })).toBeInTheDocument();
   vi.restoreAllMocks();
 });
 
@@ -382,13 +392,26 @@ it("shows the proficiency bonus by the Skills title", async () => {
   expect(heading.parentElement).toHaveTextContent("Prof +2");
 });
 
-it("keeps Level and a length-limited Subclass in the Story tab", async () => {
+it("keeps Level and a length-limited Subclass in the Edit details pop-up", async () => {
   const user = userEvent.setup();
   renderSheet(makeSheet());
 
-  await user.click(await screen.findByRole("tab", { name: /Story/ }));
+  await user.click(await screen.findByRole("button", { name: /Edit details/ }));
   expect(screen.getByLabelText("Level")).toHaveValue(3);
   expect(screen.getByLabelText("Subclass")).toHaveAttribute("maxLength", "32");
+});
+
+it("edits details in a pop-up beside the name, not in the Story tab", async () => {
+  const user = userEvent.setup();
+  renderSheet(makeSheet());
+
+  await user.click(await screen.findByRole("tab", { name: "Story" }));
+  expect(screen.queryByText("Character Details")).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: /Edit details/ }));
+  expect(screen.getByRole("heading", { name: "Character details" })).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Done" }));
+  expect(screen.queryByRole("heading", { name: "Character details" })).not.toBeInTheDocument();
 });
 
 describe("click to roll", () => {

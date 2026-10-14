@@ -3,7 +3,9 @@ import { getInitials } from "../../utils/characterSheet";
 import { uploadPortrait, validatePortraitFile } from "../../utils/portraits";
 import "./PortraitUpload.css";
 
-function PortraitUpload({ userId, characterId, name, portraitUrl, onUpload }) {
+// size="large": a big rounded square (the sheet's side panel); "tiny": a
+// small coin beside the character's name on smaller screens.
+function PortraitUpload({ userId, characterId, name, portraitUrl, onUpload, size = "small" }) {
   const fileInputRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
@@ -34,7 +36,7 @@ function PortraitUpload({ userId, characterId, name, portraitUrl, onUpload }) {
   }
 
   return (
-    <div className="portrait-upload">
+    <div className={`portrait-upload${size === "small" ? "" : ` portrait-upload--${size}`}`}>
       <button
         type="button"
         className="portrait-upload__frame"

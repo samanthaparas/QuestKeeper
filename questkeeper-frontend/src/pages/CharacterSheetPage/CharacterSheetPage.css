@@ -1648,8 +1648,15 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
 
 /* Skills mode: the name and switch stay, the stat boxes step aside for the
    skills list shown right underneath. */
-.character-sheet__vitals--skills > :not(.character-sheet__identity) {
+.character-sheet__vitals--skills > :not(.character-sheet__identity):not(.character-sheet__ability-extras) {
   display: none;
+}
+
+/* On tablets the Stats | Skills pill lives on the controls line, so that
+   line stays put while the skills are showing. */
+.character-sheet__ability-extras .character-sheet__panel-switch {
+  order: -1;
+  margin-right: auto;
 }
 
 /* ---------- Click to roll ---------- */
@@ -1743,4 +1750,227 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
 .character-sheet__table-link a {
   color: var(--qk-terracotta);
   font-weight: 700;
+}
+
+/* ---------- Quick controls (Inspiration, Gold, Level Up, rests) ---------- */
+/* Laptops: in the top card, on the Temp AC / save bonus line, pushed right. */
+.character-sheet__ability-extras .character-sheet__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.character-sheet__ability-extras .qk-button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+/* The roll tip now lives inside "What do these boxes mean?". */
+.character-sheet__glossary-tip {
+  margin: 10px 0 0;
+  color: var(--qk-text-muted);
+  line-height: 1.4;
+}
+
+/* Wide screens: three columns. Skills | the sheet | portrait and controls.
+   The sheet gets a little wider so the middle doesn't lose space. */
+@media (min-width: 1300px) {
+  .character-sheet__content {
+    max-width: 1440px;
+  }
+
+  /* A narrower Skills rail: tighter columns so "Sleight of Hand" still fits. */
+  .character-sheet__skills .character-sheet__skill-row {
+    gap: 6px;
+    padding: 1px 6px;
+  }
+
+  .character-sheet__skill-ability {
+    width: 26px;
+  }
+
+  .character-sheet__shell {
+    grid-template-columns: 230px minmax(0, 1fr) 220px;
+    gap: 20px;
+  }
+}
+
+@media (min-width: 1500px) and (min-height: 800px) {
+  .character-sheet__shell {
+    grid-template-columns: 250px minmax(0, 1fr) 240px;
+  }
+}
+
+.character-sheet__side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+/* Controls stack: Inspiration and Gold side by side, then full-width buttons. */
+.character-sheet__side .character-sheet__actions {
+  display: grid;
+  gap: 8px;
+}
+
+.character-sheet__side .character-sheet__keepsakes {
+  display: grid;
+  gap: 8px;
+  margin-right: 0;
+}
+
+.character-sheet__side .character-sheet__inspiration,
+.character-sheet__side .character-sheet__gold {
+  justify-content: space-between;
+  min-height: 38px;
+}
+
+.character-sheet__side .character-sheet__vital-label {
+  font-size: 12px;
+}
+
+.character-sheet__side .character-sheet__gold .character-sheet__vital-input {
+  width: 90px;
+}
+
+.character-sheet__side .qk-button {
+  width: 100%;
+  min-height: 38px;
+  font-size: 14px;
+}
+
+.character-sheet__side .character-sheet__table-link {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Pencil (edit) and trash can (remove) on attack, item and spell rows. */
+.character-sheet__icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text-muted);
+  cursor: pointer;
+}
+
+.character-sheet__icon-button:hover {
+  border-color: var(--qk-terracotta);
+  color: var(--qk-terracotta);
+}
+
+.character-sheet__icon-button--remove:hover {
+  border-color: var(--qk-danger);
+  color: var(--qk-danger);
+}
+
+.character-sheet__icon-button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* "✏️ Edit details" at the end of the line under the character's name. */
+.character-sheet__edit-details {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qk-terracotta);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.character-sheet__edit-details:hover {
+  text-decoration: underline;
+}
+
+.character-sheet__edit-details:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Top card: AC bonus box, All saves tile, small portrait ---------- */
+/* AC [21] + [0]: the second box is the temporary bonus. */
+.character-sheet__ac-plus {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+}
+
+.character-sheet__vital-input.character-sheet__ac-bonus {
+  width: 34px;
+  font-size: 13px;
+  color: var(--qk-text-muted);
+}
+
+.character-sheet__vital-input.character-sheet__ac-bonus--on {
+  border-color: var(--qk-brass);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+  font-weight: 800;
+}
+
+/* All saves | STR DEX CON INT WIS CHA on one line. */
+.character-sheet__ability-row {
+  flex: 1 1 100%;
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+.character-sheet__ability-row .character-sheet__abilities {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.character-sheet__all-saves {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  text-align: center;
+}
+
+.character-sheet__all-saves .character-sheet__vital-input {
+  width: 44px;
+}
+
+/* The small portrait sits before the name. */
+.character-sheet__identity .portrait-upload--tiny {
+  order: -1;
+  flex: 0 0 auto;
+}
+
+/* Phones: All saves gets its own short row above the ability grid. */
+@media (max-width: 600px) {
+  .character-sheet__ability-row {
+    flex-direction: column;
+  }
+
+  .character-sheet__all-saves {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 8px;
+  }
 }
