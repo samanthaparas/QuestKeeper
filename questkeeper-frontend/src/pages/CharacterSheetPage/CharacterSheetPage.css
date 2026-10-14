@@ -1974,3 +1974,43 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
     gap: 8px;
   }
 }
+
+/* Inventory: round "P" (proficient) and ★ (attuned) toggles, the same size
+   as the pencil and trash buttons. Filled when on. */
+.character-sheet__icon-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--qk-border);
+  border-radius: 50%;
+  background-color: var(--qk-surface);
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.character-sheet__icon-toggle--star {
+  font-size: 18px;
+}
+
+.character-sheet__icon-toggle:hover {
+  border-color: var(--qk-terracotta);
+  color: var(--qk-terracotta);
+}
+
+.character-sheet__icon-toggle--on,
+.character-sheet__icon-toggle--on:hover {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+.character-sheet__icon-toggle:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
