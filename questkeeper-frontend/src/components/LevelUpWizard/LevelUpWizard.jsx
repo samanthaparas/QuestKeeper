@@ -15,6 +15,7 @@ import {
   canIncreaseAbility,
   formatModifier,
   getProficiencyBonus,
+  getMaxSpellLevel,
 } from "../../utils/characterSheet";
 
 import {
@@ -83,7 +84,8 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
     (asiMode === "asi-two" && asiAbilities.length === 2) ||
     (asiMode === "feat" && Boolean(featDetails));
 
-  const maxSpellLevel = Math.min(9, Math.ceil(targetLevel / 2));
+  // Follows the class's own slots, so half casters and Warlocks only see spells they can cast.
+  const maxSpellLevel = getMaxSpellLevel(sheet.class, targetLevel);
   const knownSpellIndexes = new Set([
     ...(sheet.spellcasting?.cantripsKnown ?? []).map((s) => s.index),
     ...(sheet.spellcasting?.spellsKnown ?? []).map((s) => s.index),
