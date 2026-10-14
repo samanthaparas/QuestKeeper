@@ -1,0 +1,183 @@
+/* Handouts: the DM's prepared letters and maps, revealed to the table. */
+.table-handouts {
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.table-handouts__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.table-handouts__title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 24px;
+}
+
+.table-handouts__hint,
+.table-handouts__empty {
+  margin: 0;
+  max-width: var(--qk-reading-width);
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.table-handouts__error {
+  margin: 0;
+  color: var(--qk-danger);
+  font-weight: 700;
+}
+
+.table-handouts__list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A handout card looks like a bit of parchment. Hidden ones are dashed. */
+.table-handouts__card {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--qk-brass);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-brass-soft);
+}
+
+.table-handouts__card--hidden {
+  border-style: dashed;
+  border-color: var(--qk-border);
+  background-color: var(--qk-background);
+}
+
+.table-handouts__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  cursor: pointer;
+}
+
+.table-handouts__name {
+  font-family: var(--qk-font-display);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.table-handouts__new {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.table-handouts__status {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.table-handouts__status--shown {
+  color: var(--qk-moss);
+}
+
+.table-handouts__content {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.table-handouts__image-link {
+  justify-self: start;
+}
+
+.table-handouts__image {
+  display: block;
+  max-width: min(100%, 520px);
+  max-height: 420px;
+  border-radius: var(--qk-radius-small);
+  border: 1px solid var(--qk-border);
+}
+
+.table-handouts__image--loading {
+  width: 220px;
+  height: 140px;
+  background-color: var(--qk-surface-muted);
+}
+
+.table-handouts__body {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.table-handouts__actions,
+.table-handouts__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.table-handouts__actions .qk-button,
+.table-handouts__buttons .qk-button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.table-handouts__form,
+.table-handouts__choose {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-background);
+}
+
+.table-handouts__choose legend {
+  padding: 0 4px;
+  font-weight: 700;
+}
+
+.table-handouts__label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.table-handouts__input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: #fff;
+  color: var(--qk-text);
+  font: inherit;
+}
+
+.table-handouts__textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.table-handouts__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

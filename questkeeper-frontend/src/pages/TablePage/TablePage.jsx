@@ -54,6 +54,7 @@ import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEdi
 import PartyStrip from "../../components/PartyStrip/PartyStrip";
 import DmStoryTab from "../../components/DmStoryTab/DmStoryTab";
 import TableJournal from "../../components/TableJournal/TableJournal";
+import TableHandouts from "../../components/TableHandouts/TableHandouts";
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
@@ -1248,6 +1249,19 @@ function TablePage() {
         )}
 
         {isDm && dmTab === "story" && <DmStoryTab characters={characters} />}
+
+        {/* Handouts: made and revealed on the DM's Story tab; players see
+            the ones revealed to them on their page. */}
+        {onTab("story") && (
+          <TableHandouts
+            tableId={table.id}
+            isDm={isDm}
+            players={players.map((player) => ({ userId: player.user_id, name: player.name }))}
+            onSharedWithEveryone={(title) =>
+              run(() => dmLog(table.id, `📜 The DM shared a handout: ${title}`))
+            }
+          />
+        )}
 
         {/* The shared journal: the DM's Story tab, and every player's page. */}
         {onTab("story") && (

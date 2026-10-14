@@ -37,6 +37,18 @@ vi.mock("../../context/useAuth", () => ({
 
 vi.mock("../../hooks/useTable", () => ({ useTable: vi.fn() }));
 
+// Handouts have their own tests; here they just need to load quietly.
+vi.mock("../../utils/handoutStore", () => ({
+  listHandouts: vi.fn().mockResolvedValue([]),
+  createHandout: vi.fn(),
+  updateHandout: vi.fn(),
+  setHandoutAudience: vi.fn(),
+  deleteHandout: vi.fn(),
+  getHandoutImageUrl: vi.fn(),
+  validateHandoutImage: vi.fn(() => null),
+  subscribeToHandouts: vi.fn(() => () => {}),
+}));
+
 // The journal has its own tests; here it just needs to load quietly.
 vi.mock("../../utils/journalStore", () => ({
   listJournal: vi.fn().mockResolvedValue([]),
