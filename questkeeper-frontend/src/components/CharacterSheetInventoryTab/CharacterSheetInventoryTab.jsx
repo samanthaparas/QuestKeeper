@@ -11,6 +11,9 @@ function CharacterSheetInventoryTab({
   onEquipmentRemove,
   onEquipmentAttuneToggle,
   onEquipmentProficientToggle,
+  // Armor and shields can be equipped; their AC then counts on the sheet.
+  isArmor = () => false,
+  onEquipToggle = () => {},
 }) {
   const equipmentLookup = useSrdEquipmentLookup();
   const detailView = useSrdDetailView();
@@ -71,6 +74,25 @@ function CharacterSheetInventoryTab({
         onNameClick={openItemDetails}
         extraRowContent={(item) => (
           <>
+            {/* 🛡 Wearing it: equipped armor and shields set the AC. */}
+            {isArmor(item) && (
+              <button
+                type="button"
+                className={`character-sheet__icon-toggle${
+                  item.equipped ? " character-sheet__icon-toggle--on" : ""
+                }`}
+                aria-pressed={Boolean(item.equipped)}
+                aria-label={`Wearing ${item.name}`}
+                title={
+                  item.equipped
+                    ? `Wearing ${item.name}. Your AC counts it.`
+                    : `Put on ${item.name} so your AC counts it`
+                }
+                onClick={() => onEquipToggle(item.index, item.equipped)}
+              >
+                🛡
+              </button>
+            )}
             {/* "P" like the Skills list's proficiency dots; ★ for attunement.
                 Hover (or a screen reader) says which item and what it does. */}
             <button

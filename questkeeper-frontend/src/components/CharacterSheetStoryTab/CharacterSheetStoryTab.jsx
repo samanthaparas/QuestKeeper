@@ -75,6 +75,9 @@ function CharacterSheetStoryTab({
 
         {isTrackingCreature ? (
           <>
+            <p className="character-sheet__empty-text">
+              Its HP and attacks are also on the Actions tab, ready for a fight.
+            </p>
             <div className="character-sheet__hero-row">
               <div className="character-sheet__stat-box">
                 <span className="character-sheet__stat-label">Name</span>

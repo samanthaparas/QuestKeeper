@@ -14,6 +14,7 @@ import {
   describeSpellLock,
 } from "../../utils/characterSheet";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
+import { spellsMissingComponents } from "../../utils/spellComponents";
 
 function CharacterSheetSpellsTab({
   spellcasting,
@@ -31,6 +32,8 @@ function CharacterSheetSpellsTab({
   // When the class's own spellcasting hasn't started yet (a level 1 Ranger):
   // { className, level }. Null otherwise.
   spellsStartAt = null,
+  // Fills in V, S, M from the SRD for spells that have none.
+  onFillComponents = null,
 }) {
   const [allSpells, setAllSpells] = useState([]);
   const detailView = useSrdDetailView();
@@ -55,6 +58,21 @@ function CharacterSheetSpellsTab({
         components: (details.components ?? []).join(", "),
       }))
       .catch(() => null);
+  }
+
+  // Spells added without components (older characters' starting spells).
+  const findSrdIndex = (name) =>
+    allSpells.find((spell) => spell.name.toLowerCase() === String(name).trim().toLowerCase())?.index ?? null;
+  const missingComponents = spellsMissingComponents(spellcasting, findSrdIndex).length;
+  const [isFilling, setIsFilling] = useState(false);
+
+  async function fillComponents() {
+    setIsFilling(true);
+    try {
+      await onFillComponents?.(findSrdIndex);
+    } finally {
+      setIsFilling(false);
+    }
   }
 
   function openSpellDetails(spell) {
@@ -189,6 +207,18 @@ function CharacterSheetSpellsTab({
           </div>
         )}
       </section>
+
+      {/* Older starting spells were saved without V, S, M. One tap fills
+          them from the SRD; components someone typed are never changed. */}
+      {onFillComponents && missingComponents > 0 && (
+        <p className="character-sheet__fill-components">
+          {missingComponents === 1 ? "1 spell is" : `${missingComponents} spells are`} missing
+          {" "}components (V, S, M).{" "}
+          <button type="button" onClick={fillComponents} disabled={isFilling}>
+            {isFilling ? "Filling in…" : "Fill in from the SRD"}
+          </button>
+        </p>
+      )}
 
       <EditableItemList
         title="Spells"

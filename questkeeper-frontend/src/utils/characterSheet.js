@@ -233,7 +233,7 @@ export function buildStartingSpellcasting(
     name: spell.name,
     level: spell.level,
     notes: "",
-    components: "",
+    components: Array.isArray(spell.components) ? spell.components.join(", ") : (spell.components ?? ""),
   });
 
   return applySpellSlotProgression(
@@ -262,7 +262,7 @@ export function addRacialCantrip(spellcasting, cantrip, grantedBy = "") {
     name: cantrip.name,
     level: 0,
     notes: "",
-    components: "",
+    components: cantrip.components ?? "",
     locked: true,
     grantedBy,
   };
@@ -826,7 +826,7 @@ function addSpellToSpellcasting(spellcasting, characterClass, spellChoice) {
     name: spellChoice.spellName,
     level: spellChoice.spellLevel,
     notes: "",
-    components: "",
+    components: spellChoice.components ?? "",
   };
 
   if (spellChoice.spellLevel === 0) {
@@ -1056,6 +1056,8 @@ export function createCompanionCreature() {
     speed: 30,
     hitPoints: { current: 0, max: 0 },
     notes: "",
+    // [{ id, name, toHit, damage, damageType, notes }], rolled on Actions.
+    attacks: [],
   };
 }
 

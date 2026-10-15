@@ -2120,3 +2120,102 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   background-color: var(--qk-brass-soft);
   line-height: 1.5;
 }
+
+/* Spells tab: "3 spells are missing components · Fill in from the SRD". */
+.character-sheet__fill-components {
+  margin: 0 0 12px;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.character-sheet__fill-components button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qk-terracotta);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.character-sheet__fill-components button:disabled {
+  color: var(--qk-text-muted);
+  cursor: wait;
+}
+
+/* AC tile: "auto" when worked out from armor, "↺ auto" to switch back. */
+.character-sheet__ac-mode {
+  color: var(--qk-moss);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: lowercase;
+}
+
+.character-sheet__ac-mode--button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qk-terracotta);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.character-sheet__ac-mode--button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Locked stats ---------- */
+/* "🔒 Edit stats" sits at the right end of the Conditions line. */
+.character-sheet__conditions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.character-sheet__stats-lock {
+  margin-left: auto;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.character-sheet__stats-lock--open {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-text);
+}
+
+.character-sheet__stats-lock:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* Locked: the numbers read as plain values, not boxes to type in. Current
+   HP, temp HP and the temporary AC box keep their boxes. */
+.character-sheet__vitals--locked input[readonly] {
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+  cursor: default;
+  -moz-appearance: textfield;
+}
+
+.character-sheet__vitals--locked input[readonly]::-webkit-inner-spin-button,
+.character-sheet__vitals--locked input[readonly]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.character-sheet__vitals--locked .character-sheet__save-dot:disabled {
+  cursor: default;
+}

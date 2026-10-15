@@ -1,0 +1,78 @@
+/* The companion's combat card on the Actions tab. */
+.companion-card {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--qk-border);
+  border-left: 4px solid var(--qk-moss);
+  border-radius: 0 var(--qk-radius-card) var(--qk-radius-card) 0;
+  background-color: var(--qk-surface);
+}
+
+.companion-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.companion-card__name {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 20px;
+}
+
+.companion-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.companion-card__stat {
+  display: grid;
+  justify-items: center;
+  min-width: 64px;
+  padding: 4px 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-background);
+}
+
+.companion-card__stat--hp {
+  border-color: var(--qk-terracotta-soft);
+}
+
+.companion-card__label {
+  color: var(--qk-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.companion-card__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.companion-card__input {
+  width: 52px;
+  min-height: 28px;
+  padding: 0 4px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: #fff;
+  color: var(--qk-text);
+  font: inherit;
+  text-align: center;
+}
+
+.companion-card__input:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 1px;
+}
