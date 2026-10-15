@@ -70,11 +70,11 @@ describe("CharacterSheetTabs", () => {
     const { rerender } = render(
       <CharacterSheetTabs activeTab="actions" onSelect={() => {}} hasSpellcasting={false} />,
     );
-    expect(screen.queryByRole("tab", { name: "Journal" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Journal & Handouts" })).not.toBeInTheDocument();
 
     rerender(
       <CharacterSheetTabs activeTab="actions" onSelect={() => {}} hasSpellcasting={false} hasTable />,
     );
-    expect(screen.getByRole("tab", { name: "Journal" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Journal & Handouts" })).toBeInTheDocument();
   });
 });

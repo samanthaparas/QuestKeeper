@@ -2219,3 +2219,9 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
 .character-sheet__vitals--locked .character-sheet__save-dot:disabled {
   cursor: default;
 }
+
+/* Journal & Handouts tab: the table's handouts, then the journal. */
+.character-sheet__journal-stack {
+  display: grid;
+  gap: 16px;
+}
