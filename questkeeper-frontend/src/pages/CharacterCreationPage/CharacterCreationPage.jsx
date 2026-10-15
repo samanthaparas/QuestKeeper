@@ -1,3 +1,5 @@
+import { equipStartingArmor } from "../../utils/armorClass";
+import { fillMissingComponents } from "../../utils/spellComponents";
 import {
   backgroundFeatureFrom,
   buildLanguagesText,
@@ -455,13 +457,18 @@ function CharacterCreationPage() {
       spellChoices?.spells ?? [],
     );
 
-    const finalSpellcasting = subraceCantrip
+    // Starting spells get their V, S, M from the SRD (if the lookup fails
+    // they start blank, and the Spells tab can fill them in later).
+    const withRacialCantrip = subraceCantrip
       ? addRacialCantrip(
           spellcasting,
           subraceCantrip,
           `your race (${subrace?.name ?? race?.name ?? "race"})`,
         )
       : spellcasting;
+    const finalSpellcasting = await fillMissingComponents(withRacialCantrip).catch(
+      () => withRacialCantrip,
+    );
 
     // New characters arrive with their race's traits and their level 1 class
     // features already written down. If the lookup fails they just start
@@ -551,7 +558,12 @@ function CharacterCreationPage() {
       abilityScores,
       savingThrows,
       skills,
-      equipment,
+      // Starting armor and shield are worn, and AC follows them (auto).
+      equipment: equipStartingArmor(equipment, gear, {
+        scores: abilityScores,
+        classId: characterClass?.id,
+      }),
+      acMode: "auto",
       spellcasting: finalSpellcasting,
       combat: {
         armorClass: startingArmorClass,

@@ -134,6 +134,8 @@ it("toggles saving throw proficiency with the dot and updates the save bonus", a
   const user = userEvent.setup();
   renderSheet(makeSheet());
 
+  // Stats are locked until "Edit stats" is tapped.
+  await user.click(await screen.findByRole("button", { name: /Edit stats/ }));
   const proficiency = await screen.findByRole("button", { name: "Strength save proficiency" });
   const strengthSave = screen.getByRole("button", { name: /^Roll Strength save/ });
   expect(proficiency).toHaveAttribute("aria-pressed", "false");
@@ -190,6 +192,7 @@ it("adds a bonus to all saves, like a Paladin's Aura of Protection", async () =>
 
   const saves = await screen.findAllByRole("button", { name: /^Roll \w+ save/ });
   expect(saves[0]).toHaveTextContent("Save +0");
+  await user.click(screen.getByRole("button", { name: /Edit stats/ }));
 
   const bonus = screen.getByLabelText("Bonus to all saves");
   await user.clear(bonus);
@@ -399,6 +402,33 @@ it("keeps Level and a length-limited Subclass in the Edit details pop-up", async
   await user.click(await screen.findByRole("button", { name: /Edit details/ }));
   expect(screen.getByLabelText("Level")).toHaveValue(3);
   expect(screen.getByLabelText("Subclass")).toHaveAttribute("maxLength", "32");
+});
+
+it("locks stats until Edit stats is tapped, but keeps current HP editable", async () => {
+  const user = userEvent.setup();
+  const sheet = makeSheet();
+  sheet.combat.armorClass = 15;
+  sheet.combat.hitPoints = { current: 11, max: 11, temporary: 0 };
+  renderSheet(sheet);
+
+  const armorClass = await screen.findByLabelText("Armor Class");
+  expect(armorClass).toHaveAttribute("readonly");
+  await user.type(armorClass, "9");
+  expect(armorClass).toHaveValue(15);
+  expect(screen.getByLabelText("Max HP")).toHaveAttribute("readonly");
+  expect(screen.getByRole("button", { name: "Strength save proficiency" })).toBeDisabled();
+
+  // Current HP changes all the time in play, so it's never locked.
+  const current = screen.getByLabelText("Current HP");
+  expect(current).not.toHaveAttribute("readonly");
+  await user.clear(current);
+  await user.type(current, "9");
+  expect(current).toHaveValue(9);
+
+  await user.click(screen.getByRole("button", { name: /Edit stats/ }));
+  expect(armorClass).not.toHaveAttribute("readonly");
+  await user.click(screen.getByRole("button", { name: /Done editing/ }));
+  expect(armorClass).toHaveAttribute("readonly");
 });
 
 it("edits details in a pop-up beside the name, not in the Story tab", async () => {

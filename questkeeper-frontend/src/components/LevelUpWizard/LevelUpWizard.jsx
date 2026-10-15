@@ -251,6 +251,11 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
       spellIndex: spell.index,
       spellName: spell.name,
       spellLevel: spell.level,
+      // V, S, M from the spell's details (already loaded for the preview).
+      components:
+        selectedSpellDetails?.index === spell.index
+          ? (selectedSpellDetails.components ?? []).join(", ")
+          : "",
     });
   }
 

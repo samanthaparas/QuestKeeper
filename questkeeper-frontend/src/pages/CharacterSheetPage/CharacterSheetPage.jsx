@@ -56,7 +56,11 @@ import LevelUpWizard from "../../components/LevelUpWizard/LevelUpWizard";
 import Button from "../../components/Button/Button";
 import { getFeatureSubclassId } from "../../utils/featureSources";
 import { getSetupTasks } from "../../utils/setupTasks";
-import { loadFeatureEntries } from "../../utils/srdDetails";
+import { fillMissingComponents } from "../../utils/spellComponents";
+import { isArmorDetails, withAutoArmorClass } from "../../utils/armorClass";
+import { getEquipment, getEquipmentDetails } from "../../utils/api";
+import { loadFeatureEntries, normalizeItemName } from "../../utils/srdDetails";
+import CompanionCard from "../../components/CompanionCard/CompanionCard";
 import CharacterDetailsDialog from "../../components/CharacterDetailsDialog/CharacterDetailsDialog";
 import PortraitUpload from "../../components/PortraitUpload/PortraitUpload";
 import TableJournal from "../../components/TableJournal/TableJournal";
@@ -136,6 +140,10 @@ function CharacterSheetPage() {
   const [levelUpSummary, setLevelUpSummary] = useState(null);
   const [activeTab, setActiveTab] = useState("actions");
   const [isEditingDetails, setIsEditingDetails] = useState(false);
+  // Stats are locked until the player taps "Edit stats", so a stray tap can't
+  // change AC or a score by accident. Current HP, temp HP, the temporary AC
+  // box, conditions, Inspiration and Gold always stay editable.
+  const [statsLocked, setStatsLocked] = useState(true);
   // Every SRD feature for this race and class: shared with the Features tab,
   // and used to spot choices still to make (Character setup).
   const [featureEntries, setFeatureEntries] = useState({ key: null, entries: [] });
@@ -167,6 +175,40 @@ function CharacterSheetPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entriesKey]);
   const currentEntries = featureEntries.key === entriesKey ? featureEntries.entries : [];
+
+  // SRD details for inventory items, by name, so armor and shields can be
+  // equipped and the AC worked out (null: not SRD gear).
+  const [gearDetails, setGearDetails] = useState({});
+  const gearNames = (sheet?.equipment ?? []).map((item) => normalizeItemName(item.name)).join("|");
+  useEffect(() => {
+    const items = (sheet?.equipment ?? []).filter(
+      (item) => !(normalizeItemName(item.name) in gearDetails),
+    );
+    if (items.length === 0) return undefined;
+    let ignore = false;
+    getEquipment("2014")
+      .catch(() => [])
+      .then((list) =>
+        Promise.all(
+          items.map(async (item) => {
+            const match = list.find(
+              (entry) => normalizeItemName(entry.name) === normalizeItemName(item.name),
+            );
+            const index = match?.index ?? item.index;
+            const details = index ? await getEquipmentDetails(index).catch(() => null) : null;
+            return [normalizeItemName(item.name), details];
+          }),
+        ),
+      )
+      .then((pairs) => !ignore && setGearDetails((known) => ({ ...known, ...Object.fromEntries(pairs) })));
+    return () => {
+      ignore = true;
+    };
+    // Look up only when the inventory's names change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gearNames]);
+  const gearDetailsFor = (item) => gearDetails[normalizeItemName(item.name)];
+
   const setupTasks = getSetupTasks(sheet, currentEntries);
 
   const saveTimeoutRef = useRef(null);
@@ -265,7 +307,9 @@ function CharacterSheetPage() {
       .catch((err) => console.error("Failed to save character:", err));
   }
 
-  function persistSheet(updated) {
+  function persistSheet(next) {
+    // On auto AC, worn armor and Dexterity set the AC (see armorClass.js).
+    const updated = withAutoArmorClass(next, gearDetailsFor);
     setSheet(updated);
     pendingUpdateRef.current = updated;
 
@@ -339,12 +383,27 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, level: numeric });
   }
 
+  // Typing an AC means "I'll set it myself" (auto stops until switched back).
   function handleArmorClassChange(value) {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) return;
     persistSheet({
       ...sheet,
+      acMode: sheet.acMode ? "manual" : sheet.acMode,
       combat: { ...sheet.combat, armorClass: numeric },
+    });
+  }
+
+  function handleArmorClassAuto() {
+    persistSheet({ ...sheet, acMode: "auto" });
+  }
+
+  // Putting armor on (or taking it off). The first time, AC goes on auto.
+  function handleEquipToggle(id, currentlyEquipped) {
+    persistSheet({
+      ...sheet,
+      acMode: sheet.acMode ?? "auto",
+      equipment: updateEquipmentItem(sheet.equipment, id, { equipped: !currentlyEquipped }),
     });
   }
 
@@ -508,6 +567,40 @@ function CharacterSheetPage() {
         hitPoints: { ...sheet.companionCreature.hitPoints, [field]: numeric },
       },
     });
+  }
+
+  // The companion's attacks (Bite, Talons), rolled from the Actions tab.
+  function setCompanionAttacks(change) {
+    const creature = sheet.companionCreature ?? createCompanionCreature();
+    persistSheet({
+      ...sheet,
+      companionCreature: { ...creature, attacks: change(creature.attacks ?? []) },
+    });
+  }
+
+  const cleanCompanionAttack = (values) => ({
+    name: values.name.trim(),
+    toHit: Number(values.toHit) || 0,
+    damage: (values.damage ?? "").trim(),
+    damageType: (values.damageType ?? "").trim(),
+    notes: (values.notes ?? "").trim(),
+  });
+
+  function handleCompanionAttackAdd(values) {
+    setCompanionAttacks((attacks) => [
+      ...attacks,
+      { id: crypto.randomUUID(), ...cleanCompanionAttack(values) },
+    ]);
+  }
+
+  function handleCompanionAttackUpdate(id, values) {
+    setCompanionAttacks((attacks) =>
+      attacks.map((attack) => (attack.id === id ? { ...attack, ...cleanCompanionAttack(values) } : attack)),
+    );
+  }
+
+  function handleCompanionAttackRemove(id) {
+    setCompanionAttacks((attacks) => attacks.filter((attack) => attack.id !== id));
   }
 
   function handleCompanionCreatureNotesChange(value) {
@@ -775,6 +868,12 @@ function CharacterSheetPage() {
       },
     );
     persistSheet({ ...sheet, spellcasting });
+  }
+
+  // "Fill in from the SRD": only spells with no components get them.
+  async function handleFillComponents(findSrdIndex) {
+    const spellcasting = await fillMissingComponents(sheet.spellcasting, findSrdIndex);
+    if (spellcasting !== sheet.spellcasting) persistSheet({ ...sheet, spellcasting });
   }
 
   function handleSpellRemove(id) {
@@ -1161,6 +1260,8 @@ function CharacterSheetPage() {
               <div className="character-sheet__body">
                 <section
                   className={`character-sheet__vitals${
+                    statsLocked ? " character-sheet__vitals--locked" : ""
+                  }${
                     isCompact && compactPanel === "skills"
                       ? " character-sheet__vitals--skills"
                       : ""
@@ -1239,6 +1340,7 @@ function CharacterSheetPage() {
                         className="character-sheet__vital-input character-sheet__vital-input--hp"
                         value={combat.hitPoints.max}
                         aria-label="Max HP"
+                        readOnly={statsLocked}
                         onChange={(e) => handleMaxHpChange(e.target.value)}
                         min={0}
                       />
@@ -1269,6 +1371,25 @@ function CharacterSheetPage() {
                       title="Armor Class: an attack has to roll this number or higher to hit you. The small box is a temporary bonus."
                     >
                       AC
+                      {sheet.acMode === "auto" ? (
+                        <span
+                          className="character-sheet__ac-mode"
+                          title="Worked out from your equipped armor and Dexterity. Type a number to set it yourself."
+                        >
+                          {" "}auto
+                        </span>
+                      ) : (
+                        (sheet.equipment ?? []).some((item) => isArmorDetails(gearDetailsFor(item))) && (
+                          <button
+                            type="button"
+                            className="character-sheet__ac-mode character-sheet__ac-mode--button"
+                            title="Work AC out from your equipped armor again"
+                            onClick={handleArmorClassAuto}
+                          >
+                            {" "}↺ auto
+                          </button>
+                        )
+                      )}
                       {(sheet.acBonus ?? 0) !== 0 && (
                         <span className="character-sheet__vital-total">
                           {" "}= {getEffectiveArmorClass(sheet)}
@@ -1281,6 +1402,7 @@ function CharacterSheetPage() {
                         className="character-sheet__vital-input"
                         value={combat.armorClass}
                         aria-label="Armor Class"
+                        readOnly={statsLocked}
                         onChange={(e) => handleArmorClassChange(e.target.value)}
                         min={0}
                       />
@@ -1311,6 +1433,7 @@ function CharacterSheetPage() {
                       type="number"
                       className="character-sheet__vital-input"
                       value={combat.initiative}
+                      readOnly={statsLocked}
                       onChange={(e) => handleInitiativeChange(e.target.value)}
                     />
                   </label>
@@ -1323,6 +1446,7 @@ function CharacterSheetPage() {
                         className="character-sheet__vital-input"
                         value={combat.speed}
                         aria-label="Speed"
+                        readOnly={statsLocked}
                         onChange={(e) => handleSpeedChange(e.target.value)}
                         min={0}
                       />
@@ -1340,6 +1464,7 @@ function CharacterSheetPage() {
                         className="character-sheet__vital-input"
                         value={combat.hitDice.total}
                         aria-label="Hit dice total"
+                        readOnly={statsLocked}
                         onChange={(e) =>
                           handleHitDiceChange("total", e.target.value)
                         }
@@ -1352,6 +1477,7 @@ function CharacterSheetPage() {
                         className="character-sheet__vital-input"
                         value={combat.hitDice.die ?? ""}
                         aria-label="Hit die size"
+                        readOnly={statsLocked}
                         onChange={(e) =>
                           handleHitDiceChange("die", e.target.value)
                         }
@@ -1372,6 +1498,7 @@ function CharacterSheetPage() {
                       className="character-sheet__vital-input"
                       value={sheet.saveBonus ?? 0}
                       aria-label="Bonus to all saves"
+                      readOnly={statsLocked}
                       onChange={(e) => handleSaveBonusChange(e.target.value)}
                     />
                   </label>
@@ -1400,6 +1527,7 @@ function CharacterSheetPage() {
                             className="character-sheet__ability-input"
                             value={score}
                             aria-label={`${ability} score`}
+                            readOnly={statsLocked}
                             onChange={(e) =>
                               handleAbilityScoreChange(ability, e.target.value)
                             }
@@ -1425,10 +1553,13 @@ function CharacterSheetPage() {
                               className="character-sheet__save-dot"
                               aria-pressed={Boolean(isSaveProficient)}
                               aria-label={`${ABILITY_LABELS[ability]} save proficiency`}
+                              disabled={statsLocked}
                               title={
-                                isSaveProficient
-                                  ? "Proficient in this saving throw - click to remove"
-                                  : "Not proficient - click to add"
+                                statsLocked
+                                  ? "Tap Edit stats to change save proficiency"
+                                  : isSaveProficient
+                                    ? "Proficient in this saving throw - click to remove"
+                                    : "Not proficient - click to add"
                               }
                               onClick={() => handleSaveToggle(ability)}
                             />
@@ -1457,6 +1588,22 @@ function CharacterSheetPage() {
                       conditions={sheet.conditions ?? []}
                       onChange={handleConditionsChange}
                     />
+                    {/* Unlock to change AC, scores and the rest on purpose. */}
+                    <button
+                      type="button"
+                      className={`character-sheet__stats-lock${
+                        statsLocked ? "" : " character-sheet__stats-lock--open"
+                      }`}
+                      aria-pressed={!statsLocked}
+                      title={
+                        statsLocked
+                          ? "Unlock to change Max HP, AC, Initiative, Speed, Hit Dice, ability scores and saves"
+                          : "Lock your stats again so a stray tap can't change them"
+                      }
+                      onClick={() => setStatsLocked((locked) => !locked)}
+                    >
+                      {statsLocked ? "🔒 Edit stats" : "🔓 Done editing"}
+                    </button>
                   </div>
 
                   {controlsPlace === "header" && (
@@ -1547,6 +1694,20 @@ function CharacterSheetPage() {
                     />
                   )}
 
+                  {/* A tracked companion fights alongside: its HP and attacks
+                      are here, its details on the Story tab. */}
+                  {activeTab === "actions" &&
+                    sheet.companionMode === "creature" &&
+                    sheet.companionCreature && (
+                      <CompanionCard
+                        companion={sheet.companionCreature}
+                        onHpChange={handleCompanionCreatureHpChange}
+                        onAttackAdd={handleCompanionAttackAdd}
+                        onAttackUpdate={handleCompanionAttackUpdate}
+                        onAttackRemove={handleCompanionAttackRemove}
+                      />
+                    )}
+
                   {activeTab === "spells" && hasSpellcasting && (
                     <CharacterSheetSpellsTab
                       spellcasting={sheet.spellcasting}
@@ -1562,6 +1723,7 @@ function CharacterSheetPage() {
                       onSpellRemove={handleSpellRemove}
                       onSpellLockToggle={handleSpellLockToggle}
                       spellsStartAt={getSpellsStartAt(sheet.class, sheet.level)}
+                      onFillComponents={handleFillComponents}
                     />
                   )}
 
@@ -1585,6 +1747,8 @@ function CharacterSheetPage() {
                       onEquipmentProficientToggle={
                         handleEquipmentProficientToggle
                       }
+                      isArmor={(item) => isArmorDetails(gearDetailsFor(item))}
+                      onEquipToggle={handleEquipToggle}
                     />
                   )}
 
