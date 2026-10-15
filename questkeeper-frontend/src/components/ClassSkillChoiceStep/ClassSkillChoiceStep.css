@@ -84,3 +84,33 @@
 .class-skill-choice-step__section {
   margin-bottom: 32px;
 }
+
+/* Languages: one dropdown per pick. */
+.class-skill-choice-step__subtitle {
+  margin: 8px 0 0;
+  font-family: var(--qk-font-display);
+  font-size: 20px;
+}
+
+.class-skill-choice-step__languages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.class-skill-choice-step__languages .class-skill-choice-step__description {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.class-skill-choice-step__language {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+}

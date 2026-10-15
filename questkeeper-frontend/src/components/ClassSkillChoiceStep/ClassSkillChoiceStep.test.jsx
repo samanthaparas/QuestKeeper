@@ -97,6 +97,7 @@ describe("ClassSkillChoiceStep", () => {
         ],
         [{ index: "history", name: "History" }],
         {},
+        {},
       );
     });
 
@@ -167,7 +168,32 @@ describe("ClassSkillChoiceStep", () => {
         [{ index: "history", name: "History" }],
         [],
         { "trait:skill-versatility": [{ index: "persuasion", name: "Persuasion" }] },
+        {},
       );
+    });
+  });
+
+  describe("language choices", () => {
+    it("offers languages they don't speak yet, and doesn't require them", async () => {
+      const onNext = vi.fn();
+      renderStep({
+        characterClass: { name: "Rogue", skillChoice: null },
+        languageChoices: [{ id: "race", from: "Half-Elf", choose: 1, options: ["Common", "Dwarvish", "Orc"] }],
+        knownLanguages: ["Common", "Elvish"],
+        onNext,
+      });
+
+      const select = screen.getByLabelText("Half-Elf language 1");
+      expect([...select.options].map((option) => option.textContent)).toEqual([
+        "Choose a language…",
+        "Dwarvish",
+        "Orc",
+      ]);
+      expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+
+      await userEvent.selectOptions(select, "Orc");
+      await userEvent.click(screen.getByRole("button", { name: "Next" }));
+      expect(onNext).toHaveBeenCalledWith([], [], {}, { race: ["Orc"] });
     });
   });
 });

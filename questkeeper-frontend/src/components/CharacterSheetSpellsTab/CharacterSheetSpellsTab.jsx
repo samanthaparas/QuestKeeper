@@ -28,6 +28,9 @@ function CharacterSheetSpellsTab({
   onSpellUpdate,
   onSpellRemove,
   onSpellLockToggle,
+  // When the class's own spellcasting hasn't started yet (a level 1 Ranger):
+  // { className, level }. Null otherwise.
+  spellsStartAt = null,
 }) {
   const [allSpells, setAllSpells] = useState([]);
   const detailView = useSrdDetailView();
@@ -72,6 +75,13 @@ function CharacterSheetSpellsTab({
       {spellcastingAbility && (
         <section className="character-sheet__section">
           <h2 className="character-sheet__section-title">Spellcasting</h2>
+          {spellsStartAt && (
+            <p className="character-sheet__spells-not-yet" role="note">
+              {spellsStartAt.className} spellcasting starts at level {spellsStartAt.level}, so
+              there are no spell slots or spells from your class yet. Anything you add
+              below is by hand (for house rules or other features).
+            </p>
+          )}
           <div className="character-sheet__hero-row">
             <div className="character-sheet__stat-box">
               <span className="character-sheet__stat-label">

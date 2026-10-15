@@ -50,10 +50,13 @@ import {
   removeSpell,
   getSpellSlots,
   setSpellSlot,
+  getSpellsStartAt,
 } from "../../utils/characterSheet";
 import LevelUpWizard from "../../components/LevelUpWizard/LevelUpWizard";
 import Button from "../../components/Button/Button";
 import { getFeatureSubclassId } from "../../utils/featureSources";
+import { getSetupTasks } from "../../utils/setupTasks";
+import { loadFeatureEntries } from "../../utils/srdDetails";
 import CharacterDetailsDialog from "../../components/CharacterDetailsDialog/CharacterDetailsDialog";
 import PortraitUpload from "../../components/PortraitUpload/PortraitUpload";
 import TableJournal from "../../components/TableJournal/TableJournal";
@@ -133,12 +136,38 @@ function CharacterSheetPage() {
   const [levelUpSummary, setLevelUpSummary] = useState(null);
   const [activeTab, setActiveTab] = useState("actions");
   const [isEditingDetails, setIsEditingDetails] = useState(false);
+  // Every SRD feature for this race and class: shared with the Features tab,
+  // and used to spot choices still to make (Character setup).
+  const [featureEntries, setFeatureEntries] = useState({ key: null, entries: [] });
   const [activeSlotLevels, setActiveSlotLevels] = useState(() => new Set());
   const [attackWith, setAttackWith] = useState(null);
   const tableCombat = useTableTurn(sheet?.id);
   // Click-to-roll: any bonus on the sheet rolls, and can be shared with the
   // character's table.
   const roller = useSheetRolls(sheet?.id, sheet?.name);
+
+  const entriesKey = sheet
+    ? [sheet.class?.id, getFeatureSubclassId(sheet.class), sheet.race?.id, sheet.race?.subrace?.id].join("|")
+    : null;
+  useEffect(() => {
+    if (!entriesKey || !sheet?.class?.id) return undefined;
+    let ignore = false;
+    loadFeatureEntries({
+      classId: sheet.class.id,
+      subclassId: getFeatureSubclassId(sheet.class),
+      raceId: sheet.race?.id,
+      subraceId: sheet.race?.subrace?.id,
+    })
+      .then((entries) => !ignore && setFeatureEntries({ key: entriesKey, entries }))
+      .catch(() => {});
+    return () => {
+      ignore = true;
+    };
+    // Reload only when the race, class or subclass changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entriesKey]);
+  const currentEntries = featureEntries.key === entriesKey ? featureEntries.entries : [];
+  const setupTasks = getSetupTasks(sheet, currentEntries);
 
   const saveTimeoutRef = useRef(null);
   const pendingUpdateRef = useRef(null);
@@ -652,9 +681,15 @@ function CharacterSheetPage() {
         name: feature.name,
         description: feature.description,
         source: feature.source ?? null,
+        choices: feature.choices ?? null,
       }),
     );
     persistSheet({ ...sheet, features: [...(sheet.features ?? []), ...added] });
+  }
+
+  // A pick for a feature's choice (Favored Enemy: Undead).
+  function handleFeatureChoose(id, choices) {
+    persistSheet({ ...sheet, features: updateFeat(sheet.features, id, { choices }) });
   }
 
   // Removing features that belong to another subclass (the player confirms
@@ -1159,6 +1194,20 @@ function CharacterSheetPage() {
                       >
                         ✏️ Edit details
                       </button>
+                      {/* Choices still to make, listed on the Features tab. */}
+                      {setupTasks.length > 0 && (
+                        <>
+                          {" "}
+                          <button
+                            type="button"
+                            className="character-sheet__setup-link"
+                            onClick={() => setActiveTab("features")}
+                          >
+                            ⚠ {setupTasks.length} setup{" "}
+                            {setupTasks.length === 1 ? "choice" : "choices"} left
+                          </button>
+                        </>
+                      )}
                     </p>
                   </div>
 
@@ -1512,6 +1561,7 @@ function CharacterSheetPage() {
                       onSpellUpdate={handleSpellUpdate}
                       onSpellRemove={handleSpellRemove}
                       onSpellLockToggle={handleSpellLockToggle}
+                      spellsStartAt={getSpellsStartAt(sheet.class, sheet.level)}
                     />
                   )}
 
@@ -1549,6 +1599,10 @@ function CharacterSheetPage() {
                       level={sheet.level}
                       onFeaturesAddMany={handleFeaturesAddMany}
                       onFeaturesRemoveMany={handleFeaturesRemoveMany}
+                      onFeatureChoose={handleFeatureChoose}
+                      featureEntries={currentEntries}
+                      setupTasks={setupTasks}
+                      background={sheet.background ?? null}
                       onFeatureAdd={handleFeatureAdd}
                       onFeatureUpdate={handleFeatureUpdate}
                       onFeatureRemove={handleFeatureRemove}
