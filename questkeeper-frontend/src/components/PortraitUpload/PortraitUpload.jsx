@@ -5,7 +5,18 @@ import "./PortraitUpload.css";
 
 // size="large": a big rounded square (the sheet's side panel); "tiny": a
 // small coin beside the character's name on smaller screens.
-function PortraitUpload({ userId, characterId, name, portraitUrl, onUpload, size = "small" }) {
+// `characterId` names the saved file, so a companion passes its own (e.g.
+// "<character id>-companion") to keep its picture separate from the
+// character's. `uploadLabel` is what screen readers hear on the button.
+function PortraitUpload({
+  userId,
+  characterId,
+  name,
+  portraitUrl,
+  onUpload,
+  size = "small",
+  uploadLabel,
+}) {
   const fileInputRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
@@ -42,7 +53,7 @@ function PortraitUpload({ userId, characterId, name, portraitUrl, onUpload, size
         className="portrait-upload__frame"
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
-        aria-label={portraitUrl ? "Change portrait" : "Upload portrait"}
+        aria-label={uploadLabel ?? (portraitUrl ? "Change portrait" : "Upload portrait")}
       >
         {portraitUrl ? (
           <img

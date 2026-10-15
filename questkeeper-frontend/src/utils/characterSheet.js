@@ -1055,10 +1055,43 @@ export function createCompanionCreature() {
     armorClass: 10,
     speed: 30,
     hitPoints: { current: 0, max: 0 },
+    abilityScores: createCompanionAbilityScores(),
     notes: "",
     // [{ id, name, toHit, damage, damageType, notes }], rolled on Actions.
     attacks: [],
   };
+}
+
+// The companion's notes as a bulleted list: [{ id, text }]. Companions saved
+// before the list existed have one block of text instead (`notes`, and for
+// freeform companions the sheet's `companion` text); each of its lines
+// becomes a bullet, with any "-", "*" or "•" at the start dropped.
+export function getCompanionNotes(creature, freeformText = "") {
+  if (Array.isArray(creature?.noteList)) return creature.noteList;
+
+  return [creature?.notes, freeformText]
+    .filter(Boolean)
+    .join("\n")
+    .split("\n")
+    .map((line) => line.replace(/^\s*[-*•]\s*/, "").trim())
+    .filter(Boolean)
+    .map((text, index) => ({ id: `note-${index}`, text }));
+}
+
+// A companion's saving throw bonus for one ability. Stat blocks list only
+// the saves that are better than the plain modifier ("Saving Throws Dex +5"),
+// so that's all a player types; every other save is just the modifier.
+export function getCompanionSave(creature, ability) {
+  const saved = creature?.savingThrows?.[ability];
+  if (typeof saved === "number") return saved;
+  return getAbilityModifier(createCompanionAbilityScores(creature?.abilityScores)[ability]);
+}
+
+// A companion's STR through CHA. Every score starts at 10 (a +0 modifier).
+// Companions made before scores existed have none saved, so this also fills
+// in 10 for any that are missing.
+export function createCompanionAbilityScores(saved = {}) {
+  return Object.fromEntries(ABILITY_SCORES.map((ability) => [ability, saved?.[ability] ?? 10]));
 }
 
 export function setResourceCurrent(resources, id, value) {
