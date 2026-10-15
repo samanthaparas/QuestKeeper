@@ -1,0 +1,165 @@
+/* The player's own character, at the top of their game page. */
+.player-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 14px 18px;
+  border: 1px solid var(--qk-border);
+  border-left: 5px solid var(--qk-moss);
+  border-radius: 0 var(--qk-radius-card) var(--qk-radius-card) 0;
+  background-color: var(--qk-surface);
+}
+
+.player-card--bloodied {
+  border-left-color: var(--qk-danger);
+}
+
+.player-card--down {
+  border-left-color: var(--qk-text-muted);
+  background-color: var(--qk-surface-muted);
+}
+
+.player-card__portrait {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  border: 2px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-terracotta-hover);
+  font-family: var(--qk-font-display);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.player-card__portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.player-card__who {
+  display: grid;
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.player-card__eyebrow {
+  margin: 0;
+  color: var(--qk-terracotta);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.player-card__name {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.player-card__summary,
+.player-card__empty {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.player-card__label {
+  color: var(--qk-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.player-card__hp {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 180px;
+  max-width: 260px;
+}
+
+.player-card__hp-text,
+.player-card__ac {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-card__hp-text strong {
+  color: var(--qk-danger);
+  font-size: 14px;
+}
+
+.player-card--down .player-card__hp-text strong {
+  color: var(--qk-text-muted);
+}
+
+.player-card__temp {
+  color: var(--qk-focus);
+  font-size: 13px;
+}
+
+.player-card__bar {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+}
+
+.player-card__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--qk-moss);
+  transition: width 400ms ease;
+}
+
+.player-card--bloodied .player-card__bar-fill {
+  background-color: var(--qk-danger);
+}
+
+.player-card__conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Same purple as the sheet's condition badges. */
+.player-card__condition {
+  padding: 2px 10px;
+  border: 1px solid #7a5a9a;
+  border-radius: 999px;
+  background-color: #ece3f3;
+  color: #3d2a52;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.player-card__open {
+  margin-left: auto;
+  text-decoration: none;
+}
+
+@media (max-width: 600px) {
+  .player-card__open {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-card__bar-fill {
+    transition: none;
+  }
+}
