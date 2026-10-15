@@ -19,6 +19,9 @@ import {
   buildLevelUpSummary,
   createResource,
   createCompanionCreature,
+  createCompanionAbilityScores,
+  getCompanionNotes,
+  getCompanionSave,
   setResourceCurrent,
   removeResource,
   updateResource,
@@ -276,6 +279,37 @@ describe("createResource", () => {
     expect(resource.current).toBe(1);
     expect(resource.resetOn).toBe("long");
     expect(resource.id).toBeTruthy();
+  });
+});
+
+describe("getCompanionSave", () => {
+  it("uses the typed save bonus, or else the ability modifier", () => {
+    const horse = { abilityScores: { dexterity: 12, strength: 18 }, savingThrows: { dexterity: 5 } };
+    expect(getCompanionSave(horse, "dexterity")).toBe(5);
+    expect(getCompanionSave(horse, "strength")).toBe(4);
+    expect(getCompanionSave({}, "wisdom")).toBe(0);
+  });
+});
+
+describe("getCompanionNotes", () => {
+  it("turns old notes and freeform companion text into bullets", () => {
+    const notes = getCompanionNotes({ notes: "- Wears barding\n\n• Flies 90 ft" }, "Loves apples");
+    expect(notes.map((note) => note.text)).toEqual(["Wears barding", "Flies 90 ft", "Loves apples"]);
+  });
+
+  it("uses the saved bullet list once there is one", () => {
+    const noteList = [{ id: "n1", text: "Knows Help" }];
+    expect(getCompanionNotes({ notes: "old text", noteList }, "old freeform")).toBe(noteList);
+  });
+});
+
+describe("createCompanionAbilityScores", () => {
+  it("starts every score at 10 and keeps any that were saved", () => {
+    expect(createCompanionAbilityScores()).toEqual({
+      strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10,
+    });
+    expect(createCompanionAbilityScores({ strength: 18 }).strength).toBe(18);
+    expect(createCompanionCreature().abilityScores.wisdom).toBe(10);
   });
 });
 

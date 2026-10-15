@@ -10,12 +10,19 @@
   background-color: var(--qk-surface);
 }
 
+/* Picture, name and HP/AC/Speed in one row, packed to the left so there's
+   no empty gap between the name and the stats. */
 .companion-card__head {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
   align-items: center;
-  gap: 8px 16px;
+  gap: 8px 20px;
+}
+
+.companion-card__who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .companion-card__name {
@@ -75,4 +82,224 @@
 .companion-card__input:focus-visible {
   outline: 2px solid var(--qk-focus);
   outline-offset: 1px;
+}
+
+/* STR through CHA in one compact strip: "STR 18 +4". */
+.companion-card__abilities {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each box: "STR 18 +4" on top, its saving throw underneath. */
+.companion-card__ability {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-background);
+}
+
+.companion-card__ability-top {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+/* "Save +5": filled in when the stat block lists a better save, like the
+   character's proficient saves. */
+.companion-card__save {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.companion-card__save--bonus {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: #fff;
+}
+
+.companion-card__save--editing {
+  border: 0;
+  padding: 0;
+}
+
+.companion-card__ability-score {
+  font-weight: 700;
+}
+
+.companion-card__ability-mod {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+/* Phones: two rows of three. */
+@media screen and (max-width: 600px) {
+  .companion-card__abilities {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* The attacks list inside the card: a smaller heading and button, and none
+   of the big gap the sheet's full-size sections leave underneath. */
+.companion-card .character-sheet__section {
+  margin-bottom: 0;
+}
+
+.companion-card .character-sheet__section-header-row {
+  margin-bottom: 8px;
+}
+
+.companion-card .character-sheet__section-title {
+  font-size: 16px;
+}
+
+.companion-card .character-sheet__section-header-actions .qk-button {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+/* The name while editing. */
+.companion-card__name-input {
+  width: 180px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: #fff;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 18px;
+}
+
+/* Scores while editing: a small box in place of the number. */
+.companion-card__ability .companion-card__input {
+  width: 44px;
+  min-height: 26px;
+}
+
+/* Bulleted notes under the attacks. */
+.companion-card__notes {
+  display: grid;
+  gap: 8px;
+}
+
+.companion-card__notes-title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 16px;
+}
+
+.companion-card__notes-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.companion-card__note {
+  line-height: 1.5;
+}
+
+.companion-card__note > span {
+  margin-right: 6px;
+}
+
+/* Each note's trash can stays faint until hovered, so the list reads cleanly. */
+.companion-card__note-remove {
+  display: inline-flex;
+  vertical-align: middle;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--qk-text-muted);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.companion-card__note-remove:hover {
+  color: var(--qk-danger);
+  opacity: 1;
+}
+
+.companion-card__note-remove:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 1px;
+  opacity: 1;
+}
+
+.companion-card__note-form {
+  display: flex;
+  gap: 8px;
+}
+
+.companion-card__note-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: #fff;
+  color: var(--qk-text);
+  font: inherit;
+}
+
+.companion-card__note-form .qk-button {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+/* "Remove Victory from this sheet", shown only while editing. */
+.companion-card__remove {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qk-danger);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* "Remove Victory? ... [Remove] [Keep Victory]" */
+.companion-card__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 14px;
+}
+
+.companion-card__confirm .qk-button {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+/* The "+ Add a companion" line on the Actions tab when there isn't one. */
+.companion-card__add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 20px;
+  color: var(--qk-text-muted);
+  font-size: 14px;
 }

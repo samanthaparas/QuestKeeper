@@ -26,6 +26,8 @@ import {
   buildLevelUpSummary,
   createResource,
   createCompanionCreature,
+  createCompanionAbilityScores,
+  getCompanionNotes,
   updateResource,
   setResourceCurrent,
   removeResource,
@@ -534,17 +536,20 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, notes: value });
   }
 
-  function handleCompanionChange(value) {
-    persistSheet({ ...sheet, companion: value });
-  }
-
-  function handleCompanionModeToggle() {
-    const nextMode = sheet.companionMode === "creature" ? "text" : "creature";
+  // "+ Add a companion" on the Actions tab. A companion added before keeps
+  // everything it had; a freeform companion's old text comes along as notes.
+  function handleCompanionAdd() {
     persistSheet({
       ...sheet,
-      companionMode: nextMode,
+      companionMode: "creature",
       companionCreature: sheet.companionCreature ?? createCompanionCreature(),
     });
+  }
+
+  // Hides the card but keeps the companion's details, so adding a companion
+  // again brings them back.
+  function handleCompanionRemove() {
+    persistSheet({ ...sheet, companionMode: "text" });
   }
 
   function handleCompanionCreatureChange(field, value) {
@@ -567,6 +572,48 @@ function CharacterSheetPage() {
         ...sheet.companionCreature,
         hitPoints: { ...sheet.companionCreature.hitPoints, [field]: numeric },
       },
+    });
+  }
+
+  // One of the companion's six ability scores, typed on the Story tab.
+  function handleCompanionAbilityChange(ability, value) {
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) return;
+
+    persistSheet({
+      ...sheet,
+      companionCreature: {
+        ...sheet.companionCreature,
+        abilityScores: {
+          ...createCompanionAbilityScores(sheet.companionCreature.abilityScores),
+          [ability]: numeric,
+        },
+      },
+    });
+  }
+
+  // A companion's saving throw bonus, typed while editing its stats. An empty
+  // box goes back to the plain ability modifier.
+  function handleCompanionSaveChange(ability, value) {
+    const savingThrows = { ...sheet.companionCreature.savingThrows };
+    if (value === "") {
+      delete savingThrows[ability];
+    } else {
+      const numeric = Number(value);
+      if (Number.isNaN(numeric)) return;
+      savingThrows[ability] = numeric;
+    }
+
+    persistSheet({
+      ...sheet,
+      companionCreature: { ...sheet.companionCreature, savingThrows },
+    });
+  }
+
+  function handleCompanionPortraitUpload(url) {
+    persistSheet({
+      ...sheet,
+      companionCreature: { ...sheet.companionCreature, portraitUrl: url },
     });
   }
 
@@ -604,10 +651,13 @@ function CharacterSheetPage() {
     setCompanionAttacks((attacks) => attacks.filter((attack) => attack.id !== id));
   }
 
-  function handleCompanionCreatureNotesChange(value) {
+  // The companion's bulleted notes. Saving the list replaces the old
+  // single block of text, which has already been turned into bullets.
+  function handleCompanionNotesChange(noteList) {
     persistSheet({
       ...sheet,
-      companionCreature: { ...sheet.companionCreature, notes: value },
+      companion: "",
+      companionCreature: { ...sheet.companionCreature, notes: "", noteList },
     });
   }
 
@@ -1695,19 +1745,38 @@ function CharacterSheetPage() {
                     />
                   )}
 
-                  {/* A tracked companion fights alongside: its HP and attacks
-                      are here, its details on the Story tab. */}
+                  {/* The companion's whole card (stats, attacks, notes) lives
+                      here; with no companion, a line offers to add one. */}
                   {activeTab === "actions" &&
-                    sheet.companionMode === "creature" &&
-                    sheet.companionCreature && (
+                    (sheet.companionMode === "creature" && sheet.companionCreature ? (
                       <CompanionCard
                         companion={sheet.companionCreature}
+                        notes={getCompanionNotes(sheet.companionCreature, sheet.companion)}
+                        userId={user.id}
+                        characterId={sheet.id}
+                        onPortraitUpload={handleCompanionPortraitUpload}
+                        onFieldChange={handleCompanionCreatureChange}
                         onHpChange={handleCompanionCreatureHpChange}
+                        onAbilityChange={handleCompanionAbilityChange}
+                        onSaveChange={handleCompanionSaveChange}
+                        onNotesChange={handleCompanionNotesChange}
+                        onRemove={handleCompanionRemove}
                         onAttackAdd={handleCompanionAttackAdd}
                         onAttackUpdate={handleCompanionAttackUpdate}
                         onAttackRemove={handleCompanionAttackRemove}
                       />
-                    )}
+                    ) : (
+                      <p className="companion-card__add">
+                        <Button variant="secondary" onClick={handleCompanionAdd}>
+                          + Add a companion
+                        </Button>
+                        <span>
+                          {sheet.companion?.trim()
+                            ? "Your companion notes will come along as bullet points."
+                            : "A mount, familiar or animal friend, with its own HP, stats and attacks."}
+                        </span>
+                      </p>
+                    ))}
 
                   {activeTab === "spells" && hasSpellcasting && (
                     <CharacterSheetSpellsTab
@@ -1808,18 +1877,6 @@ function CharacterSheetPage() {
                       }
                       appearance={sheet.appearance}
                       onAppearanceChange={handleAppearanceChange}
-                      companion={sheet.companion}
-                      onCompanionChange={handleCompanionChange}
-                      companionMode={sheet.companionMode}
-                      companionCreature={sheet.companionCreature}
-                      onToggleCompanionMode={handleCompanionModeToggle}
-                      onCompanionCreatureChange={handleCompanionCreatureChange}
-                      onCompanionCreatureHpChange={
-                        handleCompanionCreatureHpChange
-                      }
-                      onCompanionCreatureNotesChange={
-                        handleCompanionCreatureNotesChange
-                      }
                       notes={sheet.notes}
                       onNotesChange={handleNotesChange}
                     />

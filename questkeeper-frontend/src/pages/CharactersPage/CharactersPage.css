@@ -25,8 +25,23 @@
   color: var(--qk-text-muted);
 }
 
-.characters-page__create-button {
+/* "+ New Character" and "Reorder" (or "Save order" and "Cancel"). */
+.characters-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 32px;
+}
+
+.characters-page__hint {
+  margin: -16px 0 24px;
+  color: var(--qk-text-muted);
+}
+
+.characters-page__error {
+  margin: -16px 0 24px;
+  color: var(--qk-danger);
+  font-weight: 700;
 }
 
 .characters-page__empty {
@@ -53,23 +68,103 @@
   background-color: var(--qk-surface);
 }
 
+/* The whole left side (portrait + name) is the link to the sheet. */
 .characters-page__item-info {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-width: 0;
   text-decoration: none;
   color: inherit;
 }
 
-.characters-page__item-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--qk-text);
+/* Square portrait; shows the character's initials when there's no picture. */
+.characters-page__portrait {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border: 2px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-terracotta-hover);
+  font-family: var(--qk-font-display);
+  font-size: 22px;
 }
 
-.characters-page__item-meta {
-  font-size: 14px;
+.characters-page__portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.characters-page__item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Small square icon buttons: the trash can, and the up/down arrows while
+   reordering. Quiet until hovered. */
+.characters-page__icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
   color: var(--qk-text-muted);
+  cursor: pointer;
+}
+
+.characters-page__icon-button:hover:not(:disabled) {
+  border-color: var(--qk-terracotta);
+  color: var(--qk-terracotta);
+}
+
+/* The trash can turns red on hover so it's clear what it does. */
+.characters-page__icon-button--delete:hover:not(:disabled) {
+  border-color: var(--qk-danger);
+  color: var(--qk-danger);
+}
+
+.characters-page__icon-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.characters-page__icon-button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* "Delete Billie? This can't be undone. [Delete] [Keep]" in place of the
+   trash can. */
+.characters-page__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.characters-page__confirm-text {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.characters-page__move {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 @media screen and (max-width: 600px) {

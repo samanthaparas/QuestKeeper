@@ -1,7 +1,12 @@
 import { supabase } from "./supabaseClient";
 
 function rowToSheet(row) {
-  return { ...row.data, id: row.id, updatedAt: row.updated_at };
+  return {
+    ...row.data,
+    id: row.id,
+    updatedAt: row.updated_at,
+    listPosition: row.list_position ?? null,
+  };
 }
 
 // Only the signed-in user's own characters. Row-level security also lets a DM
@@ -50,7 +55,10 @@ export async function getCharacter(id) {
 }
 
 export async function saveCharacter(sheet) {
-  const { id, ...rest } = sheet;
+  // listPosition lives in its own column (see saveCharacterOrder), so it's
+  // kept out of the sheet's saved data.
+  // eslint-disable-next-line no-unused-vars
+  const { id, listPosition, ...rest } = sheet;
   // getSession reads the saved session locally. getUser would make a network
   // call to the login service on every save, which counts toward its rate limit.
   const {
@@ -74,9 +82,39 @@ export async function saveCharacter(sheet) {
   return rowToSheet(data);
 }
 
+// The player's own order for the "Your Characters" list. Characters they
+// haven't placed yet (made since they last reordered) come first, newest
+// first; the rest follow in the order they chose. Doesn't change the list
+// it's given.
+export function sortByListPosition(characters) {
+  const unplaced = characters.filter((sheet) => sheet.listPosition == null);
+  const placed = characters
+    .filter((sheet) => sheet.listPosition != null)
+    .sort((a, b) => a.listPosition - b.listPosition);
+  return [...unplaced, ...placed];
+}
+
+// Saves a new order: the first id goes to the top. Only list_position is
+// written, so the characters' "last updated" time (used to find the player's
+// most recent character) doesn't change.
+export async function saveCharacterOrder(ids) {
+  const results = await Promise.all(
+    ids.map((id, index) =>
+      supabase.from("characters").update({ list_position: index }).eq("id", id),
+    ),
+  );
+
+  const failed = results.find((result) => result.error);
+  if (failed) throw failed.error;
+}
+
+// The database doesn't report an error when it refuses to delete a row (it
+// just deletes nothing), so ask for the deleted row back and treat "none" as
+// a failure the page can show.
 export async function deleteCharacter(id) {
-  const { error } = await supabase.from("characters").delete().eq("id", id);
+  const { data, error } = await supabase.from("characters").delete().eq("id", id).select("id");
   if (error) throw error;
+  if (!data?.length) throw new Error("The character wasn't deleted.");
 }
 
 export async function getMostRecentCharacter() {
