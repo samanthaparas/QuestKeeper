@@ -1263,6 +1263,8 @@ describe("table journal placement", () => {
   it("shows players the journal without the session button", async () => {
     mockTable({ isDm: false });
     renderPage();
+    // Players find the journal on their Story tab.
+    await openTab("📜 Story");
 
     expect(await screen.findByRole("heading", { name: "Journal" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Start session/ })).not.toBeInTheDocument();
@@ -1304,5 +1306,78 @@ describe("table journal placement", () => {
       }),
     );
     expect(dmLog).toHaveBeenCalledWith("t1", "📜 The DM shared a handout: The Old Map");
+  });
+
+});
+
+describe("the Adventurer game page", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCharactersByIds.mockResolvedValue([]);
+  });
+
+  function gameTab() {
+    return screen.getAllByRole("tab").find((tab) => tab.getAttribute("aria-selected") === "true" && /Combat|Story/.test(tab.textContent));
+  }
+
+  it("shows the player's own character on top, with the way to their sheet", async () => {
+    mockTable({ isDm: false });
+    const { getCharacter } = await import("../../utils/characterStore");
+    getCharacter.mockResolvedValue({
+      name: "Billie",
+      level: 3,
+      race: { name: "Tiefling" },
+      class: { name: "Rogue" },
+      combat: { armorClass: 14, hitPoints: { current: 5, max: 20, temporary: 0 } },
+      conditions: [{ key: "poisoned" }],
+      abilityScores: { dexterity: 14 },
+    });
+    renderPage();
+
+    const card = await screen.findByRole("region", { name: "Your character" });
+    expect(await within(card).findByRole("heading", { name: "Billie" })).toBeInTheDocument();
+    expect(within(card).getByText("Level 3 Tiefling Rogue")).toBeInTheDocument();
+    expect(within(card).getByText(/5\/20/)).toBeInTheDocument();
+    expect(within(card).getByText(/Bloodied/)).toBeInTheDocument();
+    expect(within(card).getByText("Poisoned")).toBeInTheDocument();
+    expect(within(card).getByRole("link", { name: "Open my character sheet" })).toHaveAttribute(
+      "href",
+      "/characters/char-1",
+    );
+  });
+
+  it("splits the page into Combat and Story, opening on Combat", async () => {
+    mockTable({ isDm: false });
+    renderPage();
+
+    expect(screen.getByRole("tablist", { name: "Game" })).toBeInTheDocument();
+    expect(gameTab()).toHaveTextContent("Combat");
+    expect(screen.getByRole("heading", { name: "Activity" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Journal" })).not.toBeInTheDocument();
+
+    await openTab("📜 Story");
+    expect(await screen.findByRole("heading", { name: "Journal" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Handouts" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Activity" })).not.toBeInTheDocument();
+    // Mid-fight on Story, the turn is still in view.
+    expect(screen.getByText(/Round 2 · Kobold's turn/)).toBeInTheDocument();
+  });
+
+  it("marks the Combat tab when the player still has to roll initiative", async () => {
+    mockTable({ isDm: false });
+    renderPage();
+    await openTab("📜 Story");
+
+    expect(screen.getByRole("tab", { name: /Combat/ })).toHaveTextContent("!");
+  });
+
+  it("jumps to Combat when a fight starts", async () => {
+    mockTable({ isDm: false, combatActive: false, currentId: null });
+    const { rerender } = renderPage();
+    await openTab("📜 Story");
+
+    mockTable({ isDm: false, combatActive: true });
+    rerender(pageTree());
+    expect(gameTab()).toHaveTextContent("Combat");
   });
 });

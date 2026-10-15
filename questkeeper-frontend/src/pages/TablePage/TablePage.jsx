@@ -51,6 +51,7 @@ import CharacterSummaryCard from "../../components/CharacterSummaryCard/Characte
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
 import AddCombatantForm from "../../components/AddCombatantForm/AddCombatantForm";
 import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEditPanel";
+import PlayerCharacterCard from "../../components/PlayerCharacterCard/PlayerCharacterCard";
 import PartyStrip from "../../components/PartyStrip/PartyStrip";
 import DmStoryTab from "../../components/DmStoryTab/DmStoryTab";
 import TableJournal from "../../components/TableJournal/TableJournal";
@@ -68,17 +69,28 @@ const DM_TABS = [
   { key: "prep", label: "Prep" },
 ];
 
-function readDmTab(tableId) {
+// A player's game page: the fight, and the story (handouts and journal).
+const PLAYER_TABS = [
+  { key: "combat", label: "⚔️ Combat" },
+  { key: "story", label: "📜 Story" },
+];
+
+// The open tab is remembered per table, separately for the DM and players.
+function tabStorageKey(tableId, isDm) {
+  return `qk-${isDm ? "dm" : "game"}-tab-${tableId}`;
+}
+
+function readDmTab(tableId, isDm = true) {
   try {
-    return window.localStorage.getItem(`qk-dm-tab-${tableId}`);
+    return window.localStorage.getItem(tabStorageKey(tableId, isDm));
   } catch {
     return null;
   }
 }
 
-function writeDmTab(tableId, tab) {
+function writeDmTab(tableId, tab, isDm = true) {
   try {
-    window.localStorage.setItem(`qk-dm-tab-${tableId}`, tab);
+    window.localStorage.setItem(tabStorageKey(tableId, isDm), tab);
   } catch {
     // Remembering the tab is a convenience; it still works for this visit.
   }
@@ -579,15 +591,32 @@ function TablePage() {
       .catch(() => {});
   }, [isDm]);
 
-  // Player: read their own Dexterity so "Roll d20" adds the right modifier.
+  // Player: their own character, for the card at the top (HP, AC,
+  // conditions) and so "Roll d20" adds the right Dexterity. Kept fresh, since
+  // HP changes on the sheet during a fight.
   const myCharacterId = members.find((member) => member.user_id === user?.id)?.character_id;
+  const [mySheet, setMySheet] = useState(null);
 
   useEffect(() => {
-    if (!myCharacterId) return;
+    if (!myCharacterId) return undefined;
+    let cancelled = false;
 
-    getCharacter(myCharacterId)
-      .then((sheet) => setMyDexterity(sheet?.abilityScores?.dexterity ?? 10))
-      .catch(() => {});
+    function load() {
+      getCharacter(myCharacterId)
+        .then((sheet) => {
+          if (cancelled || !sheet) return;
+          setMySheet(sheet);
+          setMyDexterity(sheet.abilityScores?.dexterity ?? 10);
+        })
+        .catch(() => {});
+    }
+
+    load();
+    const timer = setInterval(load, CHARACTER_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, [myCharacterId]);
 
   async function run(action) {
@@ -600,28 +629,32 @@ function TablePage() {
     }
   }
 
-  // When a fight starts or ends while the page is open, jump to the
-  // matching tab. (Adjusting state during render, React's pattern for this.)
+  // When a fight starts while the page is open, everyone jumps to Combat.
+  // When it ends, the DM goes back to Prep (players stay where they are).
+  // (Adjusting state during render, React's pattern for this.)
   const combatOn = Boolean(table?.combat_active);
+  const roleTabs = isDm ? DM_TABS : PLAYER_TABS;
   if (table && seenCombat !== combatOn) {
-    if (seenCombat !== null) {
+    if (seenCombat !== null && (combatOn || isDm)) {
       const next = combatOn ? "combat" : "prep";
       setTabPick(next);
-      writeDmTab(id, next);
+      writeDmTab(id, next, isDm);
     }
     setSeenCombat(combatOn);
   }
-  const storedTab = readDmTab(id);
-  const dmTab =
-    tabPick ??
-    (DM_TABS.some((tab) => tab.key === storedTab) ? storedTab : null) ??
-    (combatOn ? "combat" : "prep");
-  // Players see every section; the DM sees the open tab's.
-  const onTab = (key) => !isDm || dmTab === key;
+  const storedTab = readDmTab(id, isDm);
+  const currentTab =
+    (roleTabs.some((tab) => tab.key === tabPick) ? tabPick : null) ??
+    (roleTabs.some((tab) => tab.key === storedTab) ? storedTab : null) ??
+    (isDm && !combatOn ? "prep" : "combat");
+  // Kept for the DM-only sections below.
+  const dmTab = currentTab;
+  // Each section shows on its own tab.
+  const onTab = (key) => currentTab === key;
 
   function pickTab(key) {
     setTabPick(key);
-    writeDmTab(id, key);
+    writeDmTab(id, key, isDm);
   }
 
   if (isLoading) {
@@ -677,6 +710,12 @@ function TablePage() {
   const amUp = Boolean(now && now.kind === "player" && now.user_id === user?.id);
   const myCombatant = players.find((player) => player.user_id === user?.id);
   const waitingPlayers = waiting.filter((combatant) => combatant.kind === "player");
+  // The player still has to roll initiative: shown as "!" on their Combat tab.
+  const needsMyRoll = Boolean(
+    myCombatant &&
+      (myCombatant.initiative === null || myCombatant.initiative === undefined) &&
+      (table.combat_active || hasActiveNudge(events, myCombatant.name)),
+  );
   const prepSteps = getDmPrepSteps({ combatants, combatActive: table.combat_active });
   const playerTip = getPlayerTableTip({
     me: myCombatant,
@@ -877,20 +916,17 @@ function TablePage() {
             </div>
           )}
 
-          {!isDm && myMember?.character_id && (
-            <Link
-              className="qk-button qk-button--primary table-page__sheet-link"
-              to={`/characters/${myMember.character_id}`}
-            >
-              Open my character sheet
-            </Link>
-          )}
         </header>
 
         {(error || actionError) && (
           <p className="table-page__error" role="alert">
             {actionError || error}
           </p>
+        )}
+
+        {/* The player's own character, always on top of their game page. */}
+        {!isDm && myMember?.character_id && (
+          <PlayerCharacterCard sheet={mySheet} characterId={myMember.character_id} />
         )}
 
         {(isDm ? characters.length > 0 : partyRows.length > 0) && (
@@ -920,10 +956,14 @@ function TablePage() {
           </section>
         )}
 
-        {isDm && (
+        {(isDm || myMember) && (
           <div className="table-page__tabs-bar">
-            <div className="table-page__dm-tabs" role="tablist" aria-label="DM screen">
-              {DM_TABS.map((tab) => (
+            <div
+              className="table-page__dm-tabs"
+              role="tablist"
+              aria-label={isDm ? "DM screen" : "Game"}
+            >
+              {roleTabs.map((tab) => (
                 <button
                   key={tab.key}
                   type="button"
@@ -934,9 +974,15 @@ function TablePage() {
                   onClick={() => pickTab(tab.key)}
                 >
                   {tab.label}
-                  {tab.key === "combat" && awaitingCall.length > 0 && (
+                  {isDm && tab.key === "combat" && awaitingCall.length > 0 && (
                     <span className="table-page__dm-tab-count" aria-label={`${awaitingCall.length} waiting`}>
                       {awaitingCall.length}
+                    </span>
+                  )}
+                  {/* A player who still has to roll initiative (or was nudged). */}
+                  {!isDm && tab.key === "combat" && needsMyRoll && currentTab !== "combat" && (
+                    <span className="table-page__dm-tab-count" aria-label="Roll initiative">
+                      !
                     </span>
                   )}
                 </button>
@@ -946,7 +992,8 @@ function TablePage() {
               <p className="table-page__tab-turn">
                 Round {table.round}
                 {now ? ` · ${now.name}'s turn` : ""}
-                {awaitingCall.length > 0 && (
+                {!isDm && amUp && " · It's your turn!"}
+                {isDm && awaitingCall.length > 0 && (
                   <>
                     {" · "}
                     <button type="button" className="table-page__tab-turn-link" onClick={() => pickTab("combat")}>
@@ -1335,7 +1382,7 @@ function TablePage() {
           </section>
         )}
 
-        {!isDm && myMember && table.combat_active && (
+        {!isDm && myMember && table.combat_active && onTab("combat") && (
           <p className="table-page__hint">
             Attacks and damage happen on your character sheet. Use the button at the
             top to open it.
