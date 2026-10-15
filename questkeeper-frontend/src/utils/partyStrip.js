@@ -46,6 +46,8 @@ export function toPartyRow(sheet, { withPassives = false } = {}) {
   return {
     id: sheet.id,
     name: sheet.name ?? "Adventurer",
+    // Empty when there's no picture; the strip shows initials instead.
+    portraitUrl: typeof sheet.portraitUrl === "string" ? sheet.portraitUrl : "",
     summary: [sheet.level ? `Level ${sheet.level}` : "", sheet.class?.name ?? ""]
       .filter(Boolean)
       .join(" "),

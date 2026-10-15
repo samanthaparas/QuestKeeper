@@ -25,6 +25,14 @@ describe("party strip", () => {
     expect(getPassiveScore(sheet, "investigation")).toBe(12);
   });
 
+  it("carries the portrait, or an empty string when there isn't one", () => {
+    expect(toPartyRow({ ...sheet, portraitUrl: "https://example.com/billie.png" }).portraitUrl).toBe(
+      "https://example.com/billie.png",
+    );
+    expect(toPartyRow(sheet).portraitUrl).toBe("");
+    expect(toPartyRow({ ...sheet, portraitUrl: null }).portraitUrl).toBe("");
+  });
+
   it("calls half HP or less Bloodied and 0 HP Down", () => {
     expect(getHealthState(20, 20)).toBe("healthy");
     expect(getHealthState(10, 20)).toBe("bloodied");
