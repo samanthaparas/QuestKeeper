@@ -1,3 +1,4 @@
+import { choicesFromSrd } from "./featureChoices";
 import {
   getFeatDescriptionLines,
   getSpellcastingAbility,
@@ -748,6 +749,8 @@ export async function loadFeatureEntries({
         // A feature of a subclass the character doesn't have. Never offered;
         // kept only so old characters can spot strays (see featureSources).
         otherSubclass: Boolean(ownSubclassId),
+        // What the player picks for it (Favored Enemy: a creature type).
+        choices: choicesFromSrd(data.feature_specific),
         // One pick from a list (a Dragon Ancestor colour, a Metamagic):
         // shown, but not ticked, so the player chooses theirs.
         optionOf: data.parent?.name ?? null,

@@ -11,6 +11,7 @@ import {
   getSubraceTraits,
   getFeatureDetails,
   getTraitDetails,
+  getBackgroundDetails,
 } from "../../utils/api";
 import {
   findSrdMatches,
@@ -22,9 +23,18 @@ import {
   formatTraitDetails,
   loadFeatureEntries,
   buildFeatureChoices,
+  descriptionFromSrd,
+  normalizeItemName,
 } from "../../utils/srdDetails";
 import Button from "../Button/Button";
 import { findStraySubclassFeatures, sourceFromEntry } from "../../utils/featureSources";
+import {
+  choicesFor,
+  describePicks,
+  formatOption,
+  missingPicks,
+  pickChoice,
+} from "../../utils/featureChoices";
 
 function loadFeatureDetails(match) {
   return match.source === "trait"
@@ -42,6 +52,11 @@ function CharacterSheetFeaturesTab({
   features,
   onFeaturesAddMany,
   onFeaturesRemoveMany = () => {},
+  onFeatureChoose = () => {},
+  background = null,
+  // From the sheet page, which loads them once (the tab loads its own if not).
+  featureEntries = null,
+  setupTasks = [],
   onFeatureAdd,
   onFeatureUpdate,
   onFeatureRemove,
@@ -69,19 +84,46 @@ function CharacterSheetFeaturesTab({
   const [picked, setPicked] = useState(() => new Set());
   // Every SRD feature for this race and class (including other subclasses'),
   // used to spot features that belong to a subclass the character doesn't have.
-  const [allEntries, setAllEntries] = useState([]);
+  const [ownEntries, setOwnEntries] = useState([]);
+  const allEntries = featureEntries ?? ownEntries;
   const [strayPicked, setStrayPicked] = useState(null);
 
   useEffect(() => {
-    if (!classId) return undefined;
+    if (!classId || featureEntries) return undefined;
     let ignore = false;
     loadFeatureEntries({ classId, subclassId, raceId, subraceId })
-      .then((entries) => !ignore && setAllEntries(entries))
+      .then((entries) => !ignore && setOwnEntries(entries))
       .catch(() => {});
     return () => {
       ignore = true;
     };
-  }, [classId, subclassId, raceId, subraceId]);
+  }, [classId, subclassId, raceId, subraceId, featureEntries]);
+
+  // The background's feature (Charlatan: False Identity), for characters
+  // made before creation added it. Offered with a button, never added alone.
+  const [backgroundFeature, setBackgroundFeature] = useState(null);
+  const backgroundFeatureName = background?.feature ?? null;
+  const hasBackgroundFeature = features.some(
+    (feature) => normalizeItemName(feature.name) === normalizeItemName(backgroundFeatureName ?? ""),
+  );
+
+  useEffect(() => {
+    if (!background?.id || !backgroundFeatureName || hasBackgroundFeature) return undefined;
+    let ignore = false;
+    getBackgroundDetails(background.id)
+      .then((raw) => {
+        if (ignore || !raw?.feature?.name) return;
+        setBackgroundFeature({
+          name: raw.feature.name,
+          description: descriptionFromSrd(raw.feature.desc),
+          source: { type: "background", id: background.id, key: `background:${background.id}`, level: null },
+        });
+      })
+      .catch(() => {});
+    return () => {
+      ignore = true;
+    };
+  }, [background?.id, backgroundFeatureName, hasBackgroundFeature]);
 
   const strays = useMemo(
     () => findStraySubclassFeatures(features, allEntries, subclassId ?? null),
@@ -199,6 +241,8 @@ function CharacterSheetFeaturesTab({
         description: choice.description,
         // Remembered on the sheet, so a later subclass change can tidy up safely.
         source: sourceFromEntry(choice),
+        // Picks it asks for (Favored Enemy: a creature type), made below.
+        choices: choice.choices ?? [],
       })),
     );
     setShowImport(false);
@@ -218,6 +262,22 @@ function CharacterSheetFeaturesTab({
   return (
     <>
       <section className="character-sheet__section">
+        {/* What's left to set up (a language, Favored Enemy...). Nothing
+            here is required to use the sheet. */}
+        {setupTasks.length > 0 && (
+          <div className="character-sheet__setup" role="status">
+            <p className="character-sheet__stray-title">
+              Character setup: {setupTasks.length}{" "}
+              {setupTasks.length === 1 ? "choice" : "choices"} left
+            </p>
+            <ul className="character-sheet__setup-list">
+              {setupTasks.map((task) => (
+                <li key={task.key}>{task.label}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Features from a subclass the character doesn't have (an old bug
             added Draconic Bloodline's to every Sorcerer). Nothing is removed
             until the player ticks and confirms. */}
@@ -259,6 +319,21 @@ function CharacterSheetFeaturesTab({
             </ul>
             <Button variant="secondary" type="button" onClick={removeStrays}>
               Remove ticked features
+            </Button>
+          </div>
+        )}
+
+        {backgroundFeature && !hasBackgroundFeature && (
+          <div className="character-sheet__stray-features" role="status">
+            <p className="character-sheet__stray-title">
+              Your background ({background.name}) gives you {backgroundFeature.name}.
+            </p>
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => onFeaturesAddMany([backgroundFeature])}
+            >
+              Add {backgroundFeature.name}
             </Button>
           </div>
         )}
@@ -363,6 +438,48 @@ function CharacterSheetFeaturesTab({
             findFeatureMatches(feature.name).length > 0
           }
           onNameClick={openFeatureDetails}
+          // "Favored Enemy (1 type): Undead" once the pick is made.
+          formatPrimaryLabel={(feature) => {
+            const picks = describePicks(choicesFor(feature, allEntries));
+            return picks ? `${feature.name}: ${picks}` : feature.name;
+          }}
+          extraRowContent={(feature) => {
+            const choices = choicesFor(feature, allEntries);
+            if (choices.length === 0) return null;
+            return (
+              <span className="character-sheet__feature-choices">
+                {choices.flatMap((choice) =>
+                  Array.from({ length: choice.choose }, (_, slot) => (
+                    <label key={`${choice.key}-${slot}`} className="character-sheet__feature-choice">
+                      <span className="character-sheet__visually-hidden">
+                        {choice.label} for {feature.name}
+                      </span>
+                      <select
+                        value={choice.picked?.[slot] ?? ""}
+                        className={choice.picked?.[slot] ? "" : "character-sheet__feature-choice--empty"}
+                        onChange={(event) =>
+                          onFeatureChoose(
+                            feature.index,
+                            pickChoice(choices, choice.key, slot, event.target.value),
+                          )
+                        }
+                      >
+                        <option value="">Choose {choice.label.toLowerCase()}…</option>
+                        {choice.options.map((option) => (
+                          <option key={option} value={option}>
+                            {formatOption(option)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )),
+                )}
+                {missingPicks(choices) > 0 && (
+                  <span className="character-sheet__feature-choice-note">Not chosen yet</span>
+                )}
+              </span>
+            );
+          }}
         />
       </section>
 

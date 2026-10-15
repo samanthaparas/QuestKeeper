@@ -1284,12 +1284,14 @@ export function updateAttack(attacks, index, updates) {
 // source: where it came from when it was added from the SRD or homebrew
 // ({ type: "race" | "subrace" | "class" | "subclass", id, key, level }).
 // Typed-in features have none.
-export function createFeat({ name, description, source = null }) {
+// choices: picks it asks for (see featureChoices.js), saved with it.
+export function createFeat({ name, description, source = null, choices = null }) {
   return {
     index: crypto.randomUUID(),
     name,
     description: description || "",
     ...(source ? { source } : {}),
+    ...(choices?.length ? { choices } : {}),
   };
 }
 
@@ -1444,6 +1446,19 @@ export function getSpellSlotProgression(classRef, level) {
 export function getMaxSpellLevel(classRef, level) {
   const withSlots = getSpellSlotProgression(classRef, level).filter((row) => row.max > 0);
   return withSlots.length ? withSlots[withSlots.length - 1].level : 0;
+}
+
+// When a class's own spellcasting hasn't started at this level (Paladins and
+// Rangers get theirs at 2): { className, level }. Null when it already has,
+// or when the class has no spell slots at all.
+export function getSpellsStartAt(classRef, level) {
+  if (getMaxSpellLevel(classRef, level) > 0) return null;
+  for (let next = (level ?? 1) + 1; next <= 20; next += 1) {
+    if (getMaxSpellLevel(classRef, next) > 0) {
+      return { className: classRef?.name ?? "Your class", level: next };
+    }
+  }
+  return null;
 }
 
 export function applySpellSlotProgression(spellcasting, classRef, level) {

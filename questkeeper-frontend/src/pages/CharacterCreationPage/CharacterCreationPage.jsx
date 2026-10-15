@@ -1,3 +1,10 @@
+import {
+  backgroundFeatureFrom,
+  buildLanguagesText,
+  languageChoicesFor,
+  splitTools,
+  startingGold,
+} from "../../utils/startingCharacter";
 import { collectSkills, loadRaceSkillGrants, missingRacePicks } from "../../utils/skillGrants";
 import { sourceFromEntry } from "../../utils/featureSources";
 import { useEffect, useState } from "react";
@@ -26,7 +33,6 @@ import {
   getStartingHitPoints,
   computeStartingArmorClass,
   buildStartingAttacks,
-  buildStartingLanguages,
   buildStartingProficiencies,
   getProficiencyBonus,
   buildStartingSpellcasting,
@@ -105,6 +111,9 @@ function CharacterCreationPage() {
   // player's picks for each choice ({ [grantId]: [skill] }).
   const [raceSkillGrants, setRaceSkillGrants] = useState([]);
   const [racePicks, setRacePicks] = useState({});
+  // Languages picked on the Skills step ({ race: ["Dwarvish"] }). Optional:
+  // a skipped pick stays as a reminder on the sheet.
+  const [languagePicks, setLanguagePicks] = useState({});
   const [spellChoices, setSpellChoices] = useState(null);
   const [raceRaw, setRaceRaw] = useState(null);
   const [classRaw, setClassRaw] = useState(null);
@@ -171,6 +180,7 @@ function CharacterCreationPage() {
     setBackgroundRaw(newBackground);
     setBackgroundSkills([]);
     setRacePicks({});
+    setLanguagePicks({});
     setEquipmentSelections(null);
     setChosenEquipment([]);
     setAbilityAssignments({
@@ -263,6 +273,12 @@ function CharacterCreationPage() {
   }, [raceRaw, subraceRaw]);
   // Only grants from the current race count (an old race's picks are ignored).
   const activeRaceGrants = raceRaw ? raceSkillGrants : [];
+  const languageChoices = languageChoicesFor({ raceRaw, subraceRaw, backgroundRaw });
+  const knownLanguages = [
+    ...(raceRaw?.languages ?? []),
+    ...(subraceRaw?.languages ?? []),
+    ...(background?.languages ?? []),
+  ].map((language) => language.name ?? language);
   const activeRacePicks = Object.fromEntries(
     activeRaceGrants.map((grant) => [grant.id, racePicks[grant.id] ?? []]),
   );
@@ -463,8 +479,13 @@ function CharacterCreationPage() {
           name: choice.name,
           description: choice.description,
           source: sourceFromEntry(choice),
+          // Picks it asks for (Favored Enemy), made on the Features tab.
+          choices: choice.choices ?? null,
         }),
       );
+    // The background's own feature (Charlatan: False Identity).
+    const fromBackground = backgroundFeatureFrom(backgroundRaw, background);
+    if (fromBackground) features.push(createFeat(fromBackground));
 
     // Starting gear does real work on the sheet: armor sets the AC, weapons
     // become attacks, and the race, background and class fill in languages and
@@ -484,26 +505,26 @@ function CharacterCreationPage() {
       ),
       proficiencyBonus: getProficiencyBonus(1),
     });
-    const languages = buildStartingLanguages({
-      raceLanguages: raceRaw?.languages,
-      raceChoices: raceRaw?.language_options?.choose ?? 0,
-      backgroundLanguages: background?.languages ?? [],
-      backgroundChoices: backgroundRaw?.language_options?.choose ?? 0,
-      backgroundName: background?.name,
+    const languages = buildLanguagesText({
+      fixed: knownLanguages,
+      choices: languageChoices,
+      picks: languagePicks,
     });
+    // Each proficiency is its own entry and says where it came from. Open5e
+    // and homebrew backgrounds write tools as a sentence ("Disguise kit,
+    // forgery kit"), split into one entry per tool.
     const proficiencies = [
-      ...buildStartingProficiencies(classProficiencies),
-      // Open5e backgrounds describe tools in a sentence; keep it as one entry.
-      ...(background?.toolProficiencies &&
-      !/^no additional/i.test(background.toolProficiencies)
-        ? [
-            {
-              index: crypto.randomUUID(),
-              name: background.toolProficiencies,
-              description: `From your background (${background.name})`,
-            },
-          ]
-        : []),
+      ...buildStartingProficiencies(classProficiencies).map((proficiency) => ({
+        ...proficiency,
+        description: `From your class (${characterClass?.name ?? "class"})`,
+        source: { type: "class", id: characterClass?.id ?? null },
+      })),
+      ...splitTools(background?.toolProficiencies).map((tool) => ({
+        index: crypto.randomUUID(),
+        name: tool,
+        description: `From your background (${background.name})`,
+        source: { type: "background", id: background.id },
+      })),
     ];
     // Same for gear: it can't become item rows, so it goes in the notes.
     const notes = [
@@ -517,6 +538,8 @@ function CharacterCreationPage() {
 
     const sheet = createCharacterSheet({
       name,
+      // The purse from the starting gear ("a pouch containing 15 gp").
+      gold: startingGold({ background, characterClass }),
       features,
       attacks,
       languages,
@@ -692,6 +715,7 @@ function CharacterCreationPage() {
                     setSubrace(null);
                     setSubraceRaw(null);
                     setRacePicks({});
+                    setLanguagePicks({});
                     setSubraceCantrip(getRaceFixedCantrip(snapshot.id));
                     goNext("race", {
                       raceRaw: raw,
@@ -733,6 +757,7 @@ function CharacterCreationPage() {
                     setSubrace(snapshot);
                     setSubraceRaw(raw);
                     setRacePicks({});
+                    setLanguagePicks({});
                     setSubraceCantrip(getRaceFixedCantrip(race?.id));
                     goNext("subrace", {
                       raceRaw,
@@ -894,6 +919,9 @@ function CharacterCreationPage() {
                   ]}
                   grantedFrom={background?.name}
                   extraChoices={activeRaceGrants.filter((grant) => grant.choose > 0)}
+                  languageChoices={languageChoices}
+                  knownLanguages={knownLanguages}
+                  initialLanguagePicks={languagePicks}
                   initialExtraSelected={Object.fromEntries(
                     Object.entries(activeRacePicks).map(([id, picks]) => [
                       id,
@@ -909,10 +937,11 @@ function CharacterCreationPage() {
                   initialBackgroundSelected={backgroundSkills.map(
                     (s) => s.index,
                   )}
-                  onNext={(selected, fromBackground = [], fromRace = {}) => {
+                  onNext={(selected, fromBackground = [], fromRace = {}, languages = {}) => {
                     setClassSkills(selected);
                     setBackgroundSkills(fromBackground);
                     setRacePicks(fromRace);
+                    setLanguagePicks(languages);
                     goNext("classSkills");
                   }}
                   onBack={goBack}
@@ -967,6 +996,7 @@ function CharacterCreationPage() {
                   onChoose={(snapshot, raw) => {
                     setBackground(snapshot);
                     setBackgroundRaw(raw);
+                    setLanguagePicks({});
                     setEquipmentSelections(null);
                     setChosenEquipment([]);
                     const granted = new Set(

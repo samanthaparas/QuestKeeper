@@ -2034,3 +2034,89 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
 .character-sheet__stray-features .qk-button {
   justify-self: start;
 }
+
+/* Features tab: dropdowns for a feature's picks (Favored Enemy: Undead). */
+.character-sheet__feature-choices {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.character-sheet__feature-choice select {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.character-sheet__feature-choice select.character-sheet__feature-choice--empty {
+  border-color: var(--qk-warning);
+  background-color: var(--qk-brass-soft);
+}
+
+.character-sheet__feature-choice-note {
+  color: var(--qk-warning);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.character-sheet__visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* "⚠ 3 setup choices left" beside Edit details, and its list on Features. */
+.character-sheet__setup-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qk-warning);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.character-sheet__setup-link:hover {
+  text-decoration: underline;
+}
+
+.character-sheet__setup-link:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.character-sheet__setup {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--qk-border);
+  border-left: 4px solid var(--qk-warning);
+  border-radius: 0 var(--qk-radius-control) var(--qk-radius-control) 0;
+  background-color: var(--qk-surface);
+}
+
+.character-sheet__setup-list {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.5;
+}
+
+/* Spells tab: "Ranger spellcasting starts at level 2" for a level 1 Ranger. */
+.character-sheet__spells-not-yet {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 4px solid var(--qk-brass);
+  background-color: var(--qk-brass-soft);
+  line-height: 1.5;
+}

@@ -13,7 +13,10 @@ import Button from "../Button/Button";
 // like a background's or an Elf's Perception. Each can't be picked again.
 // extraChoices: other "choose N skills" from the race, subrace or homebrew
 // ([{ id, from, choose, options }]); initialExtraSelected: { [id]: [index] }.
-// onNext(classPicks, backgroundPicks, { [id]: picks }).
+// languageChoices: "choose N languages" ([{ id, from, choose, options }]),
+// with knownLanguages already theirs. Optional: a skipped pick stays as a
+// reminder on the sheet. initialLanguagePicks: { [id]: [name] }.
+// onNext(classPicks, backgroundPicks, { [id]: picks }, { [id]: languages }).
 function ClassSkillChoiceStep({
   characterClass,
   grantedSkills = [],
@@ -23,6 +26,9 @@ function ClassSkillChoiceStep({
   initialBackgroundSelected,
   extraChoices = [],
   initialExtraSelected = {},
+  languageChoices = [],
+  knownLanguages = [],
+  initialLanguagePicks = {},
   onNext,
   onBack,
 }) {
@@ -32,6 +38,15 @@ function ClassSkillChoiceStep({
     () => initialBackgroundSelected ?? [],
   );
   const [extraPicks, setExtraPicks] = useState(() => initialExtraSelected);
+  const [languagePicks, setLanguagePicks] = useState(() => initialLanguagePicks);
+
+  function pickLanguage(choiceId, slot, value) {
+    setLanguagePicks((prev) => {
+      const current = [...(prev[choiceId] ?? [])];
+      current[slot] = value;
+      return { ...prev, [choiceId]: current };
+    });
+  }
 
   const maxChoices = skillChoice?.choose ?? 0;
   const backgroundMax = backgroundChoice?.choose ?? 0;
@@ -98,7 +113,10 @@ function ClassSkillChoiceStep({
         choice.options.filter((option) => (extraPicks[choice.id] ?? []).includes(option.index)),
       ]),
     );
-    onNext(selected, fromBackground, fromExtras);
+    const languages = Object.fromEntries(
+      languageChoices.map((choice) => [choice.id, (languagePicks[choice.id] ?? []).filter(Boolean)]),
+    );
+    onNext(selected, fromBackground, fromExtras, languages);
   }
 
   return (
@@ -282,6 +300,55 @@ function ClassSkillChoiceStep({
         <p className="class-skill-choice-step__description">
           {characterClass?.name ?? "This class"} has no skill choice to make.
         </p>
+      )}
+
+      {languageChoices.length > 0 && (
+        <section className="class-skill-choice-step__section">
+          <h3 className="class-skill-choice-step__subtitle">Languages</h3>
+          {knownLanguages.length > 0 && (
+            <p className="class-skill-choice-step__description">
+              You already speak {knownLanguages.join(", ")}.
+            </p>
+          )}
+          {languageChoices.map((choice) => {
+            const allPicked = Object.values(languagePicks).flat().filter(Boolean);
+            return (
+              <div key={choice.id} className="class-skill-choice-step__languages">
+                <p className="class-skill-choice-step__description">
+                  {choice.from} lets you choose {choice.choose} more language
+                  {choice.choose === 1 ? "" : "s"}. You can also skip this and add it on the sheet later.
+                </p>
+                {Array.from({ length: choice.choose }, (_, slot) => {
+                  const mine = languagePicks[choice.id]?.[slot] ?? "";
+                  return (
+                    <select
+                      key={slot}
+                      className="class-skill-choice-step__language"
+                      aria-label={`${choice.from} language ${slot + 1}`}
+                      value={mine}
+                      onChange={(event) => pickLanguage(choice.id, slot, event.target.value)}
+                    >
+                      <option value="">Choose a language…</option>
+                      {choice.options
+                        // Not one they already speak or picked in another box.
+                        .filter(
+                          (language) =>
+                            language === mine ||
+                            (!knownLanguages.some((known) => known.toLowerCase() === language.toLowerCase()) &&
+                              !allPicked.includes(language)),
+                        )
+                        .map((language) => (
+                          <option key={language} value={language}>
+                            {language}
+                          </option>
+                        ))}
+                    </select>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </section>
       )}
 
       <div className="class-skill-choice-step__nav">
