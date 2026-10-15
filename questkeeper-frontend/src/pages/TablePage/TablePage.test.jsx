@@ -1276,4 +1276,33 @@ describe("table journal placement", () => {
     await openTab("Story");
     expect(screen.queryByRole("heading", { name: "Activity" })).not.toBeInTheDocument();
   });
+
+  it("notes a handout shared with everyone in the activity log and the journal", async () => {
+    const { listHandouts } = await import("../../utils/handoutStore");
+    const { addJournalEntry } = await import("../../utils/journalStore");
+    listHandouts.mockResolvedValue([
+      {
+        id: "h1",
+        table_id: "t1",
+        title: "The Old Map",
+        body: "",
+        image_path: null,
+        shown_to_all: false,
+        shown_to: [],
+        created_at: "2026-10-15T01:00:00Z",
+      },
+    ]);
+    mockTable({ isDm: true });
+    renderPage();
+    await openTab("Story");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Reveal to everyone" }));
+    await waitFor(() =>
+      expect(addJournalEntry).toHaveBeenCalledWith("t1", {
+        body: "📜 Shared a handout: The Old Map",
+        visibility: "table",
+      }),
+    );
+    expect(dmLog).toHaveBeenCalledWith("t1", "📜 The DM shared a handout: The Old Map");
+  });
 });
