@@ -399,11 +399,6 @@
   line-height: 1.45;
 }
 
-.table-messages__image-link {
-  display: block;
-  margin-top: 6px;
-}
-
 .table-messages__image {
   display: block;
   max-width: 100%;

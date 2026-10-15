@@ -100,10 +100,6 @@
   margin-top: 10px;
 }
 
-.table-handouts__image-link {
-  justify-self: start;
-}
-
 .table-handouts__image {
   display: block;
   max-width: min(100%, 520px);

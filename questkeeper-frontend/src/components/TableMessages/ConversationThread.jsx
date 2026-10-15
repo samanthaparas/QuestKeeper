@@ -8,6 +8,7 @@ import {
   validateMessageImage,
 } from "../../utils/messageStore";
 import { messageTime, personName, whoCanSee } from "./messageLabels";
+import ImageLightbox from "../ImageLightbox/ImageLightbox";
 
 // One conversation: its messages (yours on the right), who can see it, and
 // a box to write in, with an optional picture (a map, a handout).
@@ -177,9 +178,7 @@ function MessageImage({ path }) {
   if (failed) return <p className="table-messages__empty">Couldn't load this picture.</p>;
   if (!url) return <p className="table-messages__empty">Loading picture...</p>;
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="table-messages__image-link">
-      <img className="table-messages__image" src={url} alt="Shared picture (opens full size)" />
-    </a>
+    <ImageLightbox className="table-messages__image" src={url} alt="Shared picture" />
   );
 }
 

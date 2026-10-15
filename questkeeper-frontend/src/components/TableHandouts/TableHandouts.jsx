@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useState } from "react";
 import Button from "../Button/Button";
+import ImageLightbox from "../ImageLightbox/ImageLightbox";
 import {
   createHandout,
   deleteHandout,
@@ -42,7 +43,7 @@ function describeAudience(handout, players) {
 }
 
 // A handout's picture, fetched through a short-lived private link. Tap to
-// open it full size.
+// see it big in a pop-up.
 function HandoutImage({ path, title }) {
   const [url, setUrl] = useState(null);
 
@@ -58,9 +59,12 @@ function HandoutImage({ path, title }) {
 
   if (!url) return <div className="table-handouts__image table-handouts__image--loading" aria-hidden="true" />;
   return (
-    <a href={url} target="_blank" rel="noreferrer" className="table-handouts__image-link">
-      <img className="table-handouts__image" src={url} alt={`Handout: ${title}`} />
-    </a>
+    <ImageLightbox
+      className="table-handouts__image"
+      src={url}
+      alt={`Handout: ${title}`}
+      caption={title}
+    />
   );
 }
 

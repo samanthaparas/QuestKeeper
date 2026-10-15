@@ -55,6 +55,7 @@ import PartyStrip from "../../components/PartyStrip/PartyStrip";
 import DmStoryTab from "../../components/DmStoryTab/DmStoryTab";
 import TableJournal from "../../components/TableJournal/TableJournal";
 import TableHandouts from "../../components/TableHandouts/TableHandouts";
+import { addJournalEntry } from "../../utils/journalStore";
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
@@ -1258,7 +1259,16 @@ function TablePage() {
             isDm={isDm}
             players={players.map((player) => ({ userId: player.user_id, name: player.name }))}
             onSharedWithEveryone={(title) =>
-              run(() => dmLog(table.id, `📜 The DM shared a handout: ${title}`))
+              run(() =>
+                Promise.all([
+                  dmLog(table.id, `📜 The DM shared a handout: ${title}`),
+                  // Also into the journal, so the session recap shows when it appeared.
+                  addJournalEntry(table.id, {
+                    body: `📜 Shared a handout: ${title}`,
+                    visibility: "table",
+                  }),
+                ]),
+              )
             }
           />
         )}

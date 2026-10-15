@@ -1,0 +1,121 @@
+/* The small picture on the page is a plain button, so it can be tapped
+   or reached with the keyboard. */
+.image-lightbox__trigger {
+  display: block;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.image-lightbox__trigger:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 3px;
+}
+
+/* The pop-up fills the screen; the picture sits in the middle as big as fits. */
+.image-lightbox {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  margin: 0;
+  padding: 24px;
+  border: 0;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.image-lightbox[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-lightbox::backdrop {
+  background-color: rgba(28, 20, 16, 0.82);
+}
+
+.image-lightbox__figure {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin: 0;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.image-lightbox__image {
+  display: block;
+  max-width: min(100%, 1400px);
+  max-height: calc(100vh - 110px);
+  border-radius: var(--qk-radius-small);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  object-fit: contain;
+}
+
+.image-lightbox__caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 16px;
+  color: #fff7e8;
+  font-family: var(--qk-font-display);
+  font-size: 18px;
+  text-align: center;
+}
+
+.image-lightbox__caption a {
+  color: var(--qk-terracotta-soft);
+  font-family: var(--qk-font-body);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.image-lightbox__close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.image-lightbox__close:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* A gentle fade in, skipped for people who ask for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .image-lightbox[open] .image-lightbox__figure {
+    animation: image-lightbox-in 180ms ease-out;
+  }
+
+  @keyframes image-lightbox-in {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .image-lightbox {
+    padding: 12px;
+  }
+
+  .image-lightbox__close {
+    top: 4px;
+    right: 4px;
+  }
+}
