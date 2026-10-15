@@ -7,8 +7,9 @@ const CHARACTER_SHEET_TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "features", label: "Features" },
   { key: "story", label: "Story" },
-  // The table's shared journal, only while the character is at a table.
-  { key: "journal", label: "Journal", tableOnly: true },
+  // The table's handouts and shared journal, only while at a table, so a
+  // player never has to leave their sheet during a session.
+  { key: "journal", label: "Journal & Handouts", tableOnly: true },
 ];
 
 function CharacterSheetTabs({ activeTab, onSelect, hasSpellcasting, hasTable = false }) {

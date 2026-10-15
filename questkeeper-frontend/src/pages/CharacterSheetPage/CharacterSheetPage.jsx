@@ -63,6 +63,7 @@ import { loadFeatureEntries, normalizeItemName } from "../../utils/srdDetails";
 import CompanionCard from "../../components/CompanionCard/CompanionCard";
 import CharacterDetailsDialog from "../../components/CharacterDetailsDialog/CharacterDetailsDialog";
 import PortraitUpload from "../../components/PortraitUpload/PortraitUpload";
+import TableHandouts from "../../components/TableHandouts/TableHandouts";
 import TableJournal from "../../components/TableJournal/TableJournal";
 import TurnBanner from "../../components/TurnBanner/TurnBanner";
 import AttackPanel from "../../components/AttackPanel/AttackPanel";
@@ -1786,12 +1787,15 @@ function CharacterSheetPage() {
                   )}
 
                   {activeTab === "journal" && roller.tableId && (
-                    <TableJournal
-                      tableId={roller.tableId}
-                      userId={user.id}
-                      isDm={false}
-                      sessionNumber={roller.tableSession}
-                    />
+                    <div className="character-sheet__journal-stack">
+                      <TableHandouts tableId={roller.tableId} isDm={false} />
+                      <TableJournal
+                        tableId={roller.tableId}
+                        userId={user.id}
+                        isDm={false}
+                        sessionNumber={roller.tableSession}
+                      />
+                    </div>
                   )}
 
                   {activeTab === "story" && (
