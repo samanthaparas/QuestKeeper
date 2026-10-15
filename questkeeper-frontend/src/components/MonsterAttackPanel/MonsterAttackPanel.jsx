@@ -167,39 +167,51 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
 
       {choices.length > 0 && !outcome && (
         <>
+          {/* The three steps, for DMs new to running a monster's attack. */}
+          <p className="monster-attack__note">
+            Pick a target, roll to hit, then roll damage.
+          </p>
           <div className="monster-attack__row">
-            <select
-              className="monster-attack__field"
-              aria-label="Who is being attacked"
-              value={target?.id ?? ""}
-              onChange={(event) => setTargetId(event.target.value)}
-            >
-              {opposite.length > 0 && sameSide.length > 0 ? (
-                <>
-                  <optgroup label="Opponents">{opposite.map(renderTargetOption)}</optgroup>
-                  <optgroup label="Same side (charm, confusion, mistakes)">
-                    {sameSide.map(renderTargetOption)}
-                  </optgroup>
-                </>
-              ) : (
-                choices.map(renderTargetOption)
-              )}
-            </select>
-
-            {attacks.length > 0 && (
+            {/* Visible labels so each box says what it's for before it's
+                tapped. */}
+            <label className="monster-attack__labeled">
+              <span className="monster-attack__label">Target</span>
               <select
                 className="monster-attack__field"
-                aria-label="Which attack"
-                value={pickedAttack}
-                onChange={(event) => pickAttack(event.target.value)}
+                aria-label="Who is being attacked"
+                value={target?.id ?? ""}
+                onChange={(event) => setTargetId(event.target.value)}
               >
-                {attacks.map((attack, index) => (
-                  <option key={`${attack.name}-${index}`} value={String(index)}>
-                    {attack.name} ({formatModifier(Number(attack.toHit) || 0)}, {attack.damage || "no damage set"})
-                  </option>
-                ))}
-                <option value="custom">Something else...</option>
+                {opposite.length > 0 && sameSide.length > 0 ? (
+                  <>
+                    <optgroup label="Opponents">{opposite.map(renderTargetOption)}</optgroup>
+                    <optgroup label="Same side (charm, confusion, mistakes)">
+                      {sameSide.map(renderTargetOption)}
+                    </optgroup>
+                  </>
+                ) : (
+                  choices.map(renderTargetOption)
+                )}
               </select>
+            </label>
+
+            {attacks.length > 0 && (
+              <label className="monster-attack__labeled">
+                <span className="monster-attack__label">Attack</span>
+                <select
+                  className="monster-attack__field"
+                  aria-label="Which attack"
+                  value={pickedAttack}
+                  onChange={(event) => pickAttack(event.target.value)}
+                >
+                  {attacks.map((attack, index) => (
+                    <option key={`${attack.name}-${index}`} value={String(index)}>
+                      {attack.name} ({formatModifier(Number(attack.toHit) || 0)}, {attack.damage || "no damage set"})
+                    </option>
+                  ))}
+                  <option value="custom">A different attack (type it below)</option>
+                </select>
+              </label>
             )}
           </div>
 
@@ -211,28 +223,34 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
           )}
 
           <div className="monster-attack__row">
-            <input
-              className="monster-attack__field"
-              aria-label="Attack name"
-              placeholder="Attack (e.g. Claw)"
-              maxLength={60}
-              value={attackName}
-              onChange={(event) => {
-                setAttackName(event.target.value);
-                setPickedAttack("custom");
-              }}
-            />
-            <input
-              className="monster-attack__number"
-              type="number"
-              aria-label="Attack bonus"
-              placeholder="+ hit"
-              value={bonusText}
-              onChange={(event) => {
-                setBonusText(event.target.value);
-                setPickedAttack("custom");
-              }}
-            />
+            <label className="monster-attack__labeled">
+              <span className="monster-attack__label">Attack name</span>
+              <input
+                className="monster-attack__field"
+                aria-label="Attack name"
+                placeholder="Attack (e.g. Claw)"
+                maxLength={60}
+                value={attackName}
+                onChange={(event) => {
+                  setAttackName(event.target.value);
+                  setPickedAttack("custom");
+                }}
+              />
+            </label>
+            <label className="monster-attack__labeled monster-attack__labeled--narrow">
+              <span className="monster-attack__label">+ to hit</span>
+              <input
+                className="monster-attack__number"
+                type="number"
+                aria-label="Attack bonus"
+                placeholder="+ hit"
+                value={bonusText}
+                onChange={(event) => {
+                  setBonusText(event.target.value);
+                  setPickedAttack("custom");
+                }}
+              />
+            </label>
           </div>
 
           {pickedAttack === "custom" && (
@@ -297,10 +315,23 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
 
       {hasHit && (
         <>
+          {/* Two ways to get the damage: the app rolls the formula, or the DM
+              rolls real dice and types the final number. */}
           <p className="monster-attack__note">
-            Now the damage. Roll the dice below
-            {isCrit ? " (dice doubled for the critical hit)" : ""}, or enter a physical total.
+            Now the damage, either way:
           </p>
+          <ul className="monster-attack__steps">
+            <li>
+              <strong>Let the app roll:</strong> type the attack&rsquo;s damage from the stat
+              block (like 1d4+2) and tap Roll damage.
+              {isCrit && " It's a critical hit, so the dice are doubled for you (1d4+2 rolls 2d4+2)."}
+            </li>
+            <li>
+              <strong>Rolled real dice?</strong> Type the final number, dice plus the bonus
+              (rolled 3 on 1d4+2 → 5), and tap Send my damage.
+              {isCrit && " For the critical hit, roll double the dice before adding the bonus."}
+            </li>
+          </ul>
           <div className="monster-attack__row">
             <input
               className="monster-attack__field"

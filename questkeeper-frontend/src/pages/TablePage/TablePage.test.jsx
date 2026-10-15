@@ -212,6 +212,18 @@ describe("TablePage", () => {
       expect(screen.queryByText(/9\/20/)).not.toBeInTheDocument();
     });
 
+    it("doesn't show players the DM's turn banner", () => {
+      renderPage();
+
+      expect(rowFor("Kobold")).not.toHaveTextContent("tap Attack");
+    });
+
+    it("never shows players an enemy's HP bar", () => {
+      const { container } = renderPage();
+
+      expect(container.querySelector(".table-page__hp-bar")).toBeNull();
+    });
+
     it("shows the attack count to players but no Deny button", () => {
       useTable.mockReturnValue({
         ...currentTable,
@@ -240,7 +252,7 @@ describe("TablePage", () => {
 
       expect(screen.queryByText("Join code")).not.toBeInTheDocument();
       expect(screen.queryByText("Add monsters and NPCs")).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Damage" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Take damage" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Start combat" })).not.toBeInTheDocument();
     });
 
@@ -262,7 +274,7 @@ describe("TablePage", () => {
       const row = rowFor("Sir Pip");
       expect(row).toHaveTextContent("Ally");
       expect(row).not.toHaveTextContent("DM only");
-      expect(within(row).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+      expect(within(row).queryByRole("button", { name: /^Edit/ })).not.toBeInTheDocument();
       expect(within(row).queryByRole("button", { name: "Attack" })).not.toBeInTheDocument();
     });
 
@@ -331,6 +343,71 @@ describe("TablePage", () => {
       expect(screen.getByText("ABC123")).toBeInTheDocument();
       expect(screen.getByText(/DM only: 9\/20 HP · AC 12/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Next turn" })).toBeInTheDocument();
+    });
+
+    it("tells the DM what to do on the current monster's turn", () => {
+      renderPage();
+
+      expect(rowFor("Kobold")).toHaveTextContent(
+        "Kobold's turn: tap Attack to have it attack, then tap Next turn.",
+      );
+      expect(rowFor("Billie")).not.toHaveTextContent("'s turn:");
+    });
+
+    it("changes the banner once the monster has attacked this turn", () => {
+      currentTable.combatants = combatants.map((combatant) =>
+        combatant.id === "c-kobold" ? { ...combatant, attacks_this_turn: 1 } : combatant,
+      );
+      renderPage();
+
+      expect(rowFor("Kobold")).toHaveTextContent(
+        "Kobold has attacked. Attack again if it has more attacks, or tap Next turn.",
+      );
+    });
+
+    it("fades a monster's history from before this turn, but not what it does now", () => {
+      currentTable.events = [
+        { id: "e1", message: "Kobold hits Billie for 3!", created_at: "2026-10-03T00:01:00Z" },
+      ];
+      const { rerender } = renderPage();
+      expect(rowFor("Kobold")).toHaveTextContent("Earlier: Kobold hits Billie for 3!");
+
+      useTable.mockReturnValue({
+        ...currentTable,
+        events: [
+          { id: "e2", message: "Kobold hits Billie for 4!", created_at: "2026-10-03T00:02:00Z" },
+          ...currentTable.events,
+        ],
+      });
+      rerender(pageTree());
+
+      const lines = Array.from(rowFor("Kobold").querySelectorAll(".table-page__last-action")).map(
+        (line) => line.textContent,
+      );
+      expect(lines).toEqual(["Kobold hits Billie for 4!", "Earlier: Kobold hits Billie for 3!"]);
+    });
+
+    it("keeps a monster's history under its buttons, and opens Attack in a right-hand panel", async () => {
+      renderPage();
+      const row = rowFor("Kobold");
+      const left = row.querySelector(".table-page__row-left");
+
+      expect(row).not.toHaveClass("table-page__row--split");
+      expect(left).toHaveTextContent("Billie attacks Kobold with Dagger");
+
+      await userEvent.click(within(left).getByRole("button", { name: "Attack" }));
+      const side = row.querySelector(".table-page__row-side");
+      expect(row).toHaveClass("table-page__row--split");
+      expect(within(side).getByText("Pick a target, roll to hit, then roll damage.")).toBeInTheDocument();
+      expect(side).not.toHaveTextContent("Billie attacks Kobold with Dagger");
+    });
+
+    it("draws a red HP bar for a bloodied monster, filled to its HP", () => {
+      const { container } = renderPage();
+
+      const bar = container.querySelector(".table-page__hp-bar");
+      expect(bar).toHaveClass("table-page__hp-bar--bloodied");
+      expect(bar.querySelector(".table-page__hp-bar-fill")).toHaveStyle({ width: "45%" });
     });
 
     it("shows the initiative order under its own heading", () => {
@@ -546,7 +623,7 @@ describe("TablePage", () => {
       renderPage();
 
       const kobold = rowFor("Kobold");
-      await userEvent.click(within(kobold).getByRole("button", { name: "Edit" }));
+      await userEvent.click(within(kobold).getByRole("button", { name: "Edit Kobold" }));
       await userEvent.clear(screen.getByLabelText("Edit max HP"));
       await userEvent.type(screen.getByLabelText("Edit max HP"), "30");
       await userEvent.clear(screen.getByLabelText("Edit AC"));
@@ -670,7 +747,7 @@ describe("TablePage", () => {
       renderPage();
 
       await userEvent.type(screen.getByLabelText("Damage or healing for Kobold"), "4");
-      await userEvent.click(screen.getByRole("button", { name: "Damage" }));
+      await userEvent.click(screen.getByRole("button", { name: "Take damage" }));
 
       expect(applyDamage).toHaveBeenCalledWith("c-kobold", 4);
     });
@@ -1044,14 +1121,14 @@ describe("monster row layout", () => {
     mockTable({ isDm: true, combatActive: true });
   });
 
-  it("puts Attack first, then the monster's own HP controls, then Edit and Remove", async () => {
+  it("puts Edit and Remove as icons in the corner, then Attack and the monster's own HP controls", async () => {
     renderPage();
 
     const row = await waitFor(() => rowFor("Kobold"));
     const names = within(row)
       .getAllByRole("button")
-      .map((button) => button.textContent);
-    expect(names).toEqual(["Attack", "Damage", "Heal", "Edit", "Remove"]);
+      .map((button) => button.getAttribute("aria-label") ?? button.textContent);
+    expect(names).toEqual(["Edit Kobold", "Remove Kobold", "Attack", "Take damage", "Heal"]);
   });
 
   it("labels Damage and Heal as changing that monster's HP", async () => {
@@ -1059,7 +1136,7 @@ describe("monster row layout", () => {
 
     const row = await waitFor(() => rowFor("Kobold"));
     const hp = within(row).getByRole("group", { name: "Change Kobold's HP" });
-    expect(within(hp).getByRole("button", { name: "Damage" })).toBeInTheDocument();
+    expect(within(hp).getByRole("button", { name: "Take damage" })).toBeInTheDocument();
     expect(within(hp).getByRole("button", { name: "Heal" })).toBeInTheDocument();
     expect(within(hp).queryByRole("button", { name: "Attack" })).not.toBeInTheDocument();
   });

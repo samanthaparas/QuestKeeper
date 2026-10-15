@@ -140,6 +140,24 @@ describe("MonsterAttackPanel", () => {
     expect(props.onClose).toHaveBeenCalled();
   });
 
+  it("labels the target, attack and + to hit boxes so they're clear before tapping", () => {
+    setup();
+
+    for (const label of ["Target", "Attack name", "+ to hit"]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+  });
+
+  it("explains both ways to enter damage, with the critical hit notes on a crit", async () => {
+    dmAttackRoll.mockResolvedValue({ result: "crit", ac: 12 });
+    setup();
+    await userEvent.click(screen.getByRole("button", { name: /Roll d20/ }));
+
+    expect(await screen.findByText(/Let the app roll:/)).toBeInTheDocument();
+    expect(screen.getByText(/dice are doubled for you/)).toBeInTheDocument();
+    expect(screen.getByText(/rolled 3 on 1d4\+2 → 5/)).toBeInTheDocument();
+  });
+
   it("applies damage straight to a MONSTER or ALLY target", async () => {
     dmAttackRoll.mockResolvedValue({ result: "hit", ac: null });
     setup();
@@ -247,7 +265,7 @@ describe("help when a monster has no saved attacks", () => {
     expect(screen.queryByText(/Not sure of the \+ hit\?/)).not.toBeInTheDocument();
   });
 
-  it("shows the + hit tip when the DM picks Something else", async () => {
+  it("shows the + hit tip when the DM picks a different attack", async () => {
     setup();
 
     await userEvent.selectOptions(screen.getByLabelText("Which attack"), "custom");

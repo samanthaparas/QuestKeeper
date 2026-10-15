@@ -144,6 +144,65 @@
   background-color: #fff;
 }
 
+/* DM's monster rows with something on the right (history, or an open Attack
+   or Edit panel): two panels side by side, so the Roll button is in view
+   without scrolling. */
+.table-page__row--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 12px 24px;
+}
+
+.table-page__row-left {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+
+.table-page__row-side {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+  padding-left: 24px;
+  border-left: 1px dashed var(--qk-border);
+}
+
+/* In the right panel the Attack and Edit panels don't need their own top
+   divider; the panel's left line already separates them. */
+.table-page__row-side .monster-attack,
+.table-page__row-side .combatant-edit {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.table-page__row-history {
+  display: grid;
+  gap: 2px;
+}
+
+/* Hit / Miss calls still run across the whole row. */
+.table-page__row--split .table-page__row-call {
+  grid-column: 1 / -1;
+}
+
+/* Narrower screens: stack the panels again. */
+@media screen and (max-width: 900px) {
+  .table-page__row--split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .table-page__row-side {
+    padding-left: 0;
+    padding-top: 12px;
+    border-left: 0;
+    border-top: 1px dashed var(--qk-border);
+  }
+}
+
 .table-page__row--current {
   border: 2px solid var(--qk-terracotta);
   background-color: var(--qk-terracotta-soft);
@@ -207,9 +266,43 @@
 }
 
 .table-page__secret-hp {
+  display: grid;
+  gap: 4px;
   font-size: 13px;
   color: var(--qk-warning);
   font-weight: 700;
+}
+
+/* The DM's HP bar for a monster, styled like the party strip's bars. */
+.table-page__hp-bar {
+  display: block;
+  width: min(320px, 100%);
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+}
+
+.table-page__hp-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--qk-moss);
+  transition: width 400ms ease;
+}
+
+.table-page__hp-bar--bloodied .table-page__hp-bar-fill {
+  background-color: var(--qk-danger);
+}
+
+.table-page__hp-bar--down .table-page__hp-bar-fill {
+  background-color: var(--qk-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-page__hp-bar-fill {
+    transition: none;
+  }
 }
 
 .table-page__row-actions {
@@ -245,6 +338,11 @@
 .table-page__number {
   width: 84px;
   text-align: center;
+}
+
+/* The monster's HP amount box: wide enough for "Amount" to show in full. */
+.table-page__number--amount {
+  width: 104px;
 }
 
 .table-page__monster-form {
@@ -548,10 +646,71 @@
   color: var(--qk-text-muted);
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+/* DM only, on whoever's turn it is: what to do next. */
+.table-page__turn-banner {
+  align-self: flex-start;
+  margin: 2px 0;
+  padding: 4px 10px;
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-terracotta);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* A monster's history from before this turn: faded, so it doesn't look like
+   it just happened. */
+.table-page__last-action--earlier {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.table-page__earlier-tag {
+  font-weight: 700;
 }
 
 /* Edit and Remove are used rarely, so they sit a little apart at the end. */
+/* The pencil and trash icons in the top corner of a DM's monster row. */
+.table-page__row-icons {
+  display: flex;
+  gap: 8px;
+  align-self: flex-start;
+  margin-left: auto;
+}
+
+.table-page__icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text-muted);
+  cursor: pointer;
+}
+
+.table-page__icon-button:hover,
+.table-page__icon-button[aria-expanded="true"] {
+  border-color: var(--qk-terracotta);
+  color: var(--qk-terracotta);
+}
+
+.table-page__icon-button--remove:hover {
+  border-color: var(--qk-danger);
+  color: var(--qk-danger);
+}
+
+.table-page__icon-button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
 .table-page__row-manage {
   display: flex;
   gap: 8px;
