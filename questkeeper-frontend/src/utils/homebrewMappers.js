@@ -173,6 +173,10 @@ export function cleanHomebrewData(category, data = {}) {
       languages: cleanLanguages(data.languages),
       languageChoices: wholeNumber(data.languageChoices, 0, 5, 0),
       traits: cleanNamedList(data.traits, { max: 20 }),
+      // Skills the race always gives, and an optional "choose N" (like a
+      // Half-Elf's Skill Versatility). Same shape as backgrounds.
+      skills: uniqueFrom(data.skills, Object.keys(SKILL_NAMES)).slice(0, 4),
+      skillChoice: cleanSkillChoice(data.skillChoice),
     };
   }
 
@@ -184,6 +188,8 @@ export function cleanHomebrewData(category, data = {}) {
       abilityBonuses: cleanAbilityBonuses(data.abilityBonuses),
       abilityChoice: cleanAbilityChoice(data.abilityChoice),
       traits: cleanNamedList(data.traits, { max: 20 }),
+      skills: uniqueFrom(data.skills, Object.keys(SKILL_NAMES)).slice(0, 4),
+      skillChoice: cleanSkillChoice(data.skillChoice),
     };
   }
 
@@ -327,6 +333,22 @@ function subraceRefsFor(entries, raceIndex) {
     .map((entry) => toListItem(commonFields(entry)));
 }
 
+// Skills in the shape the SRD uses: starting_proficiencies and skill_choice.
+function toSkillFields(data) {
+  return {
+    starting_proficiencies: (data.skills ?? []).map((skill) => ({
+      index: `skill-${skill}`,
+      name: `Skill: ${SKILL_NAMES[skill]}`,
+    })),
+    skill_choice: data.skillChoice
+      ? {
+          choose: data.skillChoice.choose,
+          options: data.skillChoice.from.map((skill) => ({ index: skill, name: SKILL_NAMES[skill] })),
+        }
+      : null,
+  };
+}
+
 export function toHomebrewRace(entry, allEntries = []) {
   const data = cleanHomebrewData("race", entry.data);
   const common = commonFields(entry);
@@ -344,6 +366,7 @@ export function toHomebrewRace(entry, allEntries = []) {
     traits: traits.refs,
     traitDetails: traits.details,
     subraces: subraceRefsFor(allEntries, common.index),
+    ...toSkillFields(data),
   };
 }
 
@@ -358,7 +381,7 @@ export function toHomebrewSubrace(entry) {
     desc: common.summary,
     ability_bonuses: toAbilityBonuses(data.abilityBonuses),
     ability_bonus_options: toAbilityBonusOptions(data.abilityChoice),
-    starting_proficiencies: [],
+    ...toSkillFields(data),
     languages: [],
     racial_traits: traits.refs,
     traitDetails: traits.details,

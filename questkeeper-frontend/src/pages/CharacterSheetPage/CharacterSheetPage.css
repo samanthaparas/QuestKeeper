@@ -2014,3 +2014,23 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   outline: 2px solid var(--qk-focus);
   outline-offset: 2px;
 }
+
+/* Features tab: features that belong to a different subclass. */
+.character-sheet__stray-features {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--qk-warning);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-brass-soft);
+}
+
+.character-sheet__stray-title {
+  margin: 0;
+  font-weight: 800;
+}
+
+.character-sheet__stray-features .qk-button {
+  justify-self: start;
+}

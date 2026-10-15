@@ -74,4 +74,11 @@ describe("HomebrewForm", () => {
     await userEvent.click(screen.getByLabelText(/choose extra skills from a list/));
     expect(screen.getByText(/tick at least one skill/)).toBeInTheDocument();
   });
+
+  it("lets a race offer skill choices, like a Half-Elf's any 2", async () => {
+    renderForm({ category: "race" });
+    await userEvent.click(screen.getByLabelText(/choose extra skills from a list/));
+    await userEvent.click(screen.getByRole("button", { name: "Allow any skill" }));
+    expect(screen.getByText(/Pick from: any skill/)).toBeInTheDocument();
+  });
 });

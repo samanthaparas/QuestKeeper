@@ -72,6 +72,8 @@ export function getReviewIssues({
   background,
   classSkills = [],
   backgroundSkills = [],
+  // Racial skill choices still to make: [{ grant: { from }, missing }].
+  raceSkillGaps = [],
   spellChoices,
   abilityScores,
   equipmentChosen = false,
@@ -99,6 +101,11 @@ export function getReviewIssues({
   if (background && backgroundSkills.length < backgroundNeeded) {
     add("classSkills", `Choose your ${background.name} skill`);
   }
+
+  // A Half-Elf's Skill Versatility and the like, also picked on the Skills step.
+  raceSkillGaps.forEach(({ grant, missing }) => {
+    add("classSkills", `Choose ${missing} more ${grant.from} skill${missing === 1 ? "" : "s"}`);
+  });
 
   if (steps.includes("classSpells") && !spellChoices) {
     add("classSpells", "Choose your starting spells");

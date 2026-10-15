@@ -53,6 +53,7 @@ import {
 } from "../../utils/characterSheet";
 import LevelUpWizard from "../../components/LevelUpWizard/LevelUpWizard";
 import Button from "../../components/Button/Button";
+import { getFeatureSubclassId } from "../../utils/featureSources";
 import CharacterDetailsDialog from "../../components/CharacterDetailsDialog/CharacterDetailsDialog";
 import PortraitUpload from "../../components/PortraitUpload/PortraitUpload";
 import TableJournal from "../../components/TableJournal/TableJournal";
@@ -269,7 +270,18 @@ function CharacterSheetPage() {
       persistSheet({
         ...sheet,
         class: value
-          ? { ...rest, subclass: { ...(currentSubclass ?? {}), name: value } }
+          ? {
+              ...rest,
+              subclass: {
+                ...(currentSubclass ?? {}),
+                name: value,
+                // Remember what was picked, so a retyped subclass stops
+                // offering the old one's features (getFeatureSubclassId).
+                ...(currentSubclass?.id
+                  ? { originalName: currentSubclass.originalName ?? currentSubclass.name }
+                  : {}),
+              },
+            }
           : rest,
       });
     } else if (field === "spellcastingAbility") {
@@ -636,9 +648,23 @@ function CharacterSheetPage() {
 
   function handleFeaturesAddMany(list) {
     const added = list.map((feature) =>
-      createFeat({ name: feature.name, description: feature.description }),
+      createFeat({
+        name: feature.name,
+        description: feature.description,
+        source: feature.source ?? null,
+      }),
     );
     persistSheet({ ...sheet, features: [...(sheet.features ?? []), ...added] });
+  }
+
+  // Removing features that belong to another subclass (the player confirms
+  // which ones first, on the Features tab).
+  function handleFeaturesRemoveMany(ids) {
+    const removing = new Set(ids);
+    persistSheet({
+      ...sheet,
+      features: (sheet.features ?? []).filter((feature) => !removing.has(feature.index)),
+    });
   }
 
   function handleFeatureUpdate(id, values) {
@@ -1515,12 +1541,14 @@ function CharacterSheetPage() {
                   {activeTab === "features" && (
                     <CharacterSheetFeaturesTab
                       classId={sheet.class?.id}
-                      subclassId={sheet.class?.subclass?.id}
+                      subclassId={getFeatureSubclassId(sheet.class)}
+                      subclassName={sheet.class?.subclass?.name ?? null}
                       raceId={sheet.race?.id}
                       subraceId={sheet.race?.subrace?.id}
                       features={sheet.features ?? []}
                       level={sheet.level}
                       onFeaturesAddMany={handleFeaturesAddMany}
+                      onFeaturesRemoveMany={handleFeaturesRemoveMany}
                       onFeatureAdd={handleFeatureAdd}
                       onFeatureUpdate={handleFeatureUpdate}
                       onFeatureRemove={handleFeatureRemove}

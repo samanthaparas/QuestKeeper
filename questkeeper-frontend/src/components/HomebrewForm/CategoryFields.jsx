@@ -107,6 +107,7 @@ function RaceFields({ data, set }) {
         value={data.abilityChoice}
         onChange={(abilityChoice) => set({ abilityChoice })}
       />
+      <SkillGrantFields data={data} set={set} />
       <LanguageFields data={data} set={set} />
       <NamedListField
         idPrefix="homebrew-trait"
@@ -155,6 +156,7 @@ function SubraceFields({ data, set, raceOptions }) {
         value={data.abilityChoice}
         onChange={(abilityChoice) => set({ abilityChoice })}
       />
+      <SkillGrantFields data={data} set={set} />
       <NamedListField
         idPrefix="homebrew-trait"
         label="Traits"
@@ -167,17 +169,21 @@ function SubraceFields({ data, set, raceOptions }) {
   );
 }
 
-function BackgroundFields({ data, set }) {
+// Skills an option always gives, plus an optional "choose N from this list"
+// (an Innkeeper picks 1 of 3; a Half-Elf picks any 2). Used by backgrounds,
+// races and subraces.
+function SkillGrantFields({ data, set }) {
   const choice = data.skillChoice;
+  const skills = data.skills ?? [];
 
   return (
     <>
       <fieldset className="homebrew-form__group">
         <legend className="homebrew-form__label">Skills it always gives (up to 4)</legend>
-        <SkillChecks value={data.skills} onChange={(skills) => set({ skills })} />
+        <SkillChecks value={skills} onChange={(skills) => set({ skills })} />
       </fieldset>
 
-      {/* Optional "pick 1 of these" skill, like an Innkeeper's. */}
+      {/* Optional "pick N of these" skills, like an Innkeeper's or a Half-Elf's. */}
       <fieldset className="homebrew-form__group">
         <label className="homebrew-form__check">
           <input
@@ -190,8 +196,8 @@ function BackgroundFields({ data, set }) {
           Let players choose extra skills from a list
         </label>
         <p className="homebrew-form__hint">
-          On top of the skills above, players pick a set number from a short
-          list you choose (an Innkeeper picks 1 of 3, for example).
+          On top of the skills above, players pick a set number from a list
+          you choose (an Innkeeper picks 1 of 3; a Half-Elf picks any 2).
         </p>
         {choice && (
           <>
@@ -205,18 +211,37 @@ function BackgroundFields({ data, set }) {
             />
             <p className="homebrew-form__hint">
               Pick from:{" "}
-              {choice.from.length > 0
-                ? choice.from.map((skill) => SKILL_NAMES[skill]).join(", ")
-                : "tick at least one skill below"}
+              {choice.from.length === Object.keys(SKILL_NAMES).length
+                ? "any skill"
+                : choice.from.length > 0
+                  ? choice.from.map((skill) => SKILL_NAMES[skill]).join(", ")
+                  : "tick at least one skill below"}{" "}
+              <button
+                type="button"
+                className="homebrew-form__link"
+                onClick={() =>
+                  set({ skillChoice: { ...choice, from: Object.keys(SKILL_NAMES) } })
+                }
+              >
+                Allow any skill
+              </button>
             </p>
             <SkillChecks
               value={choice.from}
-              disabledSkills={data.skills}
+              disabledSkills={skills}
               onChange={(from) => set({ skillChoice: { ...choice, from } })}
             />
           </>
         )}
       </fieldset>
+    </>
+  );
+}
+
+function BackgroundFields({ data, set }) {
+  return (
+    <>
+      <SkillGrantFields data={data} set={set} />
 
       <LanguageFields data={data} set={set} />
       <TextField

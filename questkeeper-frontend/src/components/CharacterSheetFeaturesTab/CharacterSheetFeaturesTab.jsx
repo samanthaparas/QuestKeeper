@@ -24,6 +24,7 @@ import {
   buildFeatureChoices,
 } from "../../utils/srdDetails";
 import Button from "../Button/Button";
+import { findStraySubclassFeatures, sourceFromEntry } from "../../utils/featureSources";
 
 function loadFeatureDetails(match) {
   return match.source === "trait"
@@ -34,11 +35,13 @@ function loadFeatureDetails(match) {
 function CharacterSheetFeaturesTab({
   classId,
   subclassId,
+  subclassName = null,
   raceId,
   subraceId,
   level = 1,
   features,
   onFeaturesAddMany,
+  onFeaturesRemoveMany = () => {},
   onFeatureAdd,
   onFeatureUpdate,
   onFeatureRemove,
@@ -64,6 +67,39 @@ function CharacterSheetFeaturesTab({
     choices: [],
   });
   const [picked, setPicked] = useState(() => new Set());
+  // Every SRD feature for this race and class (including other subclasses'),
+  // used to spot features that belong to a subclass the character doesn't have.
+  const [allEntries, setAllEntries] = useState([]);
+  const [strayPicked, setStrayPicked] = useState(null);
+
+  useEffect(() => {
+    if (!classId) return undefined;
+    let ignore = false;
+    loadFeatureEntries({ classId, subclassId, raceId, subraceId })
+      .then((entries) => !ignore && setAllEntries(entries))
+      .catch(() => {});
+    return () => {
+      ignore = true;
+    };
+  }, [classId, subclassId, raceId, subraceId]);
+
+  const strays = useMemo(
+    () => findStraySubclassFeatures(features, allEntries, subclassId ?? null),
+    [features, allEntries, subclassId],
+  );
+  // Ticked to remove: everything listed, until the player unticks some.
+  const strayChecked = strayPicked ?? new Set(strays.map(({ feature }) => feature.index));
+
+  function removeStrays() {
+    const ids = strays
+      .map(({ feature }) => feature.index)
+      .filter((id) => strayChecked.has(id));
+    if (ids.length === 0) return;
+    if (window.confirm(`Remove ${ids.length} ${ids.length === 1 ? "feature" : "features"}? This can't be undone.`)) {
+      onFeaturesRemoveMany(ids);
+      setStrayPicked(null);
+    }
+  }
 
   useEffect(() => {
     Promise.allSettled([getFeats("2014"), getFeats("2024")]).then((results) =>
@@ -161,6 +197,8 @@ function CharacterSheetFeaturesTab({
       chosen.map((choice) => ({
         name: choice.name,
         description: choice.description,
+        // Remembered on the sheet, so a later subclass change can tidy up safely.
+        source: sourceFromEntry(choice),
       })),
     );
     setShowImport(false);
@@ -180,6 +218,51 @@ function CharacterSheetFeaturesTab({
   return (
     <>
       <section className="character-sheet__section">
+        {/* Features from a subclass the character doesn't have (an old bug
+            added Draconic Bloodline's to every Sorcerer). Nothing is removed
+            until the player ticks and confirms. */}
+        {strays.length > 0 && (
+          <div className="character-sheet__stray-features" role="status">
+            <p className="character-sheet__stray-title">
+              {strays.length === 1 ? "1 feature belongs" : `${strays.length} features belong`} to a
+              different subclass{subclassName ? ` than ${subclassName}` : ""}.
+            </p>
+            <p className="character-sheet__empty-text">
+              Untick any you want to keep, then remove the rest. Features you typed
+              yourself are only listed if their name exactly matches another
+              subclass&apos;s feature.
+            </p>
+            <ul className="character-sheet__feature-import-list">
+              {strays.map(({ feature, from, guessed }) => (
+                <li key={feature.index}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={strayChecked.has(feature.index)}
+                      onChange={() => {
+                        const next = new Set(strayChecked);
+                        if (next.has(feature.index)) next.delete(feature.index);
+                        else next.add(feature.index);
+                        setStrayPicked(next);
+                      }}
+                    />
+                    <span>
+                      <strong>{feature.name}</strong>{" "}
+                      <span className="character-sheet__feature-import-meta">
+                        from {from}
+                        {guessed ? " (matched by name)" : ""}
+                      </span>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <Button variant="secondary" type="button" onClick={removeStrays}>
+              Remove ticked features
+            </Button>
+          </div>
+        )}
+
         <div className="character-sheet__feature-import">
           <Button
             variant="secondary"
@@ -232,6 +315,7 @@ function CharacterSheetFeaturesTab({
                               <span className="character-sheet__feature-import-meta">
                                 {choice.sourceLabel}
                                 {choice.level ? ` · level ${choice.level}` : ""}
+                                {choice.optionOf ? ` · pick one for ${choice.optionOf}` : ""}
                                 {choice.alreadyAdded
                                   ? " · already on your sheet"
                                   : ""}

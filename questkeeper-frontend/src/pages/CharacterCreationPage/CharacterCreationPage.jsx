@@ -1,3 +1,5 @@
+import { collectSkills, loadRaceSkillGrants, missingRacePicks } from "../../utils/skillGrants";
+import { sourceFromEntry } from "../../utils/featureSources";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -99,6 +101,10 @@ function CharacterCreationPage() {
   const [classSkills, setClassSkills] = useState([]);
   // Skills picked from a background's own choice (Innkeeper, Lyceum Student).
   const [backgroundSkills, setBackgroundSkills] = useState([]);
+  // Skills the race and subrace grant (fixed ones and "choose N"), and the
+  // player's picks for each choice ({ [grantId]: [skill] }).
+  const [raceSkillGrants, setRaceSkillGrants] = useState([]);
+  const [racePicks, setRacePicks] = useState({});
   const [spellChoices, setSpellChoices] = useState(null);
   const [raceRaw, setRaceRaw] = useState(null);
   const [classRaw, setClassRaw] = useState(null);
@@ -126,25 +132,6 @@ function CharacterCreationPage() {
   const [quizStatus, setQuizStatus] = useState(() =>
     location.state?.quizBuild ? "loading" : "idle",
   );
-
-  useEffect(() => {
-    const build = findQuizBuild(location.state?.quizBuild);
-    if (!build) return undefined;
-    let ignore = false;
-    // Forget the request, so a refresh doesn't fill it in again.
-    navigate(".", { replace: true, state: null });
-
-    loadQuizBuild(build)
-      .then((loaded) => {
-        if (!ignore) applyQuizBuild(build, loaded);
-      })
-      .catch(() => !ignore && setQuizStatus("failed"));
-    return () => {
-      ignore = true;
-    };
-    // Only when the page opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Fills in everything the build decides, the same way each picker would,
   // and spreads the standard array over its two main abilities (confirmed on
@@ -183,6 +170,7 @@ function CharacterCreationPage() {
     setBackground(backgroundSnapshot);
     setBackgroundRaw(newBackground);
     setBackgroundSkills([]);
+    setRacePicks({});
     setEquipmentSelections(null);
     setChosenEquipment([]);
     setAbilityAssignments({
@@ -241,6 +229,44 @@ function CharacterCreationPage() {
     return todo[0]?.step ?? "review";
   }
 
+  // "Use this build" from the quiz: fill in the build once it has loaded.
+  useEffect(() => {
+    const build = findQuizBuild(location.state?.quizBuild);
+    if (!build) return undefined;
+    let ignore = false;
+    // Forget the request, so a refresh doesn't fill it in again.
+    navigate(".", { replace: true, state: null });
+
+    loadQuizBuild(build)
+      .then((loaded) => {
+        if (!ignore) applyQuizBuild(build, loaded);
+      })
+      .catch(() => !ignore && setQuizStatus("failed"));
+    return () => {
+      ignore = true;
+    };
+    // Only when the page opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Racial skills (a Half-Elf's Skill Versatility, an Elf's Perception) are
+  // on the race's traits, so look them up whenever the race or subrace changes.
+  useEffect(() => {
+    if (!raceRaw) return undefined;
+    let ignore = false;
+    loadRaceSkillGrants({ raceRaw, subraceRaw })
+      .then((grants) => !ignore && setRaceSkillGrants(grants))
+      .catch(() => !ignore && setRaceSkillGrants([]));
+    return () => {
+      ignore = true;
+    };
+  }, [raceRaw, subraceRaw]);
+  // Only grants from the current race count (an old race's picks are ignored).
+  const activeRaceGrants = raceRaw ? raceSkillGrants : [];
+  const activeRacePicks = Object.fromEntries(
+    activeRaceGrants.map((grant) => [grant.id, racePicks[grant.id] ?? []]),
+  );
+
   const finalRace = mergeSubrace(race, subrace);
   const equipmentGroups = [
     ...parseEquipmentChoices(classRaw, "class"),
@@ -267,6 +293,7 @@ function CharacterCreationPage() {
     background,
     classSkills,
     backgroundSkills,
+    raceSkillGaps: missingRacePicks(activeRaceGrants, activeRacePicks),
     spellChoices,
     abilityScores,
     equipmentChosen: equipmentSelections !== null,
@@ -387,13 +414,18 @@ function CharacterCreationPage() {
       return acc;
     }, {});
 
-    const skills = {};
-    (background?.skillProficiencies ?? []).forEach((skill) => {
-      skills[skill.index] = skill.name;
-    });
-    [...backgroundSkills, ...classSkills].forEach((skill) => {
-      skills[skill.index] = skill.name;
-    });
+    // Every source counts once: background, race and subrace (fixed and
+    // picked), then class picks.
+    const skills = Object.fromEntries(
+      collectSkills({
+        background,
+        backgroundSkills,
+        classSkills,
+        raceGrants: activeRaceGrants,
+        racePicks: activeRacePicks,
+        className: characterClass?.name,
+      }).map((skill) => [skill.index, skill.name]),
+    );
 
     const equipment = [
       ...(characterClass?.startingEquipment ?? []),
@@ -427,7 +459,11 @@ function CharacterCreationPage() {
     const features = buildFeatureChoices(featureEntries, 1, [])
       .filter((choice) => choice.defaultSelected)
       .map((choice) =>
-        createFeat({ name: choice.name, description: choice.description }),
+        createFeat({
+          name: choice.name,
+          description: choice.description,
+          source: sourceFromEntry(choice),
+        }),
       );
 
     // Starting gear does real work on the sheet: armor sets the AC, weapons
@@ -655,6 +691,7 @@ function CharacterCreationPage() {
                     setRaceRaw(raw);
                     setSubrace(null);
                     setSubraceRaw(null);
+                    setRacePicks({});
                     setSubraceCantrip(getRaceFixedCantrip(snapshot.id));
                     goNext("race", {
                       raceRaw: raw,
@@ -695,6 +732,7 @@ function CharacterCreationPage() {
                   onChoose={(snapshot, raw) => {
                     setSubrace(snapshot);
                     setSubraceRaw(raw);
+                    setRacePicks({});
                     setSubraceCantrip(getRaceFixedCantrip(race?.id));
                     goNext("subrace", {
                       raceRaw,
@@ -842,9 +880,26 @@ function CharacterCreationPage() {
 
               {step === "classSkills" && (
                 <ClassSkillChoiceStep
+                  // Remount when the race's skill choices arrive, so they start filled in.
+                  key={activeRaceGrants.map((grant) => grant.id).join(",")}
                   characterClass={characterClass}
-                  grantedSkills={background?.skillProficiencies ?? []}
+                  grantedSkills={[
+                    ...(background?.skillProficiencies ?? []).map((skill) => ({
+                      ...skill,
+                      from: background.name,
+                    })),
+                    ...activeRaceGrants.flatMap((grant) =>
+                      grant.fixed.map((skill) => ({ ...skill, from: grant.from })),
+                    ),
+                  ]}
                   grantedFrom={background?.name}
+                  extraChoices={activeRaceGrants.filter((grant) => grant.choose > 0)}
+                  initialExtraSelected={Object.fromEntries(
+                    Object.entries(activeRacePicks).map(([id, picks]) => [
+                      id,
+                      picks.map((skill) => skill.index),
+                    ]),
+                  )}
                   initialSelected={classSkills.map((s) => s.index)}
                   backgroundChoice={
                     background?.skillChoice
@@ -854,9 +909,10 @@ function CharacterCreationPage() {
                   initialBackgroundSelected={backgroundSkills.map(
                     (s) => s.index,
                   )}
-                  onNext={(selected, fromBackground = []) => {
+                  onNext={(selected, fromBackground = [], fromRace = {}) => {
                     setClassSkills(selected);
                     setBackgroundSkills(fromBackground);
+                    setRacePicks(fromRace);
                     goNext("classSkills");
                   }}
                   onBack={goBack}
@@ -980,19 +1036,14 @@ function CharacterCreationPage() {
                   subclass={subclass}
                   background={background}
                   abilityScores={abilityScores}
-                  skills={[
-                    ...[
-                      ...(background?.skillProficiencies ?? []),
-                      ...backgroundSkills,
-                    ].map((skill) => ({
-                      ...skill,
-                      from: background.name,
-                    })),
-                    ...classSkills.map((skill) => ({
-                      ...skill,
-                      from: characterClass?.name,
-                    })),
-                  ]}
+                  skills={collectSkills({
+                    background,
+                    backgroundSkills,
+                    classSkills,
+                    raceGrants: activeRaceGrants,
+                    racePicks: activeRacePicks,
+                    className: characterClass?.name,
+                  })}
                   cantrips={[
                     ...(spellChoices?.cantrips ?? []),
                     ...(subraceCantrip

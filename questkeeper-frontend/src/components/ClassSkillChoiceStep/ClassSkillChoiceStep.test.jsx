@@ -96,6 +96,7 @@ describe("ClassSkillChoiceStep", () => {
           { index: "insight", name: "Insight" },
         ],
         [{ index: "history", name: "History" }],
+        {},
       );
     });
 
@@ -109,6 +110,64 @@ describe("ClassSkillChoiceStep", () => {
 
       expect(classHistory).toBeDisabled();
       expect(screen.getByText("Already from Innkeeper")).toBeInTheDocument();
+    });
+  });
+
+  describe("racial skill choices (Half-Elf Skill Versatility)", () => {
+    const versatility = {
+      id: "trait:skill-versatility",
+      from: "Half-Elf (Skill Versatility)",
+      choose: 2,
+      options: [
+        { index: "athletics", name: "Athletics" },
+        { index: "insight", name: "Insight" },
+        { index: "persuasion", name: "Persuasion" },
+      ],
+    };
+
+    it("asks for the racial picks with their own counter and source", () => {
+      renderStep({ extraChoices: [versatility] });
+
+      expect(screen.getByText(/Half-Elf \(Skill Versatility\) lets you choose 2 skills/)).toBeInTheDocument();
+      expect(screen.getAllByText("Chosen 0 of 2")).toHaveLength(2);
+      expect(screen.getByText(/You already have: Insight \(Acolyte\)/)).toBeInTheDocument();
+    });
+
+    it("never lets the same skill be picked twice, and sends the racial picks", async () => {
+      const onNext = vi.fn();
+      renderStep({ extraChoices: [versatility], onNext });
+
+      const [raceAthletics, classAthletics] = screen.getAllByRole("checkbox", { name: /Athletics/ });
+      await userEvent.click(raceAthletics);
+      expect(classAthletics).toBeDisabled();
+      // Insight comes from the background, so the race can't pick it either.
+      expect(screen.getAllByRole("checkbox", { name: /Insight/ })[0]).toBeDisabled();
+
+      await userEvent.click(screen.getByRole("checkbox", { name: /Persuasion/ }));
+      expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+      await userEvent.click(screen.getByRole("checkbox", { name: /History/ }));
+      expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+      // The Fighter still needs a second skill; Athletics and Insight are taken.
+      expect(screen.getAllByRole("checkbox", { name: /Insight/ })[1]).toBeDisabled();
+    });
+
+    it("finishes once every choice is made", async () => {
+      const onNext = vi.fn();
+      renderStep({
+        extraChoices: [{ ...versatility, choose: 1 }],
+        characterClass: { ...fighter, skillChoice: { ...fighter.skillChoice, choose: 1 } },
+        onNext,
+      });
+
+      await userEvent.click(screen.getByRole("checkbox", { name: /Persuasion/ }));
+      await userEvent.click(screen.getAllByRole("checkbox", { name: /History/ })[0]);
+      await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
+      expect(onNext).toHaveBeenCalledWith(
+        [{ index: "history", name: "History" }],
+        [],
+        { "trait:skill-versatility": [{ index: "persuasion", name: "Persuasion" }] },
+      );
     });
   });
 });
