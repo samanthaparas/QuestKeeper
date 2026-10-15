@@ -71,9 +71,18 @@ describe("CharacterSheetFeaturesTab: add from class and race", () => {
       screen.getByRole("button", { name: "Add 2 features" }),
     );
 
+    // Each one remembers where it came from (here, the Paladin class).
     expect(onFeaturesAddMany).toHaveBeenCalledWith([
-      { name: "Divine Sense", description: "Detect fiends." },
-      { name: "Aura of Protection", description: "Add Charisma to saves." },
+      {
+        name: "Divine Sense",
+        description: "Detect fiends.",
+        source: { type: "class", id: "paladin", key: "feature:divine-sense", level: 1 },
+      },
+      {
+        name: "Aura of Protection",
+        description: "Add Charisma to saves.",
+        source: { type: "class", id: "paladin", key: "feature:aura-of-protection", level: 6 },
+      },
     ]);
   });
 

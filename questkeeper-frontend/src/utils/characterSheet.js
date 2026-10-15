@@ -1281,11 +1281,15 @@ export function updateAttack(attacks, index, updates) {
   );
 }
 
-export function createFeat({ name, description }) {
+// source: where it came from when it was added from the SRD or homebrew
+// ({ type: "race" | "subrace" | "class" | "subclass", id, key, level }).
+// Typed-in features have none.
+export function createFeat({ name, description, source = null }) {
   return {
     index: crypto.randomUUID(),
     name,
     description: description || "",
+    ...(source ? { source } : {}),
   };
 }
 

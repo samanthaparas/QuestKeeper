@@ -262,3 +262,20 @@
     padding: 16px;
   }
 }
+
+/* "Allow any skill": a text-style button inside a hint line. */
+.homebrew-form__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qk-terracotta);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.homebrew-form__link:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}

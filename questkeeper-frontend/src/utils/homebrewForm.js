@@ -28,6 +28,8 @@ const BLANK_DATA = {
     languages: "Common",
     languageChoices: 0,
     traits: [{ name: "", description: "" }],
+    skills: [],
+    skillChoice: null,
   },
   subrace: {
     parentRace: "",
@@ -35,6 +37,8 @@ const BLANK_DATA = {
     abilityBonuses: {},
     abilityChoice: null,
     traits: [{ name: "", description: "" }],
+    skills: [],
+    skillChoice: null,
   },
   background: {
     skills: [],

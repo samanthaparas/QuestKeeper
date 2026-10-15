@@ -115,6 +115,8 @@ describe("cleanHomebrewData", () => {
       languages: [],
       languageChoices: 0,
       traits: [],
+      skills: [],
+      skillChoice: null,
     });
   });
 

@@ -203,7 +203,7 @@ export function getStepTips(stepKey, classId) {
     name: {
       title: "Not sure yet?",
       tips: [
-        "A placeholder is fine. You can rename your character on the sheet's Story tab any time.",
+        "A placeholder is fine. You can rename your character any time with Edit details beside their name on the sheet.",
         "Pick a name that is easy to say out loud at the table.",
         "You don't have to decide everything now. Each step explains its choices as you go.",
       ],

@@ -689,12 +689,16 @@ export function descriptionFromSrd(desc) {
 // Everything the SRD says a character gets from their race, subrace, class and
 // subclass, with each entry's level (null for racial traits) and description.
 // A failed lookup is skipped so one bad request never blocks the rest.
+// What each list in loadFeatureEntries is, in order: who owns its features.
+const FEATURE_LIST_OWNERS = ["race", "subrace", "class", "subclass"];
+
 export async function loadFeatureEntries({
   classId,
   subclassId,
   raceId,
   subraceId,
 }) {
+  const ownerIds = [raceId, subraceId, classId, subclassId];
   const lists = await Promise.allSettled([
     raceId && getRaceTraits(raceId).then(tagWithSource("trait")),
     subraceId && getSubraceTraits(subraceId).then(tagWithSource("trait")),
@@ -721,14 +725,32 @@ export async function loadFeatureEntries({
     if (result.status !== "fulfilled") return [];
     const ref = refs[position];
     const data = result.value;
+    const level = ref.source === "trait" ? null : (data.level ?? null);
+
+    // The SRD's list of a class's features also includes every SRD
+    // subclass's features (Draconic Bloodline's Dragon Ancestor shows up for
+    // every Sorcerer). Those belong to that subclass, not to the class.
+    const ownSubclassId = ref.order === 2 ? (data.subclass?.index ?? null) : null;
+    // The chosen subclass's features come from its own list; skip the copy.
+    if (ownSubclassId && ownSubclassId === subclassId) return [];
+    const ownerType = ownSubclassId ? "subclass" : FEATURE_LIST_OWNERS[ref.order];
+    const ownerId = ownSubclassId ?? ownerIds[ref.order];
 
     return [
       {
         key: `${ref.source}:${ref.index}`,
         name: data.name ?? ref.name,
-        level: ref.source === "trait" ? null : (data.level ?? null),
+        level,
         description: descriptionFromSrd(data.desc),
         order: ref.order,
+        // Where the feature comes from, saved with it on the sheet.
+        owner: { type: ownerType, id: ownerId, key: `${ref.source}:${ref.index}`, level },
+        // A feature of a subclass the character doesn't have. Never offered;
+        // kept only so old characters can spot strays (see featureSources).
+        otherSubclass: Boolean(ownSubclassId),
+        // One pick from a list (a Dragon Ancestor colour, a Metamagic):
+        // shown, but not ticked, so the player chooses theirs.
+        optionOf: data.parent?.name ?? null,
         sourceLabel:
           ref.source === "trait"
             ? "Racial trait"
@@ -749,13 +771,15 @@ export function buildFeatureChoices(
   const have = new Set(existingNames.map(normalizeItemName));
 
   return entries
+    // Features of a subclass the character didn't choose are never offered.
+    .filter((entry) => !entry.otherSubclass)
     .map((entry) => {
       const alreadyAdded = have.has(normalizeItemName(entry.name));
       const reached = entry.level === null || entry.level <= characterLevel;
       return {
         ...entry,
         alreadyAdded,
-        defaultSelected: !alreadyAdded && reached,
+        defaultSelected: !alreadyAdded && reached && !entry.optionOf,
       };
     })
     .sort(
