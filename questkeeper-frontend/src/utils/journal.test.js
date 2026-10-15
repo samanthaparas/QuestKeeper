@@ -10,7 +10,7 @@ const entry = (id, session, created_at, extra = {}) => ({
 });
 
 describe("journal helpers", () => {
-  it("groups notes by session, newest session first, oldest note first inside", () => {
+  it("groups notes by session, newest session first, newest note first inside", () => {
     const groups = groupBySession([
       entry("b", 1, "2026-10-12T02:10:00Z"),
       entry("c", 2, "2026-10-19T01:00:00Z"),
@@ -18,7 +18,7 @@ describe("journal helpers", () => {
     ]);
 
     expect(groups.map((group) => group.session)).toEqual([2, 1]);
-    expect(groups[1].entries.map((note) => note.id)).toEqual(["a", "b"]);
+    expect(groups[1].entries.map((note) => note.id)).toEqual(["b", "a"]);
     expect(groups[1].startedAt).toBe("2026-10-12T01:00:00Z");
   });
 

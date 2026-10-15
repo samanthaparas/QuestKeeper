@@ -1,8 +1,8 @@
 // Helpers for the table journal: grouping entries into sessions and the
 // little "Mon 8:42 pm" time stamps.
 
-// [{ session, startedAt, entries }], newest session first; entries inside a
-// session read top to bottom in the order they were written, like a story.
+// [{ session, startedAt, entries }], newest session first, and the newest
+// note first inside each session, so the latest update is always on top.
 export function groupBySession(entries) {
   const groups = new Map();
   for (const entry of entries) {
@@ -14,8 +14,10 @@ export function groupBySession(entries) {
   return [...groups.entries()]
     .sort(([a], [b]) => b - a)
     .map(([session, list]) => {
-      const sorted = [...list].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-      return { session, startedAt: sorted[0].created_at, entries: sorted };
+      // Newest note first, so the latest update is always at the top. The
+      // session's date is still its first note's.
+      const newestFirst = [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return { session, startedAt: newestFirst.at(-1).created_at, entries: newestFirst };
     });
 }
 
