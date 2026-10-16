@@ -8,6 +8,12 @@ import "./DetailPanel.css";
 
 const NEW_ISSUE_URL = "https://github.com/samanthaparas/QuestKeeper/issues/new";
 
+// "4, 8, 12, 16 and 19"
+function formatLevelList(levels) {
+  if (levels.length < 2) return String(levels[0] ?? "");
+  return `${levels.slice(0, -1).join(", ")} and ${levels[levels.length - 1]}`;
+}
+
 // A GitHub "new issue" link with the title filled in, so feedback says which
 // entry it is about ("Feedback: Fireball (Spell)").
 function feedbackUrl({ name, category }) {
@@ -205,7 +211,7 @@ function DetailPanel({ selectedResult, actions, inPicker = false, animate = true
               <ul className="detail-panel__list detail-panel__list--rich">
                 {selectedResult.traits.map((trait) => (
                   <li key={trait.name}>
-                    <strong>{trait.name}.</strong> <RulesText text={trait.description} />
+                    <strong>{trait.name}.</strong> <RulesText text={trait.description} withLists />
                   </li>
                 ))}
               </ul>
@@ -252,18 +258,45 @@ function DetailPanel({ selectedResult, actions, inPicker = false, animate = true
               <ul className="detail-panel__list detail-panel__list--rich">
                 {selectedResult.levelOneFeatures.map((feature) => (
                   <li key={feature.name}>
-                    <strong>{feature.name}.</strong> <RulesText text={feature.description} />
+                    <strong>{feature.name}.</strong> <RulesText text={feature.description} withLists />
                   </li>
                 ))}
               </ul>
             </>
           )}
 
-          {selectedResult.laterFeatures && (
-            <p>
-              <strong>Later you'll also gain:</strong>{" "}
-              {selectedResult.laterFeatures}
-            </p>
+          {/* What the class brings after level 1: grouped by level and folded
+              away, so it doesn't bury the rest. Falls back to the plain list
+              when the levels couldn't be loaded. */}
+          {selectedResult.laterFeatureGroups ? (
+            <details className="detail-panel__later">
+              <summary>
+                <strong>Later you&rsquo;ll also gain</strong> (levels 2 to 20)
+              </summary>
+              {selectedResult.laterFeatureGroups.repeated.length > 0 && (
+                <ul className="detail-panel__list detail-panel__list--rich">
+                  {selectedResult.laterFeatureGroups.repeated.map(({ name, levels }) => (
+                    <li key={name}>
+                      <strong>{name}</strong> at levels {formatLevelList(levels)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <dl className="detail-panel__levels">
+                {selectedResult.laterFeatureGroups.byLevel.map(({ level, names }) => (
+                  <div className="detail-panel__level-row" key={level}>
+                    <dt>Level {level}</dt>
+                    <dd>{names.join(", ")}</dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
+          ) : (
+            selectedResult.laterFeatures && (
+              <p>
+                <strong>Later you&rsquo;ll also gain:</strong> {selectedResult.laterFeatures}
+              </p>
+            )
           )}
 
           <p>

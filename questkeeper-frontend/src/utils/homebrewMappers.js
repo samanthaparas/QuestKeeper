@@ -549,6 +549,9 @@ export function toHomebrewClass(entry, allEntries = []) {
     // Already known, so the class panel can show them without more lookups.
     levelOneFeatures: features.filter((feature) => feature.level === 1),
     laterFeatureNames: features.filter((feature) => feature.level > 1).map((feature) => feature.name),
+    laterFeatureLevels: features
+      .filter((feature) => feature.level > 1)
+      .map(({ level, name }) => ({ level, name })),
     subclasses: getHomebrewSubclassRefs(allEntries, common.index),
   };
 }

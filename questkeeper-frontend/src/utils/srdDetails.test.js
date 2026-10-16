@@ -10,6 +10,14 @@ vi.mock("./api", () => ({
     { index: "aura-of-protection", name: "Aura of Protection" },
   ]),
   getSubclassFeatures: vi.fn(),
+  getClassLevels: vi.fn().mockResolvedValue([
+    { level: 1, features: [{ index: "divine-sense", name: "Divine Sense" }] },
+    { level: 2, features: [{ index: "spellcasting-paladin", name: "Spellcasting: Paladin" }] },
+    { level: 4, features: [{ index: "asi-4", name: "Ability Score Improvement" }] },
+    { level: 6, features: [{ index: "aura-of-protection", name: "Aura of Protection" }] },
+    { level: 8, features: [{ index: "asi-8", name: "Ability Score Improvement" }] },
+    { level: 7, subclass: { index: "devotion" }, features: [{ index: "aura-of-devotion", name: "Aura of Devotion" }] },
+  ]),
   getRaceDetails: vi.fn().mockResolvedValue({
     index: "tiefling",
     name: "Tiefling",
@@ -979,6 +987,18 @@ describe("class detail panel", () => {
       { name: "Divine Sense", description: "Detect fiends." },
     ]);
     expect(panel.laterFeatures).toBe("Aura of Protection");
+  });
+
+  it("groups later features by level, lists repeats once, and leaves out subclass levels", async () => {
+    const panel = mapClassToPanel(await loadClassDetails("paladin"));
+
+    expect(panel.laterFeatureGroups).toEqual({
+      repeated: [{ name: "Ability Score Improvement", levels: [4, 8] }],
+      byLevel: [
+        { level: 2, names: ["Spellcasting"] },
+        { level: 6, names: ["Aura of Protection"] },
+      ],
+    });
   });
 
   it("keeps each proficiency choice on its own line", () => {

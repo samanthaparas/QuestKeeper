@@ -236,6 +236,25 @@ export async function getClassLevel(classId, level) {
   );
 }
 
+// Every level of a class (1 to 20), each with the features it brings:
+// [{ level, features: [{ index, name }] }]. Book classes have none.
+export async function getClassLevels(classId) {
+  if (isBookEntryId(classId)) return [];
+  if (isHomebrewId(classId)) {
+    const homebrewClass = await findInHomebrew(classId, findHomebrew);
+    return Array.from({ length: 20 }, (_, index) => ({
+      level: index + 1,
+      features: homebrewClass.features
+        .filter((feature) => feature.level === index + 1)
+        .map(({ index: featureIndex, name }) => ({ index: featureIndex, name })),
+    }));
+  }
+  return requestJson(
+    `/classes/${encodeURIComponent(classId)}/levels`,
+    `Failed to fetch levels for class ${classId}:`,
+  );
+}
+
 export function getSubraceDetails(subraceId) {
   if (isHomebrewId(subraceId)) return findInHomebrew(subraceId, findHomebrew);
   return requestJson(
