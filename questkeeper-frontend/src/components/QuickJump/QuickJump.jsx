@@ -1,7 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
-import { clearRecent, loadRecent, rankResults, saveRecent } from "../../utils/quickJump";
+import { aiResultLink, clearRecent, loadRecent, rankResults, saveRecent } from "../../utils/quickJump";
+import { searchByMeaning } from "../../utils/api";
 import { loadCharacterEntries, loadContentLists, pageEntries } from "../../utils/quickJumpIndex";
 import "./QuickJump.css";
 
@@ -63,7 +64,34 @@ function QuickJump() {
   );
 }
 
+// The "✨ Search by meaning" row: what it will do, then "Thinking...", then
+// a short note if nothing came back.
+function AskAiRow({ query, search }) {
+  if (search?.status === "loading") {
+    return (
+      <span className="quick-jump__label quick-jump__ai" aria-live="polite">
+        ✨ Looking for things that mean &ldquo;{query}&rdquo;...
+      </span>
+    );
+  }
+  return (
+    <>
+      <span className="quick-jump__label quick-jump__ai">✨ Search by meaning: &ldquo;{query}&rdquo;</span>
+      <span className="quick-jump__hint" aria-live="polite">
+        {search?.status === "done"
+          ? search.message || "Nothing fits that. Try other words."
+          : "Finds spells, items, classes and more that match what you mean, using AI"}
+      </span>
+    </>
+  );
+}
+
 // The search box and its results. ↑ ↓ move, Enter opens, Esc closes.
+//
+// Below the name matches there's always "✨ Search by meaning": it asks the
+// backend (Claude) for entries that match what the words mean ("heal",
+// "sneak past guards"), each with a short reason. It only runs when picked,
+// never on every keystroke, so it doesn't cost anything until it's used.
 function QuickJumpDialog({ onClose }) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -85,6 +113,10 @@ function QuickJumpDialog({ onClose }) {
   const isLoading = pending > 0;
   const [characters, setCharacters] = useState([]);
   const [recent, setRecent] = useState(loadRecent);
+  // The latest search by meaning: { query, status: "loading" | "done",
+  // results, message }. It belongs to the words it was asked for, so typing
+  // something new puts the "Search by meaning" row back.
+  const [aiSearch, setAiSearch] = useState(null);
 
   // Each list joins the results as soon as it arrives.
   useEffect(() => {
@@ -134,7 +166,7 @@ function QuickJumpDialog({ onClose }) {
         { category: "Pages", entries: pageEntries() },
       ];
     }
-    return rankResults([...content, ...(userId ? characters : [])], query, expanded).map((section) => ({
+    const byName = rankResults([...content, ...(userId ? characters : [])], query, expanded).map((section) => ({
       ...section,
       // A last row that shows the rest of a cut-short group.
       entries:
@@ -142,7 +174,25 @@ function QuickJumpDialog({ onClose }) {
           ? [...section.entries, { id: `more:${section.category}`, showAll: section }]
           : section.entries,
     }));
-  }, [query, content, characters, recent, userId, expanded]);
+    if (query.trim().length < 2) return byName;
+
+    const asked = aiSearch?.query === query.trim() ? aiSearch : null;
+    const aiEntries =
+      asked?.status === "done" && asked.results.length > 0
+        ? asked.results.map((result) => ({
+            id: `ai:${result.id}`,
+            label: result.name,
+            hint: result.why,
+            category: result.category,
+            to: aiResultLink(result, content),
+            fromAi: true,
+          }))
+        : [{ id: "ai:ask", askAi: true }];
+    return [...byName, { category: "Search by meaning", entries: aiEntries }];
+  }, [query, content, characters, recent, userId, expanded, aiSearch]);
+  const nameMatchCount = sections
+    .filter((section) => section.category !== "Search by meaning")
+    .reduce((count, section) => count + section.entries.length, 0);
 
   const options = sections.flatMap((section) => section.entries);
   // Where each section's results start in that one flat list.
@@ -161,11 +211,27 @@ function QuickJumpDialog({ onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
+  async function askAi() {
+    const asked = query.trim();
+    if (aiSearch?.query === asked && aiSearch.status === "loading") return;
+    setAiSearch({ query: asked, status: "loading", results: [], message: "" });
+    const { results, message } = await searchByMeaning(asked);
+    // Only if the box still says the same thing.
+    setAiSearch((current) =>
+      current?.query === asked ? { query: asked, status: "done", results, message: message ?? "" } : current,
+    );
+  }
+
   function pick(entry) {
     if (entry.showAll) {
       setExpanded((open) => [...open, entry.showAll.category]);
       return;
     }
+    if (entry.askAi) {
+      askAi();
+      return;
+    }
+    if (!entry.to) return;
     setRecent(saveRecent(entry));
     onClose();
     navigate(entry.to);
@@ -255,23 +321,29 @@ function QuickJumpDialog({ onClose }) {
                       <span className="quick-jump__more">
                         Show all {entry.showAll.total} {entry.showAll.category.toLowerCase()}
                       </span>
+                    ) : entry.askAi ? (
+                      <AskAiRow query={query.trim()} search={aiSearch?.query === query.trim() ? aiSearch : null} />
                     ) : (
                       <>
                         <span className="quick-jump__label">{entry.label}</span>
                         {entry.hint && <span className="quick-jump__hint">{entry.hint}</span>}
                       </>
                     )}
-                    {/* Recent picks keep their kind, since they're mixed. */}
-                    {section.category === "Recent" && <span className="quick-jump__kind">{entry.category}</span>}
+                    {/* Recent picks and AI results keep their kind, since they're mixed. */}
+                    {(section.category === "Recent" || entry.fromAi) && (
+                      <span className="quick-jump__kind">{entry.category}</span>
+                    )}
                   </div>
                 );
               })}
             </div>
           ))}
 
-          {query.trim() && options.length === 0 && (
+          {query.trim() && nameMatchCount === 0 && (
             <p className="quick-jump__status">
-              {isLoading ? "Still loading races, spells and more..." : `Nothing matches "${query.trim()}".`}
+              {isLoading
+                ? "Still loading races, spells and more..."
+                : `No names match "${query.trim()}".${query.trim().length >= 2 ? " Try Search by meaning above." : ""}`}
             </p>
           )}
         </div>

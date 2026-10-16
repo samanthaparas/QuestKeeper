@@ -263,3 +263,8 @@
     display: none;
   }
 }
+
+/* "✨ Search by meaning" and its results. */
+.quick-jump__ai {
+  color: var(--qk-terracotta-hover);
+}

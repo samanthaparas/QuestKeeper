@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
+  aiResultLink,
   PER_CATEGORY,
   clearRecent,
   loadRecent,
@@ -91,3 +92,14 @@ describe("recent picks", () => {
     expect(loadRecent()).toEqual([]);
   });
 });
+
+describe("aiResultLink", () => {
+  it("uses the loaded entry's link, or builds one from the id", () => {
+    const entries = [{ id: "spell:fireball", to: "/spells?open=fireball" }];
+    expect(aiResultLink({ id: "spell:fireball" }, entries)).toBe("/spells?open=fireball");
+    expect(aiResultLink({ id: "item:bag-of-holding" })).toBe("/magic-items?open=bag-of-holding");
+    expect(aiResultLink({ id: "background:2014:acolyte" })).toBe("/backgrounds?open=acolyte&edition=2014");
+    expect(aiResultLink({ id: "unknown:thing" })).toBeNull();
+  });
+});
+

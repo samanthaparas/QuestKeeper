@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import QuickJump from "./QuickJump";
+import { searchByMeaning } from "../../utils/api";
 import { installFakeStorage } from "../../test/fakeStorage";
 
 vi.mock("../../context/useAuth", () => ({ useAuth: () => ({ user: { id: "me" } }) }));
@@ -25,6 +26,8 @@ vi.mock("../../utils/quickJumpIndex", () => ({
       { id: "character:1", label: "Billie", category: "My Characters", hint: "Level 5 · Tiefling · Paladin", to: "/characters/1" },
     ]),
 }));
+
+vi.mock("../../utils/api", () => ({ searchByMeaning: vi.fn() }));
 
 function Where() {
   const { pathname, search } = useLocation();
@@ -95,6 +98,7 @@ describe("QuickJump", () => {
     expect(screen.getAllByRole("group").map((group) => group.getAttribute("aria-label"))).toEqual([
       "Races",
       "Spells",
+      "Search by meaning",
     ]);
 
     // ↓ twice: Genasi (Fire) → Fire Bolt → Fireball.
@@ -139,6 +143,44 @@ describe("QuickJump", () => {
     await settle();
 
     fireEvent.change(searchBox(), { target: { value: "xyzzy" } });
-    expect(screen.getByText('Nothing matches "xyzzy".')).toBeInTheDocument();
+    expect(screen.getByText('No names match "xyzzy". Try Search by meaning above.')).toBeInTheDocument();
+  });
+
+  it("searches by meaning only when asked, then lists the picks with their reasons", async () => {
+    searchByMeaning.mockResolvedValue({
+      results: [
+        { id: "spell:cure-wounds", name: "Cure Wounds", category: "Spells", why: "Heals a creature you touch." },
+      ],
+    });
+    await renderSearch();
+    fireEvent.keyDown(document.body, { key: "/" });
+    await settle();
+
+    fireEvent.change(searchBox(), { target: { value: "heal my friend" } });
+    expect(searchByMeaning).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("option", { name: /Search by meaning: “heal my friend”/ }));
+    await settle();
+    expect(searchByMeaning).toHaveBeenCalledWith("heal my friend");
+
+    const pickedByMeaning = screen.getByRole("group", { name: "Search by meaning" });
+    expect(pickedByMeaning).toHaveTextContent("Cure Wounds");
+    expect(pickedByMeaning).toHaveTextContent("Heals a creature you touch.");
+
+    fireEvent.click(screen.getByRole("option", { name: /Cure Wounds/ }));
+    expect(screen.getByTestId("where")).toHaveTextContent("/spells?open=cure-wounds");
+  });
+
+  it("shows why a search by meaning came back empty", async () => {
+    searchByMeaning.mockResolvedValue({ results: [], message: "AI search isn't set up yet." });
+    await renderSearch();
+    fireEvent.keyDown(document.body, { key: "/" });
+    await settle();
+
+    fireEvent.change(searchBox(), { target: { value: "heal" } });
+    fireEvent.click(screen.getByRole("option", { name: /Search by meaning/ }));
+    await settle();
+
+    expect(screen.getByText("AI search isn't set up yet.")).toBeInTheDocument();
   });
 });

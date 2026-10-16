@@ -43,6 +43,27 @@ function requestJson(path, errorMessage) {
     });
 }
 
+// Search by meaning: the backend asks Claude which spells, items, classes,
+// races and backgrounds match what the player typed. Always resolves:
+// { results: [{ id, name, category, why }], message? }, with a message the
+// search can show when something went wrong.
+export async function searchByMeaning(query) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/ai-search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { results: [], message: body.message ?? "AI search didn't work. Try again in a moment." };
+    }
+    return { results: Array.isArray(body.results) ? body.results : [], message: body.message };
+  } catch {
+    return { results: [], message: "Couldn't reach the server. Check your connection and try again." };
+  }
+}
+
 function editionQuery(edition) {
   return edition ? `?edition=${encodeURIComponent(edition)}` : "";
 }
