@@ -59,4 +59,17 @@ describe("party strip", () => {
     expect(row.passives).toEqual([]);
     expect(row).toMatchObject({ hp: { current: 0, max: 0 }, hpPercent: 0, armorClass: 10 });
   });
+
+  it("shows death saves only at 0 HP, and the spell being concentrated on", () => {
+    const down = {
+      ...sheet,
+      combat: { ...sheet.combat, hitPoints: { current: 0, max: 24 } },
+      deathSaves: { successes: 2, failures: 1 },
+      concentration: { spell: "Bless" },
+    };
+    expect(toPartyRow(down).deathSaves).toEqual({ successes: 2, failures: 1 });
+    expect(toPartyRow(down).concentration).toBe("Bless");
+    expect(toPartyRow({ ...down, combat: sheet.combat }).deathSaves).toBeNull();
+    expect(toPartyRow(sheet).concentration).toBe("");
+  });
 });

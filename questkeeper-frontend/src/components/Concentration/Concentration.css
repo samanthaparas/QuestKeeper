@@ -1,0 +1,106 @@
+/* Concentration sits beside the condition badges, in blue so it doesn't
+   read as a condition. */
+.concentration {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.concentration__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 4px 0 10px;
+  border: 1px solid #3f6f8f;
+  border-radius: 999px;
+  background-color: #e1edf5;
+  color: #1f4660;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.concentration__end,
+.concentration__add {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.concentration__end {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 15px;
+}
+
+.concentration__end:hover {
+  background-color: rgba(31, 70, 96, 0.12);
+}
+
+/* "+ Concentrating", styled like "+ Condition". */
+.concentration__add {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px dashed var(--qk-border);
+  border-radius: 999px;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.concentration__add:hover {
+  border-color: #3f6f8f;
+  color: #1f4660;
+}
+
+.concentration__end:focus-visible,
+.concentration__add:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.concentration__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.concentration__input {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: #fff;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.concentration__form .qk-button,
+.concentration__check .qk-button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+/* The reminder after damage: gold, so it's noticed. */
+.concentration__check {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--qk-warning);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-brass-soft);
+  font-size: 14px;
+  font-weight: 700;
+}

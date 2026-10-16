@@ -538,3 +538,61 @@ describe("conditions on the sheet", () => {
     expect(screen.getByRole("radio", { name: "Disadvantage" })).toHaveAttribute("aria-checked", "true");
   });
 });
+
+describe("death saves and concentration", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("shows death saves at 0 HP, rolls one, and clears them once healed", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet();
+    sheet.combat.hitPoints = { max: 20, current: 0, temporary: 0 };
+    renderSheet(sheet);
+
+    const panel = await screen.findByRole("region", { name: "Death saves" });
+    vi.spyOn(Math, "random").mockReturnValue(0.7); // d20 -> 15
+    await user.click(within(panel).getByRole("button", { name: "Roll death save" }));
+    expect(within(panel).getByText("Rolled 15: a success.")).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: "Successes 1" })).toHaveAttribute("aria-pressed", "true");
+
+    const hp = screen.getByLabelText("Current HP");
+    await user.clear(hp);
+    await user.type(hp, "5");
+    expect(screen.queryByRole("region", { name: "Death saves" })).not.toBeInTheDocument();
+
+    await user.clear(hp);
+    const again = await screen.findByRole("region", { name: "Death saves" });
+    expect(within(again).getByRole("button", { name: "Successes 1" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("is stable after three successes", async () => {
+    const sheet = makeSheet();
+    sheet.combat.hitPoints = { max: 20, current: 0, temporary: 0 };
+    sheet.deathSaves = { successes: 3, failures: 1 };
+    renderSheet(sheet);
+
+    expect(await screen.findByText(/^Stable\./)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Roll death save" })).not.toBeInTheDocument();
+  });
+
+  it("tracks concentration and asks for a CON save after damage", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet();
+    sheet.combat.hitPoints = { max: 30, current: 30, temporary: 0 };
+    renderSheet(sheet);
+
+    await user.click(await screen.findByRole("button", { name: "+ Concentrating" }));
+    await user.type(screen.getByLabelText("Spell you're concentrating on"), "Bless");
+    await user.click(screen.getByRole("button", { name: "Start" }));
+    expect(screen.getByText(/: Bless/)).toBeInTheDocument();
+
+    const hp = screen.getByLabelText("Current HP");
+    await user.tripleClick(hp);
+    await user.keyboard("6");
+    expect(screen.getByRole("status")).toHaveTextContent("Make a CON save, DC 12, to keep Bless.");
+
+    vi.spyOn(Math, "random").mockReturnValue(0); // d20 -> 1, a failure
+    await user.click(screen.getByRole("button", { name: /Roll CON save/ }));
+    expect(screen.queryByText(/: Bless/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ Concentrating" })).toBeInTheDocument();
+  });
+});

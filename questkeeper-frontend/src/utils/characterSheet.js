@@ -314,6 +314,36 @@ export function getSaveModifier(
   );
 }
 
+// Death saves, made each turn at 0 HP: { successes, failures }, 0 to 3 each.
+export const EMPTY_DEATH_SAVES = { successes: 0, failures: 0 };
+
+// One death save from the d20 alone (no bonus): 10 or more is a success, a 1
+// counts as two failures, and a 20 brings you back with 1 HP (and clears the
+// marks). Returns the new marks and whether the character gets up.
+export function applyDeathSave(deathSaves, natural) {
+  const current = { ...EMPTY_DEATH_SAVES, ...deathSaves };
+  if (natural === 20) return { deathSaves: { ...EMPTY_DEATH_SAVES }, regainsHp: true };
+
+  const next =
+    natural >= 10
+      ? { ...current, successes: Math.min(3, current.successes + 1) }
+      : { ...current, failures: Math.min(3, current.failures + (natural === 1 ? 2 : 1)) };
+  return { deathSaves: next, regainsHp: false };
+}
+
+// "stable" after three successes, "dead" after three failures, else null.
+export function getDeathSaveOutcome(deathSaves) {
+  if ((deathSaves?.failures ?? 0) >= 3) return "dead";
+  if ((deathSaves?.successes ?? 0) >= 3) return "stable";
+  return null;
+}
+
+// The Constitution save to keep concentrating after taking damage: DC 10,
+// or half the damage if that's higher.
+export function getConcentrationDc(damage) {
+  return Math.max(10, Math.floor(damage / 2));
+}
+
 export function getSpellSaveDC(abilityScore, proficiencyBonus) {
   return 8 + proficiencyBonus + getAbilityModifier(abilityScore);
 }

@@ -11,6 +11,19 @@ const PASSIVE_LABELS = { perception: "Perception", insight: "Insight", investiga
 //
 // rows: from toPartyRow(). onSelect(id): optional; makes each name a button
 // (the DM uses it to open that character's full card below).
+// "2 successes, 1 failure", read out for screen readers.
+function deathSaveSummary({ successes, failures }) {
+  return `Death saves: ${successes} ${successes === 1 ? "success" : "successes"}, ${failures} ${
+    failures === 1 ? "failure" : "failures"
+  }`;
+}
+
+function deathSaveWord({ successes, failures }) {
+  if (failures >= 3) return "Dead";
+  if (successes >= 3) return "Stable";
+  return "";
+}
+
 function PartyStrip({ rows, onSelect, selectedId }) {
   if (rows.length === 0) return null;
 
@@ -67,6 +80,30 @@ function PartyStrip({ rows, onSelect, selectedId }) {
           <span className="party-strip__ac">
             <span className="party-strip__label">AC</span> {row.armorClass}
           </span>
+
+          {/* Down: how their death saves are going ("✓✓ ✗"). */}
+          {row.deathSaves && (
+            <span className="party-strip__death-saves" aria-label={deathSaveSummary(row.deathSaves)}>
+              <span className="party-strip__label">Death saves</span>
+              <span className="party-strip__death-marks" aria-hidden="true">
+                <span className="party-strip__death-success">
+                  {"✓".repeat(row.deathSaves.successes) || "–"}
+                </span>{" "}
+                <span className="party-strip__death-failure">
+                  {"✗".repeat(row.deathSaves.failures) || "–"}
+                </span>
+              </span>
+              {deathSaveWord(row.deathSaves) && (
+                <strong className="party-strip__death-word">{deathSaveWord(row.deathSaves)}</strong>
+              )}
+            </span>
+          )}
+
+          {row.concentration && (
+            <span className="party-strip__concentration" title="Concentrating on this spell">
+              🎯 {row.concentration}
+            </span>
+          )}
 
           {row.passives.length > 0 && (
             <span

@@ -57,6 +57,16 @@ export function toPartyRow(sheet, { withPassives = false } = {}) {
     health: getHealthState(current, max),
     armorClass: getEffectiveArmorClass(sheet),
     conditions: sheet.conditions ?? [],
+    // The spell being concentrated on, or "".
+    concentration: typeof sheet.concentration?.spell === "string" ? sheet.concentration.spell : "",
+    // At 0 HP only: { successes, failures }.
+    deathSaves:
+      max > 0 && current <= 0
+        ? {
+            successes: Math.min(3, sheet.deathSaves?.successes ?? 0),
+            failures: Math.min(3, sheet.deathSaves?.failures ?? 0),
+          }
+        : null,
     passives: withPassives
       ? PASSIVE_SKILLS.map((skill) => ({ skill, score: getPassiveScore(sheet, skill) }))
       : [],
