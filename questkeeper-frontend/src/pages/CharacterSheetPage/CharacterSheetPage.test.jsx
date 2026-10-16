@@ -631,7 +631,7 @@ describe("condition timers on the sheet", () => {
     fakeTurn.value = fightAtRound(3);
     renderSheet(sheet);
 
-    expect(await screen.findByText("⏱ Poisoned wore off (its rounds ran out).")).toBeInTheDocument();
+    expect(await screen.findByText("⏱ Poisoned has ended (the rounds ran out).")).toBeInTheDocument();
     expect(screen.getByText("⏱ 2 rounds")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Poisoned" })).not.toBeInTheDocument();
   });
@@ -644,6 +644,29 @@ describe("condition timers on the sheet", () => {
     renderSheet(sheet);
 
     expect(await screen.findByText("⏱ 3 rounds")).toBeInTheDocument();
+  });
+
+  it("counts a timed concentration spell down and ends it when the rounds run out", async () => {
+    const sheet = makeSheet();
+    sheet.concentration = { spell: "Bless", rounds: 2 };
+    sheet.roundSeen = { tableId: "t1", round: 1 };
+    fakeTurn.value = fightAtRound(3);
+    renderSheet(sheet);
+
+    expect(await screen.findByText("⏱ Bless has ended (the rounds ran out).")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ Concentrating" })).toBeInTheDocument();
+  });
+
+  it("gives concentration a 10-round timer with ⏱", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet();
+    sheet.concentration = { spell: "Bless" };
+    renderSheet(sheet);
+
+    await user.click(await screen.findByRole("button", { name: "Set how many rounds Bless lasts" }));
+    expect(screen.getByText("⏱ 10 rounds")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "One less round of Bless" }));
+    expect(screen.getByText("⏱ 9 rounds")).toBeInTheDocument();
   });
 });
 

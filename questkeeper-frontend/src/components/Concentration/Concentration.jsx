@@ -11,8 +11,21 @@ import "./Concentration.css";
 // spellNames: the character's spells, offered as suggestions.
 // check: { dc } after damage while concentrating, else null.
 // conSave: the character's Constitution save bonus.
+// rounds: how many rounds the spell has left, or null for no timer (most
+// concentration spells last 1 minute, which is 10 rounds). The sheet counts
+// it down as the table's rounds pass; onRoundsChange(n) sets it, 0 clears it.
 // onStart(name), onEnd(), onRollCheck() (the sheet rolls and decides).
-function Concentration({ spell, spellNames = [], check, conSave, onStart, onEnd, onRollCheck }) {
+function Concentration({
+  spell,
+  spellNames = [],
+  check,
+  conSave,
+  rounds = null,
+  onStart,
+  onEnd,
+  onRollCheck,
+  onRoundsChange,
+}) {
   const [isPicking, setIsPicking] = useState(false);
   const [draft, setDraft] = useState("");
   const listId = useId();
@@ -32,6 +45,38 @@ function Concentration({ spell, spellNames = [], check, conSave, onStart, onEnd,
         <span className="concentration__badge">
           <span aria-hidden="true">🎯</span>{" "}
           <RuleTerm word="concentration">Concentrating</RuleTerm>: {spell}
+          {onRoundsChange &&
+            (typeof rounds === "number" ? (
+              <span className="concentration__timer">
+                <button
+                  type="button"
+                  aria-label={rounds === 1 ? `Take the timer off ${spell}` : `One less round of ${spell}`}
+                  onClick={() => onRoundsChange(rounds - 1)}
+                >
+                  −
+                </button>
+                <span aria-live="polite">
+                  ⏱ {rounds} {rounds === 1 ? "round" : "rounds"}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`One more round of ${spell}`}
+                  onClick={() => onRoundsChange(rounds + 1)}
+                >
+                  +
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="concentration__set-timer"
+                aria-label={`Set how many rounds ${spell} lasts`}
+                title="Set how many rounds it lasts (1 minute is 10 rounds)"
+                onClick={() => onRoundsChange(10)}
+              >
+                ⏱
+              </button>
+            ))}
           <button
             type="button"
             className="concentration__end"

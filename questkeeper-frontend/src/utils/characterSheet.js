@@ -1200,10 +1200,24 @@ export function applyRest(sheet, restType) {
         }
       : sheet.combat.hitDice;
 
+  // A long rest heals the companion (a mount, a familiar) to full too; it
+  // rests along with its character.
+  const companionCreature =
+    restType === "long" && sheet.companionCreature?.hitPoints
+      ? {
+          ...sheet.companionCreature,
+          hitPoints: {
+            ...sheet.companionCreature.hitPoints,
+            current: sheet.companionCreature.hitPoints.max ?? sheet.companionCreature.hitPoints.current,
+          },
+        }
+      : sheet.companionCreature;
+
   return {
     ...sheet,
     resources,
     spellcasting,
+    ...(companionCreature ? { companionCreature } : {}),
     // A long rest also takes away one level of exhaustion.
     ...(restType === "long" && sheet.conditions
       ? { conditions: afterLongRest(sheet.conditions) }

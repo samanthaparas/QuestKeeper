@@ -38,6 +38,23 @@ export function getHealthState(current, max) {
   return "healthy";
 }
 
+// A tracked companion (a mount, a familiar) as a small line under its
+// character: name, picture, HP and AC. Null when there isn't one.
+export function toCompanionRow(sheet) {
+  const creature = sheet.companionCreature;
+  if (sheet.companionMode !== "creature" || !creature) return null;
+  const max = Math.max(0, creature.hitPoints?.max ?? 0);
+  const current = Math.max(0, creature.hitPoints?.current ?? 0);
+  return {
+    name: creature.name || "Companion",
+    portraitUrl: typeof creature.portraitUrl === "string" ? creature.portraitUrl : "",
+    hp: { current, max },
+    hpPercent: max > 0 ? Math.min(100, Math.round((current / max) * 100)) : 0,
+    health: getHealthState(current, max),
+    armorClass: creature.armorClass ?? 10,
+  };
+}
+
 export function toPartyRow(sheet, { withPassives = false } = {}) {
   const hp = sheet.combat?.hitPoints ?? {};
   const max = Math.max(0, hp.max ?? 0);
@@ -59,6 +76,10 @@ export function toPartyRow(sheet, { withPassives = false } = {}) {
     conditions: sheet.conditions ?? [],
     // The spell being concentrated on, or "".
     concentration: typeof sheet.concentration?.spell === "string" ? sheet.concentration.spell : "",
+    // The spell's rounds left when it has a timer, else null.
+    concentrationRounds:
+      typeof sheet.concentration?.rounds === "number" ? sheet.concentration.rounds : null,
+    companion: toCompanionRow(sheet),
     // At 0 HP only: { successes, failures }.
     deathSaves:
       max > 0 && current <= 0

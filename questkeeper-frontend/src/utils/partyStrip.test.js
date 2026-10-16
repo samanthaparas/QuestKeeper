@@ -72,4 +72,25 @@ describe("party strip", () => {
     expect(toPartyRow({ ...down, combat: sheet.combat }).deathSaves).toBeNull();
     expect(toPartyRow(sheet).concentration).toBe("");
   });
+
+  it("adds a tracked companion's HP and AC, and the concentration timer", () => {
+    const row = toPartyRow({
+      ...sheet,
+      concentration: { spell: "Bless", rounds: 4 },
+      companionMode: "creature",
+      companionCreature: { name: "Victory", hitPoints: { current: 2, max: 59 }, armorClass: 18 },
+    });
+
+    expect(row.concentrationRounds).toBe(4);
+    expect(row.companion).toEqual({
+      name: "Victory",
+      portraitUrl: "",
+      hp: { current: 2, max: 59 },
+      hpPercent: 3,
+      health: "bloodied",
+      armorClass: 18,
+    });
+    expect(toPartyRow({ ...sheet, companionMode: "text", companionCreature: {} }).companion).toBeNull();
+  });
 });
+

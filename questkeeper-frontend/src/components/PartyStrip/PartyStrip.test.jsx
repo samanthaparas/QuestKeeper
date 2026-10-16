@@ -47,4 +47,26 @@ describe("PartyStrip portraits", () => {
     expect(screen.getByLabelText("Death saves: 2 successes, 1 failure")).toHaveTextContent("✓✓ ✗");
     expect(screen.getByText("🎯 Bless")).toBeInTheDocument();
   });
+
+  it("shows a companion on its own line under its character", () => {
+    render(
+      <PartyStrip
+        rows={[
+          toPartyRow({
+            ...base,
+            id: "a",
+            name: "Billie",
+            companionMode: "creature",
+            companionCreature: { name: "Victory", hitPoints: { current: 2, max: 59 }, armorClass: 18 },
+          }),
+        ]}
+      />,
+    );
+
+    const companion = screen.getByLabelText("Billie's companion, Victory");
+    expect(companion).toHaveTextContent("Victory");
+    expect(companion).toHaveTextContent("HP 2/59 · Bloodied");
+    expect(companion).toHaveTextContent("AC 18");
+  });
 });
+
