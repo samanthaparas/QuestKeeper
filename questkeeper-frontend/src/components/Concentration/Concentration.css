@@ -104,3 +104,46 @@
   font-size: 14px;
   font-weight: 700;
 }
+
+/* The spell's round timer: "⏱ 10 rounds" with − and +, or ⏱ to set one. */
+.concentration__timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.concentration__timer button,
+.concentration__set-timer {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.concentration__set-timer {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.concentration__timer button:hover,
+.concentration__set-timer:hover {
+  background-color: rgba(31, 70, 96, 0.12);
+  opacity: 1;
+}
+
+.concentration__timer button:focus-visible,
+.concentration__set-timer:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 1px;
+  opacity: 1;
+}

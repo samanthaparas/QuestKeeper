@@ -102,6 +102,11 @@ function PartyStrip({ rows, onSelect, selectedId }) {
           {row.concentration && (
             <span className="party-strip__concentration" title="Concentrating on this spell">
               🎯 {row.concentration}
+              {row.concentrationRounds !== null && (
+                <span className="party-strip__condition-rounds">
+                  {" "}· {row.concentrationRounds} {row.concentrationRounds === 1 ? "round" : "rounds"} left
+                </span>
+              )}
             </span>
           )}
 
@@ -139,6 +144,31 @@ function PartyStrip({ rows, onSelect, selectedId }) {
                 );
               })}
             </ul>
+          )}
+
+          {/* Their companion (a mount, a familiar), on its own line below. */}
+          {row.companion && (
+            <div
+              className={`party-strip__companion party-strip__companion--${row.companion.health}`}
+              aria-label={`${row.name}'s companion, ${row.companion.name}`}
+            >
+              <span className="party-strip__companion-portrait" aria-hidden="true">
+                {row.companion.portraitUrl ? <img src={row.companion.portraitUrl} alt="" /> : "🐾"}
+              </span>
+              <span className="party-strip__companion-name">{row.companion.name}</span>
+              <span className="party-strip__hp-text">
+                <span className="party-strip__label">HP</span> {row.companion.hp.current}/{row.companion.hp.max}
+                {HEALTH_LABELS[row.companion.health] && (
+                  <strong className="party-strip__health"> · {HEALTH_LABELS[row.companion.health]}</strong>
+                )}
+              </span>
+              <span className="party-strip__bar party-strip__companion-bar" aria-hidden="true">
+                <span className="party-strip__bar-fill" style={{ width: `${row.companion.hpPercent}%` }} />
+              </span>
+              <span className="party-strip__ac">
+                <span className="party-strip__label">AC</span> {row.companion.armorClass}
+              </span>
+            </div>
           )}
         </li>
       ))}

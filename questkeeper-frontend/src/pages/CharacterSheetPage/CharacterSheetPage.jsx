@@ -174,7 +174,10 @@ function CharacterSheetPage() {
   const fightTableId = tableCombat?.table?.id ?? null;
   const fightRound = tableCombat?.round ?? null;
   const elapsedRounds = sheet ? roundsElapsed(sheet.roundSeen, fightTableId, fightRound) : 0;
-  const hasTimers = Boolean(sheet?.conditions?.some((condition) => typeof condition.rounds === "number"));
+  // A concentration spell can be timed the same way ("Bless, 10 rounds").
+  const hasTimers =
+    Boolean(sheet?.conditions?.some((condition) => typeof condition.rounds === "number")) ||
+    typeof sheet?.concentration?.rounds === "number";
   // Out of step with the fight: a round passed, or it's a new fight (the
   // round went back to 1) or a different table, which just resets the count.
   const roundOutOfStep =
@@ -184,11 +187,31 @@ function CharacterSheetPage() {
     if (!hasTimers || !roundOutOfStep) return undefined;
     // After this render, so the save doesn't happen mid-render.
     const timer = setTimeout(() => {
-      const { conditions, ended } = tickConditionRounds(sheet.conditions, elapsedRounds);
-      persistSheet({ ...sheet, conditions, roundSeen: { tableId: fightTableId, round: fightRound } });
-      if (ended.length > 0) {
-        const names = ended.map((key) => conditionWord(key)?.name ?? key);
-        setEndedConditionsNote(`${names.join(" and ")} wore off (its rounds ran out).`);
+      const { conditions, ended } = tickConditionRounds(sheet.conditions ?? [], elapsedRounds);
+      const names = ended.map((key) => conditionWord(key)?.name ?? key);
+
+      let { concentration } = sheet;
+      if (typeof concentration?.rounds === "number" && elapsedRounds > 0) {
+        const left = concentration.rounds - elapsedRounds;
+        if (left > 0) {
+          concentration = { ...concentration, rounds: left };
+        } else {
+          names.push(concentration.spell);
+          concentration = null;
+          setConcentrationCheck(null);
+        }
+      }
+
+      persistSheet({
+        ...sheet,
+        conditions,
+        concentration,
+        roundSeen: { tableId: fightTableId, round: fightRound },
+      });
+      if (names.length > 0) {
+        setEndedConditionsNote(
+          `${names.join(" and ")} ${names.length === 1 ? "has" : "have"} ended (the rounds ran out).`,
+        );
       }
     }, 0);
     return () => clearTimeout(timer);
@@ -584,6 +607,15 @@ function CharacterSheetPage() {
   function handleConcentrationStart(spell) {
     setConcentrationCheck(null);
     persistSheet({ ...sheet, concentration: { spell } });
+  }
+
+  // Sets the spell's rounds left (0 takes the timer off). Mid-fight, the
+  // count starts from this round.
+  function handleConcentrationRounds(rounds) {
+    const next = { spell: sheet.concentration.spell };
+    if (rounds > 0) next.rounds = rounds;
+    const roundSeen = fightTableId ? { tableId: fightTableId, round: fightRound } : sheet.roundSeen;
+    persistSheet({ ...sheet, concentration: next, roundSeen });
   }
 
   function handleConcentrationEnd() {
@@ -1064,13 +1096,17 @@ function CharacterSheetPage() {
 
   function handleLongRest() {
     const rested = applyRest(sheet, "long");
+    const companionName =
+      sheet.companionMode === "creature" && sheet.companionCreature
+        ? sheet.companionCreature.name || "your companion"
+        : null;
     const regained =
       getHitDiceRemaining(rested.combat.hitDice) -
       getHitDiceRemaining(sheet.combat.hitDice);
     persistSheet(rested);
     setShowShortRest(false);
     setRestMessage(
-      `Long rest done. HP is back to full${
+      `Long rest done. HP is back to full${companionName ? ` (${companionName}'s too)` : ""}${
         regained > 0
           ? `, you got ${regained} Hit ${regained === 1 ? "Die" : "Dice"} back,`
           : ""
@@ -1771,6 +1807,8 @@ function CharacterSheetPage() {
                       conSave={conSave}
                       onStart={handleConcentrationStart}
                       onEnd={handleConcentrationEnd}
+                      rounds={sheet.concentration?.rounds ?? null}
+                      onRoundsChange={handleConcentrationRounds}
                       onRollCheck={() => handleConcentrationCheck(conSave)}
                     />
                     {/* Unlock to change AC, scores and the rest on purpose. */}

@@ -31,6 +31,7 @@ import {
   setCurrentHp,
   setTemporaryHp,
   applyRest,
+  createCharacterSheet,
   takeShortRest,
   getHitDiceRemaining,
   getLongRestHitDice,
@@ -1858,3 +1859,18 @@ describe("choosing where racial bonuses go", () => {
     ).toEqual({ dexterity: 17, wisdom: 13, constitution: 14 });
   });
 });
+
+describe("long rest and companions", () => {
+  it("heals the companion to full on a long rest, but not a short one", () => {
+    const sheet = {
+      ...createCharacterSheet({ name: "Billie", level: 3 }),
+      companionMode: "creature",
+      companionCreature: { name: "Victory", hitPoints: { current: 2, max: 59 } },
+    };
+
+    expect(applyRest(sheet, "long").companionCreature.hitPoints).toEqual({ current: 59, max: 59 });
+    expect(applyRest(sheet, "short").companionCreature.hitPoints).toEqual({ current: 2, max: 59 });
+    expect(applyRest(createCharacterSheet({ name: "Solo" }), "long").companionCreature).toBeUndefined();
+  });
+});
+
