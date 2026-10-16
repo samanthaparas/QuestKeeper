@@ -118,3 +118,25 @@ export function clearRecent() {
   }
   return [];
 }
+
+// Where an AI search result opens: the same page as the matching quick-jump
+// entry when it's loaded, else built from the id ("spell:cure-wounds").
+const AI_RESULT_PAGES = {
+  spell: "/spells",
+  item: "/magic-items",
+  class: "/classes",
+  race: "/races",
+};
+
+export function aiResultLink(result, entries = []) {
+  const known = entries.find((entry) => entry.id === result.id);
+  if (known?.to) return known.to;
+  const [kind, ...rest] = result.id.split(":");
+  if (kind === "background") {
+    const [edition, index] = rest;
+    return `/backgrounds?${new URLSearchParams({ open: index, edition })}`;
+  }
+  const page = AI_RESULT_PAGES[kind];
+  return page ? `${page}?${new URLSearchParams({ open: rest.join(":") })}` : null;
+}
+

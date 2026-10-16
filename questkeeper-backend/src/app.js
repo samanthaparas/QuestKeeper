@@ -12,8 +12,13 @@ import weaponsRouter from "./routes/weapons.js";
 import equipmentRouter from "./routes/equipment.js";
 import magicItemsRouter from "./routes/magicItems.js";
 import featuresRouter from "./routes/features.js";
+import aiSearchRouter from "./routes/aiSearch.js";
 
 const app = express();
+
+// Render sits one proxy in front of the server; this makes req.ip the
+// visitor's own address, which the AI search's per-visitor limit relies on.
+app.set("trust proxy", 1);
 
 app.use(cors());
 app.use(express.json());
@@ -36,6 +41,7 @@ app.use("/api/weapons", weaponsRouter);
 app.use("/api/equipment", equipmentRouter);
 app.use("/api/magic-items", magicItemsRouter);
 app.use("/api/features", featuresRouter);
+app.use("/api/ai-search", aiSearchRouter);
 
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({
