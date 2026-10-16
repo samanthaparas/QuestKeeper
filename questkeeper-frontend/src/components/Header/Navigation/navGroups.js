@@ -32,6 +32,7 @@ export const NAV_GROUPS = [
       { to: "/characters", label: "My Characters", hint: "Build and track your heroes", icon: getUiIcon("character") },
       { to: "/games", label: "My Games", hint: "Join a table and play", icon: getUiIcon("dice") },
       { to: "/homebrew", label: "Homebrew", hint: "Make and share your own options", icon: getUiIcon("notes") },
+      { to: "/settings", label: "Settings", hint: "Your name, motion, email and password", icon: getUiIcon("settings") },
     ],
   },
   {

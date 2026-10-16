@@ -106,6 +106,16 @@ h3,
    the way: nothing loops, nothing shifts the layout (only transform and
    opacity move), and all of it is skipped when the device asks for reduced
    motion. */
+
+/* Settings > Reduce motion: turns every animation and transition off, even
+   when the device itself allows motion. */
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
 @media (prefers-reduced-motion: no-preference) {
   /* Card icons rock once, lifting a little, when the card is hovered or
      focused, then settle back. The race, class and background previews

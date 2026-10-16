@@ -10,6 +10,7 @@ import {
 } from "../../utils/homebrewStore";
 import { HOMEBREW_CATEGORIES, listHomebrew } from "../../utils/homebrewMappers";
 import { primeHomebrew } from "../../utils/homebrewCache";
+import { shouldReduceMotion } from "../../utils/motionPreference";
 import {
   CATEGORY_LABELS,
   emptyHomebrewForm,
@@ -109,7 +110,7 @@ function HomebrewPage() {
 
   function openForm(nextForm) {
     setForm(nextForm);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: shouldReduceMotion() ? "auto" : "smooth" });
   }
 
   const counts = Object.fromEntries(

@@ -21,6 +21,7 @@ import Guide from "./pages/Guide/Guide";
 import QuizPage from "./pages/QuizPage/QuizPage";
 import BackLink from "./components/BackLink/BackLink";
 import AuthPage from "./pages/AuthPage/AuthPage";
+import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 
 function NotFound() {
@@ -141,6 +142,14 @@ function App() {
           element={
             <ProtectedRoute>
               <HomebrewInvitePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
             </ProtectedRoute>
           }
         />
