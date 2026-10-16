@@ -69,3 +69,44 @@ export function afterLongRest(conditions = []) {
   const exhaustion = conditions.find((condition) => condition.key === "exhaustion");
   return exhaustion ? setExhaustion(conditions, (exhaustion.level ?? 1) - 1) : conditions;
 }
+
+// --- Timers ("Poisoned for 3 rounds") ---------------------------------------
+// A condition can carry `rounds`: how many rounds it has left. Each new round
+// at the table takes one off, and at 0 it's gone. Conditions without
+// `rounds` last until someone removes them, like before.
+
+// Sets (or, with 0 or less, clears) a condition's rounds left.
+export function setConditionRounds(conditions = [], key, rounds) {
+  return conditions.map((condition) => {
+    if (condition.key !== key) return condition;
+    const rest = { ...condition };
+    delete rest.rounds;
+    return rounds > 0 ? { ...rest, rounds } : rest;
+  });
+}
+
+// `elapsed` rounds have passed: timers go down and the ones that reach 0
+// end. Returns the remaining conditions and the keys that ended.
+export function tickConditionRounds(conditions = [], elapsed) {
+  if (!(elapsed > 0)) return { conditions, ended: [] };
+  const ended = [];
+  const remaining = [];
+  for (const condition of conditions) {
+    if (typeof condition.rounds !== "number") {
+      remaining.push(condition);
+    } else if (condition.rounds - elapsed <= 0) {
+      ended.push(condition.key);
+    } else {
+      remaining.push({ ...condition, rounds: condition.rounds - elapsed });
+    }
+  }
+  return { conditions: remaining, ended };
+}
+
+// How many rounds passed since the sheet last looked at the table's round.
+// None when it's a different table or a new fight (the round went back down).
+export function roundsElapsed(seen, tableId, round) {
+  if (!seen || seen.tableId !== tableId || typeof round !== "number") return 0;
+  return Math.max(0, round - seen.round);
+}
+

@@ -130,6 +130,11 @@ function PartyStrip({ rows, onSelect, selectedId }) {
                       {word.name}
                       {condition.key === "exhaustion" ? ` ${condition.level ?? 1}` : ""}
                     </RuleTerm>
+                    {typeof condition.rounds === "number" && (
+                      <span className="party-strip__condition-rounds">
+                        {" "}· {condition.rounds} {condition.rounds === 1 ? "round" : "rounds"} left
+                      </span>
+                    )}
                   </li>
                 );
               })}

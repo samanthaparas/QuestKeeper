@@ -129,25 +129,6 @@ export async function setCombatantInitiative(combatantId, initiative) {
   );
 }
 
-// armorClass is secret: only the DM can ever read it back.
-export async function addMonster(
-  tableId,
-  name,
-  maxHp,
-  initiative = null,
-  armorClass = null,
-) {
-  return unwrap(
-    await supabase.rpc("add_monster", {
-      p_table_id: tableId,
-      p_name: name,
-      p_max_hp: maxHp,
-      p_initiative: initiative,
-      p_armor_class: armorClass,
-    }),
-  );
-}
-
 // --- Attacks, damage, and the activity log ----------------------------------
 
 // Newest first.
@@ -187,21 +168,6 @@ export async function dmResolveAttack(attackerId, hit) {
     await supabase.rpc("dm_resolve_attack", {
       p_attacker_id: attackerId,
       p_hit: hit,
-    }),
-  );
-}
-
-// The DM rolls for an enemy attacking a player. `natural` is the d20; the
-// server compares it to the player's AC. Returns { result, ac } where result is
-// "hit", "crit", or "miss".
-export async function monsterAttackRoll({ attackerId, targetUserId, attackName, natural, bonus }) {
-  return unwrap(
-    await supabase.rpc("monster_attack_roll", {
-      p_attacker_id: attackerId,
-      p_target_user_id: targetUserId,
-      p_attack_name: attackName,
-      p_natural: natural,
-      p_bonus: bonus,
     }),
   );
 }

@@ -166,3 +166,41 @@
     transform: scale(0.85);
   }
 }
+
+/* The round timer: "⏱ 3 rounds" with − and +, or a small ⏱ to set one. */
+.condition-badges__rounds {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.condition-badges__timer {
+  align-items: center;
+  gap: 4px;
+  margin-left: 2px;
+}
+
+.condition-badges__set-timer {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.condition-badges__set-timer:hover,
+.condition-badges__set-timer:focus-visible {
+  opacity: 1;
+  background-color: rgba(122, 90, 154, 0.15);
+}
+
+.condition-badges__set-timer:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 1px;
+}

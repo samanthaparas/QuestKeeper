@@ -177,8 +177,3 @@ export function loadCharacterEntries() {
     })),
   );
 }
-
-// For tests: forget what was loaded.
-export function resetQuickJumpIndex() {
-  contentLists = null;
-}

@@ -47,4 +47,25 @@ describe("ConditionBadges", () => {
     expect(empty.container).toBeEmptyDOMElement();
     expect(container).not.toBeEmptyDOMElement();
   });
+
+  it("times a condition with ⏱, adjusts its rounds, and takes the timer off at 1", async () => {
+    const user = userEvent.setup();
+    render(<Harness start={[{ key: "poisoned" }]} />);
+
+    await user.click(screen.getByRole("button", { name: "Set how many rounds Poisoned lasts" }));
+    expect(screen.getByText("⏱ 1 round")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "One more round of Poisoned" }));
+    expect(screen.getByText("⏱ 2 rounds")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "One less round of Poisoned" }));
+    await user.click(screen.getByRole("button", { name: "Take the timer off Poisoned" }));
+    expect(screen.queryByText(/⏱ \d/)).not.toBeInTheDocument();
+    expect(screen.getByText("Poisoned")).toBeInTheDocument();
+  });
+
+  it("shows rounds left on read-only badges", () => {
+    render(<ConditionBadges conditions={[{ key: "poisoned", rounds: 2 }]} readOnly />);
+    expect(screen.getByText("· 2 rounds left")).toBeInTheDocument();
+  });
 });
+
