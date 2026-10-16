@@ -87,11 +87,13 @@ The header splits the app by who you are tonight: **Explore** (reference pages),
 ### Reference and search
 
 - Global search across classes, races, spells, backgrounds and more, with result cards and an in-page detail panel.
+- **AI search by meaning:** type what you want in your own words ("heal my friend", "sneak past guards") and pick **✨ Search by meaning**. Claude picks the spells, magic items, classes, races and backgrounds that fit, each with a one-line reason a new player can follow. It runs only when asked, through the backend (see [How the applications communicate](#how-the-applications-communicate)).
 - Category pages for races, classes, spells, backgrounds and **magic items**. Magic items can be filtered by rarity, type, worn slot, attunement and more.
 - Content from the 2014 and 2024 SRDs and from **Open5e** (openly licensed third-party 5e material), each marked with a source badge and filterable by book.
 - Official book races, subclasses and backgrounds that aren't free to reuse are **listed by name only**, with a one-line summary I wrote myself and a link to read more elsewhere. QuestKeeper never copies their text.
 - Icons for races, classes, backgrounds, spell schools and magic items.
 - Tap any spell, feat, weapon, magic item, class feature or racial trait for its full SRD details in a popup, including real tables.
+- Class pages list what each class gains later **grouped by level**, with repeated features (Ability Score Improvement at levels 4, 8, 12, 16 and 19) listed once, and the SRD's lists shown as real bullet points.
 
 ### Help for brand-new players
 
@@ -118,10 +120,14 @@ The header splits the app by who you are tonight: **Explore** (reference pages),
 - Inventory with icon toggles for Equipped 🛡, Proficient (P) and Attuned (★), attuned items first, capped at 3.
 - **Click any bonus to roll it**, with the roll shared with your table.
 - Tap pips to spend spell slots and limited-use resources, and rests that follow the rules (Hit Dice on a Short Rest, half your Hit Dice back on a Long Rest).
-- **Condition badges** (Poisoned, Prone, Exhaustion levels…) with their rules on hover.
-- A **companion** combat card (AC, HP, speed, notes) alongside freeform text.
+- **Condition badges** (Poisoned, Prone, Exhaustion levels…) with their rules on hover. Any condition can be **timed in rounds** (⏱), and it counts down by itself as the table's rounds pass.
+- **Death saves** appear at 0 HP: roll them (a 1 counts twice, a 20 brings you back) or tap the marks for real dice, and you're Stable or Dead after three. Taking damage at 0 HP adds a failure.
+- **Concentration:** track which spell you're holding. Taking damage asks for the Constitution save at the right DC (10 or half the damage), dropping to 0 ends it, and a ⏱ timer ends it after its duration (10 rounds for a 1-minute spell).
+- A **companion card** for a mount, familiar or animal friend: picture, HP, AC, speed, all six ability scores and saves to roll, attacks, and bulleted notes, with its own Edit stats lock. A Long Rest heals it with its character.
 - A full level-up flow: hit points, ability score improvements or feats, subclass choice at the right level, and new spells that follow each class's own spell slot rules.
 - Everything is editable after creation, and race, class, subclass and background can be retyped for homebrew and non-SRD characters.
+- **Your Characters** shows each character's portrait, can be put in your own order (saved to your account), and asks on the page before deleting.
+- A **Settings** page for your display name, a Reduce Motion override, and email and password changes.
 
 ### Homebrew
 
@@ -136,8 +142,9 @@ A DM creates a table with a join code, and players join with one of their charac
 **On the Dungeon Master's screen** (tabs for Combat, Story, Players and Prep):
 
 - An initiative tracker and a private Monster Library. Add many identical monsters at once with nicknames and icons, and roll initiative for every monster in one click.
+- **Clear monster turns:** each monster has a DM-only HP bar, the current fighter gets a banner saying what to do ("Kobold's turn: tap Attack, then Next turn"), and history from earlier turns is faded so it doesn't look new. On wide screens the attack panel opens beside the row so the Roll button never needs scrolling, and every box in it is labelled.
 - A full attack flow: players roll a virtual d20 or type a real one, and the database decides hit or miss against the **secret** AC. The DM can attack with monsters, send damage as a request the player applies, or deny an attack.
-- A **party strip** showing every character's HP, AC and conditions, with a DM switch to share it with the players (the DM decides whether the party can see each other).
+- A **party strip** showing every character's portrait, HP, AC and conditions, plus concentration, death saves when someone is down, condition timers, and each companion's HP on its own line. A DM switch shares it with the players (the DM decides whether the party can see each other).
 - **Handouts**: pictures and notes the DM reveals to the whole table or to chosen players only. Revealing one adds a note to the journal, and pictures open in a pop-up.
 - **Secret messages** between the DM and individual players, with pictures.
 
@@ -165,6 +172,7 @@ A DM creates a table with a join code, and players join with one of their charac
 | Auth/Data  | Supabase (Auth, Postgres with row-level security, SQL functions, Realtime, Storage) |
 | Testing    | Vitest, React Testing Library                 |
 | Data       | D&D 5e SRD API (2014 and 2024), Open5e        |
+| AI         | Claude API (Anthropic SDK) for search by meaning, called from the backend |
 | Hosting    | Render (static site + web service), GitHub Actions |
 | Repository | npm workspaces monorepo                       |
 
@@ -176,6 +184,7 @@ For the full product direction and content policy, see [QuestKeeper Project Visi
 React frontend
     -> QuestKeeper Express backend
     -> D&D 5e SRD API (2014 and 2024) and Open5e
+    -> Claude API (search by meaning only)
 
 React frontend
     -> Supabase (accounts, characters, homebrew, portraits,
@@ -184,12 +193,20 @@ React frontend
 
 Reference data goes through the Express backend, which fetches it from `dnd5eapi.co` or Open5e and returns it in one consistent `{ data: ... }` shape. Keeping the outside APIs behind the backend gives one place to map, cache and validate their data.
 
+**AI search** (`POST /api/ai-search`) also lives in the backend, so the Anthropic API key never reaches a browser:
+
+- Claude gets a catalog of SRD spells, magic items, classes, races and backgrounds as part of its instructions. That part never changes between searches, so it's cached and later searches cost a fraction of the first.
+- It must answer in a fixed JSON shape, at a low effort setting so it's quick. The backend keeps only ids that really exist in the catalog, and fills in names itself.
+- Each visitor gets 20 searches per 10 minutes, the search text is capped, and Claude's instructions tell it to treat the player's words only as a search, never as instructions.
+- Without a key, or when the service is busy, the endpoint answers with a clear message and the rest of the site is unaffected.
+
 Everything that belongs to a person goes straight from the browser to Supabase, and **row-level security** decides who may read or write each row. Anything secret is protected in the database, not just hidden in the interface:
 
 - Enemy HP, AC and stat blocks live in a DM-only table. Game rules that need them (does this attack hit, how much damage was done, whose turn is next) run inside database functions, so a player only ever receives the result.
 - The party strip comes from a function that checks whether the DM has shared it.
 - Handouts sent to chosen players can only be read by those players and the DM.
 - Private journal entries can only be read by their author.
+- Players' shared party strip gets only the companion's name, picture, HP and AC, never its notes or attacks.
 
 ## Project structure
 
@@ -206,7 +223,7 @@ QuestKeeper/
 |-- questkeeper-backend/
 |   |-- src/controllers/          Fetches and reshapes SRD and Open5e data
 |   |-- src/routes/               Express API routes
-|   |-- src/utils/                Mappers and catalogs (with tests)
+|   |-- src/utils/                Mappers, catalogs and the AI search helpers (with tests)
 |   `-- src/server.js             Backend entry point
 |-- questkeeper-frontend/
 |   `-- src/
@@ -261,6 +278,14 @@ VITE_SUPABASE_URL=<your Supabase project URL>
 VITE_SUPABASE_ANON_KEY=<your Supabase publishable key>
 ```
 
+For AI search, give the backend an Anthropic API key in `questkeeper-backend/.env` (never committed):
+
+```text
+ANTHROPIC_API_KEY=<your Anthropic API key>
+```
+
+Everything else works without it; search by meaning just says it isn't set up.
+
 The Supabase values are needed for accounts, characters and tables. Run the SQL files in `supabase/migrations/` (in date order) in the Supabase SQL editor to create the tables, security rules and functions. Restart Vite after changing an environment variable.
 
 ## Deployment
@@ -268,7 +293,7 @@ The Supabase values are needed for accounts, characters and tables. Run the SQL 
 QuestKeeper is deployed on Render from the [`render.yaml`](render.yaml) Blueprint:
 
 - [Frontend](https://questkeeper-it0i.onrender.com): `questkeeper`, a Vite static site with a single-page-app rewrite.
-- [Backend API](https://questkeeper-api.onrender.com): `questkeeper-api`, a Node/Express web service on the free plan.
+- [Backend API](https://questkeeper-api.onrender.com): `questkeeper-api`, a Node/Express web service on the free plan. AI search needs `ANTHROPIC_API_KEY` set in the service's environment on Render.
 
 The free API sleeps after about 15 minutes without requests, and the first request after that takes around 20 seconds. A scheduled GitHub Action pings it every 10 minutes during Monday game night so it stays awake while the group plays.
 
@@ -288,11 +313,11 @@ Run from the repository root:
 
 ## Testing and quality
 
-- **About 970 frontend tests** (Vitest and React Testing Library) cover the game rules as plain functions (ability scores, HP, level-up, rests, armor class, skill grants, feature sources and choices, spell components, journal and handout rules, party strip) and the sheet, creation, table and journal components. Whole-character "audit" tests build sample characters of every SRD class and race and check the result.
-- **Backend tests** cover the Open5e mappers, the magic item catalog and the spells controller.
+- **About 1,030 frontend tests** (Vitest and React Testing Library) cover the game rules as plain functions (ability scores, HP, level-up, rests, armor class, skill grants, feature sources and choices, spell components, death saves, concentration, condition timers, journal and handout rules, party strip) and the sheet, creation, table, journal and search components. Whole-character "audit" tests build sample characters of every SRD class and race and check the result.
+- **Backend tests** cover the Open5e mappers, the magic item catalog, the spells controller, and AI search (the catalog, checking Claude's answer, the rate limit, and the main failure paths, with the Anthropic SDK replaced by a stand-in so tests never call the API).
 - **CI** runs on every push and pull request to `main`: lint, frontend tests, build, backend tests, and a second job that installs the backend exactly the way Render does (`npm ci --workspaces=false`), so a broken lockfile fails CI instead of the deploy.
 - **Database security rules** are checked by running each migration in a throwaway local Postgres and calling the functions as a DM, a player and an outsider.
-- **Hands-on QA:** a [new-player walkthrough](docs/QA_NEW_PLAYER_WALKTHROUGH.md) tracks 40 usability findings from a first-time player's point of view, and a [two-account test](docs/TWO_ACCOUNT_TEST.md) (DM and player, 19 stages) walks through live play end to end.
+- **Hands-on QA:** a [new-player walkthrough](docs/QA_NEW_PLAYER_WALKTHROUGH.md) tracks 40 usability findings from a first-time player's point of view, and a [two-account test](docs/TWO_ACCOUNT_TEST.md) (DM and player) walks through live play end to end, with a stage added for each new live-play feature.
 
 ## Challenges, setbacks and how I solved them
 
@@ -356,6 +381,38 @@ Run from the repository root:
 
 **Solution:** QuestKeeper uses the SRDs and Open5e (both openly licensed). Book options appear only as names, a one-line summary in our own words, and a link to read more. A group can always enter its own content through homebrew.
 
+### Delete buttons that silently did nothing
+
+**Problem:** Deleting a character sometimes did nothing at all: no error, no change.
+
+**Cause:** Two quiet failures look identical. A browser can be set to block pop-ups, which makes a "Are you sure?" dialog answer "no" instantly. And the database doesn't report an error when row-level security stops a delete; it simply deletes nothing.
+
+**Solution:** Deletes now ask on the page itself (Delete / Keep) instead of a browser pop-up, and the app asks the database for the deleted row back. If nothing came back, it says the delete failed instead of pretending it worked.
+
+### A companion lost to a stray tap
+
+**Problem:** While I was testing, a single tap on Remove took away a companion (with its stats and attacks) with no warning.
+
+**Solution:** Remove now asks first, and removing only hides the card: the companion's details are kept, so adding a companion again brings everything back.
+
+### Retyping HP counted as falling to 0
+
+**Problem:** Clearing the HP box to type a new number passes through an empty box, which reads as 0 HP. With concentration and death saves, that would have dropped a spell and added a death save failure mid-keystroke.
+
+**Solution:** Only damage applied from the DM counts as one clear hit (ending concentration at 0, failing a death save at 0). Typing in the HP box only shows the concentration reminder, and an empty box is ignored.
+
+### Timers that had to survive reloads and new fights
+
+**Problem:** Condition and concentration timers count the table's rounds. A reload mustn't count the same round twice, and a new fight starts back at round 1, which mustn't count as time going backwards.
+
+**Solution:** Each sheet remembers the last table and round it counted. It counts only rounds after that one at the same table, and simply resyncs when the table changes or the round drops. (Two open tabs of the same sheet would each count a round; that's noted as a limitation.)
+
+### Using AI without opening a hole or a bill
+
+**Problem:** AI search needs an API key, and a public endpoint that calls a paid API can be abused or run up costs. A model's answer also can't be trusted to name only real entries.
+
+**Solution:** The key lives only in the backend's environment, results are limited to real catalog ids, the catalog is cached, each visitor is rate limited (with Render's proxy trusted so the limit sees real visitors, not one shared address), and the search runs only when a player picks it, never on each keystroke.
+
 ### Smaller setbacks along the way
 
 - **A pull request merged before its second commit was pushed.** The missing commit was cherry-picked into the next pull request (#151). I now check `git status` and `git log` against `origin/main` before every new branch.
@@ -368,14 +425,14 @@ Run from the repository root:
 
 ### Working on now
 
-- Running the **two-account test** (DM and player on separate accounts, 19 stages) and fixing what it finds.
-- **Party portraits** in the party strip, so everyone at the table can see each other's faces.
+- Running the **two-account test** (DM and player on separate accounts) and fixing what it finds before the group's next game night.
+- Turning on **AI search** on the live site (adding the API key on Render) and tuning its picks with real searches.
 
 ### Blockers
 
 - **Render's paid plan:** returns 502s until Render fixes its routing (support ticket open). Until then the API is on the free plan and sleeps when idle, with game night covered by the keep-awake workflow.
 - **Book content licensing:** subraces like Wood Elf and Drow, and Tasha's optional class features, aren't in the SRD. They can only be listed as names, summaries and links, or entered as homebrew.
-- **Free Supabase plan:** has no automatic backups, so data should be exported now and then.
+- **Free Supabase plan:** has no automatic backups, so data is exported by hand now and then (most recently a full database dump on October 16, 2026).
 - **Paste-fill parsing** for more formats needs real sample text to build against.
 
 ## Known limitations
@@ -388,21 +445,21 @@ Run from the repository root:
 - Item stacks can't be split, and sheet lists can't yet be sorted or filtered by category.
 - The table and combat rules are checked by hand in a local Postgres and by component tests, not yet by automated database or end-to-end tests.
 - The free API's first request after a quiet period takes about 20 seconds.
+- AI search covers the SRD's spells, magic items, classes, races and backgrounds, not Open5e, book listings or homebrew yet, and needs an Anthropic API key.
+- Round timers are counted by each open copy of a sheet, so the same sheet open in two tabs would count a round twice.
 
 ## Ideas and roadmap
 
 What would make QuestKeeper even better than it was yesterday:
 
-1. **Party portraits** in the party strip and on the DM's screen.
-2. **A Settings page:** display name, a Reduce Motion override, and email and password changes.
-3. **Book subraces as link-outs:** Wood Elf, Drow, Mountain Dwarf, Stout Halfling and Forest Gnome as names, summaries and links, with a one-tap "Make as homebrew".
-4. **Sorting and filtering** on the sheet (items by category, spells by level, favorites), and **splitting item stacks**.
-5. **Better paste-fill** that reads more formats of pasted rules text.
-6. **Automated database and end-to-end tests** for the table rules, so the two-account test can run itself.
-7. **Backend caching and timeouts,** and global search that keeps working if one category fails.
-8. **A beginner mode toggle** to hide hints once a player doesn't need them.
-9. **Session tools for the DM:** encounter prep, a recap generated from the journal, and table hints.
-10. **AI-assisted extras** once the rules data is solid: backstory ideas and "describe the vibe" character suggestions.
+1. **Book subraces as link-outs:** Wood Elf, Drow, Mountain Dwarf, Stout Halfling and Forest Gnome as names, summaries and links, with a one-tap "Make as homebrew".
+2. **Sorting and filtering** on the sheet (items by category, spells by level, favorites), and **splitting item stacks**.
+3. **Better paste-fill** that reads more formats of pasted rules text.
+4. **Automated database and end-to-end tests** for the table rules, so the two-account test can run itself.
+5. **Backend caching and timeouts,** and global search that keeps working if one category fails.
+6. **A beginner mode toggle** to hide hints once a player doesn't need them.
+7. **Session tools for the DM:** encounter prep, a recap generated from the journal, and table hints.
+8. **More AI help** on top of search by meaning: backstory ideas, "describe the vibe" character suggestions, and AI search over Open5e and homebrew too.
 
 The roadmap stays incremental: each feature should be small enough to understand, build, test and review before the next one.
 
@@ -413,8 +470,9 @@ The roadmap stays incremental: each feature should be small enough to understand
 - **September 2026:** accounts, the guided character builder, the tabbed character sheet, level-up and rests.
 - **Early October 2026:** live tables with secret enemy stats, the attack flow and a monster library; a new-player QA walkthrough.
 - **Mid October 2026:** Open5e and book listings, homebrew, magic items, the quiz, rules words, shared rolls, secret messages, the Adventurer and Dungeon Master split, party strip, journal, handouts, the player game page and a full character audit.
+- **October 15 to 17, 2026:** a full companion card, an orderable characters list, a clearer DM combat screen, party portraits, a Settings page, death saves, concentration, round timers, tidier class pages and **AI search by meaning** with Claude.
 
-As of October 15, 2026 there are 150+ merged pull requests and 230+ commits.
+As of October 17, 2026 there are 160+ merged pull requests and 240 commits.
 
 ## Content and licensing principles
 
