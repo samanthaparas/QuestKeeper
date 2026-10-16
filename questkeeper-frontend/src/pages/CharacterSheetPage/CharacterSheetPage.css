@@ -2225,3 +2225,23 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   display: grid;
   gap: 16px;
 }
+
+/* "⏱ Poisoned wore off (its rounds ran out). OK" under the conditions. */
+.character-sheet__conditions-ended {
+  margin: 8px 0 0;
+  color: #5a3f78;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.character-sheet__conditions-ended button {
+  margin-left: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}

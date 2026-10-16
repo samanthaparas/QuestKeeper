@@ -23,7 +23,9 @@ vi.mock("../../utils/characterStore", () => ({
 }));
 
 // Combat turns come from Supabase and have their own tests; no fight here.
-vi.mock("../../hooks/useTableTurn", () => ({ useTableTurn: () => null }));
+// No fight unless a test sets one (fakeTurn.value).
+const fakeTurn = vi.hoisted(() => ({ value: null }));
+vi.mock("../../hooks/useTableTurn", () => ({ useTableTurn: () => fakeTurn.value }));
 
 vi.mock("../../context/useAuth", () => ({
   useAuth: () => ({ user: { id: "user-1" } }),
@@ -596,3 +598,52 @@ describe("death saves and concentration", () => {
     expect(screen.getByRole("button", { name: "+ Concentrating" })).toBeInTheDocument();
   });
 });
+
+describe("condition timers on the sheet", () => {
+  afterEach(() => {
+    fakeTurn.value = null;
+  });
+
+  function fightAtRound(round) {
+    return {
+      table: { id: "t1", name: "Test night", round },
+      tableName: "Test night",
+      activeTables: [],
+      switchTable: () => {},
+      endTurn: () => {},
+      round,
+      combatants: [],
+      now: null,
+      next: null,
+      upcoming: [],
+      myCombatant: null,
+      isMyTurn: false,
+      latestEvent: null,
+      damageRequests: [],
+      refresh: () => {},
+    };
+  }
+
+  it("takes a round off timed conditions as the table's round goes up, and says when one wears off", async () => {
+    const sheet = makeSheet();
+    sheet.conditions = [{ key: "poisoned", rounds: 1 }, { key: "frightened", rounds: 3 }];
+    sheet.roundSeen = { tableId: "t1", round: 2 };
+    fakeTurn.value = fightAtRound(3);
+    renderSheet(sheet);
+
+    expect(await screen.findByText("⏱ Poisoned wore off (its rounds ran out).")).toBeInTheDocument();
+    expect(screen.getByText("⏱ 2 rounds")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove Poisoned" })).not.toBeInTheDocument();
+  });
+
+  it("doesn't count down when a new fight starts back at round 1", async () => {
+    const sheet = makeSheet();
+    sheet.conditions = [{ key: "frightened", rounds: 3 }];
+    sheet.roundSeen = { tableId: "t1", round: 6 };
+    fakeTurn.value = fightAtRound(1);
+    renderSheet(sheet);
+
+    expect(await screen.findByText("⏱ 3 rounds")).toBeInTheDocument();
+  });
+});
+

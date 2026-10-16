@@ -6,6 +6,9 @@ import {
   rollNotesFor,
   setExhaustion,
   toggleCondition,
+  setConditionRounds,
+  tickConditionRounds,
+  roundsElapsed,
 } from "./conditions";
 import { applyRest, createCharacterSheet } from "./characterSheet";
 
@@ -41,3 +44,28 @@ describe("conditions", () => {
     ]);
   });
 });
+
+describe("condition timers", () => {
+  it("sets and clears a condition's rounds", () => {
+    const timed = setConditionRounds([{ key: "poisoned" }, { key: "prone" }], "poisoned", 3);
+    expect(timed).toEqual([{ key: "poisoned", rounds: 3 }, { key: "prone" }]);
+    expect(setConditionRounds(timed, "poisoned", 0)).toEqual([{ key: "poisoned" }, { key: "prone" }]);
+  });
+
+  it("counts timers down and ends the ones that run out, leaving untimed ones alone", () => {
+    const { conditions, ended } = tickConditionRounds(
+      [{ key: "poisoned", rounds: 1 }, { key: "frightened", rounds: 3 }, { key: "prone" }],
+      1,
+    );
+    expect(ended).toEqual(["poisoned"]);
+    expect(conditions).toEqual([{ key: "frightened", rounds: 2 }, { key: "prone" }]);
+  });
+
+  it("only counts rounds at the same table, going forward", () => {
+    expect(roundsElapsed({ tableId: "t1", round: 2 }, "t1", 4)).toBe(2);
+    expect(roundsElapsed({ tableId: "t1", round: 5 }, "t1", 1)).toBe(0);
+    expect(roundsElapsed({ tableId: "t2", round: 2 }, "t1", 4)).toBe(0);
+    expect(roundsElapsed(undefined, "t1", 4)).toBe(0);
+  });
+});
+

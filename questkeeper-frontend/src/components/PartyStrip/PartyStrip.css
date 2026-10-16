@@ -232,3 +232,9 @@
     transition: none;
   }
 }
+
+/* "· 2 rounds left" on a timed condition. */
+.party-strip__condition-rounds {
+  font-size: 12px;
+  font-weight: 600;
+}

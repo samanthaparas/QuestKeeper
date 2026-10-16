@@ -5,6 +5,7 @@ import {
   MAX_EXHAUSTION,
   conditionWord,
   hasCondition,
+  setConditionRounds,
   setExhaustion,
   toggleCondition,
 } from "../../utils/conditions";
@@ -16,6 +17,10 @@ import "./ConditionBadges.css";
 //
 // conditions: [{ key, level? }]. onChange(nextConditions).
 // readOnly: just the badges (the DM's view of a player's card).
+//
+// Any condition can be timed: ⏱ gives it a number of rounds, which go down
+// as the table's rounds pass (the sheet does the counting). − at 1 round
+// takes the timer off but keeps the condition.
 function ConditionBadges({ conditions = [], onChange, readOnly = false }) {
   const [isPicking, setIsPicking] = useState(false);
   const pickerId = useId();
@@ -74,6 +79,47 @@ function ConditionBadges({ conditions = [], onChange, readOnly = false }) {
                   </button>
                 </span>
               )}
+              {typeof condition.rounds === "number" && readOnly && (
+                <span className="condition-badges__rounds">
+                  · {condition.rounds} {condition.rounds === 1 ? "round" : "rounds"} left
+                </span>
+              )}
+              {!readOnly &&
+                (typeof condition.rounds === "number" ? (
+                  <span className="condition-badges__steps condition-badges__timer">
+                    <button
+                      type="button"
+                      aria-label={
+                        condition.rounds === 1
+                          ? `Take the timer off ${word.name}`
+                          : `One less round of ${word.name}`
+                      }
+                      onClick={() => onChange(setConditionRounds(conditions, condition.key, condition.rounds - 1))}
+                    >
+                      −
+                    </button>
+                    <span className="condition-badges__rounds" aria-live="polite">
+                      ⏱ {condition.rounds} {condition.rounds === 1 ? "round" : "rounds"}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`One more round of ${word.name}`}
+                      onClick={() => onChange(setConditionRounds(conditions, condition.key, condition.rounds + 1))}
+                    >
+                      +
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className="condition-badges__set-timer"
+                    aria-label={`Set how many rounds ${word.name} lasts`}
+                    title="Set how many rounds it lasts"
+                    onClick={() => onChange(setConditionRounds(conditions, condition.key, 1))}
+                  >
+                    ⏱
+                  </button>
+                ))}
               {!readOnly && (
                 <button
                   type="button"

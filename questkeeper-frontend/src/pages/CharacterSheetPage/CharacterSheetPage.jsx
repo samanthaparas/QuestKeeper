@@ -10,7 +10,7 @@ import { RollContext } from "../../components/RollDock/rollContext";
 import ConditionBadges from "../../components/ConditionBadges/ConditionBadges";
 import DeathSaves from "../../components/DeathSaves/DeathSaves";
 import Concentration from "../../components/Concentration/Concentration";
-import { rollNotesFor } from "../../utils/conditions";
+import { conditionWord, roundsElapsed, rollNotesFor, tickConditionRounds } from "../../utils/conditions";
 import { applyDamageToHitPoints } from "../../utils/attacks";
 import { getCharacter, saveCharacter } from "../../utils/characterStore";
 import {
@@ -165,6 +165,36 @@ function CharacterSheetPage() {
   // Click-to-roll: any bonus on the sheet rolls, and can be shared with the
   // character's table.
   const roller = useSheetRolls(sheet?.id, sheet?.name);
+
+  // Timed conditions ("Poisoned for 3 rounds") lose a round each time the
+  // table's round goes up, and end at 0. The sheet remembers the last round
+  // it counted (roundSeen), so a reload never counts a round twice. (Two
+  // tabs of the same sheet open at once would each count it.)
+  const [endedConditionsNote, setEndedConditionsNote] = useState("");
+  const fightTableId = tableCombat?.table?.id ?? null;
+  const fightRound = tableCombat?.round ?? null;
+  const elapsedRounds = sheet ? roundsElapsed(sheet.roundSeen, fightTableId, fightRound) : 0;
+  const hasTimers = Boolean(sheet?.conditions?.some((condition) => typeof condition.rounds === "number"));
+  // Out of step with the fight: a round passed, or it's a new fight (the
+  // round went back to 1) or a different table, which just resets the count.
+  const roundOutOfStep =
+    Boolean(fightTableId) &&
+    (sheet?.roundSeen?.tableId !== fightTableId || sheet?.roundSeen?.round !== fightRound);
+  useEffect(() => {
+    if (!hasTimers || !roundOutOfStep) return undefined;
+    // After this render, so the save doesn't happen mid-render.
+    const timer = setTimeout(() => {
+      const { conditions, ended } = tickConditionRounds(sheet.conditions, elapsedRounds);
+      persistSheet({ ...sheet, conditions, roundSeen: { tableId: fightTableId, round: fightRound } });
+      if (ended.length > 0) {
+        const names = ended.map((key) => conditionWord(key)?.name ?? key);
+        setEndedConditionsNote(`${names.join(" and ")} wore off (its rounds ran out).`);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+    // Runs once per new round; the sheet itself is read fresh inside.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasTimers, roundOutOfStep, elapsedRounds, fightTableId, fightRound]);
 
   const entriesKey = sheet
     ? [sheet.class?.id, getFeatureSubclassId(sheet.class), sheet.race?.id, sheet.race?.subrace?.id].join("|")
@@ -459,7 +489,10 @@ function CharacterSheetPage() {
 
   // Prone, Poisoned, Exhaustion 2...
   function handleConditionsChange(conditions) {
-    persistSheet({ ...sheet, conditions });
+    setEndedConditionsNote("");
+    // Mid-fight, a new timer starts counting from this round.
+    const roundSeen = fightTableId ? { tableId: fightTableId, round: fightRound } : sheet.roundSeen;
+    persistSheet({ ...sheet, conditions, roundSeen });
   }
 
   function handleGoldChange(value) {
@@ -1757,6 +1790,15 @@ function CharacterSheetPage() {
                       {statsLocked ? "🔒 Edit stats" : "🔓 Done editing"}
                     </button>
                   </div>
+
+                  {endedConditionsNote && (
+                    <p className="character-sheet__conditions-ended" role="status">
+                      ⏱ {endedConditionsNote}{" "}
+                      <button type="button" onClick={() => setEndedConditionsNote("")}>
+                        OK
+                      </button>
+                    </p>
+                  )}
 
                   {/* At 0 HP: the death saves, front and centre. */}
                   {(combat.hitPoints.current ?? 0) <= 0 && (combat.hitPoints.max ?? 0) > 0 && (
