@@ -46,6 +46,7 @@ import {
 } from "../../utils/tableGuidance";
 import { getAbilityModifier } from "../../utils/characterSheet";
 import { toPartyRow } from "../../utils/partyStrip";
+import { shouldReduceMotion } from "../../utils/motionPreference";
 import Button from "../../components/Button/Button";
 import CharacterSummaryCard from "../../components/CharacterSummaryCard/CharacterSummaryCard";
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
@@ -122,10 +123,6 @@ const SHAKE_KEYFRAMES = [
   { transform: "translateX(0)" },
 ];
 
-function prefersReducedMotion() {
-  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-}
-
 function formatRollNote(roll, modifier, total) {
   return `Rolled ${roll} ${modifier >= 0 ? "+" : "-"} ${Math.abs(modifier)} = ${total}`;
 }
@@ -141,7 +138,7 @@ function InitiativePrompt({ combatant, dexterity, onSet, nudgeId = null }) {
   // Shake once for each new nudge (each has its own log id). Skipped for
   // people who ask their device for less motion; the glow still shows.
   useEffect(() => {
-    if (!nudgeId || prefersReducedMotion()) return;
+    if (!nudgeId || shouldReduceMotion()) return;
     cardRef.current?.animate?.(SHAKE_KEYFRAMES, { duration: 600, easing: "ease-in-out" });
   }, [nudgeId]);
   const modifier = getAbilityModifier(dexterity ?? 10);
@@ -886,7 +883,7 @@ function TablePage() {
     setSelectedPlayerId(sheetId);
     pickTab("players");
     playersSectionRef.current?.scrollIntoView({
-      behavior: prefersReducedMotion() ? "auto" : "smooth",
+      behavior: shouldReduceMotion() ? "auto" : "smooth",
       block: "start",
     });
   }

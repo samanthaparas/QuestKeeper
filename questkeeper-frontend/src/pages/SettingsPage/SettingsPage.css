@@ -1,0 +1,97 @@
+/* Settings: one card per setting, stacked in a narrow column. */
+.settings-page {
+  display: grid;
+  gap: 18px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 40px 16px 64px;
+}
+
+.settings-page__eyebrow {
+  margin: 0;
+  color: var(--qk-terracotta);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settings-page__title {
+  margin: -12px 0 6px;
+  font-family: var(--qk-font-display);
+}
+
+.settings-page__card {
+  display: grid;
+  gap: 6px;
+  padding: 20px 22px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.settings-page__heading {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 20px;
+}
+
+.settings-page__hint {
+  margin: 0 0 4px;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.settings-page__label {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.settings-page__input {
+  padding: 10px 14px;
+  border: 2px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background: transparent;
+  color: var(--qk-text);
+  font: inherit;
+}
+
+.settings-page__input:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+  border-color: var(--qk-terracotta);
+}
+
+.settings-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 10px;
+}
+
+.settings-page__message {
+  margin: 0;
+  color: var(--qk-moss);
+  font-size: 14px;
+}
+
+.settings-page__message--error {
+  color: var(--qk-danger);
+}
+
+.settings-page__switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings-page__switch input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--qk-terracotta);
+}

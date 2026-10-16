@@ -9,6 +9,7 @@ import {
   formatModifier,
 } from "../../utils/characterSheet";
 import { RULES_WORDS } from "../../utils/rulesWords";
+import { shouldReduceMotion } from "../../utils/motionPreference";
 import "./Guide.css";
 
 const SECTIONS = [
@@ -40,7 +41,7 @@ const FRIENDLY_ABILITY_DESCRIPTIONS = {
     "Your presence and force of personality. Use it to persuade, perform, intimidate, deceive, or cast magic through sheer confidence.",
 };
 
-function scrollToSection(id, behavior = "smooth") {
+function scrollToSection(id, behavior = shouldReduceMotion() ? "auto" : "smooth") {
   document.getElementById(id)?.scrollIntoView({ behavior, block: "start" });
 }
 

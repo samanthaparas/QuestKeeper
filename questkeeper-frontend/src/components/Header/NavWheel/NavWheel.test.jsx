@@ -156,9 +156,18 @@ describe("Navigation picks the right menu", () => {
     renderWithRouter(<Navigation isMenuOpen />);
 
     expect(document.querySelector(".nav-wheel")).toBeNull();
-    expect(screen.getAllByRole("link")).toHaveLength(13);
+    expect(screen.getAllByRole("link")).toHaveLength(14);
     expect(screen.getByRole("region", { name: "Adventurer" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Dungeon Master" })).toBeInTheDocument();
+  });
+
+  it("keeps the plain list when Reduce Motion is on in Settings, even if the device allows motion", () => {
+    mockMedia({ narrow: true });
+    document.documentElement.dataset.motion = "reduce";
+    renderWithRouter(<Navigation isMenuOpen />);
+
+    expect(document.querySelector(".nav-wheel")).toBeNull();
+    delete document.documentElement.dataset.motion;
   });
 
   it("closes the menu when a link in the plain list is picked", () => {
