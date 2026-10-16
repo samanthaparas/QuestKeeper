@@ -154,6 +154,42 @@
   background-color: var(--qk-danger);
 }
 
+/* A downed character's death saves: green ticks, red crosses. */
+.party-strip__death-saves {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.party-strip__death-marks {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.party-strip__death-success {
+  color: var(--qk-moss);
+}
+
+.party-strip__death-failure {
+  color: var(--qk-danger);
+}
+
+.party-strip__death-word {
+  font-size: 13px;
+}
+
+/* Concentration, in the same blue as on the sheet. */
+.party-strip__concentration {
+  padding: 1px 8px;
+  border: 1px solid #3f6f8f;
+  border-radius: 999px;
+  background-color: #e1edf5;
+  color: #1f4660;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .party-strip__ac {
   font-size: 15px;
   font-variant-numeric: tabular-nums;

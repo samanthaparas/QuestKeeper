@@ -1,0 +1,98 @@
+/* The death saves panel at 0 HP: stands out in a dark red frame, because
+   it's the one thing that matters on that turn. */
+.death-saves {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 2px solid var(--qk-danger);
+  border-radius: var(--qk-radius-card);
+  background-color: #fbe9e5;
+}
+
+.death-saves__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.death-saves__title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 18px;
+}
+
+.death-saves__hint {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.death-saves__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+}
+
+.death-saves__track {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.death-saves__track-label {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* An empty circle, filled green (success) or red (failure). */
+.death-saves__mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid var(--qk-border);
+  border-radius: 50%;
+  background-color: #fff;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.death-saves__mark--successes[aria-pressed="true"] {
+  border-color: var(--qk-moss);
+  background-color: var(--qk-moss);
+}
+
+.death-saves__mark--failures[aria-pressed="true"] {
+  border-color: var(--qk-danger);
+  background-color: var(--qk-danger);
+}
+
+.death-saves__mark:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.death-saves__result {
+  margin: 0;
+  font-weight: 700;
+}
+
+.death-saves__outcome {
+  margin: 0;
+  font-weight: 700;
+}
+
+.death-saves__outcome--stable {
+  color: var(--qk-moss);
+}
+
+.death-saves__outcome--dead {
+  color: var(--qk-danger);
+}

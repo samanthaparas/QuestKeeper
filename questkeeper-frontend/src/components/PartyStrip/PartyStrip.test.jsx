@@ -27,4 +27,24 @@ describe("PartyStrip portraits", () => {
     expect(images[0]).toHaveAttribute("src", "https://example.com/billie.png");
     expect(screen.getByText("DR")).toBeInTheDocument();
   });
+
+  it("shows a downed character's death saves and who is concentrating", () => {
+    render(
+      <PartyStrip
+        rows={[
+          toPartyRow({
+            ...base,
+            id: "a",
+            name: "Billie",
+            combat: { ...base.combat, hitPoints: { current: 0, max: 30 } },
+            deathSaves: { successes: 2, failures: 1 },
+          }),
+          toPartyRow({ ...base, id: "b", name: "Dangit", concentration: { spell: "Bless" } }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByLabelText("Death saves: 2 successes, 1 failure")).toHaveTextContent("✓✓ ✗");
+    expect(screen.getByText("🎯 Bless")).toBeInTheDocument();
+  });
 });

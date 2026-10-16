@@ -21,6 +21,9 @@ import {
   createCompanionCreature,
   createCompanionAbilityScores,
   getCompanionNotes,
+  applyDeathSave,
+  getDeathSaveOutcome,
+  getConcentrationDc,
   getCompanionSave,
   setResourceCurrent,
   removeResource,
@@ -279,6 +282,34 @@ describe("createResource", () => {
     expect(resource.current).toBe(1);
     expect(resource.resetOn).toBe("long");
     expect(resource.id).toBeTruthy();
+  });
+});
+
+describe("death saves", () => {
+  it("counts 10 or more as a success, under 10 as a failure, and a 1 as two failures", () => {
+    expect(applyDeathSave(undefined, 10).deathSaves).toEqual({ successes: 1, failures: 0 });
+    expect(applyDeathSave({ successes: 1, failures: 0 }, 9).deathSaves).toEqual({ successes: 1, failures: 1 });
+    expect(applyDeathSave({ successes: 0, failures: 2 }, 1).deathSaves.failures).toBe(3);
+  });
+
+  it("brings the character back on a natural 20 and clears the marks", () => {
+    expect(applyDeathSave({ successes: 1, failures: 2 }, 20)).toEqual({
+      deathSaves: { successes: 0, failures: 0 },
+      regainsHp: true,
+    });
+  });
+
+  it("is stable at three successes and dead at three failures", () => {
+    expect(getDeathSaveOutcome({ successes: 3, failures: 1 })).toBe("stable");
+    expect(getDeathSaveOutcome({ successes: 2, failures: 3 })).toBe("dead");
+    expect(getDeathSaveOutcome({ successes: 2, failures: 2 })).toBeNull();
+  });
+});
+
+describe("getConcentrationDc", () => {
+  it("is 10, or half the damage when that's higher", () => {
+    expect(getConcentrationDc(7)).toBe(10);
+    expect(getConcentrationDc(25)).toBe(12);
   });
 });
 

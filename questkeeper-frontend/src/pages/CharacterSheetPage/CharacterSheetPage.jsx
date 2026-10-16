@@ -8,6 +8,8 @@ import RollButton from "../../components/RollDock/RollButton";
 import RollDock from "../../components/RollDock/RollDock";
 import { RollContext } from "../../components/RollDock/rollContext";
 import ConditionBadges from "../../components/ConditionBadges/ConditionBadges";
+import DeathSaves from "../../components/DeathSaves/DeathSaves";
+import Concentration from "../../components/Concentration/Concentration";
 import { rollNotesFor } from "../../utils/conditions";
 import { applyDamageToHitPoints } from "../../utils/attacks";
 import { getCharacter, saveCharacter } from "../../utils/characterStore";
@@ -27,6 +29,9 @@ import {
   createResource,
   createCompanionCreature,
   createCompanionAbilityScores,
+  EMPTY_DEATH_SAVES,
+  applyDeathSave,
+  getConcentrationDc,
   getCompanionNotes,
   updateResource,
   setResourceCurrent,
@@ -147,6 +152,10 @@ function CharacterSheetPage() {
   // change AC or a score by accident. Current HP, temp HP, the temporary AC
   // box, conditions, Inspiration and Gold always stay editable.
   const [statsLocked, setStatsLocked] = useState(true);
+  // The latest death save ("Rolled 14: a success"), and the CON save owed
+  // after taking damage while concentrating ({ dc }). Neither is saved.
+  const [deathSaveNote, setDeathSaveNote] = useState("");
+  const [concentrationCheck, setConcentrationCheck] = useState(null);
   // Every SRD feature for this race and class: shared with the Features tab,
   // and used to spot choices still to make (Character setup).
   const [featureEntries, setFeatureEntries] = useState({ key: null, entries: [] });
@@ -311,6 +320,15 @@ function CharacterSheetPage() {
   }
 
   function persistSheet(next) {
+    // Back above 0 HP (healing, a rest, a typed number): the death save
+    // marks are wiped, ready for the next time.
+    const isUp = (next.combat?.hitPoints?.current ?? 0) > 0;
+    const hasMarks = (next.deathSaves?.successes ?? 0) + (next.deathSaves?.failures ?? 0) > 0;
+    if (isUp && hasMarks) {
+      next = { ...next, deathSaves: { ...EMPTY_DEATH_SAVES } };
+      setDeathSaveNote("");
+    }
+
     // On auto AC, worn armor and Dexterity set the AC (see armorClass.js).
     const updated = withAutoArmorClass(next, gearDetailsFor);
     setSheet(updated);
@@ -456,10 +474,9 @@ function CharacterSheetPage() {
     const before = sheet.combat.hitPoints;
     const after = applyDamageToHitPoints(before, amount);
 
-    persistSheet({
-      ...sheet,
-      combat: { ...sheet.combat, hitPoints: after },
-    });
+    persistSheet(
+      withDamageEffects({ ...sheet, combat: { ...sheet.combat, hitPoints: after } }, before, after),
+    );
 
     // Tell the player where it went, so "my HP didn't change" is never a mystery.
     const fromTemp = (before.temporary ?? 0) - (after.temporary ?? 0);
@@ -470,17 +487,83 @@ function CharacterSheetPage() {
     return `Applied ${amount} damage: ${parts.join(" and ") || "nothing left to lose"}.`;
   }
 
+  // What taking damage does besides lowering HP: while concentrating, a CON
+  // save is owed (DC 10 or half the damage). Damage applied from the DM is one
+  // clear hit, so it also ends concentration at 0 HP and counts as a failed
+  // death save when already at 0. A number typed in the HP box only gives the
+  // reminder: clearing the box to retype it passes through 0 on the way.
+  function withDamageEffects(next, before, after, { typed = false } = {}) {
+    const lost = before.current + (before.temporary ?? 0) - (after.current + (after.temporary ?? 0));
+    if (lost <= 0) return next;
+
+    let result = next;
+    if (sheet.concentration) {
+      if (!typed && after.current <= 0) {
+        result = { ...result, concentration: null };
+        setConcentrationCheck(null);
+      } else if (after.current > 0) {
+        setConcentrationCheck((check) => ({ dc: Math.max(check?.dc ?? 0, getConcentrationDc(lost)) }));
+      }
+    }
+    if (!typed && before.current <= 0) {
+      const marks = { ...EMPTY_DEATH_SAVES, ...sheet.deathSaves };
+      result = {
+        ...result,
+        deathSaves: { ...marks, failures: Math.min(3, marks.failures + 1) },
+      };
+      setDeathSaveNote("Taking damage at 0 HP counts as a failed death save.");
+    }
+    return result;
+  }
+
   function handleHpChange(value) {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) return;
 
-    persistSheet({
-      ...sheet,
-      combat: {
-        ...sheet.combat,
-        hitPoints: setCurrentHp(sheet.combat.hitPoints, numeric),
-      },
-    });
+    const before = sheet.combat.hitPoints;
+    const after = setCurrentHp(before, numeric);
+    const next = { ...sheet, combat: { ...sheet.combat, hitPoints: after } };
+    // An empty box is someone mid-retype, not damage.
+    persistSheet(value === "" ? next : withDamageEffects(next, before, after, { typed: true }));
+  }
+
+  // A death save: d20, no bonus. Shared with the table like any roll.
+  function handleRollDeathSave() {
+    const result = roller.roll("Death save", 0);
+    const { deathSaves, regainsHp } = applyDeathSave(sheet.deathSaves, result.natural);
+    if (regainsHp) {
+      setDeathSaveNote("Natural 20! You're back up with 1 HP.");
+      persistSheet({
+        ...sheet,
+        deathSaves,
+        combat: { ...sheet.combat, hitPoints: setCurrentHp(sheet.combat.hitPoints, 1) },
+      });
+      return;
+    }
+    setDeathSaveNote(
+      result.natural === 1
+        ? "Rolled a 1: that's two failures."
+        : `Rolled ${result.natural}: ${result.natural >= 10 ? "a success" : "a failure"}.`,
+    );
+    persistSheet({ ...sheet, deathSaves });
+  }
+
+  function handleConcentrationStart(spell) {
+    setConcentrationCheck(null);
+    persistSheet({ ...sheet, concentration: { spell } });
+  }
+
+  function handleConcentrationEnd() {
+    setConcentrationCheck(null);
+    persistSheet({ ...sheet, concentration: null });
+  }
+
+  // The CON save after damage: a failure ends the spell.
+  function handleConcentrationCheck(conSave) {
+    const result = roller.roll(`Concentration (CON save, DC ${concentrationCheck.dc})`, conSave);
+    const kept = result.total >= concentrationCheck.dc;
+    setConcentrationCheck(null);
+    if (!kept) persistSheet({ ...sheet, concentration: null });
   }
 
   function handleMaxHpChange(value) {
@@ -1030,6 +1113,13 @@ function CharacterSheetPage() {
   }
 
   const proficiencyBonus = getProficiencyBonus(sheet.level);
+  // The Constitution save, for keeping concentration after damage.
+  const conSave = getSaveModifier(
+    sheet.abilityScores.constitution,
+    sheet.savingThrows?.constitution,
+    proficiencyBonus,
+    sheet.saveBonus ?? 0,
+  );
   const { combat } = sheet;
   const spellcastingAbility =
     sheet.class?.spellcastingAbility ?? getSpellcastingAbility(sheet.class ?? null);
@@ -1639,6 +1729,17 @@ function CharacterSheetPage() {
                       conditions={sheet.conditions ?? []}
                       onChange={handleConditionsChange}
                     />
+                    <Concentration
+                      spell={sheet.concentration?.spell ?? ""}
+                      spellNames={(sheet.spellcasting?.spellsKnown ?? [])
+                        .map((spell) => spell?.name)
+                        .filter(Boolean)}
+                      check={concentrationCheck}
+                      conSave={conSave}
+                      onStart={handleConcentrationStart}
+                      onEnd={handleConcentrationEnd}
+                      onRollCheck={() => handleConcentrationCheck(conSave)}
+                    />
                     {/* Unlock to change AC, scores and the rest on purpose. */}
                     <button
                       type="button"
@@ -1656,6 +1757,16 @@ function CharacterSheetPage() {
                       {statsLocked ? "🔒 Edit stats" : "🔓 Done editing"}
                     </button>
                   </div>
+
+                  {/* At 0 HP: the death saves, front and centre. */}
+                  {(combat.hitPoints.current ?? 0) <= 0 && (combat.hitPoints.max ?? 0) > 0 && (
+                    <DeathSaves
+                      deathSaves={sheet.deathSaves}
+                      onChange={(deathSaves) => persistSheet({ ...sheet, deathSaves })}
+                      onRoll={handleRollDeathSave}
+                      lastResult={deathSaveNote}
+                    />
+                  )}
 
                   {controlsPlace === "header" && (
                     <div className="character-sheet__ability-extras">

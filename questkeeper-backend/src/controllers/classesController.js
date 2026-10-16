@@ -104,6 +104,32 @@ export async function getClassLevel(req, res, next) {
   }
 }
 
+// Every level of a class (1 to 20) with the features each one brings, so the
+// class page can say "Level 5: Extra Attack" without twenty requests.
+export async function getClassLevels(req, res, next) {
+  try {
+    const { classId } = req.params;
+
+    const response = await fetch(
+      `https://www.dnd5eapi.co/api/2014/classes/${encodeURIComponent(classId)}/levels`,
+    );
+
+    if (!response.ok) {
+      const error = new Error("Unable to retrieve class levels.");
+      error.statusCode = response.status;
+      throw error;
+    }
+
+    const data = await response.json();
+
+    res.status(200).json({
+      data: data,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getClassFeatures(req, res, next) {
   try {
     const { classId } = req.params;

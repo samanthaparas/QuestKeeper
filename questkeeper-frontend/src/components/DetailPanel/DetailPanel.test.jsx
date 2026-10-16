@@ -75,6 +75,29 @@ describe("DetailPanel: class", () => {
     ).toBeInTheDocument();
   });
 
+  it("folds later features away, grouped by level with repeats listed once", () => {
+    const { container } = render(
+      <DetailPanel
+        selectedResult={{
+          ...paladin,
+          laterFeatureGroups: {
+            repeated: [{ name: "Ability Score Improvement", levels: [4, 8, 12, 16, 19] }],
+            byLevel: [
+              { level: 2, names: ["Divine Smite", "Spellcasting"] },
+              { level: 6, names: ["Aura of Protection"] },
+            ],
+          },
+        }}
+      />,
+    );
+
+    const later = container.querySelector("details.detail-panel__later");
+    expect(later).not.toHaveAttribute("open");
+    expect(later).toHaveTextContent("Ability Score Improvement at levels 4, 8, 12, 16 and 19");
+    expect(later).toHaveTextContent("Level 2Divine Smite, Spellcasting");
+    expect(screen.queryByText(/Divine Smite, Aura of Protection/)).not.toBeInTheDocument();
+  });
+
   it("shows each skill choice on its own line", () => {
     render(<DetailPanel selectedResult={paladin} />);
 

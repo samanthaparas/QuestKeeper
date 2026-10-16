@@ -194,3 +194,45 @@
   font-size: 13px;
   font-weight: 600;
 }
+
+/* "Later you'll also gain", folded away until opened. */
+.detail-panel__later {
+  margin: 8px 0 20px;
+}
+
+.detail-panel__later summary {
+  cursor: pointer;
+  color: var(--qk-text);
+}
+
+.detail-panel__later summary:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.detail-panel__later .detail-panel__list {
+  margin-bottom: 10px;
+}
+
+/* "Level 5   Extra Attack", one row per level. */
+.detail-panel__levels {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+}
+
+.detail-panel__level-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  line-height: 1.5;
+}
+
+.detail-panel__level-row dt {
+  color: var(--qk-text-muted);
+  font-weight: 700;
+}
+
+.detail-panel__level-row dd {
+  margin: 0;
+}

@@ -67,10 +67,14 @@ export function useSheetRolls(characterId, characterName) {
     [sharing, table, characterName],
   );
 
+  // Returns the roll too, for rolls the sheet acts on (a death save fills in
+  // a success or failure; a concentration save can end the spell).
   const roll = useCallback(
     (label, bonus, options = {}) => {
-      show(rollCheck({ label, bonus, mode, attack: options.attack ?? null }));
+      const result = rollCheck({ label, bonus, mode, attack: options.attack ?? null });
+      show(result);
       setMode("normal");
+      return result;
     },
     [mode, show],
   );

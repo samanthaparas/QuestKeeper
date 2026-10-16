@@ -19,6 +19,7 @@ import {
   getRaceDetails,
   getClassDetails,
   getClassLevel,
+  getClassLevels,
 } from "./api";
 
 const SPELL_LEVEL_LABELS = [
@@ -527,10 +528,11 @@ export function mapBackgroundToPanel(data) {
 // A class, plus what you get at level 1 (with full text), the names of what
 // comes later, and the level 1 spellcasting numbers.
 export async function loadClassDetails(classId) {
-  const [data, levelOne, featureList] = await Promise.all([
+  const [data, levelOne, featureList, levels] = await Promise.all([
     getClassDetails(classId),
     getClassLevel(classId, 1).catch(() => null),
     getClassFeatures(classId).catch(() => []),
+    getClassLevels(classId).catch(() => []),
   ]);
 
   const levelOneRefs = levelOne?.features ?? [];
@@ -547,6 +549,11 @@ export async function loadClassDetails(classId) {
     laterFeatureNames: featureList
       .map((feature) => feature.name)
       .filter((name) => !levelOneNames.has(name)),
+    // The same features with their levels, from the class's level list
+    // (subclass levels left out; the subclass section covers those).
+    laterFeatureLevels: (Array.isArray(levels) ? levels : [])
+      .filter((entry) => !entry.subclass && entry.level > 1)
+      .flatMap((entry) => (entry.features ?? []).map((feature) => ({ level: entry.level, name: feature.name }))),
     levelOneSpellcasting: levelOne?.spellcasting ?? null,
   };
 }
@@ -646,8 +653,43 @@ export function mapClassToPanel(data) {
       description: descriptionFromSrd(feature.desc),
     })),
     laterFeatures: (data.laterFeatureNames ?? []).join(", "),
+    // The tidier version of the same list, when the levels are known.
+    laterFeatureGroups: groupLaterFeatures(data.laterFeatureLevels ?? []),
     spellcasting: describeClassSpellcasting(data),
     guidance: getClassGuidance(data.index),
+  };
+}
+
+// The class's features from level 2 on, tidied for reading: a feature that
+// comes back several times ("Ability Score Improvement" at 4, 8, 12...) is
+// listed once with all its levels, and the rest are grouped by level.
+// "Spellcasting: Ranger" reads as "Spellcasting". Null when there's nothing.
+export function groupLaterFeatures(entries) {
+  if (!entries?.length) return null;
+  const clean = (name) => name.replace(/^Spellcasting: .*/, "Spellcasting");
+
+  const levelsByName = new Map();
+  for (const { level, name } of entries) {
+    const key = clean(name);
+    if (!levelsByName.has(key)) levelsByName.set(key, []);
+    const levels = levelsByName.get(key);
+    if (!levels.includes(level)) levels.push(level);
+  }
+
+  const repeated = [...levelsByName]
+    .filter(([, levels]) => levels.length > 1)
+    .map(([name, levels]) => ({ name, levels: [...levels].sort((a, b) => a - b) }));
+
+  const byLevel = new Map();
+  for (const [name, levels] of levelsByName) {
+    if (levels.length > 1) continue;
+    if (!byLevel.has(levels[0])) byLevel.set(levels[0], []);
+    byLevel.get(levels[0]).push(name);
+  }
+
+  return {
+    repeated,
+    byLevel: [...byLevel].sort(([a], [b]) => a - b).map(([level, names]) => ({ level, names })),
   };
 }
 

@@ -46,4 +46,15 @@ describe("RulesText", () => {
     expect(container).toHaveTextContent("A quiet afternoon.");
     expect(screen.queryByRole("button")).toBeNull();
   });
+
+  it("turns the SRD's \"- \" lines into a bulleted list when lists are allowed", () => {
+    const text = "While traveling you gain:\n- Difficult terrain doesn't slow you.\n- You can't get lost.";
+    const { container, rerender } = render(<RulesText text={text} withLists />);
+
+    expect(container.querySelectorAll("ul li")).toHaveLength(2);
+    expect(container.querySelector("li").textContent).toBe("Difficult terrain doesn't slow you.");
+
+    rerender(<RulesText text={text} />);
+    expect(container.querySelector("ul")).toBeNull();
+  });
 });
