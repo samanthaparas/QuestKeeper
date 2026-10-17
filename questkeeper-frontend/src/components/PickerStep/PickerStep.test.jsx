@@ -88,4 +88,76 @@ describe("PickerStep", () => {
     expect(screen.getByRole("note")).toHaveTextContent("Can't be picked yet.");
     expect(screen.queryByRole("button", { name: /Choose Artificer|Make it as homebrew/ })).toBeNull();
   });
+
+  describe("book options", () => {
+    const list = [
+      { index: "elf", name: "Elf" },
+      { index: "book_tabaxi", name: "Tabaxi", source: "Monsters of the Multiverse", sourceGroup: "Official books" },
+    ];
+    const bookDetails = {
+      index: "book_tabaxi",
+      name: "Tabaxi",
+      is_book_entry: true,
+      book: "Monsters of the Multiverse",
+      link_url: "https://dnd5e.wikidot.com/lineage:tabaxi",
+    };
+    const bookPanel = (data) =>
+      data.is_book_entry
+        ? { name: data.name, category: "Race", bookEntry: { name: data.name, book: data.book, summary: "Curious.", linkUrl: data.link_url } }
+        : data;
+
+    it("splits the list into Ready to pick and From the books, with a chip on each card", async () => {
+      renderPicker({ fetchList: () => Promise.resolve(list), onMakeHomebrewFrom: vi.fn() });
+
+      expect(await screen.findByRole("heading", { name: "Ready to pick" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "From the books" })).toBeInTheDocument();
+      expect(screen.getByText("Ready to pick", { selector: ".result-card__chip" })).toBeInTheDocument();
+      expect(screen.getByText("Make it yours", { selector: ".result-card__chip" })).toBeInTheDocument();
+    });
+
+    it("keeps one plain list (no headings or chips) when nothing is a book option", async () => {
+      renderPicker({ onMakeHomebrewFrom: vi.fn() });
+      await screen.findByRole("heading", { name: "Elf" });
+      expect(screen.queryByRole("heading", { name: "From the books" })).toBeNull();
+      expect(document.querySelector(".result-card__chip")).toBeNull();
+    });
+
+    it("'Pick it now, add details later' saves a draft and chooses it", async () => {
+      const onDraftFrom = vi.fn().mockResolvedValue({ id: "d1" });
+      const fetchDetails = vi.fn().mockResolvedValue({ index: "hb_d1", name: "Tabaxi" });
+      const onChoose = vi.fn();
+      renderPicker({
+        fetchList: () => Promise.resolve(list),
+        fetchDetails,
+        mapToDetailPanelResult: bookPanel,
+        initialSelectedRaw: bookDetails,
+        onMakeHomebrewFrom: vi.fn(),
+        onDraftFrom,
+        onChoose,
+      });
+
+      await userEvent.click(await screen.findByRole("button", { name: "Pick it now, add details later" }));
+
+      expect(onDraftFrom).toHaveBeenCalledWith(bookDetails);
+      expect(fetchDetails).toHaveBeenCalledWith("hb_d1");
+      expect(onChoose).toHaveBeenCalledWith({ index: "hb_d1", name: "Tabaxi" }, { index: "hb_d1", name: "Tabaxi" });
+    });
+
+    it("says so if the draft couldn't be saved, and chooses nothing", async () => {
+      const onChoose = vi.fn();
+      renderPicker({
+        fetchList: () => Promise.resolve(list),
+        mapToDetailPanelResult: bookPanel,
+        initialSelectedRaw: bookDetails,
+        onMakeHomebrewFrom: vi.fn(),
+        onDraftFrom: vi.fn().mockRejectedValue(new Error("offline")),
+        onChoose,
+      });
+
+      await userEvent.click(await screen.findByRole("button", { name: "Pick it now, add details later" }));
+
+      expect(await screen.findByText(/Couldn't save that as a draft/)).toBeInTheDocument();
+      expect(onChoose).not.toHaveBeenCalled();
+    });
+  });
 });

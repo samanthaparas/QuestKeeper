@@ -57,6 +57,7 @@ function ResultCard({ result, onClick, isSelected }) {
             result.edition && ` · ${result.edition} SRD`
           )}
         </p>
+        {result.chip && <span className="result-card__chip">{result.chip}</span>}
         {result.tagline && (
           <p className="result-card__tagline">{result.tagline}</p>
         )}

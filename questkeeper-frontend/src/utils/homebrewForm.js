@@ -121,6 +121,8 @@ function splitLanguages(value) {
 // Form values -> what homebrewStore saves (it cleans the data again).
 export function formToEntry(form) {
   const data = { ...form.data };
+  // Saving from the form means the author has been through the details.
+  data.needsDetails = false;
   if ("languages" in data) data.languages = splitLanguages(data.languages);
 
   return {

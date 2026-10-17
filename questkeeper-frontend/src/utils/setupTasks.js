@@ -6,10 +6,12 @@
 import { getSubclassLevel } from "./characterSheet";
 import { choicesFor, missingPicks } from "./featureChoices";
 import { normalizeItemName } from "./srdDetails";
+import { needsDetails, toHomebrewIndex } from "./homebrewMappers";
 
 // entries: from loadFeatureEntries (lets older characters' features show
-// their choices too).
-export function getSetupTasks(sheet, entries = []) {
+// their choices too). homebrew: the player's homebrew list, used to remind
+// them about drafts they picked in creation but haven't filled in yet.
+export function getSetupTasks(sheet, entries = [], homebrew = []) {
   if (!sheet) return [];
   const tasks = [];
 
@@ -49,6 +51,29 @@ export function getSetupTasks(sheet, entries = []) {
     )
   ) {
     tasks.push({ key: "background-feature", label: `Add ${backgroundFeature} (your background)` });
+  }
+
+  // Race, background or subclass picked with "Pick it now, add details later".
+  const picked = [
+    ["race", sheet.race],
+    ["subrace", sheet.subrace],
+    ["background", sheet.background],
+    ["subclass", sheet.class?.subclass],
+  ];
+  const seen = new Set();
+  for (const [kind, pick] of picked) {
+    const id = pick?.id ?? pick?.index;
+    if (!id || seen.has(id)) continue;
+    const draft = homebrew.find((entry) => toHomebrewIndex(entry.id) === id);
+    if (draft && needsDetails(draft)) {
+      seen.add(id);
+      tasks.push({
+        key: `details:${id}`,
+        label: `Add the details for ${draft.name} (your ${kind})`,
+        to: "/homebrew",
+        linkLabel: "Open My Homebrew",
+      });
+    }
   }
 
   return tasks;

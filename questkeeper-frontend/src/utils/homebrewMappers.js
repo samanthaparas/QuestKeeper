@@ -163,7 +163,21 @@ function cleanNamedList(items, { max, withLevel = false }) {
     .slice(0, max);
 }
 
+// A homebrew entry made by "Pick it now, add details later" in character
+// creation is only a name, a book and a link. This flag marks it as still
+// needing its details; saving it from the homebrew form clears the flag.
+export function needsDetails(entry) {
+  return entry?.data?.needsDetails === true;
+}
+
 export function cleanHomebrewData(category, data = {}) {
+  const cleaned = cleanCategoryData(category, data);
+  return data?.needsDetails === true && category !== "feat"
+    ? { ...cleaned, needsDetails: true }
+    : cleaned;
+}
+
+function cleanCategoryData(category, data) {
   if (category === "race") {
     return {
       speed: wholeNumber(data.speed, 0, 120, 30),
