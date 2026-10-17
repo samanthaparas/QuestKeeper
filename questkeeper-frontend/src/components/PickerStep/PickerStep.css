@@ -51,8 +51,14 @@
   overflow-y: auto;
 }
 
-.picker-step__confirm-position {
-  margin-left: auto;
+/* The picker's buttons for the open option: one row under its name, main
+   choice first, wrapping neatly on narrow screens. */
+.picker-step__actions {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 
 .picker-step__skip-position {

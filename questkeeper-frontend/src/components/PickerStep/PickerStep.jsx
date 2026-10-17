@@ -230,44 +230,39 @@ function PickerStep({
               }
               actions={
                 selectedDetail && !isDetailLoading ? (
-                  selectedRaw?.is_book_entry ? (
-                    onMakeHomebrewFrom && (
-                      <>
-                        {onDraftFrom && (
+                  // One row of buttons under the title, main choice first.
+                  <div className="picker-step__actions">
+                    {selectedRaw?.is_book_entry ? (
+                      onMakeHomebrewFrom && (
+                        <>
+                          {onDraftFrom && (
+                            <Button disabled={isDrafting} onClick={handleDraft}>
+                              {isDrafting ? "Saving..." : "Pick it now, add details later"}
+                            </Button>
+                          )}
                           <Button
-                            className="picker-step__confirm-position"
-                            disabled={isDrafting}
-                            onClick={handleDraft}
+                            variant={onDraftFrom ? "secondary" : "primary"}
+                            onClick={() => onMakeHomebrewFrom(selectedRaw)}
                           >
-                            {isDrafting ? "Saving..." : "Pick it now, add details later"}
+                            Make it as homebrew
                           </Button>
-                        )}
-                        <Button
-                          variant={onDraftFrom ? "secondary" : "primary"}
-                          className={onDraftFrom ? undefined : "picker-step__confirm-position"}
-                          onClick={() => onMakeHomebrewFrom(selectedRaw)}
-                        >
-                          Make it as homebrew
+                        </>
+                      )
+                    ) : (
+                      <>
+                        <Button onClick={handleConfirm}>
+                          Choose {selectedDetail.name}
                         </Button>
+                        {onStartFrom && selectedDetail.startFrom && (
+                          <StartFromButton
+                            startFrom={selectedDetail.startFrom}
+                            onStart={onStartFrom}
+                            label="Make my own version"
+                          />
+                        )}
                       </>
-                    )
-                  ) : (
-                    <>
-                      <Button
-                        className="picker-step__confirm-position"
-                        onClick={handleConfirm}
-                      >
-                        Choose {selectedDetail.name}
-                      </Button>
-                      {onStartFrom && selectedDetail.startFrom && (
-                        <StartFromButton
-                          startFrom={selectedDetail.startFrom}
-                          onStart={onStartFrom}
-                          label="Make my own version"
-                        />
-                      )}
-                    </>
-                  )
+                    )}
+                  </div>
                 ) : null
               }
             />
