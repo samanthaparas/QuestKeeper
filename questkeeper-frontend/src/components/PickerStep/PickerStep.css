@@ -40,8 +40,15 @@
   gap: 12px;
 }
 
+/* Stays on screen while you scroll a long list of cards, scrolling inside
+   itself when the details are taller than the window, so picking a card near
+   the bottom never means scrolling back up to read it or press Choose. */
 .picker-step__detail {
   min-width: 0;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
 }
 
 .picker-step__confirm-position {
@@ -61,6 +68,13 @@
 @media screen and (max-width: 600px) {
   .picker-step__layout {
     grid-template-columns: 1fr;
+  }
+
+  /* One column on phones: the details sit below the list, not beside it. */
+  .picker-step__detail {
+    position: static;
+    max-height: none;
+    overflow: visible;
   }
 }
 

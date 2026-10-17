@@ -89,7 +89,7 @@ import HomebrewDialog from "../../components/HomebrewDialog/HomebrewDialog";
 import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
 import { createHomebrew } from "../../utils/homebrewStore";
 import { refreshHomebrew } from "../../utils/homebrewCache";
-import { emptyHomebrewForm } from "../../utils/homebrewForm";
+import { draftEntryFrom } from "../../utils/homebrewForm";
 import {
   findQuizBuild,
   loadQuizBuild,
@@ -355,6 +355,14 @@ function CharacterCreationPage() {
     goToStep(stepIndex - 1);
   }
 
+  // Leave creation from any step. Nothing is saved until Create, so the
+  // choices so far are thrown away (after asking).
+  function cancelCreation() {
+    if (window.confirm("Stop making this character? Your choices so far won't be saved.")) {
+      navigate("/characters");
+    }
+  }
+
   // A Change button on the Review page: edit one thing, then come straight back.
   function editFromReview(key) {
     setCameFromReview(true);
@@ -379,16 +387,7 @@ function CharacterCreationPage() {
   // chosen right away. It's flagged as needing details, and the sheet reminds
   // the player to fill them in on My Homebrew.
   async function saveDraftFrom(category, book, extraData = {}) {
-    const blank = emptyHomebrewForm(category);
-    const saved = await createHomebrew({
-      category,
-      name: book.name,
-      basedOn: book.book,
-      linkUrl: book.link_url,
-      summary: book.summary ?? "",
-      isShared: false,
-      data: { ...blank.data, ...extraData, needsDetails: true },
-    });
+    const saved = await createHomebrew(draftEntryFrom(category, book, extraData));
     refreshHomebrew();
     return saved;
   }
@@ -622,6 +621,14 @@ function CharacterCreationPage() {
         />
 
         <div className="character-creation__content">
+          {/* The first step has its own Cancel button. */}
+          {step !== "name" && (
+            <div className="character-creation__cancel">
+              <button type="button" className="character-creation__cancel-button" onClick={cancelCreation}>
+                Cancel and discard this character
+              </button>
+            </div>
+          )}
           {quizStatus === "loading" && (
             <div className="character-creation__quiz-banner" role="status">
               Filling in your build from the quiz...

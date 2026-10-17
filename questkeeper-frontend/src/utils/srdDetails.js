@@ -192,6 +192,7 @@ export function mapFeatToPanel(data) {
       category: "Feat",
       edition: details.edition,
       source: data.source,
+      kind: details.kind,
       prerequisite: details.facts.find((fact) => fact.label === "Prerequisite")?.value ?? null,
       blocks: details.blocks,
     };

@@ -1,4 +1,5 @@
-import { Routes, Route, Link, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, Link, Navigate, useLocation } from "react-router-dom";
 import Header from "./components/Header/Header";
 import Home from "./pages/Home/Home";
 import About from "./pages/About/About";
@@ -24,6 +25,7 @@ import BackLink from "./components/BackLink/BackLink";
 import AuthPage from "./pages/AuthPage/AuthPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
+import { getPageTitle } from "./utils/pageTitle";
 
 function NotFound() {
   return (
@@ -39,9 +41,39 @@ function NotFound() {
   );
 }
 
+// Keeps the browser tab's title in step with the page.
+function PageTitle() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    document.title = getPageTitle(pathname);
+  }, [pathname]);
+  return null;
+}
+
+// "Skip to the main content" for keyboard and screen reader users: hidden
+// until it gets focus. The app uses #/ web addresses, so a plain "#main" link
+// would change the page; this moves focus instead.
+function SkipLink() {
+  function skip(event) {
+    event.preventDefault();
+    const main = document.querySelector("main");
+    if (!main) return;
+    main.setAttribute("tabindex", "-1");
+    main.focus();
+    main.scrollIntoView();
+  }
+  return (
+    <a className="skip-link" href="#main" onClick={skip}>
+      Skip to the main content
+    </a>
+  );
+}
+
 function App() {
   return (
     <>
+      <PageTitle />
+      <SkipLink />
       <Header />
       {/* "← Back to your quiz results" and the like, when a link set one. */}
       <BackLink />

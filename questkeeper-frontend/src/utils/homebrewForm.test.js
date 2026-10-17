@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { cleanHomebrewData } from "./homebrewMappers";
 import {
+  draftEntryFrom,
   emptyHomebrewForm,
   entryToForm,
   formToEntry,
@@ -97,6 +99,33 @@ describe("homebrew feats", () => {
       desc: ["Reroll one die a day."],
       prerequisite: "Level 4+",
     });
+  });
+});
+
+describe("draftEntryFrom", () => {
+  const book = {
+    name: "Tabaxi",
+    book: "Monsters of the Multiverse",
+    link_url: "https://dnd5e.wikidot.com/lineage:tabaxi",
+    summary: "Curious cat-folk.",
+  };
+
+  it("builds a private, flagged draft that survives the same cleaning a save does", () => {
+    for (const [category, extra] of [
+      ["race", {}],
+      ["background", {}],
+      ["subclass", { parentClass: "fighter", parentClassName: "Fighter" }],
+    ]) {
+      const entry = draftEntryFrom(category, book, extra);
+      expect(entry).toMatchObject({ category, name: "Tabaxi", isShared: false, summary: "Curious cat-folk." });
+      // What homebrewStore does before saving: this threw on a string of languages.
+      expect(() => cleanHomebrewData(category, entry.data)).not.toThrow();
+      expect(cleanHomebrewData(category, entry.data).needsDetails).toBe(true);
+    }
+  });
+
+  it("turns the blank race's languages into a list", () => {
+    expect(draftEntryFrom("race", book).data.languages).toEqual(["Common"]);
   });
 });
 

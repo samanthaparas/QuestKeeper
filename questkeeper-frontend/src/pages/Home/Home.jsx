@@ -160,6 +160,22 @@ function Home() {
               description="Search magic by purpose and situation"
             />
           </Link>
+
+          <Link to="feats" className="category-link">
+            <CategoryCard
+              icon="🎖️"
+              title="Feats"
+              description="Special talents to learn as you level up"
+            />
+          </Link>
+
+          <Link to="magic-items" className="category-link">
+            <CategoryCard
+              icon="🧪"
+              title="Magic Items"
+              description="Gear, potions and treasures, with filters"
+            />
+          </Link>
         </div>
       </section>
 

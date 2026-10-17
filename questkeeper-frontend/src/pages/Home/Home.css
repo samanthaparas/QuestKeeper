@@ -212,7 +212,8 @@
 
 .home__categories-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Six categories: two even rows of three. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 

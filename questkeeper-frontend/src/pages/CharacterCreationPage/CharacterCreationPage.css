@@ -127,3 +127,26 @@
   color: var(--qk-text);
   line-height: 1.5;
 }
+
+/* "Cancel and discard this character", available on every step after the first. */
+.character-creation__cancel {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.character-creation__cancel-button {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.character-creation__cancel-button:hover {
+  color: var(--qk-terracotta-hover);
+}

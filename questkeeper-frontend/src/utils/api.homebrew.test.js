@@ -4,6 +4,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 vi.mock("./homebrewCache", () => ({ loadHomebrew: vi.fn() }));
 
 import { loadHomebrew } from "./homebrewCache";
+import { draftEntryFrom } from "./homebrewForm";
+import { cleanHomebrewData } from "./homebrewMappers";
+import { loadRaceDetails } from "./srdDetails";
+import { mapRaceToSnapshot, mapBackgroundToSnapshot } from "./characterSnapshots";
 import {
   getRaces,
   getRaceDetails,
@@ -217,3 +221,23 @@ describe("api with homebrew", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 });
+
+describe("drafts made with Pick it now, add details later", () => {
+  // What creation does: save the draft, reload it by ID, turn it into a pick.
+  const book = { name: "Tabaxi", book: "MPMM", link_url: "https://dnd5e.wikidot.com/lineage:tabaxi", summary: "Curious." };
+  const saved = (category, id) => {
+    const entry = draftEntryFrom(category, book);
+    return { id, category, name: entry.name, based_on: entry.basedOn, link_url: entry.linkUrl, summary: entry.summary, data: cleanHomebrewData(category, entry.data) };
+  };
+
+  it("loads a draft race and background and makes a character pick from each", async () => {
+    loadHomebrew.mockResolvedValue([saved("race", "d1"), saved("background", "d2")]);
+
+    const race = await loadRaceDetails("hb_d1");
+    expect(mapRaceToSnapshot(race)).toMatchObject({ id: "hb_d1", name: "Tabaxi" });
+
+    const background = await getBackgroundDetails("hb_d2");
+    expect(mapBackgroundToSnapshot(background)).toMatchObject({ id: "hb_d2", name: "Tabaxi" });
+  });
+});
+
