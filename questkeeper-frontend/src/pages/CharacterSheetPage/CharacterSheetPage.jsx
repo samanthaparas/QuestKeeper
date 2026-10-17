@@ -63,6 +63,7 @@ import LevelUpWizard from "../../components/LevelUpWizard/LevelUpWizard";
 import Button from "../../components/Button/Button";
 import { getFeatureSubclassId, sourceFromEntry } from "../../utils/featureSources";
 import { getSetupTasks } from "../../utils/setupTasks";
+import { loadHomebrew } from "../../utils/homebrewCache";
 import { fillMissingComponents } from "../../utils/spellComponents";
 import { isArmorDetails, withAutoArmorClass } from "../../utils/armorClass";
 import { getEquipment, getEquipmentDetails } from "../../utils/api";
@@ -276,7 +277,18 @@ function CharacterSheetPage() {
   }, [gearNames]);
   const gearDetailsFor = (item) => gearDetails[normalizeItemName(item.name)];
 
-  const setupTasks = getSetupTasks(sheet, currentEntries);
+  // The player's homebrew, so a race, background or subclass picked as a
+  // draft in creation can remind them to fill in its details.
+  const [homebrewList, setHomebrewList] = useState([]);
+  useEffect(() => {
+    let ignore = false;
+    loadHomebrew().then((entries) => !ignore && setHomebrewList(entries));
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const setupTasks = getSetupTasks(sheet, currentEntries, homebrewList);
 
   const saveTimeoutRef = useRef(null);
   const pendingUpdateRef = useRef(null);

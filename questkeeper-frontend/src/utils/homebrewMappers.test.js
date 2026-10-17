@@ -13,6 +13,7 @@ import {
   findHomebrewTrait,
   findHomebrewFeature,
   listHomebrew,
+  needsDetails,
 } from "./homebrewMappers";
 import {
   mapRaceToSnapshot,
@@ -315,3 +316,29 @@ describe("lookups", () => {
     ]);
   });
 });
+
+describe("drafts that still need details", () => {
+  it("keeps the needsDetails flag through cleaning, for everything but feats", () => {
+    for (const category of ["race", "background", "subclass"]) {
+      expect(cleanHomebrewData(category, { needsDetails: true }).needsDetails).toBe(true);
+      expect(cleanHomebrewData(category, { needsDetails: "yes" }).needsDetails).toBeUndefined();
+    }
+    expect(cleanHomebrewData("feat", { needsDetails: true })).toEqual({ prerequisite: "" });
+  });
+
+  it("turns a bare draft into a usable race, background and subclass", () => {
+    const base = { id: "d1", name: "Tabaxi", based_on: "MPMM", link_url: "https://example.com/x", summary: "Curious." };
+    expect(toHomebrewRace({ ...base, category: "race", data: { needsDetails: true } })).toMatchObject({ name: "Tabaxi", traits: [] });
+    expect(toHomebrewBackground({ ...base, category: "background", data: { needsDetails: true } }).name).toBe("Tabaxi");
+    expect(
+      toHomebrewSubclass({ ...base, category: "subclass", data: { needsDetails: true, parentClass: "fighter" } }, []).class.index,
+    ).toBe("fighter");
+  });
+
+  it("reads the flag with needsDetails", () => {
+    expect(needsDetails({ data: { needsDetails: true } })).toBe(true);
+    expect(needsDetails({ data: {} })).toBe(false);
+    expect(needsDetails(null)).toBe(false);
+  });
+});
+

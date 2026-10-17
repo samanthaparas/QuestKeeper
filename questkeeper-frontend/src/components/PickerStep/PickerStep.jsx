@@ -7,6 +7,7 @@ import StartFromButton from "../HomebrewStart/StartFromButton";
 import SourceFilter from "../SourceFilter/SourceFilter";
 import { filterBySource } from "../../utils/sourceFilters";
 import { getCardPreview } from "../../utils/beginnerGuidance";
+import { toHomebrewIndex } from "../../utils/homebrewMappers";
 
 function PickerStep({
   title,
@@ -29,6 +30,11 @@ function PickerStep({
   // Published-book entries can't be chosen directly; this rebuilds one as
   // homebrew instead (gets the selected entry).
   onMakeHomebrewFrom,
+  // "Pick it now, add details later": saves a bare draft homebrew of a book
+  // entry (name, book and link only) and chooses it straight away. Gets the
+  // book entry; returns the saved homebrew row. The player fills in the
+  // details later (the sheet reminds them).
+  onDraftFrom,
   // Free (SRD/Open5e) entries can be copied into a homebrew form to make
   // your own version (gets the filled-in form values).
   onStartFrom,
@@ -48,14 +54,23 @@ function PickerStep({
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   // "all" or one book name, picked with the SourceFilter buttons.
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [isDrafting, setIsDrafting] = useState(false);
   // Book entries with no way to pick them here (like Artificer: homebrew
   // can't build whole classes yet) are read-only. They go last, so the
   // choosable options come first.
   const isReadOnly = (item) =>
     String(item?.index ?? "").startsWith("book_") && !onMakeHomebrewFrom;
+  const isBookItem = (item) => String(item?.index ?? "").startsWith("book_");
   const visibleItems = [...filterBySource(items, sourceFilter)].sort(
     (a, b) => Number(isReadOnly(a)) - Number(isReadOnly(b)),
   );
+  // When a list holds both pickable options and book ones that need a
+  // homebrew version, they get their own labelled sections (nothing is
+  // hidden), pickable ones first.
+  const readyItems = visibleItems.filter((item) => !isBookItem(item));
+  const bookItems = visibleItems.filter(isBookItem);
+  const isSectioned = Boolean(onMakeHomebrewFrom) && readyItems.length > 0 && bookItems.length > 0;
+  const showChips = Boolean(onMakeHomebrewFrom) && items.some(isBookItem) && items.some((item) => !isBookItem(item));
   const selectedIsReadOnly = Boolean(selectedRaw?.is_book_entry) && !onMakeHomebrewFrom;
 
   useEffect(() => {
@@ -84,8 +99,45 @@ function PickerStep({
       .finally(() => setIsDetailLoading(false));
   }
 
+  async function handleDraft() {
+    setIsDrafting(true);
+    setApiError("");
+    try {
+      const saved = await onDraftFrom(selectedRaw);
+      const raw = await fetchDetails(toHomebrewIndex(saved.id));
+      onChoose(mapToSnapshot(raw), raw);
+    } catch {
+      setApiError("Couldn't save that as a draft. Please try again, or use the homebrew form.");
+    } finally {
+      setIsDrafting(false);
+    }
+  }
+
   function handleConfirm() {
     onChoose(mapToSnapshot(selectedRaw), selectedRaw);
+  }
+
+  function renderCard(item) {
+    return (
+      <ResultCard
+        key={item.index}
+        result={{
+          name: item.name,
+          category,
+          index: item.index,
+          source: item.source,
+          sourceGroup: item.sourceGroup,
+          preview: getCardPreview(category, item),
+          // Read-only entries say so right on the card.
+          tagline: isReadOnly(item)
+            ? "Read only: can't be picked yet"
+            : getTagline?.(item),
+          chip: showChips && !isReadOnly(item) ? (isBookItem(item) ? "Make it yours" : "Ready to pick") : null,
+        }}
+        isSelected={selectedIndex === item.index}
+        onClick={() => handleSelect(item)}
+      />
+    );
   }
 
   const showEmptyState =
@@ -120,25 +172,22 @@ function PickerStep({
       {!isLoading && !apiError && !showEmptyState && (
         <div className="picker-step__layout">
           <div className="picker-step__list">
-            {visibleItems.map((item) => (
-              <ResultCard
-                key={item.index}
-                result={{
-                  name: item.name,
-                  category,
-                  index: item.index,
-                  source: item.source,
-                  sourceGroup: item.sourceGroup,
-                  preview: getCardPreview(category, item),
-                  // Read-only entries say so right on the card.
-                  tagline: isReadOnly(item)
-                    ? "Read only: can't be picked yet"
-                    : getTagline?.(item),
-                }}
-                isSelected={selectedIndex === item.index}
-                onClick={() => handleSelect(item)}
-              />
-            ))}
+            {isSectioned && (
+              <h3 className="picker-step__section">Ready to pick</h3>
+            )}
+            {(isSectioned ? readyItems : visibleItems).map(renderCard)}
+            {isSectioned && (
+              <>
+                <h3 className="picker-step__section">From the books</h3>
+                <p className="picker-step__section-note">
+                  These need a quick homebrew version before you can play them.
+                  Open one, then choose <b>Pick it now, add details later</b>
+                  {onDraftFrom ? "" : " or Make it as homebrew"} to start in
+                  seconds.
+                </p>
+                {bookItems.map(renderCard)}
+              </>
+            )}
           </div>
 
           <div className="picker-step__detail">
@@ -174,12 +223,24 @@ function PickerStep({
                 selectedDetail && !isDetailLoading ? (
                   selectedRaw?.is_book_entry ? (
                     onMakeHomebrewFrom && (
-                      <Button
-                        className="picker-step__confirm-position"
-                        onClick={() => onMakeHomebrewFrom(selectedRaw)}
-                      >
-                        Make it as homebrew
-                      </Button>
+                      <>
+                        {onDraftFrom && (
+                          <Button
+                            className="picker-step__confirm-position"
+                            disabled={isDrafting}
+                            onClick={handleDraft}
+                          >
+                            {isDrafting ? "Saving..." : "Pick it now, add details later"}
+                          </Button>
+                        )}
+                        <Button
+                          variant={onDraftFrom ? "secondary" : "primary"}
+                          className={onDraftFrom ? undefined : "picker-step__confirm-position"}
+                          onClick={() => onMakeHomebrewFrom(selectedRaw)}
+                        >
+                          Make it as homebrew
+                        </Button>
+                      </>
                     )
                   ) : (
                     <>

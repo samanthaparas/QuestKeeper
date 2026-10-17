@@ -87,6 +87,9 @@ import CreationTips from "../../components/CreationTips/CreationTips";
 import Button from "../../components/Button/Button";
 import HomebrewDialog from "../../components/HomebrewDialog/HomebrewDialog";
 import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
+import { createHomebrew } from "../../utils/homebrewStore";
+import { refreshHomebrew } from "../../utils/homebrewCache";
+import { emptyHomebrewForm } from "../../utils/homebrewForm";
 import {
   findQuizBuild,
   loadQuizBuild,
@@ -370,6 +373,25 @@ function CharacterCreationPage() {
   const homebrewClassOptions = isHomebrewId(characterClass?.id)
     ? [{ index: characterClass.id, name: characterClass.name }]
     : [];
+
+  // "Pick it now, add details later": saves a bare, private draft of a book
+  // option (its name, book, link and our own-words blurb) so it can be
+  // chosen right away. It's flagged as needing details, and the sheet reminds
+  // the player to fill them in on My Homebrew.
+  async function saveDraftFrom(category, book, extraData = {}) {
+    const blank = emptyHomebrewForm(category);
+    const saved = await createHomebrew({
+      category,
+      name: book.name,
+      basedOn: book.book,
+      linkUrl: book.link_url,
+      summary: book.summary ?? "",
+      isShared: false,
+      data: { ...blank.data, ...extraData, needsDetails: true },
+    });
+    refreshHomebrew();
+    return saved;
+  }
 
   async function handleHomebrewCreated(saved) {
     setHomebrewRequest(null);
@@ -700,6 +722,7 @@ function CharacterCreationPage() {
                   onMakeOwn={() => setHomebrewRequest({ category: "race" })}
                   makeOwnLabel="Make your own race"
                   onStartFrom={startHomebrewFrom}
+                  onDraftFrom={(book) => saveDraftFrom("race", book)}
                   onMakeHomebrewFrom={(book) =>
                     setHomebrewRequest({
                       category: "race",
@@ -870,6 +893,12 @@ function CharacterCreationPage() {
                       ? startHomebrewFrom
                       : undefined
                   }
+                  onDraftFrom={(book) =>
+                    saveDraftFrom("subclass", book, {
+                      parentClass: characterClass.id,
+                      parentClassName: characterClass.name,
+                    })
+                  }
                   onMakeHomebrewFrom={(book) =>
                     setHomebrewRequest({
                       category: "subclass",
@@ -987,6 +1016,7 @@ function CharacterCreationPage() {
                     setHomebrewRequest({ category: "background" })
                   }
                   makeOwnLabel="Make your own background"
+                  onDraftFrom={(book) => saveDraftFrom("background", book)}
                   onMakeHomebrewFrom={(book) =>
                     setHomebrewRequest({
                       category: "background",

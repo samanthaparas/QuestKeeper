@@ -86,3 +86,17 @@
   font-size: 14px;
   line-height: 1.5;
 }
+
+/* Headings splitting a list into "Ready to pick" and "From the books". */
+.picker-step__section {
+  margin: 8px 0 0;
+  color: var(--qk-text);
+  font-size: 16px;
+}
+
+.picker-step__section-note {
+  margin: -4px 0 4px;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}

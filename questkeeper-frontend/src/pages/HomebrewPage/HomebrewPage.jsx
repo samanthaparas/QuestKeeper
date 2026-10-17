@@ -8,7 +8,7 @@ import {
   updateHomebrew,
   deleteHomebrew,
 } from "../../utils/homebrewStore";
-import { HOMEBREW_CATEGORIES, listHomebrew } from "../../utils/homebrewMappers";
+import { HOMEBREW_CATEGORIES, listHomebrew, needsDetails } from "../../utils/homebrewMappers";
 import { primeHomebrew } from "../../utils/homebrewCache";
 import { shouldReduceMotion } from "../../utils/motionPreference";
 import {
@@ -205,6 +205,12 @@ function HomebrewPage() {
                     >
                       {entry.is_shared ? "Shared" : "Private draft"}
                     </span>
+                    {/* Picked in character creation with "add details later". */}
+                    {needsDetails(entry) && (
+                      <span className="homebrew-page__tag homebrew-page__tag--needs">
+                        Needs details
+                      </span>
+                    )}
                   </span>
                   {entry.based_on && (
                     <span className="homebrew-page__item-meta">Based on {entry.based_on}</span>

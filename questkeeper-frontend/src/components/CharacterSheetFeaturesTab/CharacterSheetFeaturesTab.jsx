@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
@@ -272,7 +273,15 @@ function CharacterSheetFeaturesTab({
             </p>
             <ul className="character-sheet__setup-list">
               {setupTasks.map((task) => (
-                <li key={task.key}>{task.label}</li>
+                <li key={task.key}>
+                  {task.label}
+                  {task.to && (
+                    <>
+                      {" "}
+                      <Link to={task.to}>{task.linkLabel ?? "Open"}</Link>
+                    </>
+                  )}
+                </li>
               ))}
             </ul>
           </div>

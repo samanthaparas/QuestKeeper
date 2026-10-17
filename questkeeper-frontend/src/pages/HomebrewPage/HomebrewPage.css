@@ -150,3 +150,8 @@
     padding: 24px 16px;
   }
 }
+
+.homebrew-page__tag--needs {
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-terracotta-hover);
+}
