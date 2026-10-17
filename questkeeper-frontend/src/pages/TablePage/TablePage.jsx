@@ -29,6 +29,9 @@ import {
   postPlayerDamage,
   removeCombatant,
   removeMember,
+  banMember,
+  unbanMember,
+  listBans,
   resetEncounter,
   setCombatantInitiative,
   setMyInitiative,
@@ -44,7 +47,7 @@ import {
   hasActiveNudge,
   nudgeMessage,
 } from "../../utils/tableGuidance";
-import { getAbilityModifier } from "../../utils/characterSheet";
+import { getAbilityModifier, getInitials } from "../../utils/characterSheet";
 import { toPartyRow } from "../../utils/partyStrip";
 import { shouldReduceMotion } from "../../utils/motionPreference";
 import Button from "../../components/Button/Button";
@@ -254,6 +257,7 @@ function CombatantRow({
   combatActive = false,
   targets = [],
   recentEvents = [],
+  portraitUrl = "",
   tableId,
   onChanged,
   onEdit,
@@ -268,6 +272,8 @@ function CombatantRow({
   const initiativeBonus = Number(readStatBlock(hp?.stat_block).initiativeBonus) || 0;
   const [showAttack, setShowAttack] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  // A player's Remove asks first, on the row.
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   // Monsters and allies are run by the DM and have hidden HP; players run themselves.
   const isMonster = combatant.kind === "monster";
@@ -288,6 +294,11 @@ function CombatantRow({
     if (initiativeInput === "" || Number.isNaN(value)) return;
     if (isMe && !isDm) {
       // Players type just the die, like attacks; their Dexterity is added.
+      // A d20 only shows 1 to 20.
+      if (!Number.isInteger(value) || value < 1 || value > 20) {
+        setRollNote("Type the number on your d20, from 1 to 20.");
+        return;
+      }
       const modifier = getAbilityModifier(myDexterity ?? 10);
       setRollNote(formatRollNote(value, modifier, value + modifier));
       onSetInitiative(combatant, value + modifier);
@@ -343,6 +354,12 @@ function CombatantRow({
             </span>
             <div className="table-page__row-info">
               <span className="table-page__row-name">
+                {combatant.kind === "player" && (
+                  // The character's portrait (or initials), so faces are easy to spot.
+                  <span className="table-page__row-portrait" aria-hidden="true">
+                    {portraitUrl ? <img src={portraitUrl} alt="" /> : getInitials(combatant.name ?? "")}
+                  </span>
+                )}
                 {combatant.name}
                 {isMe && <span className="table-page__tag">You</span>}
                 {isMonster && <span className="table-page__tag table-page__tag--monster">Enemy</span>}
@@ -522,9 +539,47 @@ function CombatantRow({
                     Edit
                   </Button>
                 )}
-                <Button type="button" variant="secondary" onClick={() => onRemove(combatant)}>
-                  Remove
-                </Button>
+                {!isNpc && confirmingRemove ? (
+                  // Asks on the row, with the choice of letting them come back.
+                  <span className="table-page__remove-confirm" role="group" aria-label={`Remove ${combatant.name}?`}>
+                    <span>Remove {combatant.name} from the table?</span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setConfirmingRemove(false);
+                        onRemove(combatant, { forGood: false });
+                      }}
+                    >
+                      Remove
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => {
+                        setConfirmingRemove(false);
+                        onRemove(combatant, { forGood: true });
+                      }}
+                    >
+                      Remove for good
+                    </Button>
+                    <Button type="button" variant="secondary" onClick={() => setConfirmingRemove(false)}>
+                      Keep
+                    </Button>
+                    <span className="table-page__remove-help">
+                      &ldquo;Remove&rdquo; lets them rejoin with the code (or with a new character).
+                      &ldquo;Remove for good&rdquo; stops them rejoining until you let them back on the Players tab.
+                    </span>
+                  </span>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => (isNpc ? onRemove(combatant) : setConfirmingRemove(true))}
+                  >
+                    Remove
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -636,6 +691,8 @@ function TablePage() {
   const [characters, setCharacters] = useState([]);
   // Players: the party strip's mini sheets, when the DM shares them.
   const [partyMinis, setPartyMinis] = useState([]);
+  // DM: players removed for good (they can't rejoin with the code).
+  const [bans, setBans] = useState([]);
   const playersSectionRef = useRef(null);
   const location = useLocation();
   // DM screen tab: the DM's pick, remembered per table. Until they pick, it
@@ -753,6 +810,27 @@ function TablePage() {
       clearInterval(timer);
     };
   }, [myCharacterId]);
+
+  async function loadBans() {
+    try {
+      setBans(await listBans(table.id));
+    } catch {
+      setBans([]); // the list is a convenience; removing still worked
+    }
+  }
+
+  // DM: who's been removed for good, for the Players tab.
+  const tableIdForBans = isDm ? table?.id : null;
+  useEffect(() => {
+    if (!tableIdForBans) return undefined;
+    let ignore = false;
+    listBans(tableIdForBans)
+      .then((list) => !ignore && setBans(list))
+      .catch(() => !ignore && setBans([]));
+    return () => {
+      ignore = true;
+    };
+  }, [tableIdForBans]);
 
   async function run(action) {
     setActionError("");
@@ -929,6 +1007,21 @@ function TablePage() {
     }
   }
 
+  // Saves a monster to the DM's library without adding it to the table, so
+  // the DM can prepare for later without leaving this screen.
+  async function handleSaveToLibraryOnly(entry) {
+    if (templates.some((template) => isSameTemplate(template, entry))) {
+      return { ok: false, message: `${entry.name} is already in your library.` };
+    }
+    try {
+      const saved = await createTemplate(entry);
+      setTemplates((previous) => [...previous, saved].sort((a, b) => a.name.localeCompare(b.name)));
+      return { ok: true, message: `Saved ${entry.name} to your library. It isn't in the fight.` };
+    } catch (saveError) {
+      return { ok: false, message: saveError.message ?? "Couldn't save that to your library." };
+    }
+  }
+
   async function handleHitPlayer(event) {
     event.preventDefault();
     const amount = Number(hitAmount);
@@ -982,6 +1075,16 @@ function TablePage() {
     }
   }
 
+  // Players' portraits for the turn order: the DM has everyone's sheets, a
+  // player has their own and, when the DM shares the party, everyone's.
+  const portraitByUser = new Map();
+  for (const mini of partyMinis) if (mini.userId && mini.portraitUrl) portraitByUser.set(mini.userId, mini.portraitUrl);
+  for (const member of members) {
+    const sheet = characters.find((entry) => entry.id === member.character_id);
+    if (sheet?.portraitUrl) portraitByUser.set(member.user_id, sheet.portraitUrl);
+  }
+  if (user?.id && mySheet?.portraitUrl) portraitByUser.set(user.id, mySheet.portraitUrl);
+
   function renderRow(combatant) {
     const isMe = combatant.kind === "player" && combatant.user_id === user?.id;
 
@@ -990,6 +1093,7 @@ function TablePage() {
         key={combatant.id}
         combatant={combatant}
         isCurrent={table.combat_active && combatant.id === table.current_combatant_id}
+        portraitUrl={portraitByUser.get(combatant.user_id) ?? ""}
         isDm={isDm}
         isMe={isMe}
         hp={enemyHp[combatant.id]}
@@ -1020,11 +1124,16 @@ function TablePage() {
         }
         nudged={combatant.kind === "player" && hasActiveNudge(events, combatant.name)}
         nudgeCooling={nudgeCooling}
-        onRemove={(target) => {
+        onRemove={(target, { forGood = false } = {}) => {
           if (target.kind === "player") {
-            if (window.confirm(`Remove ${target.name} from the table?`)) {
-              run(() => removeMember(table.id, target.user_id));
-            }
+            run(async () => {
+              if (forGood) {
+                await banMember(table.id, target.user_id);
+                await loadBans();
+              } else {
+                await removeMember(table.id, target.user_id);
+              }
+            });
           } else {
             run(() => removeCombatant(target.id));
           }
@@ -1352,7 +1461,11 @@ function TablePage() {
               HP, AC, or a stat block. Add several at once, or pick from your library.
               Friendly NPCs and party members you track by hand are added the same way.
             </p>
-            <AddCombatantForm onAdd={handleAddCombatants} templates={templates} />
+            <AddCombatantForm
+              onAdd={handleAddCombatants}
+              onSaveToLibrary={handleSaveToLibraryOnly}
+              templates={templates}
+            />
           </section>
         )}
 
@@ -1520,6 +1633,32 @@ function TablePage() {
                   )}
                 </div>
               </>
+            )}
+
+            {/* Players removed for good can't rejoin until the DM lets them back. */}
+            {bans.length > 0 && (
+              <div className="table-page__bans">
+                <h3 className="table-page__section-subtitle">Removed for good</h3>
+                <ul className="table-page__ban-list">
+                  {bans.map((ban) => (
+                    <li key={ban.user_id} className="table-page__ban">
+                      <span>{ban.name || "A player"}</span>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() =>
+                          run(async () => {
+                            await unbanMember(table.id, ban.user_id);
+                            await loadBans();
+                          })
+                        }
+                      >
+                        Let them back
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </section>
         )}

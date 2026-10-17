@@ -119,14 +119,11 @@ function CompanionCard({
   onAbilityChange,
   onSaveChange,
   onNotesChange,
-  onRemove,
   onAttackAdd,
   onAttackUpdate,
   onAttackRemove,
 }) {
   const [isEditing, setIsEditing] = useState(false);
-  // Remove asks first ("Remove Victory? ... Remove / Keep").
-  const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   const name = companion.name || "Companion";
   const hp = companion.hitPoints ?? { current: 0, max: 0 };
   const scores = createCompanionAbilityScores(companion.abilityScores);
@@ -332,38 +329,6 @@ function CompanionCard({
 
       <CompanionNotes name={name} notes={notes} onChange={onNotesChange} />
 
-      {/* Only while editing, so it can't be hit by accident. The companion's
-          details are kept, so adding a companion again brings them back. */}
-      {isEditing &&
-        onRemove &&
-        (isConfirmingRemove ? (
-          <div className="companion-card__confirm" role="group" aria-label={`Remove ${name}?`}>
-            <span>
-              Remove {name}? Their details are kept, so &ldquo;+ Add a companion&rdquo; brings
-              them back.
-            </span>
-            <Button
-              variant="danger"
-              onClick={() => {
-                setIsConfirmingRemove(false);
-                onRemove();
-              }}
-            >
-              Remove
-            </Button>
-            <Button variant="secondary" onClick={() => setIsConfirmingRemove(false)}>
-              Keep {name}
-            </Button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="companion-card__remove"
-            onClick={() => setIsConfirmingRemove(true)}
-          >
-            Remove {name} from this sheet
-          </button>
-        ))}
     </section>
   );
 }

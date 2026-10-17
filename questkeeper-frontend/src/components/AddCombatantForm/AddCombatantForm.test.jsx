@@ -22,13 +22,13 @@ async function fill(label, value) {
 describe("AddCombatantForm", () => {
   it("cannot be submitted without a name and HP", async () => {
     render(<AddCombatantForm onAdd={vi.fn()} />);
-    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add to the fight" })).toBeDisabled();
 
     await fill("Name", "Goblin");
-    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add to the fight" })).toBeDisabled();
 
     await fill("HP", "7");
-    expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Add to the fight" })).toBeEnabled();
   });
 
   it("adds an enemy with its numbers and cleaned stat block", async () => {
@@ -44,7 +44,7 @@ describe("AddCombatantForm", () => {
     await userEvent.type(screen.getByLabelText("Attack 1 name"), "Scimitar");
     await userEvent.type(screen.getByLabelText("Attack 1 to hit"), "4");
     await userEvent.type(screen.getByLabelText("Attack 1 damage"), "1d6+2");
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add to the fight" }));
 
     expect(onAdd).toHaveBeenCalledWith({
       kind: "monster",
@@ -66,7 +66,7 @@ describe("AddCombatantForm", () => {
     await userEvent.click(screen.getByLabelText("Friendly NPC or party member"));
     await fill("Name", "Billie");
     await fill("HP", "117");
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add to the fight" }));
 
     expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ kind: "ally", name: "Billie", maxHp: 117 }));
   });
@@ -77,7 +77,7 @@ describe("AddCombatantForm", () => {
     await userEvent.clear(screen.getByLabelText("How many"));
     await userEvent.type(screen.getByLabelText("How many"), "5");
 
-    expect(screen.getByRole("button", { name: "Add 5" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add 5 to the fight" })).toBeInTheDocument();
   });
 
   it("can save what it adds to the library", async () => {
@@ -87,7 +87,7 @@ describe("AddCombatantForm", () => {
     await fill("Name", "Ogre");
     await fill("HP", "59");
     await userEvent.click(screen.getByLabelText("Also save to my library"));
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add to the fight" }));
 
     expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ saveToLibrary: true }));
   });
@@ -119,10 +119,10 @@ describe("AddCombatantForm", () => {
     await fill("Name", "Goblin");
     await fill("HP", "7");
 
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add to the fight" }));
     expect(screen.getByLabelText("Name")).toHaveValue("Goblin");
 
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add to the fight" }));
     expect(screen.getByLabelText("Name")).toHaveValue("");
   });
 
@@ -141,7 +141,7 @@ describe("AddCombatantForm", () => {
     expect(screen.getByText("🦆 Goblin (red duck)")).toBeInTheDocument();
     expect(screen.getByText("Goblin 2")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Add 2" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add 2 to the fight" }));
 
     expect(onAdd).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -156,4 +156,19 @@ describe("AddCombatantForm", () => {
 
     expect(screen.getByText(/Adding several of the same monster\?/)).toBeInTheDocument();
   });
+
+  it("saves to the library only, without adding to the fight", async () => {
+    const onAdd = vi.fn();
+    const onSaveToLibrary = vi.fn().mockResolvedValue({ ok: true, message: "Saved Wolf to your library. It isn't in the fight." });
+    render(<AddCombatantForm onAdd={onAdd} onSaveToLibrary={onSaveToLibrary} />);
+
+    await fill("Name", "Wolf");
+    await fill("HP", "11");
+    await userEvent.click(screen.getByRole("button", { name: "Save to library only" }));
+
+    expect(onAdd).not.toHaveBeenCalled();
+    expect(onSaveToLibrary).toHaveBeenCalledWith(expect.objectContaining({ name: "Wolf", maxHp: 11 }));
+    expect(await screen.findByText("Saved Wolf to your library. It isn't in the fight.")).toBeInTheDocument();
+  });
 });
+

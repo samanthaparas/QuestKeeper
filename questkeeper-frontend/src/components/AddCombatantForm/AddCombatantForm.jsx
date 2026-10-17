@@ -12,7 +12,10 @@ import "./AddCombatantForm.css";
 
 // Adds one or many monsters, friendly NPCs, or manually tracked party members.
 // `templates` are the DM's saved library entries; picking one fills the form.
-function AddCombatantForm({ onAdd, templates = [] }) {
+// `onSaveToLibrary` (optional) adds a "Save to library only" button, for
+// preparing a monster for later without putting it in tonight's fight.
+// It resolves { ok, message }.
+function AddCombatantForm({ onAdd, onSaveToLibrary, templates = [] }) {
   const [kind, setKind] = useState("monster");
   const [name, setName] = useState("");
   const [count, setCount] = useState("1");
@@ -25,6 +28,8 @@ function AddCombatantForm({ onAdd, templates = [] }) {
   const [showPieces, setShowPieces] = useState(false);
   const [pieces, setPieces] = useState([]);
   const [isBusy, setIsBusy] = useState(false);
+  // "Saved Goblin to your library." after a library-only save.
+  const [libraryNote, setLibraryNote] = useState("");
 
   const hp = Number(maxHp);
   const total = Math.max(1, Math.min(Number(count) || 1, 20));
@@ -54,11 +59,44 @@ function AddCombatantForm({ onAdd, templates = [] }) {
     });
   }
 
+  function clearForm() {
+    setName("");
+    setCount("1");
+    setMaxHp("");
+    setArmorClass("");
+    setInitiative("");
+    setStatBlock(emptyStatBlock());
+    setSaveToLibrary(false);
+    setShowDetails(false);
+    setShowPieces(false);
+    setPieces([]);
+  }
+
+  async function handleSaveToLibraryOnly() {
+    if (!canSubmit || isBusy) return;
+    setIsBusy(true);
+    setLibraryNote("");
+    try {
+      const { ok, message } = await onSaveToLibrary({
+        kind,
+        name: name.trim(),
+        maxHp: hp,
+        armorClass: armorClass === "" ? null : Number(armorClass),
+        statBlock: cleanStatBlock(statBlock),
+      });
+      setLibraryNote(message);
+      if (ok) clearForm();
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     if (!canSubmit || isBusy) return;
 
     setIsBusy(true);
+    setLibraryNote("");
     try {
       const added = await onAdd({
         kind,
@@ -75,16 +113,7 @@ function AddCombatantForm({ onAdd, templates = [] }) {
       // Keep what was typed if adding failed, so nothing has to be retyped.
       if (added === false) return;
 
-      setName("");
-      setCount("1");
-      setMaxHp("");
-      setArmorClass("");
-      setInitiative("");
-      setStatBlock(emptyStatBlock());
-      setSaveToLibrary(false);
-      setShowDetails(false);
-      setShowPieces(false);
-      setPieces([]);
+      clearForm();
     } finally {
       setIsBusy(false);
     }
@@ -221,10 +250,26 @@ function AddCombatantForm({ onAdd, templates = [] }) {
         >
           {showPieces ? "Hide nicknames and icons" : "Tell them apart"}
         </Button>
+        {onSaveToLibrary && (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!canSubmit || isBusy}
+            onClick={handleSaveToLibraryOnly}
+          >
+            Save to library only
+          </Button>
+        )}
         <Button type="submit" disabled={!canSubmit || isBusy}>
-          {Number(count) > 1 ? `Add ${Math.min(Number(count), 20)}` : "Add"}
+          {Number(count) > 1 ? `Add ${Math.min(Number(count), 20)} to the fight` : "Add to the fight"}
         </Button>
       </div>
+
+      {libraryNote && (
+        <p className="add-combatant__tip" role="status">
+          {libraryNote}
+        </p>
+      )}
 
       {showPieces && (
         <fieldset className="add-combatant__pieces">

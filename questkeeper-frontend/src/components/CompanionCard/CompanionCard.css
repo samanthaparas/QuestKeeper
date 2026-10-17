@@ -264,35 +264,6 @@
   font-size: 14px;
 }
 
-/* "Remove Victory from this sheet", shown only while editing. */
-.companion-card__remove {
-  justify-self: start;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--qk-danger);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-/* "Remove Victory? ... [Remove] [Keep Victory]" */
-.companion-card__confirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  font-size: 14px;
-}
-
-.companion-card__confirm .qk-button {
-  min-height: 36px;
-  padding: 0 14px;
-  font-size: 14px;
-}
-
 /* The "+ Add a companion" line on the Actions tab when there isn't one. */
 .companion-card__add {
   display: flex;

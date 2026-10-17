@@ -1,4 +1,4 @@
-import { useState, useId } from "react";
+import { Fragment, useState, useId } from "react";
 import RulesText from "../RulesText/RulesText";
 import "../../pages/CharacterSheetPage/CharacterSheetPage.css";
 import Button from "../Button/Button";
@@ -140,6 +140,10 @@ function EditableItemList({
   isNameClickable,
   onNameClick,
   rowAction = null,
+  // Something to open right under one row (the attack panel after tapping
+  // Attack), so it appears where the player is looking. Returns null for
+  // every other row.
+  rowPanel = null,
   footer = null,
   // Optional locking (used for spells): a locked row hides Edit and Remove
   // until it is unlocked, so it can't be changed by accident.
@@ -355,11 +359,12 @@ function EditableItemList({
             const id = getItemId(item);
             const notes = textareaField ? item[textareaField.key] : "";
 
+            const panel = rowPanel ? rowPanel(item) : null;
             return (
+              <Fragment key={id}>
               <div
                 className="character-sheet__attacks-row"
                 style={columnStyle}
-                key={id}
               >
                 {renderPrimaryCell(item, id, notes)}
                 {columns.map((col) => (
@@ -385,6 +390,8 @@ function EditableItemList({
                   <IconButton kind="remove" label={`Remove ${getLabel(item)}`} onClick={() => handleRemoveClick(item, id)} />
                 </span>
               </div>
+              {panel && <div className="character-sheet__row-panel">{panel}</div>}
+              </Fragment>
             );
           })}
         </div>

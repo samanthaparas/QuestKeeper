@@ -154,7 +154,7 @@ describe("MonsterAttackPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: /Roll d20/ }));
 
     expect(await screen.findByText(/Let the app roll:/)).toBeInTheDocument();
-    expect(screen.getByText(/dice are doubled for you/)).toBeInTheDocument();
+    expect(screen.getByText(/is doubled for you/)).toBeInTheDocument();
     expect(screen.getByText(/rolled 3 on 1d4\+2 → 5/)).toBeInTheDocument();
   });
 

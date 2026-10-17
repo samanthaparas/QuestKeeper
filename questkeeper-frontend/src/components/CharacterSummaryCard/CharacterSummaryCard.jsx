@@ -1,4 +1,5 @@
 import {
+  getInitials,
   ABILITY_SCORES,
   ABILITY_ABBREVIATIONS,
   getAbilityModifier,
@@ -44,7 +45,11 @@ function CharacterSummaryCard({ sheet, playerName }) {
   return (
     <article className="character-summary">
       <header className="character-summary__header">
-        <div>
+        {/* The character's portrait, or their initials without one. */}
+        <span className="character-summary__portrait" aria-hidden="true">
+          {sheet.portraitUrl ? <img src={sheet.portraitUrl} alt="" /> : getInitials(sheet.name ?? "")}
+        </span>
+        <div className="character-summary__who">
           <h3 className="character-summary__name">{sheet.name}</h3>
           <p className="character-summary__meta">
             Level {sheet.level} · {sheet.race?.name ?? "No race"} ·{" "}

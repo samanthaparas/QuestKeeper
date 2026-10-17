@@ -835,6 +835,16 @@ export function buildFeatureChoices(
     );
 }
 
+// The class and subclass features a character gains exactly at `level`
+// that aren't on the sheet yet, for adding them automatically on level-up.
+// Pick-one options (each Fighting Style) are left out; the feature that
+// asks for the pick is added and the choice is made on the Features tab.
+export function featuresForNewLevel(entries, level, existingNames = []) {
+  return buildFeatureChoices(entries, level, existingNames).filter(
+    (choice) => choice.level === level && !choice.alreadyAdded && !choice.optionOf,
+  );
+}
+
 export function preferEdition(matches, edition) {
   const sameEdition = matches.filter((match) => match.edition === edition);
   return sameEdition.length > 0 ? sameEdition : matches;

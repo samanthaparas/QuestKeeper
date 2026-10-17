@@ -47,12 +47,14 @@ describe("rollDamage", () => {
     });
   });
 
-  it("doubles the dice but not the bonus on a critical hit", () => {
-    vi.spyOn(Math, "random").mockReturnValue(0.5); // d4 -> 3
+  it("doubles what the dice show, but not the bonus, on a critical hit", () => {
+    const random = vi.spyOn(Math, "random").mockReturnValue(0.5); // d4 -> 3
     expect(rollDamage("1d4+3", { crit: true })).toEqual({
       total: 9,
-      text: "2d4 [3, 3] +3 = 9",
+      text: "1d4 [3] ×2 +3 = 9",
     });
+    // The dice are rolled once, not twice.
+    expect(random).toHaveBeenCalledTimes(1);
   });
 
   it("never goes below zero", () => {

@@ -61,12 +61,12 @@ import {
 } from "../../utils/characterSheet";
 import LevelUpWizard from "../../components/LevelUpWizard/LevelUpWizard";
 import Button from "../../components/Button/Button";
-import { getFeatureSubclassId } from "../../utils/featureSources";
+import { getFeatureSubclassId, sourceFromEntry } from "../../utils/featureSources";
 import { getSetupTasks } from "../../utils/setupTasks";
 import { fillMissingComponents } from "../../utils/spellComponents";
 import { isArmorDetails, withAutoArmorClass } from "../../utils/armorClass";
 import { getEquipment, getEquipmentDetails } from "../../utils/api";
-import { loadFeatureEntries, normalizeItemName } from "../../utils/srdDetails";
+import { featuresForNewLevel, loadFeatureEntries, normalizeItemName } from "../../utils/srdDetails";
 import CompanionCard from "../../components/CompanionCard/CompanionCard";
 import CharacterDetailsDialog from "../../components/CharacterDetailsDialog/CharacterDetailsDialog";
 import PortraitUpload from "../../components/PortraitUpload/PortraitUpload";
@@ -156,6 +156,8 @@ function CharacterSheetPage() {
   // after taking damage while concentrating ({ dc }). Neither is saved.
   const [deathSaveNote, setDeathSaveNote] = useState("");
   const [concentrationCheck, setConcentrationCheck] = useState(null);
+  // True while a finished level-up looks up the new level's features.
+  const [isAddingLevelFeatures, setIsAddingLevelFeatures] = useState(false);
   // Every SRD feature for this race and class: shared with the Features tab,
   // and used to spot choices still to make (Character setup).
   const [featureEntries, setFeatureEntries] = useState({ key: null, entries: [] });
@@ -332,8 +334,48 @@ function CharacterSheetPage() {
     );
   }
 
-  function handleLevelUpComplete(updatedSheet) {
-    const summary = buildLevelUpSummary(sheet, updatedSheet);
+  // The new level's class and subclass features, added for the player so
+  // they don't have to go looking. Gives up after a few seconds (the server
+  // may be waking up) and says so in the summary instead.
+  async function withNewLevelFeatures(updatedSheet) {
+    const lookup = loadFeatureEntries({
+      classId: updatedSheet.class?.id,
+      subclassId: getFeatureSubclassId(updatedSheet.class),
+      raceId: updatedSheet.race?.id,
+      subraceId: updatedSheet.race?.subrace?.id,
+    }).then((entries) =>
+      featuresForNewLevel(
+        entries,
+        updatedSheet.level,
+        (updatedSheet.features ?? []).map((feature) => feature.name),
+      ),
+    );
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("slow")), 8000));
+    try {
+      const found = await Promise.race([lookup, timeout]);
+      const added = found.map((entry) =>
+        createFeat({
+          name: entry.name,
+          description: entry.description,
+          source: sourceFromEntry(entry),
+          choices: entry.choices ?? null,
+        }),
+      );
+      return {
+        sheet: { ...updatedSheet, features: [...(updatedSheet.features ?? []), ...added] },
+        addedFeatures: added.map((feature) => feature.name),
+        featuresFailed: false,
+      };
+    } catch {
+      return { sheet: updatedSheet, addedFeatures: [], featuresFailed: true };
+    }
+  }
+
+  async function handleLevelUpComplete(leveledSheet) {
+    setIsAddingLevelFeatures(true);
+    const { sheet: updatedSheet, addedFeatures, featuresFailed } = await withNewLevelFeatures(leveledSheet);
+    setIsAddingLevelFeatures(false);
+    const summary = { ...buildLevelUpSummary(sheet, updatedSheet), addedFeatures, featuresFailed };
     setSheet(updatedSheet);
     setLevelUpSummary(summary);
     setIsLevelingUp(false);
@@ -665,7 +707,14 @@ function CharacterSheetPage() {
       ...sheet,
       combat: {
         ...sheet.combat,
-        hitDice: { ...sheet.combat.hitDice, [field]: numeric },
+        hitDice: {
+          ...sheet.combat.hitDice,
+          // What's left can't go below 0 or above the total.
+          [field]:
+            field === "remaining"
+              ? Math.max(0, Math.min(numeric, Number(sheet.combat.hitDice.total) || 0))
+              : numeric,
+        },
       },
     });
   }
@@ -692,12 +741,6 @@ function CharacterSheetPage() {
       companionMode: "creature",
       companionCreature: sheet.companionCreature ?? createCompanionCreature(),
     });
-  }
-
-  // Hides the card but keeps the companion's details, so adding a companion
-  // again brings them back.
-  function handleCompanionRemove() {
-    persistSheet({ ...sheet, companionMode: "text" });
   }
 
   function handleCompanionCreatureChange(field, value) {
@@ -1414,6 +1457,7 @@ function CharacterSheetPage() {
             sheet={sheet}
             onComplete={handleLevelUpComplete}
             onCancel={() => setIsLevelingUp(false)}
+            isFinishing={isAddingLevelFeatures}
           />
         )}
 
@@ -1453,6 +1497,17 @@ function CharacterSheetPage() {
 
               {levelUpSummary.newSpell && (
                 <li>New Spell: {levelUpSummary.newSpell.name}</li>
+              )}
+
+              {levelUpSummary.addedFeatures?.length > 0 && (
+                <li>New features added: {levelUpSummary.addedFeatures.join(", ")}</li>
+              )}
+
+              {levelUpSummary.featuresFailed && (
+                <li>
+                  Couldn&rsquo;t look up this level&rsquo;s features right now. On the Features tab, tap
+                  &ldquo;Add from my class and race&rdquo; to add them.
+                </li>
               )}
             </ul>
 
@@ -1668,7 +1723,22 @@ function CharacterSheetPage() {
                     <span className="character-sheet__vital-label">
                       Hit Dice
                     </span>
+                    {/* Left / total, then the die: "3 / 15 d10". What's left
+                        goes down on a Short Rest and back up on a Long Rest,
+                        and can always be typed, like current HP. */}
                     <span className="character-sheet__vital-value">
+                      <input
+                        type="number"
+                        className="character-sheet__vital-input character-sheet__hit-dice-left"
+                        value={getHitDiceRemaining(combat.hitDice)}
+                        aria-label="Hit dice left"
+                        onChange={(e) =>
+                          handleHitDiceChange("remaining", e.target.value)
+                        }
+                        min={0}
+                        max={combat.hitDice.total}
+                      />
+                      <span className="character-sheet__vital-unit">/</span>
                       <input
                         type="number"
                         className="character-sheet__vital-input"
@@ -1910,19 +1980,20 @@ function CharacterSheetPage() {
                 )}
 
                 <div className="character-sheet__main">
-                  {activeTab === "actions" &&
-                    attackWith &&
-                    tableCombat?.isMyTurn && (
-                      <AttackPanel
-                        attack={attackWith}
-                        combat={tableCombat}
-                        onClose={() => setAttackWith(null)}
-                      />
-                    )}
-
                   {activeTab === "actions" && (
                     <CharacterSheetActionsTab
                       onAttack={tableCombat?.isMyTurn ? setAttackWith : null}
+                      // The attack panel opens right under the attack you
+                      // tapped, so the target picker is where you're looking.
+                      attackPanelFor={(attack) =>
+                        tableCombat?.isMyTurn && attackWith && attack.index === attackWith.index ? (
+                          <AttackPanel
+                            attack={attackWith}
+                            combat={tableCombat}
+                            onClose={() => setAttackWith(null)}
+                          />
+                        ) : null
+                      }
                       attacks={sheet.attacks ?? []}
                       onAttackAdd={handleAttackAdd}
                       onAttackUpdate={handleAttackUpdate}
@@ -1951,7 +2022,6 @@ function CharacterSheetPage() {
                         onAbilityChange={handleCompanionAbilityChange}
                         onSaveChange={handleCompanionSaveChange}
                         onNotesChange={handleCompanionNotesChange}
-                        onRemove={handleCompanionRemove}
                         onAttackAdd={handleCompanionAttackAdd}
                         onAttackUpdate={handleCompanionAttackUpdate}
                         onAttackRemove={handleCompanionAttackRemove}
