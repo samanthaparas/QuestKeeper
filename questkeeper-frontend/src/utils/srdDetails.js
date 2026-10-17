@@ -164,9 +164,39 @@ function formatFeatPrerequisite(feat) {
   return parts.join(", ");
 }
 
-// A homebrew feat for the detail panel (the form's live preview). SRD feats
-// are shown by formatFeatDetails instead.
+// A feat for the detail panel: a published-book feat (summary and link only),
+// a homebrew feat (also the form's live preview), or an SRD feat.
 export function mapFeatToPanel(data) {
+  if (data.is_book_entry) {
+    return {
+      name: data.name,
+      category: "Feat",
+      edition: data.edition,
+      source: data.source,
+      sourceGroup: data.sourceGroup,
+      bookEntry: {
+        category: "feat",
+        name: data.name,
+        book: data.book,
+        summary: data.summary,
+        linkUrl: data.link_url,
+        openVersion: data.open_version,
+      },
+    };
+  }
+
+  if (data.source !== "Homebrew") {
+    const details = formatFeatDetails(data);
+    return {
+      name: data.name,
+      category: "Feat",
+      edition: details.edition,
+      source: data.source,
+      prerequisite: details.facts.find((fact) => fact.label === "Prerequisite")?.value ?? null,
+      blocks: details.blocks,
+    };
+  }
+
   return {
     name: data.name,
     category: "Feat",

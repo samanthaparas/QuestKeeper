@@ -20,6 +20,7 @@ export const NAV_GROUPS = [
       { to: "/races", label: "Races", hint: "Ancestries and their traits", icon: getRaceIcon("elf") },
       { to: "/classes", label: "Classes", hint: "What your hero does best", icon: getClassIcon("fighter") },
       { to: "/backgrounds", label: "Backgrounds", hint: "Your life before adventuring", icon: getBackgroundIcon("sage") },
+      { to: "/feats", label: "Feats", hint: "Special talents for your hero", icon: getUiIcon("level-up") },
       { to: "/spells", label: "Spells", hint: "Search and filter every spell", icon: getSpellSchoolIcon("evocation") },
       { to: "/magic-items", label: "Magic Items", hint: "Gear, potions and treasures", icon: getUiIcon("inventory") },
     ],

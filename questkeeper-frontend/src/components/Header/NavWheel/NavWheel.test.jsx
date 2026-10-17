@@ -129,6 +129,7 @@ describe("Navigation picks the right menu", () => {
       expect.stringContaining("Races"),
       expect.stringContaining("Classes"),
       expect.stringContaining("Backgrounds"),
+      expect.stringContaining("Feats"),
       expect.stringContaining("Spells"),
       expect.stringContaining("Magic Items"),
     ]);
@@ -145,7 +146,7 @@ describe("Navigation picks the right menu", () => {
 
     fireEvent.click(explore);
     expect(screen.getByRole("link", { name: "Spells" })).toHaveClass("active");
-    expect(screen.getAllByRole("link")).toHaveLength(5);
+    expect(screen.getAllByRole("link")).toHaveLength(6);
 
     fireEvent.click(screen.getByRole("button", { name: "‹ All menus" }));
     expect(screen.getByRole("button", { name: "Help ›" })).toBeInTheDocument();
@@ -156,7 +157,7 @@ describe("Navigation picks the right menu", () => {
     renderWithRouter(<Navigation isMenuOpen />);
 
     expect(document.querySelector(".nav-wheel")).toBeNull();
-    expect(screen.getAllByRole("link")).toHaveLength(14);
+    expect(screen.getAllByRole("link")).toHaveLength(15);
     expect(screen.getByRole("region", { name: "Adventurer" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Dungeon Master" })).toBeInTheDocument();
   });
