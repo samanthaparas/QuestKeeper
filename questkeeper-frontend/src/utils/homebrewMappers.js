@@ -608,3 +608,38 @@ export function listHomebrew(entries, category) {
     preview: entry.summary || null,
   }));
 }
+
+// --- Group notes on book entries ------------------------------------------------
+
+// A book entry (a race, class, subclass or background from a published book)
+// only has our short blurb and a link. If the player or their group made it
+// into homebrew ("Make it as homebrew", then summarized or wrote their own
+// words), that homebrew is the group's notes on it, so the book entry's page
+// can show them without anyone clicking out to the book.
+//
+// An entry counts as notes for the book entry when the category and name
+// match and it was started from that book entry (same book in "Based on", or
+// the same link). Returns { name, summary, items: [{ name, level, text }] }
+// or null.
+export function findGroupNotes(entries, bookEntry) {
+  const name = String(bookEntry?.name ?? "").trim().toLowerCase();
+  const found = byCategory(entries, bookEntry?.category).find(
+    (entry) =>
+      entry.name.trim().toLowerCase() === name &&
+      (entry.based_on === bookEntry.book || (entry.link_url && entry.link_url === bookEntry.linkUrl)),
+  );
+  if (!found) return null;
+
+  const data = found.data ?? {};
+  const pieces = [
+    ...(Array.isArray(data.traits) ? data.traits : []),
+    ...(Array.isArray(data.features) ? data.features : []),
+    ...(data.feature ? [data.feature] : []),
+  ];
+  const items = pieces
+    .filter((piece) => piece?.name && String(piece.description ?? "").trim())
+    .map((piece) => ({ name: piece.name, level: piece.level ?? null, text: String(piece.description).trim() }));
+
+  const summary = String(found.summary ?? "").trim();
+  return summary || items.length > 0 ? { name: found.name, summary, items } : null;
+}

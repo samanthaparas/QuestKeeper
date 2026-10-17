@@ -16,7 +16,7 @@ import Button from "../Button/Button";
 import DetailPanel from "../DetailPanel/DetailPanel";
 import CategoryFields from "./CategoryFields";
 import PasteFill from "./PasteFill";
-import { applySuggestions } from "../../utils/homebrewPaste";
+import { applySuggestions, applySummaries } from "../../utils/homebrewPaste";
 import "./HomebrewForm.css";
 
 const PANEL_MAPPERS = {
@@ -49,6 +49,29 @@ function HomebrewForm({ initialForm, raceOptions = [], classOptions = [], onSave
 
   function set(changes) {
     setForm((previous) => ({ ...previous, ...changes }));
+  }
+
+  // Claude's short summary goes into the Summary box (unless the player has
+  // already written one) and into any empty trait/feature descriptions. It
+  // returns what to tell the player. Nothing is saved until they press Save.
+  function handleSummary({ summary, items, dropped = 0 }) {
+    const { data, filled, unmatched } = applySummaries(form.data, items);
+    const wroteSummary = Boolean(summary) && !form.summary.trim();
+    setForm((previous) => ({
+      ...previous,
+      summary: wroteSummary ? summary : previous.summary,
+      data,
+    }));
+
+    const parts = [];
+    if (wroteSummary) parts.push("the Summary box");
+    if (filled > 0) parts.push(`${filled} description${filled === 1 ? "" : "s"}`);
+    let note = parts.length > 0 ? `Filled in ${parts.join(" and ")}. Read them over, edit anything that's off, and check them against the book.` : "Nothing new to fill in (your own words are never replaced).";
+    if (unmatched.length > 0) {
+      note += ` No matching trait or feature in the form for: ${unmatched.join(", ")}. Use "Read it" and "Fill in the ticked ones" first, then summarize again.`;
+    }
+    if (dropped > 0) note += " Some lines were left out because they were too close to the book's wording.";
+    return note;
   }
 
   async function handleSubmit(event) {
@@ -86,6 +109,8 @@ function HomebrewForm({ initialForm, raceOptions = [], classOptions = [], onSave
           onFill={(parsed, keys) =>
             setForm((previous) => ({ ...previous, data: applySuggestions(previous.data, parsed, keys) }))
           }
+          name={form.name}
+          onSummary={handleSummary}
           onReference={(sections) => {
             setReference(sections);
             setAsideView(sections ? "reference" : "preview");

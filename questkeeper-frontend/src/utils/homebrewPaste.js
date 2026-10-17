@@ -515,3 +515,35 @@ export function applySuggestions(formData, parsed, chosenKeys) {
   }
   return next;
 }
+
+// --- Summaries written by Claude --------------------------------------------------
+
+// "Summarize for my group" gives back a short own-words summary for each named
+// trait or feature. This puts each one into the matching trait/feature
+// description in the form (matched by name). A description the player already
+// wrote is never replaced.
+//
+// Returns { data, filled, unmatched }: the new form data, how many
+// descriptions were filled, and the names with no matching trait in the form
+// (usually because "Fill in the ticked ones" hasn't been used yet).
+export function applySummaries(formData, items) {
+  const data = structuredClone(formData);
+  const slots = [
+    ...(Array.isArray(data.traits) ? data.traits : []),
+    ...(Array.isArray(data.features) ? data.features : []),
+    ...(data.feature ? [data.feature] : []),
+  ];
+
+  let filled = 0;
+  const unmatched = [];
+  for (const item of items) {
+    const slot = slots.find((candidate) => candidate.name.trim().toLowerCase() === item.name.trim().toLowerCase());
+    if (!slot) {
+      unmatched.push(item.name);
+    } else if (!slot.description.trim()) {
+      slot.description = item.summary;
+      filled += 1;
+    }
+  }
+  return { data, filled, unmatched };
+}

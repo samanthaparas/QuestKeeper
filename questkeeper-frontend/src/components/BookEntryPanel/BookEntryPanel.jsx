@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CLASS_IDS } from "../../utils/homebrewMappers";
+import { CLASS_IDS, findGroupNotes } from "../../utils/homebrewMappers";
+import { loadHomebrew } from "../../utils/homebrewCache";
 import "./BookEntryPanel.css";
 
 // What players see for an option from a published book QuestKeeper can't
@@ -24,6 +26,20 @@ const HOMEBREW_HINTS = {
 // Every book entry can be rebuilt as homebrew. canMakeHomebrew: false still
 // turns it off for an entry that shouldn't offer it.
 function BookEntryPanel({ entry }) {
+  // The group's own-words notes on this entry, if someone made it into
+  // homebrew and wrote or summarized the details. Only shown to people who can
+  // already see that homebrew (the author, their tables and invited friends).
+  const [notes, setNotes] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    loadHomebrew().then((entries) => {
+      if (!cancelled) setNotes(findGroupNotes(entries, { ...entry, category: entry.category ?? "background" }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [entry]);
+
   const category = entry.category ?? "background";
   const homebrewable = entry.canMakeHomebrew !== false;
   // A subclass of a book class (an Artificer one) belongs to the player's
@@ -41,6 +57,27 @@ function BookEntryPanel({ entry }) {
         Book: <b>{entry.book}</b>.
         {entry.variantOf && <> A variant of the {entry.variantOf} {category}.</>}
       </p>
+
+      {notes && (
+        <section className="book-entry__notes" aria-label="Your group's notes">
+          <h3 className="book-entry__notes-title">Your group&apos;s notes</h3>
+          {notes.summary && <p>{notes.summary}</p>}
+          {notes.items.length > 0 && (
+            <ul className="book-entry__notes-list">
+              {notes.items.map((item) => (
+                <li key={item.name}>
+                  <b>{item.name}</b>
+                  {item.level ? ` (level ${item.level})` : ""}. {item.text}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="book-entry__hint">
+            Written in your group&apos;s own words and can miss details. Check
+            the book for the exact rules.
+          </p>
+        </section>
+      )}
 
       {/* Why there are no rules here, in one plain sentence. */}
       <p className="book-entry__note">

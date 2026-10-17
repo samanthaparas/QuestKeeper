@@ -1,7 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import BookEntryPanel from "./BookEntryPanel";
+import { loadHomebrew } from "../../utils/homebrewCache";
+
+// No signed-in player here, so no homebrew unless a test says otherwise.
+vi.mock("../../utils/homebrewCache", () => ({ loadHomebrew: vi.fn(async () => []) }));
 
 const gladiator = {
   name: "Gladiator",
@@ -97,5 +101,30 @@ describe("BookEntryPanel", () => {
     });
     expect(screen.getByRole("link", { name: "Make it as homebrew" })).toBeInTheDocument();
     expect(screen.getByText(/hit die, proficiencies, spellcasting/)).toBeInTheDocument();
+  });
+
+  it("shows the group's notes when they made this entry into homebrew", async () => {
+    loadHomebrew.mockResolvedValueOnce([
+      {
+        category: "background",
+        name: "Gladiator",
+        based_on: gladiator.book,
+        link_url: gladiator.linkUrl,
+        summary: "Arena fighter who knows how to work a crowd.",
+        data: { feature: { name: "By Popular Demand", description: "Free lodging wherever fights are held." } },
+      },
+    ]);
+    renderPanel(gladiator);
+
+    expect(await screen.findByText("Arena fighter who knows how to work a crowd.")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Your group's notes" })).toHaveTextContent(
+      "Free lodging wherever fights are held.",
+    );
+  });
+
+  it("shows no notes box when there is no matching homebrew", async () => {
+    renderPanel(gladiator);
+    await screen.findByText("You fought in the arena.");
+    expect(screen.queryByRole("region", { name: "Your group's notes" })).toBeNull();
   });
 });

@@ -134,6 +134,7 @@ The header splits the app by who you are tonight: **Explore** (reference pages),
 - A **My Homebrew** page with a guided form for races, classes, subclasses, backgrounds, spells, items and more, with sharing and invite links so a group can use the same homebrew.
 - Homebrew shows up in character creation, the reference pages and level-up, and **homebrew classes** (Artificer, for example) can be played.
 - Pre-fill a homebrew entry from rules text you paste in, or from a free option.
+- **Summarize for my group:** after pasting rules from a book you own, Claude writes a short own-words summary (mechanics only, never quoting) for you to edit before saving. The pasted text isn't stored. Once saved, the summary shows as "Your group's notes" on that book entry's page, for the people who can see your homebrew. Uses the same Anthropic key as AI search (`POST /api/homebrew-summary`, limited to 10 a visitor per 10 minutes).
 
 ### Live play at a table
 

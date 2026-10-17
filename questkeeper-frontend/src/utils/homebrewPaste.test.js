@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applySuggestions, parsePastedText, splitSections } from "./homebrewPaste";
+import { applySuggestions, applySummaries, parsePastedText, splitSections } from "./homebrewPaste";
 
 // Made-up options, laid out the way rules pages usually are.
 const RACE = `Mossfolk
@@ -175,5 +175,22 @@ When you reach 4th level, you can increase one ability score.`;
     expect(data.tools).toBeUndefined();
     // The spellcasting parts and Ability Score Improvement aren't features.
     expect(data.features.map((feature) => feature.name)).toEqual(["Gadgets", "Tinker Specialist"]);
+  });
+});
+
+describe("applySummaries", () => {
+  const form = { traits: [{ name: "Soft Step", description: "" }, { name: "Keen Nose", description: "mine" }] };
+
+  it("fills empty descriptions by name, never replacing the player's words", () => {
+    const { data, filled, unmatched } = applySummaries(form, [
+      { name: "soft step", summary: "Sneaky in forests." },
+      { name: "Keen Nose", summary: "Smells things." },
+      { name: "Missing", summary: "x" },
+    ]);
+    expect(data.traits[0].description).toBe("Sneaky in forests.");
+    expect(data.traits[1].description).toBe("mine");
+    expect(filled).toBe(1);
+    expect(unmatched).toEqual(["Missing"]);
+    expect(form.traits[0].description).toBe("");
   });
 });

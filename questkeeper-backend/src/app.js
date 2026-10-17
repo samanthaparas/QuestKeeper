@@ -13,6 +13,7 @@ import equipmentRouter from "./routes/equipment.js";
 import magicItemsRouter from "./routes/magicItems.js";
 import featuresRouter from "./routes/features.js";
 import aiSearchRouter from "./routes/aiSearch.js";
+import homebrewSummaryRouter from "./routes/homebrewSummary.js";
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use("/api/equipment", equipmentRouter);
 app.use("/api/magic-items", magicItemsRouter);
 app.use("/api/features", featuresRouter);
 app.use("/api/ai-search", aiSearchRouter);
+app.use("/api/homebrew-summary", homebrewSummaryRouter);
 
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({
