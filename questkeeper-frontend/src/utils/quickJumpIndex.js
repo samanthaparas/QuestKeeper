@@ -7,6 +7,7 @@ import {
   getBackgrounds,
   getClassDetails,
   getClasses,
+  getFeatsToBrowse,
   getMagicItemCatalog,
   getRaces,
   getSpells,
@@ -105,6 +106,16 @@ function backgrounds(list) {
   });
 }
 
+function feats(list) {
+  return list.map((item) => ({
+    id: `feat:${item.edition}:${item.index}`,
+    label: item.name,
+    category: "Feats",
+    hint: [item.edition === "Homebrew" ? "Homebrew" : `${item.edition} rules`, item.source].filter(Boolean).join(" · "),
+    to: openLink("/feats", { open: item.index, edition: item.edition }),
+  }));
+}
+
 function spells(list) {
   return list.map((item) => ({
     id: `spell:${item.index}`,
@@ -151,6 +162,7 @@ export function loadContentLists() {
       settle(classList, classes),
       settle(classList, subclasses),
       settle(Promise.all([getBackgrounds(), getBackgrounds("2024")]), (lists) => backgrounds(lists.flat())),
+      settle(getFeatsToBrowse(), feats),
       settle(getSpells(), spells),
       // The book items are built in, so they show even if the catalog fails.
       settle(getMagicItemCatalog(), magicItems),

@@ -10,7 +10,7 @@ import "./BookEntryPanel.css";
 //
 // entry: { category, name, book, summary, linkUrl, variantOf, openVersion,
 //          classIndex, className, canMakeHomebrew, inPicker }
-// category: "background", "race", "subclass" or "class".
+// category: "background", "race", "subclass", "class" or "feat".
 // inPicker: inside character creation or level-up, the picker shows its own
 // "Make it as homebrew" button (so progress isn't lost), so the page link here
 // is left out.
@@ -20,6 +20,7 @@ const HOMEBREW_HINTS = {
   background: "Add the skills, languages, gear and feature in your own words",
   race: "Add the speed, size, ability bonuses and traits in your own words",
   subclass: "Add its features, with the level each one is gained, in your own words",
+  feat: "Write what it does, and any prerequisite, in your own words",
   class: "Add its hit die, proficiencies, spellcasting and features by level in your own words",
 };
 

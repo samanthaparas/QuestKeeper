@@ -5,6 +5,7 @@ import {
   listBookBackgrounds,
 } from "./bookBackgrounds";
 import { findBookRace, listBookRaces } from "./bookRaces";
+import { findBookFeat, listBookFeats } from "./bookFeats";
 import {
   findBookClass,
   findBookSubclass,
@@ -244,8 +245,23 @@ export function getFeats(edition) {
   );
 }
 
+// Everything the Feats page lists: SRD feats from both rule sets, homebrew,
+// and the published-book feats (a summary and link only). The level-up picker
+// uses getFeats instead, since book feats can't be chosen as they are.
+export async function getFeatsToBrowse() {
+  // The book feats are built in, so they still show if the SRD lists fail.
+  const lists = await Promise.allSettled([getFeats("2014"), getFeats("2024")]);
+  const srd = lists.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
+  return [...srd, ...listBookFeats()].sort(byName);
+}
+
 export async function getFeatDetails(featId, edition) {
   if (isHomebrewId(featId)) return findInHomebrew(featId, findHomebrew);
+  if (isBookEntryId(featId)) {
+    const feat = findBookFeat(featId);
+    if (!feat) throw new Error(`Book feat ${featId} not found`);
+    return feat;
+  }
   return requestJson(
     `/feats/${encodeURIComponent(featId)}${editionQuery(edition)}`,
     `Failed to fetch feat details for ID ${featId}:`,

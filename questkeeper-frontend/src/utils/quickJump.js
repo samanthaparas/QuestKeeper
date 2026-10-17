@@ -12,6 +12,7 @@ export const CATEGORY_ORDER = [
   "Classes",
   "Subclasses",
   "Backgrounds",
+  "Feats",
   "Spells",
   "Magic Items",
 ];

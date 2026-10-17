@@ -520,6 +520,10 @@ function DetailPanel({ selectedResult, actions, inPicker = false, animate = true
         </>
       )}
 
+      {selectedResult.category === "Feat" && selectedResult.blocks && (
+        <SrdBlocks blocks={selectedResult.blocks} />
+      )}
+
       {selectedResult.category === "Spell" && selectedResult.facts && (
         <>
           <p className="detail-panel__description">{selectedResult.kind}</p>
