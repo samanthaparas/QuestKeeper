@@ -64,6 +64,31 @@ export async function searchByMeaning(query) {
   }
 }
 
+// "Summarize for my group": Claude writes a short own-words summary of rules
+// the player pasted. Like searchByMeaning, it never throws: failures come back
+// as a message the form can show.
+export async function summarizeForGroup({ category, name, text }) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/homebrew-summary`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category, name, text }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { summary: "", items: [], message: body.message ?? "The summary didn't work. Try again in a moment." };
+    }
+    return {
+      summary: body.summary ?? "",
+      items: Array.isArray(body.items) ? body.items : [],
+      dropped: body.dropped ?? 0,
+      message: body.message,
+    };
+  } catch {
+    return { summary: "", items: [], message: "Couldn't reach the server. Check your connection and try again." };
+  }
+}
+
 function editionQuery(edition) {
   return edition ? `?edition=${encodeURIComponent(edition)}` : "";
 }

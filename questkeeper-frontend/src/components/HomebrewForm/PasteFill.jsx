@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { CATEGORY_LABELS } from "../../utils/homebrewForm";
 import { parsePastedText } from "../../utils/homebrewPaste";
+import { summarizeForGroup } from "../../utils/api";
 import Button from "../Button/Button";
 
 // "Fill in from pasted text": paste the rules from a page your group uses,
@@ -10,12 +11,18 @@ import Button from "../Button/Button";
 //
 // onFill(parsed, chosenKeys): applies the ticked suggestions.
 // onReference(sections | null): the pasted text, split by heading.
-function PasteFill({ category, onFill, onReference }) {
+// name: what the player has typed as the name so far (helps the summary).
+// onSummary({ summary, items }): "Summarize for my group" wrote short notes in
+// its own words; the form puts them in for the player to read and edit.
+// Returns { summaryFilled, summaryMessage } to show, or nothing.
+function PasteFill({ category, name = "", onFill, onReference, onSummary }) {
   const textId = useId();
   const [text, setText] = useState("");
   const [parsed, setParsed] = useState(null);
   const [chosen, setChosen] = useState([]);
   const [filled, setFilled] = useState(0);
+  const [summarizing, setSummarizing] = useState(false);
+  const [summaryNote, setSummaryNote] = useState("");
   const label = CATEGORY_LABELS[category].toLowerCase();
 
   function handleRead() {
@@ -33,6 +40,21 @@ function PasteFill({ category, onFill, onReference }) {
   function handleFill() {
     onFill(parsed, chosen);
     setFilled(chosen.length);
+  }
+
+  // Sends the pasted text to Claude for a short own-words summary. The text
+  // is used for that one request only; it isn't saved anywhere.
+  async function handleSummarize() {
+    setSummarizing(true);
+    setSummaryNote("");
+    const result = await summarizeForGroup({ category, name, text });
+    setSummarizing(false);
+    if (!result.summary && result.items.length === 0) {
+      setSummaryNote(result.message ?? "Couldn't write a summary from that text. Try copying the whole section.");
+      return;
+    }
+    const note = onSummary(result);
+    setSummaryNote(note ?? "Summary added below.");
   }
 
   return (
@@ -63,7 +85,26 @@ function PasteFill({ category, onFill, onReference }) {
         <Button type="button" variant="secondary" disabled={!text.trim()} onClick={handleRead}>
           Read it
         </Button>
+        {onSummary && (
+          <Button type="button" variant="secondary" disabled={!text.trim() || summarizing} onClick={handleSummarize}>
+            {summarizing ? "Summarizing..." : "Summarize for my group"}
+          </Button>
+        )}
       </div>
+
+      {onSummary && (
+        <p className="homebrew-form__hint">
+          &quot;Summarize for my group&quot; asks Claude to write a short summary
+          in its own words, for you to read and edit before saving. It can miss
+          details, so check it against the book. Your pasted text is used for
+          that one request and isn&apos;t saved.
+        </p>
+      )}
+      {summaryNote && (
+        <p className="homebrew-form__hint" role="status">
+          {summaryNote}
+        </p>
+      )}
 
       {parsed && parsed.found.length === 0 && (
         <p className="homebrew-form__hint" role="status">

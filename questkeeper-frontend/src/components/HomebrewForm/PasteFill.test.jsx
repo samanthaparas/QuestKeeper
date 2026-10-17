@@ -65,3 +65,38 @@ describe("Fill in from pasted text", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/Couldn't find any subclass rules/);
   });
 });
+
+describe("Summarize for my group", () => {
+  it("puts Claude's short summary into the Summary box and empty descriptions", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        summary: "A quiet forest folk.",
+        items: [{ name: "Soft Step", summary: "Hard to hear among trees." }],
+        dropped: 0,
+      }),
+    });
+    renderForm();
+    await pasteAndRead(PASTED);
+    await userEvent.click(screen.getByRole("button", { name: "Fill in the ticked ones" }));
+    await userEvent.click(screen.getByRole("button", { name: "Summarize for my group" }));
+
+    expect(await screen.findByDisplayValue("A quiet forest folk.")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Hard to hear among trees.")).toBeInTheDocument();
+    expect(screen.getByText(/check them against the book/)).toBeInTheDocument();
+    vi.restoreAllMocks();
+  });
+
+  it("shows the server's message when summaries aren't available", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      json: async () => ({ message: "Summaries aren't set up yet." }),
+    });
+    renderForm();
+    await pasteAndRead(PASTED);
+    await userEvent.click(screen.getByRole("button", { name: "Summarize for my group" }));
+
+    expect(await screen.findByText("Summaries aren't set up yet.")).toBeInTheDocument();
+    vi.restoreAllMocks();
+  });
+});
