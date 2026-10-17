@@ -125,7 +125,7 @@ function HomebrewPage() {
       <div className="homebrew-page__content">
         <h1 className="homebrew-page__title">My Homebrew</h1>
         <p className="homebrew-page__description">
-          Make your own races, subraces, backgrounds and subclasses, or write up
+          Make your own races, subraces, backgrounds, classes, subclasses and feats, or write up
           an option from a book your table uses. They show up in character
           creation with a "Homebrew" badge, for you and anyone you share them with.
         </p>

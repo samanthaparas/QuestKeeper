@@ -13,6 +13,7 @@ describe("cleanText and cleanCategory", () => {
 
   it("only allows the known categories", () => {
     expect(cleanCategory("race")).toBe("race");
+    expect(cleanCategory("feat")).toBe("feat");
     expect(cleanCategory("spell")).toBe("");
   });
 });

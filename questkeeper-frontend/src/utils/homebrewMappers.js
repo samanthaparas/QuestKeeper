@@ -11,7 +11,7 @@ import { SKILLS, getSpellSlotProgression } from "./characterSheet";
 export const HOMEBREW_SOURCE = "Homebrew";
 
 // The categories the builder supports today (the database allows more).
-export const HOMEBREW_CATEGORIES = ["race", "subrace", "background", "class", "subclass"];
+export const HOMEBREW_CATEGORIES = ["race", "subrace", "background", "class", "subclass", "feat"];
 
 export const ABILITY_KEYS = ["str", "dex", "con", "int", "wis", "cha"];
 export const SIZES = ["Tiny", "Small", "Medium", "Large"];
@@ -253,6 +253,12 @@ export function cleanHomebrewData(category, data = {}) {
         (a, b) => a.level - b.level,
       ),
     };
+  }
+
+  // A feat is just a name, an optional prerequisite and its description (the
+  // entry's summary), so the prerequisite is all it keeps here.
+  if (category === "feat") {
+    return { prerequisite: text(data.prerequisite, 200) };
   }
 
   return {};
@@ -556,6 +562,26 @@ export function toHomebrewClass(entry, allEntries = []) {
   };
 }
 
+// --- Feats ---------------------------------------------------------------------------
+
+// A feat in the shape the SRD feats use, so the level-up feat picker and the
+// sheet's Features tab show it like any other. Its edition is "Homebrew" (the
+// SRD ones say 2014 or 2024), which also keeps it from being mistaken for one.
+// The description is the entry's summary box ("What it does").
+export function toHomebrewFeat(entry) {
+  const data = cleanHomebrewData("feat", entry.data);
+  const common = commonFields(entry);
+
+  return {
+    ...common,
+    edition: HOMEBREW_SOURCE,
+    desc: toParagraphs(common.summary),
+    prerequisites: {},
+    prerequisite_options: data.prerequisite ? { desc: data.prerequisite } : null,
+    prerequisite: data.prerequisite,
+  };
+}
+
 // --- Lookups by ID -----------------------------------------------------------------
 
 const CONVERTERS = {
@@ -564,6 +590,7 @@ const CONVERTERS = {
   background: toHomebrewBackground,
   class: toHomebrewClass,
   subclass: toHomebrewSubclass,
+  feat: toHomebrewFeat,
 };
 
 // Any homebrew entry by its "hb_..." ID, already converted; null if unknown.

@@ -12,6 +12,7 @@ import {
   listBookClasses,
 } from "./bookSubclasses";
 import {
+  HOMEBREW_SOURCE,
   isHomebrewId,
   findHomebrew,
   findHomebrewTrait,
@@ -233,14 +234,18 @@ export function getSpellDetails(spellId) {
   );
 }
 
+// SRD feats for the 2014 or 2024 rules, plus the player's homebrew feats on
+// the 2014 request (they are not tied to an edition, so they appear once).
 export function getFeats(edition) {
-  return requestJson(
-    `/feats${editionQuery(edition)}`,
-    "Failed to fetch feats:",
+  const srd = requestJson(`/feats${editionQuery(edition)}`, "Failed to fetch feats:");
+  if (edition === "2024") return srd;
+  return withHomebrewItems(srd, (entries) =>
+    listHomebrew(entries, "feat").map((item) => ({ ...item, edition: HOMEBREW_SOURCE })),
   );
 }
 
-export function getFeatDetails(featId, edition) {
+export async function getFeatDetails(featId, edition) {
+  if (isHomebrewId(featId)) return findInHomebrew(featId, findHomebrew);
   return requestJson(
     `/feats/${encodeURIComponent(featId)}${editionQuery(edition)}`,
     `Failed to fetch feat details for ID ${featId}:`,

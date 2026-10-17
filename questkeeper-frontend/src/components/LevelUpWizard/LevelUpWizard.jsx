@@ -567,7 +567,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
                     key={`${feat.edition}:${feat.index}`}
                     value={`${feat.edition}:${feat.index}`}
                   >
-                    {feat.name} ({feat.edition} SRD)
+                    {feat.name} ({feat.edition === "Homebrew" ? "Homebrew" : `${feat.edition} SRD`})
                   </option>
                 ))}
               </select>
