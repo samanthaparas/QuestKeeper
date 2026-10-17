@@ -78,3 +78,25 @@ describe("homebrewForm", () => {
     );
   });
 });
+
+describe("homebrew feats", () => {
+  it("needs a name and a description, and previews as a feat", () => {
+    const feat = emptyHomebrewForm("feat");
+    expect(validateHomebrewForm({ ...feat, name: "Lucky Charm" })).toBe("Describe what the feat does.");
+
+    const ready = {
+      ...feat,
+      name: "Lucky Charm",
+      summary: "Reroll one die a day.",
+      data: { prerequisite: "Level 4+" },
+    };
+    expect(validateHomebrewForm(ready)).toBe("");
+    expect(previewHomebrew(ready)).toMatchObject({
+      name: "Lucky Charm",
+      edition: "Homebrew",
+      desc: ["Reroll one die a day."],
+      prerequisite: "Level 4+",
+    });
+  });
+});
+

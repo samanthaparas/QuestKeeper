@@ -164,6 +164,21 @@ function formatFeatPrerequisite(feat) {
   return parts.join(", ");
 }
 
+// A homebrew feat for the detail panel (the form's live preview). SRD feats
+// are shown by formatFeatDetails instead.
+export function mapFeatToPanel(data) {
+  return {
+    name: data.name,
+    category: "Feat",
+    edition: data.edition,
+    source: data.source,
+    description: data.summary || undefined,
+    basedOn: data.based_on,
+    linkUrl: data.link_url,
+    prerequisite: data.prerequisite || null,
+  };
+}
+
 export function formatFeatDetails(feat) {
   return {
     name: feat.name,

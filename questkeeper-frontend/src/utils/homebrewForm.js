@@ -9,6 +9,7 @@ import {
   toHomebrewBackground,
   toHomebrewClass,
   toHomebrewSubclass,
+  toHomebrewFeat,
 } from "./homebrewMappers";
 
 export const CATEGORY_LABELS = {
@@ -17,6 +18,7 @@ export const CATEGORY_LABELS = {
   background: "Background",
   class: "Class",
   subclass: "Subclass",
+  feat: "Feat",
 };
 
 const BLANK_DATA = {
@@ -72,6 +74,9 @@ const BLANK_DATA = {
     parentClass: "",
     parentClassName: "",
     features: [{ name: "", level: 3, description: "" }],
+  },
+  feat: {
+    prerequisite: "",
   },
 };
 
@@ -144,6 +149,9 @@ export function validateHomebrewForm(form) {
   if (form.category === "subclass" && !form.data.parentClass) {
     return "Choose which class this subclass is for.";
   }
+  if (form.category === "feat" && !form.summary.trim()) {
+    return "Describe what the feat does.";
+  }
   return "";
 }
 
@@ -153,6 +161,7 @@ const CONVERTERS = {
   background: toHomebrewBackground,
   class: toHomebrewClass,
   subclass: toHomebrewSubclass,
+  feat: toHomebrewFeat,
 };
 
 // The form as the game will see it, for the live preview.

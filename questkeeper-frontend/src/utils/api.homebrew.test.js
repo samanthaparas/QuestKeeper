@@ -19,6 +19,8 @@ import {
   getClassLevel,
   getClassFeatures,
   getClassSpells,
+  getFeats,
+  getFeatDetails,
 } from "./api";
 
 const homebrew = [
@@ -45,6 +47,13 @@ const homebrew = [
   { id: "s1", category: "subrace", name: "Moon Elf", data: { parentRace: "elf" } },
   { id: "b1", category: "background", name: "Tavern Hand", data: {} },
   {
+    id: "f1",
+    category: "feat",
+    name: "Lucky Charm",
+    summary: "Reroll one die a day.\n\nUse it after seeing the roll.",
+    data: { prerequisite: "Level 4+" },
+  },
+  {
     id: "c1",
     category: "subclass",
     name: "Dusk Domain",
@@ -60,6 +69,8 @@ const backend = {
   "/backgrounds?edition=2024": [{ index: "sage", name: "Sage" }],
   "/classes/cleric": { index: "cleric", subclasses: [{ index: "life", name: "Life" }] },
   "/classes": [{ index: "cleric", name: "Cleric" }],
+  "/feats": [{ index: "grappler", name: "Grappler", edition: "2014" }],
+  "/feats?edition=2024": [{ index: "alert", name: "Alert", edition: "2024" }],
   "/classes/wizard/spells": [{ index: "fire-bolt", name: "Fire Bolt", level: 0 }],
 };
 
@@ -183,5 +194,26 @@ describe("api with homebrew", () => {
     expect((await getFeatureDetails("hb_k1.infuse-item-2")).desc).toEqual(["Bigger magic."]);
     // Uses the Wizard's spell list.
     expect(await getClassSpells("hb_k1")).toEqual([{ index: "fire-bolt", name: "Fire Bolt", level: 0 }]);
+  });
+
+  it("adds homebrew feats to the 2014 feat list only, marked as Homebrew", async () => {
+    const legacy = await getFeats();
+    expect(legacy.map((feat) => feat.name)).toEqual(["Grappler", "Lucky Charm"]);
+    expect(legacy.find((feat) => feat.name === "Lucky Charm")).toMatchObject({
+      index: "hb_f1",
+      edition: "Homebrew",
+    });
+    expect((await getFeats("2024")).map((feat) => feat.name)).toEqual(["Alert"]);
+  });
+
+  it("answers a homebrew feat's details without the backend", async () => {
+    vi.mocked(fetch).mockClear();
+    expect(await getFeatDetails("hb_f1", "Homebrew")).toMatchObject({
+      name: "Lucky Charm",
+      edition: "Homebrew",
+      desc: ["Reroll one die a day.", "Use it after seeing the roll."],
+      prerequisite: "Level 4+",
+    });
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

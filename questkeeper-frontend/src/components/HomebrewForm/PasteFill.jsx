@@ -106,7 +106,14 @@ function PasteFill({ category, name = "", onFill, onReference, onSummary }) {
         </p>
       )}
 
-      {parsed && parsed.found.length === 0 && (
+      {parsed && parsed.found.length === 0 && category === "feat" && (
+        <p className="homebrew-form__hint" role="status">
+          Your pasted text is beside the form. Use &quot;Summarize for my
+          group&quot; to draft what the feat does, or write it yourself.
+        </p>
+      )}
+
+      {parsed && parsed.found.length === 0 && category !== "feat" && (
         <p className="homebrew-form__hint" role="status">
           Couldn&apos;t find any {label} rules in that text. Try copying the
           whole section, headings included.

@@ -141,6 +141,12 @@ function DetailPanel({ selectedResult, actions, inPicker = false, animate = true
         <p className="detail-panel__note">{selectedResult.dmNote}</p>
       )}
 
+      {selectedResult.prerequisite && (
+        <p>
+          <strong>Prerequisite:</strong> {selectedResult.prerequisite}
+        </p>
+      )}
+
       {selectedResult.description && (
         <p className="detail-panel__description">
           <RulesText text={selectedResult.description} />

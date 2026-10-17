@@ -575,12 +575,30 @@ function SubclassFields({ data, set, classOptions = [] }) {
   );
 }
 
+// A feat is a name, a prerequisite and what it does (the Summary box above).
+function FeatFields({ data, set }) {
+  return (
+    <label className="homebrew-form__field" htmlFor="homebrew-prerequisite">
+      <span className="homebrew-form__label">Prerequisite (optional)</span>
+      <input
+        id="homebrew-prerequisite"
+        className="homebrew-form__input"
+        placeholder="e.g. Strength 13 or higher"
+        maxLength={200}
+        value={data.prerequisite}
+        onChange={(event) => set({ prerequisite: event.target.value })}
+      />
+    </label>
+  );
+}
+
 const SECTIONS = {
   race: RaceFields,
   subrace: SubraceFields,
   background: BackgroundFields,
   class: ClassFields,
   subclass: SubclassFields,
+  feat: FeatFields,
 };
 
 function CategoryFields({ category, data, onChange, raceOptions = [], classOptions = [] }) {

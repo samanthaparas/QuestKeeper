@@ -11,6 +11,7 @@ import {
   mapBackgroundToPanel,
   mapClassToPanel,
   mapSubclassToPanel,
+  mapFeatToPanel,
 } from "../../utils/srdDetails";
 import Button from "../Button/Button";
 import DetailPanel from "../DetailPanel/DetailPanel";
@@ -25,6 +26,7 @@ const PANEL_MAPPERS = {
   background: mapBackgroundToPanel,
   class: mapClassToPanel,
   subclass: mapSubclassToPanel,
+  feat: mapFeatToPanel,
 };
 
 // The guided homebrew form with a live preview beside it. The preview uses
@@ -155,11 +157,15 @@ function HomebrewForm({ initialForm, raceOptions = [], classOptions = [], onSave
         </div>
 
         <label className="homebrew-form__field" htmlFor="homebrew-summary">
-          <span className="homebrew-form__label">Summary</span>
+          <span className="homebrew-form__label">{form.category === "feat" ? "What it does" : "Summary"}</span>
           <textarea
             id="homebrew-summary"
             className="homebrew-form__textarea"
-            placeholder={`What's this ${label.toLowerCase()} like? A few sentences is plenty.`}
+            placeholder={
+              form.category === "feat"
+                ? "What does this feat let you do? Use your own words."
+                : `What's this ${label.toLowerCase()} like? A few sentences is plenty.`
+            }
             maxLength={5000}
             rows={4}
             value={form.summary}
