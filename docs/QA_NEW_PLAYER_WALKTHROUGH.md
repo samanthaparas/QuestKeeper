@@ -3,6 +3,7 @@
 A living record of what a first-time player experiences on QuestKeeper, what is good, what is confusing, and what has been fixed since. Each walkthrough gets its own dated section at the bottom, and the **Fix tracker** is updated as items are completed.
 
 - **Walkthrough 1:** 2026-10-03, live site (questkeeper-it0i.onrender.com), plus a read of the source.
+- **Walkthrough 2:** 2026-10-17, live site while signed in, by an AI auditor using the prompt in [QA_AUDITOR_PROMPT.md](QA_AUDITOR_PROMPT.md). Findings are rows #42 to #55.
 - **Method:** Logged-out pages clicked through live at desktop and 375 px width. Character creation, the sheet and Tables were read in the code first, then walked live with a test character and table (named "QA ..." so they are easy to delete). The browser pane was too small for screenshots, so live findings come from page text and measurements.
 - **Not covered:** the player side of a live fight (join, roll initiative, attack, apply damage, End my turn). It needs a second account.
 
@@ -61,6 +62,20 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 39 | Search, Races, Classes, Spells and Backgrounds showed an empty "Select an Item" details panel beside the results until one was clicked. The results now fill the page as a grid of cards, and the list + details layout opens when a result is picked. Found in a portfolio review, 2026-10-07 | Reference, Search | Small | Merged (2026-10-07, #105) |
 | 40 | Narrow-screen menu as a spinning wheel: with the menu open below 1240px, the links sit on a drum (about five at a time, the centred one large in a highlighted band, the rest tilting away), snap into place when swiped, scrolled or moved with the arrow keys, and open with the current page centred. Tapping an off-centre link spins it in, then follows it, and picking any link now closes the menu. Plain list for people who prefer reduced motion; wide screens unchanged | Navigation | Medium | Merged (2026-10-07, #106) |
 | 41 | Character sheet on phones: the six ability tiles (STR, score, modifier and Save badge on one line, three across) overlapped each other, and the tabs and Level Up / rest buttons wrapped into a jumble. On phones the stat boxes now sit on an even 4-column grid (Hit Points, Hit Dice and Gold double-width), each ability stacks (name, score + modifier, Save badge) in two rows of three, the tabs are equal buttons three per row with the current one filled, and Inspiration, Level Up, Long Rest and Short Rest form an even 2 x 2 grid. Attack rows no longer run off the right edge (their column widths were inline styles the phone rule couldn't override); on phones each attack shows its name, then labelled To Hit / Damage / Type, then its buttons. Below 1024px a Stats | Skills switch beside the name flips the top of the sheet to the skills list, instead of skills sitting at the very bottom. Desktop unchanged | Sheet | Medium | In review (2026-10-07) |
+| 42 | AI search and "Summarize for my group" say "isn't set up yet" on the live site (the backend answers 503, so `ANTHROPIC_API_KEY` isn't set on Render). Quick-jump still offers "Search by meaning" as its first row, and "No names match... Try Search by meaning above" leads to that dead end. Add the key on Render, or hide both features until it is | Search / Homebrew | Small | Open (found 2026-10-17) |
+| 43 | Creation pickers mostly list options a player can't choose: Backgrounds shows 75 entries and only Acolyte plus homebrew can be picked (the 47 official-book ones lead to "make it as homebrew"); Races is similar. Default the list to choosable options with a "Show book options" toggle | Creation | Medium | Open (found 2026-10-17) |
+| 44 | Phone sheet touch targets: 51 controls under 40px tall at 375px, some only 14 to 19px ("↺ auto", "Edit details", the setup-choice link, "Join a table"); anything under 24px fails WCAG 2.5.8. Pad every control to about 44px | Sheet | Medium | Open (found 2026-10-17) |
+| 45 | No way to quit creation midway: Cancel only appears on the first step (it took 7 Back presses to reach it). Add Cancel or "Start over" to every step | Creation | Small | Open (found 2026-10-17) |
+| 46 | The sticky "Next d20" bar covers the bottom of the sheet on phones (the edge of cards and the tab row). Add bottom padding equal to the bar's height | Sheet | Small | Open (found 2026-10-17) |
+| 47 | Card summaries are hover-only, so a phone never sees them; the hovered card also grows and overlaps the next one. Races show a one-line tagline on every card but Feats don't. Show a short visible line on cards | Reference | Small | Open (found 2026-10-17) |
+| 48 | Every page's title is "QuestKeeper" (WCAG 2.4.2) and there is no skip link (2.4.1). Set a title per page ("Feats · QuestKeeper") and add a skip link | All pages | Small | Open (found 2026-10-17) |
+| 49 | The book feat hint says "(or paste the rules for QuestKeeper to fill in the numbers)", but for feats nothing is filled in (only Summarize applies). Tailor the sentence to feats | Reference | Small | Open (found 2026-10-17) |
+| 50 | 2024 SRD feat details don't show the feat type (Origin, General, Fighting Style, Epic Boon) although the data has it. Show it under the name | Reference | Small | Open (found 2026-10-17) |
+| 51 | Home "Browse Categories" lists four categories; Feats and Magic Items are missing | Home | Small | Open (found 2026-10-17) |
+| 52 | The "SRD 5.1" badge text is 11px at 3.93:1 contrast (needs 4.5:1). Darken it | Reference | Small | Open (found 2026-10-17) |
+| 53 | QA Rowan (a level-1 Bard) shows "6 spells are missing components. Fill in from the SRD". Check whether a freshly created caster gets this too, and fix it if so | Sheet | Small | Open (found 2026-10-17, needs a check) |
+| 54 | A disabled Next on the Skills step gives no reason beside the button (the "Chosen 0 of 2" hint is further up). Add a hint next to it | Creation | Small | Open (found 2026-10-17) |
+| 55 | No dark mode: the app ignores the system's dark setting. Optional | All pages | Large | Open (optional, found 2026-10-17) |
 
 ## Reference pages (logged out)
 
@@ -293,6 +308,23 @@ One character, **QA Rowan** (Tiefling Bard), and one table, **QA Test Table**, w
 - **Explain a choice where it is made.** Skills, spells, classes and abilities each need a sentence at the moment of choosing.
 - **Prefill what you already know.** If creation knows the race, class and background, the sheet should arrive with languages, traits, armor and weapons set.
 - **Show, don't hide, rules that matter.** Hidden enemy AC is a feature, so say it once so players trust it.
+
+## Audit 2 (2026-10-17)
+
+An AI audit of the live site while signed in (about a day of features after Walkthrough 1: homebrew, feats, the quiz, AI search). Read-only apart from one draft hero (cancelled without saving) and a Feat form that was never saved.
+
+**Scores (1 to 5):** Resourceful 4, Visually appealing 4, Functional 3, Fun 4.
+
+**What worked:** Fireball, Cure Wounds, Elf and 2024 Alert matched the SRD. Creation explains each choice, including locking a cantrip you already have from your race. A creation draft survives a refresh. Magic Items has strong filters (2,277 entries). The quiz is fun and its results link straight into creation. The 404 page is helpful. The player's combat view showed enemies only as "Healthy" or "Bloodied", with no AC or HP numbers. No missing alt text, unlabeled fields or sideways scrolling on the pages checked.
+
+**What needs work:** rows #42 to #55 above. The two that matter most are #42 (AI features switched off in production but still advertised) and #43 (creation pickers full of options a player can't choose).
+
+**Questions left for the maker:**
+- Should the live site have the Anthropic key, or should the AI features stay hidden for now?
+- "Blood Hunter" appears as a class with source "Blood Hunter (Matthew Mercer, D&D Beyond)". Where does it come from, and is it licensed for the app?
+- The player view of a table shows exact damage totals on enemies ("9 damage taken"). Is that intended?
+
+**Not tested in this audit:** the second-account Tables flows; level-up, rests, casting and attacks; saving, sharing and invite links for homebrew; tablet and real phones (the phone emulation didn't apply to the creation page, so only the sheet was measured at 375px); keyboard-only and screen reader use; and only 4 of the 15 requested SRD spot-checks.
 
 ## What still needs testing
 
