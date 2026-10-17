@@ -156,8 +156,10 @@ describe("PickerStep", () => {
 
       await userEvent.click(await screen.findByRole("button", { name: "Pick it now, add details later" }));
 
-      expect(await screen.findByText(/Couldn't save that as a draft/)).toBeInTheDocument();
+      expect(await screen.findByRole("alert")).toHaveTextContent(/Couldn't save that as a draft/);
       expect(onChoose).not.toHaveBeenCalled();
+      // The list is still there to pick from.
+      expect(screen.getByRole("heading", { name: "Elf" })).toBeInTheDocument();
     });
   });
 });

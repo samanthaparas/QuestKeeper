@@ -55,6 +55,8 @@ function PickerStep({
   // "all" or one book name, picked with the SourceFilter buttons.
   const [sourceFilter, setSourceFilter] = useState("all");
   const [isDrafting, setIsDrafting] = useState(false);
+  // Shown beside the details, so a failed draft never hides the list.
+  const [draftError, setDraftError] = useState("");
   // Book entries with no way to pick them here (like Artificer: homebrew
   // can't build whole classes yet) are read-only. They go last, so the
   // choosable options come first.
@@ -83,6 +85,7 @@ function PickerStep({
   }, [fetchList]);
 
   function handleSelect(item) {
+    setDraftError("");
     setSelectedIndex(item.index);
     setSelectedDetail(null);
     setIsDetailLoading(true);
@@ -101,13 +104,13 @@ function PickerStep({
 
   async function handleDraft() {
     setIsDrafting(true);
-    setApiError("");
+    setDraftError("");
     try {
       const saved = await onDraftFrom(selectedRaw);
       const raw = await fetchDetails(toHomebrewIndex(saved.id));
       onChoose(mapToSnapshot(raw), raw);
     } catch {
-      setApiError("Couldn't save that as a draft. Please try again, or use the homebrew form.");
+      setDraftError("Couldn't save that as a draft. Please try again, or use Make it as homebrew.");
     } finally {
       setIsDrafting(false);
     }
@@ -197,6 +200,12 @@ function PickerStep({
                 doesn&apos;t have this {category.toLowerCase()}&apos;s rules
                 (the book&apos;s text is copyrighted), so it&apos;s here to read
                 about for now.
+              </p>
+            )}
+
+            {draftError && (
+              <p className="picker-step__error" role="alert">
+                {draftError}
               </p>
             )}
 

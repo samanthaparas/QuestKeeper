@@ -136,6 +136,26 @@ export function formToEntry(form) {
   };
 }
 
+// A bare draft of a published-book option, ready to save: its name, book,
+// link and our own-words blurb, with blank details, private, and flagged as
+// still needing details ("Pick it now, add details later" in creation). It goes
+// through the same form-to-entry step as the form, so the data has the exact
+// shape a normal save would give it. extraData: category details to pre-fill
+// (a subclass's class).
+export function draftEntryFrom(category, book, extraData = {}) {
+  const blank = emptyHomebrewForm(category);
+  const entry = formToEntry({
+    ...blank,
+    name: book.name,
+    basedOn: book.book ?? "",
+    linkUrl: book.link_url ?? "",
+    summary: book.summary ?? "",
+    isShared: false,
+    data: { ...blank.data, ...extraData },
+  });
+  return { ...entry, data: { ...entry.data, needsDetails: true } };
+}
+
 // The first problem to fix, in plain words, or "" when it's ready to save.
 export function validateHomebrewForm(form) {
   if (!form.name.trim()) return "Give it a name.";

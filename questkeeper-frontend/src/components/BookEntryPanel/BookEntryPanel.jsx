@@ -124,9 +124,11 @@ function BookEntryPanel({ entry }) {
       {homebrewable && (
         <p className="book-entry__hint">
           "Make it as homebrew" opens a form with the name and link filled in.{" "}
-          {HOMEBREW_HINTS[category] ?? HOMEBREW_HINTS.background} (or paste the
-          rules for QuestKeeper to fill in the numbers), and it's ready to use
-          in your characters.
+          {HOMEBREW_HINTS[category] ?? HOMEBREW_HINTS.background}{" "}
+          {category === "feat"
+            ? "(or paste the rules and press Summarize for my group to draft it)"
+            : "(or paste the rules for QuestKeeper to fill in the numbers)"}
+          , and it's ready to use in your characters.
           {needsHomebrewClass && entry.className && (
             <> Make your homebrew {entry.className} first, then choose it as this subclass&apos;s class.</>
           )}

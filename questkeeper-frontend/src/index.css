@@ -174,3 +174,21 @@ html[data-motion="reduce"] *::after {
     box-shadow: 0 0 0 0 var(--qk-terracotta-soft);
   }
 }
+
+/* "Skip to the main content": off-screen until a keyboard user tabs to it. */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-terracotta-hover);
+  font-weight: 700;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}

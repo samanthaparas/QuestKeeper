@@ -141,6 +141,12 @@ function DetailPanel({ selectedResult, actions, inPicker = false, animate = true
         <p className="detail-panel__note">{selectedResult.dmNote}</p>
       )}
 
+      {selectedResult.category === "Feat" && selectedResult.kind && selectedResult.kind !== "Feat" && (
+        <p>
+          <strong>Type:</strong> {selectedResult.kind}
+        </p>
+      )}
+
       {selectedResult.prerequisite && (
         <p>
           <strong>Prerequisite:</strong> {selectedResult.prerequisite}
