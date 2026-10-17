@@ -670,3 +670,19 @@ describe("condition timers on the sheet", () => {
   });
 });
 
+it("shows the Hit Dice left over the total, and a Short Rest lowers what's left", async () => {
+  const user = userEvent.setup();
+  const sheet = makeSheet();
+  sheet.combat.hitPoints = { max: 20, current: 10, temporary: 0 };
+  sheet.combat.hitDice = { total: 3, die: 8, remaining: 3 };
+  renderSheet(sheet);
+
+  const left = await screen.findByLabelText("Hit dice left");
+  expect(left).toHaveValue(3);
+  expect(screen.getByLabelText("Hit dice total")).toHaveValue(3);
+
+  await user.clear(left);
+  await user.type(left, "9");
+  expect(left).toHaveValue(3); // can't be more than the total
+});
+

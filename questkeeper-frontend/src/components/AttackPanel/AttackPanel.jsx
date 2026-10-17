@@ -201,7 +201,7 @@ function AttackPanel({ attack, combat, onClose }) {
         <div className="attack-panel__damage">
           <p className="attack-panel__note">
             Now roll damage
-            {attack.damage ? ` (${attack.damage}${me.attack_crit ? ", dice doubled" : ""})` : ""}.
+            {attack.damage ? ` (${attack.damage}${me.attack_crit ? ", dice roll doubled" : ""})` : ""}.
           </p>
 
           <div className="attack-panel__row">

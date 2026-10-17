@@ -31,8 +31,9 @@ export function parseDamage(damageText) {
   return parts.length > 0 ? parts : null;
 }
 
-// Rolls damage. A critical hit doubles the number of dice (not the flat bonus),
-// which is the standard 5e rule.
+// Rolls damage. On a critical hit the dice are rolled once and what they show
+// is doubled, then the flat bonus is added (1d8+3 rolling a 5 deals 5 x 2 + 3
+// = 13). That's the group's table rule; the book rule rolls twice the dice.
 export function rollDamage(damageText, { crit = false } = {}) {
   const parts = parseDamage(damageText);
   if (!parts) return null;
@@ -42,11 +43,13 @@ export function rollDamage(damageText, { crit = false } = {}) {
 
   for (const part of parts) {
     if (part.type === "dice") {
-      const count = crit ? part.count * 2 : part.count;
-      const rolls = Array.from({ length: count }, () => rollDie(part.sides));
-      const subtotal = rolls.reduce((sum, roll) => sum + roll, 0) * part.sign;
+      const rolls = Array.from({ length: part.count }, () => rollDie(part.sides));
+      const multiplier = crit ? 2 : 1;
+      const subtotal = rolls.reduce((sum, roll) => sum + roll, 0) * multiplier * part.sign;
       total += subtotal;
-      pieces.push(`${part.sign < 0 ? "-" : ""}${count}d${part.sides} [${rolls.join(", ")}]`);
+      pieces.push(
+        `${part.sign < 0 ? "-" : ""}${part.count}d${part.sides} [${rolls.join(", ")}]${crit ? " ×2" : ""}`,
+      );
     } else {
       total += part.value * part.sign;
       pieces.push(`${part.sign < 0 ? "-" : "+"}${part.value}`);

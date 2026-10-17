@@ -78,6 +78,27 @@ export async function removeMember(tableId, userId) {
   );
 }
 
+// DM only: take a player off the table so they can't rejoin with the code.
+export async function banMember(tableId, userId) {
+  unwrap(await supabase.rpc("ban_member", { p_table_id: tableId, p_user_id: userId }));
+}
+
+// DM only: let a player who was removed for good join again.
+export async function unbanMember(tableId, userId) {
+  unwrap(await supabase.rpc("unban_member", { p_table_id: tableId, p_user_id: userId }));
+}
+
+// DM only: who was removed for good from this table ([{ user_id, name, banned_at }]).
+export async function listBans(tableId) {
+  return unwrap(
+    await supabase
+      .from("table_bans")
+      .select("user_id, name, banned_at")
+      .eq("table_id", tableId)
+      .order("banned_at", { ascending: false }),
+  );
+}
+
 export async function listMembers(tableId) {
   return unwrap(
     await supabase.from("table_members").select("*").eq("table_id", tableId),

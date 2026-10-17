@@ -145,8 +145,9 @@ function Guide() {
           A “natural” roll means the number showing on the die before you add
           anything. On an attack, a <strong>natural 20</strong> always hits and
           becomes a <strong>critical hit</strong>, often shortened to “crit.”
-          Roll the attack&apos;s damage dice twice, then add your normal
-          modifier once. A natural 1 on an attack always misses. It happens to
+          Roll the attack&apos;s damage dice, double what they show, then add
+          your normal modifier once. (Some tables roll twice the dice instead;
+          QuestKeeper doubles the roll.) A natural 1 on an attack always misses. It happens to
           every hero eventually. Sometimes spectacularly.
         </p>
 

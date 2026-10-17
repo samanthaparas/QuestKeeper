@@ -20,7 +20,7 @@ const WORDS = [
   ["hit points", "Hit points (HP)", "How much damage you can take. At 0 you fall unconscious.", ["hit point", "HP"]],
   ["temporary hit points", "Temporary hit points", "A buffer that soaks up damage first. It doesn't stack and can't be healed back.", ["temporary hit point", "temp HP"]],
   ["hit dice", "Hit Dice", "Dice you can spend on a short rest to heal. You get one per level.", ["hit die"]],
-  ["critical hit", "Critical hit", "A natural 20 on an attack: it hits, and you roll the damage dice twice.", ["critical hits", "crit"]],
+  ["critical hit", "Critical hit", "A natural 20 on an attack: it hits, and what the damage dice show is doubled before adding the bonus.", ["critical hits", "crit"]],
   ["initiative", "Initiative", "A Dexterity roll at the start of a fight that sets the turn order.", []],
   ["bonus action", "Bonus action", "A quick extra thing some features let you do on your turn, once per turn.", ["bonus actions"]],
   ["reaction", "Reaction", "Something you can do once per round, even on someone else's turn, when a trigger happens.", ["reactions"]],

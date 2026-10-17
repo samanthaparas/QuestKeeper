@@ -324,12 +324,12 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
             <li>
               <strong>Let the app roll:</strong> type the attack&rsquo;s damage from the stat
               block (like 1d4+2) and tap Roll damage.
-              {isCrit && " It's a critical hit, so the dice are doubled for you (1d4+2 rolls 2d4+2)."}
+              {isCrit && " It's a critical hit, so what the dice show is doubled for you (1d4+2 rolling a 3 deals 3 × 2 + 2 = 8)."}
             </li>
             <li>
               <strong>Rolled real dice?</strong> Type the final number, dice plus the bonus
               (rolled 3 on 1d4+2 → 5), and tap Send my damage.
-              {isCrit && " For the critical hit, roll double the dice before adding the bonus."}
+              {isCrit && " For the critical hit, double what the dice show, then add the bonus."}
             </li>
           </ul>
           <div className="monster-attack__row">

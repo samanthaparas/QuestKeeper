@@ -17,8 +17,11 @@ import {
   splitMagicWeaponName,
 } from "../../utils/characterSheet";
 
+// attackPanelFor(attack): the attack panel for the attack being made, shown
+// right under that attack's row; null for the others.
 function CharacterSheetActionsTab({
   onAttack,
+  attackPanelFor = null,
   attacks,
   onAttackAdd,
   onAttackUpdate,
@@ -212,6 +215,7 @@ function CharacterSheetActionsTab({
         footer={inventoryFooter}
         addButtonLabel="Add Weapon"
         rowAction={onAttack ? { label: "Attack", onClick: onAttack } : null}
+        rowPanel={attackPanelFor}
         onAdd={onAttackAdd}
         onUpdate={onAttackUpdate}
         onRemove={onAttackRemove}

@@ -36,7 +36,7 @@ import { mapSubclassToPanel } from "../../utils/srdDetails";
 import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 
-function LevelUpWizard({ sheet, onComplete, onCancel }) {
+function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
   const targetLevel = sheet.level + 1;
   const hitDie = sheet.class?.hitDie ?? 8;
   const conModifier = getAbilityModifier(sheet.abilityScores.constitution);
@@ -816,7 +816,9 @@ function LevelUpWizard({ sheet, onComplete, onCancel }) {
             ))}
           </ul>
 
-          <Button onClick={handleFinish}>Confirm &amp; Finish Level Up</Button>
+          <Button onClick={handleFinish} disabled={isFinishing}>
+            {isFinishing ? "Adding your new features…" : "Confirm & Finish Level Up"}
+          </Button>
         </div>
       )}
       <Button variant="secondary" onClick={onCancel}>

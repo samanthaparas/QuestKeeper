@@ -23,7 +23,6 @@ function renderCard(props = {}) {
     onAbilityChange: vi.fn(),
     onSaveChange: vi.fn(),
     onNotesChange: vi.fn(),
-    onRemove: vi.fn(),
   };
   render(<CompanionCard companion={wolf} {...handlers} {...props} />);
   return handlers;
@@ -86,9 +85,8 @@ describe("CompanionCard", () => {
 
   it("locks the stats until Edit stats is tapped, then lets them be typed", async () => {
     const user = userEvent.setup();
-    const { onAbilityChange, onFieldChange, onRemove } = renderCard();
+    const { onAbilityChange, onFieldChange } = renderCard();
     expect(screen.queryByLabelText("Victory's STR score")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Remove Victory/ })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "🔒 Edit stats" }));
     await user.type(screen.getByLabelText("Victory's STR score"), "8");
@@ -96,14 +94,8 @@ describe("CompanionCard", () => {
     await user.type(screen.getByLabelText("Victory's AC"), "4");
     expect(onFieldChange).toHaveBeenLastCalledWith("armorClass", "134");
 
-    await user.click(screen.getByRole("button", { name: "Remove Victory from this sheet" }));
-    expect(onRemove).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Keep Victory" }));
-    expect(onRemove).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("button", { name: "Remove Victory from this sheet" }));
-    await user.click(screen.getByRole("button", { name: "Remove" }));
-    expect(onRemove).toHaveBeenCalled();
+    // A companion stays on its sheet: there's no way to remove it.
+    expect(screen.queryByRole("button", { name: /Remove Victory/ })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "🔓 Done editing" }));
     expect(screen.queryByLabelText("Victory's STR score")).not.toBeInTheDocument();

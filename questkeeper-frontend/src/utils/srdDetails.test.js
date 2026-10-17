@@ -91,6 +91,7 @@ import {
   formatTraitDetails,
   descriptionFromSrd,
   buildFeatureChoices,
+  featuresForNewLevel,
   loadFeatureEntries,
   loadStartingGear,
   loadRaceDetails,
@@ -1092,3 +1093,20 @@ describe("spell detail panel", () => {
     ]);
   });
 });
+
+describe("featuresForNewLevel", () => {
+  it("picks only the new level's features that aren't on the sheet, without pick-one options", () => {
+    const entries = [
+      { key: "a", name: "Fighting Style", level: 2, order: 2, description: "" },
+      { key: "b", name: "Archery", level: 2, order: 2, description: "", optionOf: "Fighting Style" },
+      { key: "c", name: "Spellcasting", level: 2, order: 2, description: "" },
+      { key: "d", name: "Divine Sense", level: 1, order: 2, description: "" },
+      { key: "e", name: "Darkvision", level: null, order: 0, description: "" },
+    ];
+
+    expect(featuresForNewLevel(entries, 2, ["Spellcasting"]).map((entry) => entry.name)).toEqual([
+      "Fighting Style",
+    ]);
+  });
+});
+

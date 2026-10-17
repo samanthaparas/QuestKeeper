@@ -2245,3 +2245,9 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   font-size: 13px;
   cursor: pointer;
 }
+
+/* A panel opened under one row of a list (the attack panel under the
+   attack you tapped), spanning the row's full width. */
+.character-sheet__row-panel {
+  margin: 4px 0 12px;
+}

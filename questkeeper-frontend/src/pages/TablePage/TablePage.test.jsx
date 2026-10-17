@@ -22,6 +22,10 @@ import {
   resetEncounter,
   getPartyStrip,
   setShareParty,
+  removeMember,
+  banMember,
+  unbanMember,
+  listBans,
 } from "../../utils/tableStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -86,6 +90,9 @@ vi.mock("../../utils/tableStore", () => ({
   resetEncounter: vi.fn(),
   setCombatantInitiative: vi.fn(),
   setMyInitiative: vi.fn().mockResolvedValue(undefined),
+  listBans: vi.fn().mockResolvedValue([]),
+  banMember: vi.fn().mockResolvedValue(undefined),
+  unbanMember: vi.fn().mockResolvedValue(undefined),
   startCombat: vi.fn(),
 }));
 
@@ -140,7 +147,11 @@ function mockTable({ isDm, combatActive = true, currentId = "c-kobold" }) {
 // A row in the initiative list, found by the fighter's name.
 function rowFor(name) {
   return Array.from(document.querySelectorAll("li.table-page__row")).find(
-    (row) => row.querySelector(".table-page__row-name")?.firstChild?.textContent === name,
+    // The name is the row-name's own text (a player's portrait comes first).
+    (row) =>
+      [...(row.querySelector(".table-page__row-name")?.childNodes ?? [])].find(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim(),
+      )?.textContent === name,
   );
 }
 
@@ -202,6 +213,21 @@ describe("TablePage", () => {
 
   describe("as a player", () => {
     beforeEach(() => mockTable({ isDm: false }));
+
+    it("only accepts 1 to 20 when re-entering your own d20 roll", async () => {
+      mockTable({ isDm: false, combatActive: false });
+      currentTable.combatants = combatants.map((combatant) =>
+        combatant.id === "c-billie" ? { ...combatant, initiative: 12 } : combatant,
+      );
+      renderPage();
+
+      const box = screen.getByLabelText("Your d20 roll for initiative");
+      await userEvent.type(box, "25");
+      await userEvent.click(within(rowFor("Billie")).getByRole("button", { name: "Set" }));
+
+      expect(setMyInitiative).not.toHaveBeenCalled();
+      expect(rowFor("Billie")).toHaveTextContent("Type the number on your d20, from 1 to 20.");
+    });
 
     it("shows an enemy's status and damage taken but never its HP", () => {
       renderPage();
@@ -542,6 +568,47 @@ describe("TablePage", () => {
       expect(screen.queryByRole("button", { name: "+ Add monster" })).not.toBeInTheDocument();
     });
 
+    it("asks before removing a player, with the choice to remove them for good", async () => {
+      renderPage();
+      const row = rowFor("Billie");
+
+      await userEvent.click(within(row).getByRole("button", { name: "Remove" }));
+      expect(row).toHaveTextContent("Remove Billie from the table?");
+      await userEvent.click(within(row).getByRole("button", { name: "Keep" }));
+      expect(removeMember).not.toHaveBeenCalled();
+      expect(banMember).not.toHaveBeenCalled();
+
+      await userEvent.click(within(row).getByRole("button", { name: "Remove" }));
+      await userEvent.click(within(row).getByRole("button", { name: "Remove for good" }));
+      expect(banMember).toHaveBeenCalledWith("t1", "player-1");
+      expect(removeMember).not.toHaveBeenCalled();
+    });
+
+    it("lists players removed for good on the Players tab, and lets them back", async () => {
+      listBans.mockResolvedValue([{ user_id: "player-9", name: "Grog", banned_at: "2026-10-17T00:00:00Z" }]);
+      getCharactersByIds.mockResolvedValue([{ id: "char-1", name: "Billie", level: 5, abilityScores: {}, combat: {} }]);
+      renderPage();
+      await openTab("Players");
+
+      expect(await screen.findByText("Removed for good")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Let them back" }));
+      expect(unbanMember).toHaveBeenCalledWith("t1", "player-9");
+    });
+
+    it("shows a player's portrait beside their name in the turn order", async () => {
+      getCharactersByIds.mockResolvedValue([
+        { id: "char-1", name: "Billie", level: 5, abilityScores: {}, combat: {}, portraitUrl: "https://example.com/billie.png" },
+      ]);
+      renderPage();
+
+      await waitFor(() =>
+        expect(rowFor("Billie").querySelector(".table-page__row-portrait img")).toHaveAttribute(
+          "src",
+          "https://example.com/billie.png",
+        ),
+      );
+    });
+
     it("lets the DM switch between player character cards", async () => {
       getCharactersByIds.mockResolvedValue([
         { id: "ch1", name: "Billie", level: 5, abilityScores: {}, combat: {} },
@@ -670,7 +737,7 @@ describe("TablePage", () => {
       await userEvent.type(screen.getByLabelText("How many"), "3");
       await userEvent.type(screen.getByLabelText("HP"), "7");
       await userEvent.type(screen.getByLabelText("AC"), "13");
-      await userEvent.click(screen.getByRole("button", { name: "Add 3" }));
+      await userEvent.click(screen.getByRole("button", { name: "Add 3 to the fight" }));
 
       await waitFor(() => expect(addCombatant).toHaveBeenCalledTimes(3));
       expect(addCombatant.mock.calls.map(([entry]) => entry.name)).toEqual([
@@ -690,7 +757,7 @@ describe("TablePage", () => {
       await userEvent.click(screen.getByLabelText("Friendly NPC or party member"));
       await userEvent.type(screen.getByLabelText("Name"), "Samantha");
       await userEvent.type(screen.getByLabelText("HP"), "117");
-      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+      await userEvent.click(screen.getByRole("button", { name: "Add to the fight" }));
 
       await waitFor(() =>
         expect(addCombatant).toHaveBeenCalledWith(
@@ -707,7 +774,7 @@ describe("TablePage", () => {
       await userEvent.type(screen.getByLabelText("Name"), "Ogre");
       await userEvent.type(screen.getByLabelText("HP"), "59");
       await userEvent.click(screen.getByLabelText("Also save to my library"));
-      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+      await userEvent.click(screen.getByRole("button", { name: "Add to the fight" }));
 
       await waitFor(() =>
         expect(createTemplate).toHaveBeenCalledWith(expect.objectContaining({ name: "Ogre", maxHp: 59 })),
@@ -724,7 +791,7 @@ describe("TablePage", () => {
       await userEvent.type(screen.getByLabelText("Name"), "Ogre");
       await userEvent.type(screen.getByLabelText("HP"), "59");
       await userEvent.click(screen.getByLabelText("Also save to my library"));
-      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+      await userEvent.click(screen.getByRole("button", { name: "Add to the fight" }));
 
       await waitFor(() => expect(addCombatant).toHaveBeenCalled());
       expect(createTemplate).not.toHaveBeenCalled();
@@ -737,7 +804,7 @@ describe("TablePage", () => {
 
       await userEvent.type(screen.getByLabelText("Name"), "Goblin");
       await userEvent.type(screen.getByLabelText("HP"), "7");
-      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+      await userEvent.click(screen.getByRole("button", { name: "Add to the fight" }));
 
       expect(await screen.findByText("Only the DM can add combatants")).toBeInTheDocument();
       expect(screen.getByLabelText("Name")).toHaveValue("Goblin");
