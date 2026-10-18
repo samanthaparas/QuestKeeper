@@ -192,3 +192,17 @@ html[data-motion="reduce"] *::after {
 .skip-link:focus {
   transform: none;
 }
+
+/* No grey up/down spinner arrows inside number boxes, anywhere in the app.
+   The boxes still take typing, the phone's number keyboard, and the
+   up/down keys on a keyboard. */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

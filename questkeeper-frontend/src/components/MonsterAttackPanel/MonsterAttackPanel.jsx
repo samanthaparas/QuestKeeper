@@ -150,6 +150,14 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
     });
   }
 
+  // A player gets the damage as a request they tap to take; a monster or ally
+  // loses the hit points straight away. The buttons say which.
+  const giveVerb = target.kind === "player" ? "Send" : "Deal";
+  const giveNote =
+    target.kind === "player"
+      ? `${target.name} will see it and tap to take it.`
+      : `It comes off ${target.name}'s hit points right away.`;
+
   function submitPhysicalDamage(event) {
     event.preventDefault();
     sendDamage(Number(physicalDamage));
@@ -328,7 +336,7 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
             </li>
             <li>
               <strong>Rolled real dice?</strong> Type the final number, dice plus the bonus
-              (rolled 3 on 1d4+2 → 5), and tap Send my damage.
+              (rolled 3 on 1d4+2 → 5), and tap the button to give it.
               {isCrit && " For the critical hit, double what the dice show, then add the bonus."}
             </li>
           </ul>
@@ -353,7 +361,7 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
               <>
                 <span className="monster-attack__rolled">{damageRolled.text}</span>
                 <Button disabled={isBusy} onClick={() => sendDamage(damageRolled.total)}>
-                  Send {damageRolled.total} damage
+                  {giveVerb} {damageRolled.total} damage to {target.name}
                 </Button>
               </>
             )}
@@ -369,12 +377,13 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
               onChange={(event) => setPhysicalDamage(event.target.value)}
             />
             <Button type="submit" variant="secondary" disabled={isBusy || physicalDamage === ""}>
-              Send my damage
+              {giveVerb} this damage to {target.name}
             </Button>
             <Button type="button" variant="secondary" onClick={onClose}>
-              Skip damage
+              No damage
             </Button>
           </form>
+          <p className="monster-attack__note">{giveNote}</p>
         </>
       )}
     </section>

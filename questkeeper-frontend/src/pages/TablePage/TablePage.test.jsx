@@ -351,7 +351,7 @@ describe("TablePage", () => {
       renderPage();
 
       expect(screen.queryByLabelText("Monster AC")).not.toBeInTheDocument();
-      expect(screen.queryByText("An enemy hits a player")).not.toBeInTheDocument();
+      expect(screen.queryByText("Send damage to a player")).not.toBeInTheDocument();
     });
 
     it("shows who is up now in the combat line", () => {
@@ -672,7 +672,7 @@ describe("TablePage", () => {
 
       await userEvent.type(screen.getByLabelText("Who is attacking"), "Kobold");
       await userEvent.type(screen.getByLabelText("Damage to the player"), "5");
-      await userEvent.click(screen.getByRole("button", { name: "Send hit" }));
+      await userEvent.click(screen.getByRole("button", { name: /^Send 5 damage to / }));
 
       expect(postPlayerDamage).toHaveBeenCalledWith("t1", "player-1", 5, "Kobold");
     });
