@@ -157,6 +157,13 @@ describe("AddCombatantForm", () => {
     expect(screen.getByText(/Adding several of the same monster\?/)).toBeInTheDocument();
   });
 
+  it("says what each of the two buttons does", () => {
+    render(<AddCombatantForm onAdd={vi.fn()} onSaveToLibrary={vi.fn()} />);
+
+    expect(screen.getByText("Puts it in tonight's fight right now.")).toBeInTheDocument();
+    expect(screen.getByText(/Just preparing\?/)).toBeInTheDocument();
+  });
+
   it("saves to the library only, without adding to the fight", async () => {
     const onAdd = vi.fn();
     const onSaveToLibrary = vi.fn().mockResolvedValue({ ok: true, message: "Saved Wolf to your library. It isn't in the fight." });
@@ -164,7 +171,7 @@ describe("AddCombatantForm", () => {
 
     await fill("Name", "Wolf");
     await fill("HP", "11");
-    await userEvent.click(screen.getByRole("button", { name: "Save to library only" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save for later (library only)" }));
 
     expect(onAdd).not.toHaveBeenCalled();
     expect(onSaveToLibrary).toHaveBeenCalledWith(expect.objectContaining({ name: "Wolf", maxHp: 11 }));

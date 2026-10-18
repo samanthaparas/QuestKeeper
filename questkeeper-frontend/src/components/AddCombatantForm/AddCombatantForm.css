@@ -99,3 +99,22 @@
 .add-combatant__row--fields {
   align-items: flex-end;
 }
+
+/* "Add to the fight" and "Save for later", each with a line saying what it does. */
+.add-combatant__row--submit {
+  align-items: flex-start;
+  gap: 16px 24px;
+}
+
+.add-combatant__submit-choice {
+  display: grid;
+  flex: 1 1 220px;
+  gap: 6px;
+  justify-items: start;
+}
+
+.add-combatant__submit-note {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
