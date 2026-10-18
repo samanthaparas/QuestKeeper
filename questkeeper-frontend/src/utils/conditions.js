@@ -25,6 +25,17 @@ export const CONDITION_KEYS = [
 
 export const MAX_EXHAUSTION = 6;
 
+// What each level of exhaustion does, in plain words (from the SRD). The levels
+// stack: level 3 has everything from levels 1 and 2 as well.
+export const EXHAUSTION_LEVELS = [
+  { level: 1, effect: "Disadvantage on ability checks." },
+  { level: 2, effect: "Your speed is cut in half." },
+  { level: 3, effect: "Disadvantage on attack rolls and saving throws." },
+  { level: 4, effect: "Your hit point maximum is cut in half." },
+  { level: 5, effect: "Your speed drops to 0." },
+  { level: 6, effect: "You die." },
+];
+
 export function conditionWord(key) {
   return findRulesWord(key);
 }

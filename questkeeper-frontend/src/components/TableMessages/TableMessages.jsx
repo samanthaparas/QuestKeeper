@@ -47,7 +47,9 @@ function TableMessages({ myId }) {
       <button
         ref={buttonRef}
         type="button"
-        className={`table-messages__button${incoming && !isOpen ? " table-messages__button--new" : ""}`}
+        className={`table-messages__button${unread > 0 ? " table-messages__button--unread" : ""}${
+          incoming && !isOpen ? " table-messages__button--new" : ""
+        }`}
         aria-expanded={isOpen}
         aria-label={unread > 0 ? `Messages, ${unread} unread` : "Messages"}
         title="Messages"
@@ -62,6 +64,8 @@ function TableMessages({ myId }) {
           <path d="M3 5h14v10H3z" />
           <path d="m3 5 7 6 7-6" />
         </svg>
+        {/* The word makes it easy to find; it drops away on narrow screens. */}
+        <span className="table-messages__label">Messages</span>
         {unread > 0 && (
           <span className="table-messages__badge" aria-hidden="true">
             {unread}
@@ -107,6 +111,26 @@ function TableMessages({ myId }) {
             <p className="table-messages__error" role="alert">
               {messages.error}
             </p>
+          )}
+
+          {/* Something arrived while this is open: say so, and offer to open it
+              (not shown when you're already reading that conversation). */}
+          {incoming && !(view.name === "thread" && view.id === incoming.conversation_id) && (
+            <div className="table-messages__arrived" role="status">
+              <span>
+                <strong>New message</strong> from {fromName}
+              </span>
+              <button
+                type="button"
+                className="table-messages__arrived-open"
+                onClick={() => {
+                  setView({ name: "thread", id: incoming.conversation_id });
+                  clearIncoming();
+                }}
+              >
+                Open it
+              </button>
+            </div>
           )}
 
           {messages.tables.length === 0 && !messages.error ? (

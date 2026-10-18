@@ -496,3 +496,105 @@
     border-right: none;
   }
 }
+
+/* --- The Messages button: easy to find, loud only when something's new ---- */
+/* A pill with the envelope and the word "Messages". Quiet (outlined) when
+   there's nothing new; filled terracotta with a red count when there is. */
+.table-messages__button {
+  width: auto;
+  min-width: 40px;
+  height: 40px;
+  gap: 8px;
+  padding: 0 14px 0 12px;
+  border: 1.5px solid var(--qk-terracotta);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-terracotta-hover);
+  font-family: var(--qk-font-body);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.table-messages__button:hover,
+.table-messages__button[aria-expanded="true"] {
+  border-color: var(--qk-terracotta-hover);
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-terracotta-hover);
+}
+
+.table-messages__button--unread,
+.table-messages__button--unread:hover,
+.table-messages__button--unread[aria-expanded="true"] {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+.table-messages__icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Red, so the count stands out against the terracotta button. */
+.table-messages__badge {
+  top: -7px;
+  right: -7px;
+  min-width: 20px;
+  background-color: var(--qk-danger);
+  font-size: 12px;
+}
+
+/* "New" while it's pulsing is the same filled look. */
+.table-messages__button--new {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+/* Phones and small windows: just the round envelope (and its count). */
+@media (max-width: 700px) {
+  .table-messages__label {
+    display: none;
+  }
+
+  .table-messages__button {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+}
+
+/* --- Inside the panel: a banner when something new arrives ---------------- */
+.table-messages__arrived {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 10px 16px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--qk-terracotta);
+  border-left-width: 5px;
+  border-radius: 0 var(--qk-radius-small) var(--qk-radius-small) 0;
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-text);
+  font-size: 14px;
+}
+
+.table-messages__arrived-open {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--qk-terracotta);
+  border-radius: 999px;
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* "· New" beside a message that arrived while the panel was open. */
+.table-messages__new-chip {
+  color: var(--qk-terracotta-hover);
+  font-weight: 700;
+}

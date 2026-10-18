@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, within, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import TableMessages from "./TableMessages";
@@ -185,3 +185,71 @@ describe("who can see it", () => {
     );
   });
 });
+
+describe("The Messages button and new messages", () => {
+  const conversation = {
+    id: "c1",
+    tableId: "t1",
+    everyone: false,
+    memberIds: ["dm", ME],
+    unread: 0,
+    lastMessage: null,
+  };
+
+  // Calls the live-update handler the way the database would.
+  function arrive(message) {
+    const handler = store.subscribeToMessages.mock.calls[0][0];
+    act(() => handler(message));
+  }
+
+  it("is a labelled button, so it's easy to find", async () => {
+    renderMessages();
+    await waitFor(() => expect(store.listConversations).toHaveBeenCalled());
+    const button = screen.getByRole("button", { name: "Messages" });
+    expect(button).toHaveTextContent("Messages");
+    expect(button).not.toHaveClass("table-messages__button--unread");
+  });
+
+  it("turns solid with a count when there are unread messages", async () => {
+    store.listConversations.mockResolvedValue([{ ...conversation, unread: 2 }]);
+    renderMessages();
+
+    const button = await screen.findByRole("button", { name: "Messages, 2 unread" });
+    expect(button).toHaveClass("table-messages__button--unread");
+    expect(button).toHaveTextContent("2");
+  });
+
+  it("shows a banner inside the open panel when a message arrives, and opens it", async () => {
+    store.listConversations.mockResolvedValue([conversation]);
+    const drawer = await openDrawer();
+    expect(within(drawer).queryByRole("status")).toBeNull();
+
+    arrive({ id: "m9", conversation_id: "c1", table_id: "t1", sender_id: "dm", body: "Psst", created_at: new Date().toISOString() });
+
+    const banner = await within(drawer).findByRole("status");
+    expect(banner).toHaveTextContent("New message from DM");
+    await userEvent.click(within(banner).getByRole("button", { name: "Open it" }));
+    expect(within(drawer).getByLabelText("Your message")).toBeInTheDocument();
+    expect(within(drawer).queryByText("New message")).toBeNull();
+  });
+
+  it("marks a message that arrives while you're reading with New", async () => {
+    store.listConversations.mockResolvedValue([conversation]);
+    const old = { id: "m1", conversation_id: "c1", sender_id: "dm", body: "Earlier", image_path: null, created_at: "2026-10-18T01:00:00Z" };
+    store.listMessages.mockResolvedValue([old]);
+    const drawer = await openDrawer();
+    await userEvent.click(await within(drawer).findByRole("button", { name: /DM/ }));
+    await within(drawer).findByText("Earlier");
+    expect(within(drawer).queryByText(/· New/)).toBeNull();
+
+    const fresh = { id: "m2", conversation_id: "c1", sender_id: "dm", body: "Just now", image_path: null, created_at: "2026-10-18T01:05:00Z" };
+    store.listMessages.mockResolvedValue([old, fresh]);
+    arrive({ ...fresh, table_id: "t1" });
+
+    const message = (await within(drawer).findByText("Just now")).closest("li");
+    expect(within(message).getByText(/· New/)).toBeInTheDocument();
+    // The one that was already there isn't marked.
+    expect(within(within(drawer).getByText("Earlier").closest("li")).queryByText(/· New/)).toBeNull();
+  });
+});
+
