@@ -74,6 +74,22 @@ export async function setSessionNumber(tableId, sessionNumber) {
   );
 }
 
+// The portraits of the characters at this table, as a Map from a player's user
+// id to their picture link, so notes can show who wrote them. Notes still work
+// without it (they fall back to initials), so a failure just gives an empty Map.
+export async function getTablePortraits(tableId) {
+  try {
+    const rows = unwrap(await supabase.rpc("get_table_member_portraits", { p_table_id: tableId }));
+    return new Map(
+      (rows ?? [])
+        .filter((row) => row.userId && typeof row.portraitUrl === "string" && row.portraitUrl)
+        .map((row) => [row.userId, row.portraitUrl]),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
 // Calls onChange when anyone adds, edits or removes an entry at this table
 // (row-level security still decides what each person receives).
 export function subscribeToJournal(tableId, onChange) {

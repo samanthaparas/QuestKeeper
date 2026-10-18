@@ -89,5 +89,15 @@ describe("CharacterSheetTabs", () => {
     render(<CharacterSheetTabs activeTab="actions" onSelect={() => {}} badges={{ features: 0 }} />);
     expect(screen.getByRole("tab", { name: "Features" })).toBeInTheDocument();
   });
+
+  it("has one Journal tab, named for the table's handouts too when at a table", () => {
+    const { rerender } = render(<CharacterSheetTabs activeTab="actions" onSelect={() => {}} />);
+    expect(screen.getByRole("tab", { name: "Journal" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "My Journal" })).not.toBeInTheDocument();
+
+    rerender(<CharacterSheetTabs activeTab="actions" onSelect={() => {}} hasTable />);
+    expect(screen.getByRole("tab", { name: "Journal & Handouts" })).toBeInTheDocument();
+    expect(screen.getAllByRole("tab").filter((tab) => /Journal/.test(tab.textContent))).toHaveLength(1);
+  });
 });
 

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import CharacterSheetPage from "./CharacterSheetPage";
 import { getCharacter } from "../../utils/characterStore";
+import { listCharacterTables } from "../../utils/tableStore";
 import { createCharacterSheet } from "../../utils/characterSheet";
 
 // --- Fakes for everything that would talk to the network ---
@@ -32,6 +33,15 @@ vi.mock("../../hooks/useTableTurn", () => ({ useTableTurn: () => fakeTurn.value 
 vi.mock("../../utils/tableStore", async (importOriginal) => ({
   ...(await importOriginal()),
   resolveDamageRequest: vi.fn().mockResolvedValue(2),
+  listCharacterTables: vi.fn().mockResolvedValue([]),
+}));
+
+// The table's handouts and journal have their own tests; stand-ins here.
+vi.mock("../../components/TableHandouts/TableHandouts", () => ({
+  default: () => <p>Table handouts</p>,
+}));
+vi.mock("../../components/TableJournal/TableJournal", () => ({
+  default: () => <p>Table journal</p>,
 }));
 
 // The personal journal's notes live in Supabase; none here.
@@ -847,18 +857,45 @@ describe("help on the sheet", () => {
   });
 });
 
-describe("My Journal tab", () => {
-  it("gives a character with no table its own private journal", async () => {
+describe("The Journal tab", () => {
+  afterEach(() => {
+    listCharacterTables.mockResolvedValue([]);
+    window.localStorage?.clear?.();
+  });
+
+  it("is the character's own private journal when there's no table", async () => {
     const user = userEvent.setup();
     renderSheet(makeSheet());
 
-    await user.click(await screen.findByRole("tab", { name: "My Journal" }));
+    await user.click(await screen.findByRole("tab", { name: "Journal" }));
 
     expect(screen.getByRole("heading", { name: "My journal" })).toBeInTheDocument();
     expect(screen.getByText(/Only you can read them/)).toBeInTheDocument();
-    // Not at a table, so there's no shared Journal & Handouts tab, and nothing to bring in.
+    // One tab, no switch, nothing about tables.
     expect(screen.queryByRole("tab", { name: "Journal & Handouts" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Which journal" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Bring notes into/ })).not.toBeInTheDocument();
   });
-});
 
+  it("at a table, is one tab with a switch between the table's journal and my private notes", async () => {
+    listCharacterTables.mockResolvedValue([{ id: "t1", name: "Friday Game", session_number: 2 }]);
+    const user = userEvent.setup();
+    renderSheet(makeSheet());
+
+    await user.click(await screen.findByRole("tab", { name: "Journal & Handouts" }));
+    // There is only one journal tab, not two.
+    expect(screen.queryByRole("tab", { name: "My Journal" })).not.toBeInTheDocument();
+
+    // It opens on the table's journal and handouts.
+    expect(screen.getByText("Table handouts")).toBeInTheDocument();
+    expect(screen.getByText("Table journal")).toBeInTheDocument();
+
+    const switcher = screen.getByRole("group", { name: "Which journal" });
+    await user.click(within(switcher).getByRole("button", { name: "My private notes" }));
+    expect(screen.getByRole("heading", { name: "My journal" })).toBeInTheDocument();
+    expect(screen.queryByText("Table journal")).not.toBeInTheDocument();
+
+    await user.click(within(switcher).getByRole("button", { name: /journal & handouts/ }));
+    expect(screen.getByText("Table journal")).toBeInTheDocument();
+  });
+});

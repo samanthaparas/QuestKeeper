@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TableJournal from "./TableJournal";
 import { installFakeStorage } from "../../test/fakeStorage";
@@ -20,6 +20,7 @@ vi.mock("../../utils/journalStore", () => ({
   deleteJournalEntry: vi.fn().mockResolvedValue(undefined),
   startNextSession: vi.fn().mockResolvedValue(undefined),
   setSessionNumber: vi.fn().mockResolvedValue(undefined),
+  getTablePortraits: vi.fn().mockResolvedValue(new Map([["dm", "https://example.com/dm.png"]])),
   subscribeToJournal: vi.fn(() => () => {}),
 }));
 
@@ -260,6 +261,19 @@ describe("TableJournal", () => {
     renderJournal();
     await screen.findByLabelText("New note");
     expect(screen.queryByLabelText(/Current session is/)).not.toBeInTheDocument();
+  });
+
+  it("shows each writer's portrait beside their note, and initials when there isn't one", async () => {
+    renderJournal();
+
+    const dmNote = (await screen.findByText("Recap: you reached Phandalin.")).closest("li");
+    await waitFor(() =>
+      expect(dmNote.querySelector(".table-journal__avatar img")).toHaveAttribute("src", "https://example.com/dm.png"),
+    );
+    // Billie has no portrait here, so her note shows her initials.
+    const myNote = screen.getByText("The innkeeper is hiding something.").closest("li");
+    expect(myNote.querySelector(".table-journal__avatar img")).toBeNull();
+    expect(within(myNote).getByText("B")).toBeInTheDocument();
   });
 });
 

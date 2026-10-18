@@ -9,18 +9,18 @@ const CHARACTER_SHEET_TABS = [
   // Every roll made on this sheet, to look back at.
   { key: "rolls", label: "Rolls" },
   { key: "story", label: "Story" },
-  // This character's own session notes, whether or not it is at a table.
-  { key: "myjournal", label: "My Journal" },
-  // The table's handouts and shared journal, only while at a table, so a
-  // player never has to leave their sheet during a session.
-  { key: "journal", label: "Journal & Handouts", tableOnly: true },
+  // One journal tab. On its own it is the character's private journal; at a
+  // table it also holds the table's handouts and shared journal, with a switch
+  // between the two, so a player never has to leave their sheet during a session.
+  { key: "journal", label: "Journal", tableLabel: "Journal & Handouts" },
 ];
 
 // badges: { features: 2 } puts a small count on a tab (here, setup choices left).
 function CharacterSheetTabs({ activeTab, onSelect, hasSpellcasting, hasTable = false, badges = {} }) {
-  const tabs = CHARACTER_SHEET_TABS.filter(
-    (tab) => (!tab.casterOnly || hasSpellcasting) && (!tab.tableOnly || hasTable),
-  );
+  const tabs = CHARACTER_SHEET_TABS.filter((tab) => !tab.casterOnly || hasSpellcasting).map((tab) => ({
+    ...tab,
+    label: hasTable && tab.tableLabel ? tab.tableLabel : tab.label,
+  }));
 
   return (
     <div
