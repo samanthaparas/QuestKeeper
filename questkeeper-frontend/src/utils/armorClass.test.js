@@ -1,5 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
-import { computeWornArmorClass, equipStartingArmor, isArmorDetails, withAutoArmorClass } from "./armorClass";
+import {
+  computeWornArmorClass,
+  equipStartingArmor,
+  isArmorDetails,
+  magicArmorFor,
+  withArmorBonus,
+  withAutoArmorClass,
+} from "./armorClass";
 
 vi.mock("./supabaseClient", () => ({ supabase: {} }));
 
@@ -76,5 +83,51 @@ describe("starting armor", () => {
     ];
     const worn = equipStartingArmor(equipment, Object.values(GEAR), { scores: { dexterity: 10 }, classId: "fighter" });
     expect(worn.filter((item) => item.equipped).map((item) => item.name)).toEqual(["Chain Mail", "Shield"]);
+  });
+});
+
+describe("magic armor", () => {
+  it("knows the SRD magic armor that names one armor, with its bonus", () => {
+    expect(magicArmorFor("Armor of Invulnerability")).toEqual({ base: "plate-armor", bonus: 0 });
+    expect(magicArmorFor("Dwarven Plate")).toEqual({ base: "plate-armor", bonus: 2 });
+    expect(magicArmorFor("Elven Chain")).toEqual({ base: "chain-shirt", bonus: 1 });
+    expect(magicArmorFor("Red Dragon Scale Mail")).toEqual({ base: "scale-mail", bonus: 1 });
+    expect(magicArmorFor("Animated Shield")).toEqual({ base: "shield", bonus: 0 });
+  });
+
+  it("reads the armor from the name for magic armor that can be any armor", () => {
+    expect(magicArmorFor("+1 Leather Armor")).toEqual({ base: "leather-armor", bonus: 1 });
+    expect(magicArmorFor("Chain Mail +2")).toEqual({ base: "chain-mail", bonus: 2 });
+    expect(magicArmorFor("Mithral Half Plate")).toEqual({ base: "half-plate-armor", bonus: 0 });
+    expect(magicArmorFor("Adamantine Plate")).toEqual({ base: "plate-armor", bonus: 0 });
+    expect(magicArmorFor("Studded Leather Armor of Resistance")).toEqual({ base: "studded-leather-armor", bonus: 0 });
+    expect(magicArmorFor("Shield, +3")).toEqual({ base: "shield", bonus: 3 });
+  });
+
+  it("leaves alone anything that isn't magic armor, or doesn't say which armor", () => {
+    expect(magicArmorFor("+1 Longsword")).toBeNull();
+    expect(magicArmorFor("Armor, +1")).toBeNull();
+    expect(magicArmorFor("Wayfarer's Boots")).toBeNull();
+    expect(magicArmorFor("Leather Pouch")).toBeNull();
+  });
+
+  it("adds the bonus to the armor it's made from", () => {
+    expect(withArmorBonus(GEAR["chain mail"], 1).armor_class).toEqual({ base: 17, dex_bonus: false });
+    expect(withArmorBonus(GEAR["chain mail"], 0)).toBe(GEAR["chain mail"]);
+    expect(withArmorBonus(null, 2)).toBeNull();
+  });
+
+  it("counts worn magic armor and a magic shield in the AC", () => {
+    const magic = {
+      "+1 scale mail": withArmorBonus(GEAR["scale mail"], 1),
+      "+2 shield": withArmorBonus(GEAR.shield, 2),
+    };
+    const magicDetailsFor = (item) => magic[item.name.toLowerCase()] ?? null;
+    const worn = pippa([
+      { name: "+1 Scale Mail", equipped: true },
+      { name: "+2 Shield", equipped: true },
+    ]);
+    // Scale mail 14 + 1, Dex +2 (the most medium armor allows), shield 2 + 2.
+    expect(computeWornArmorClass(worn, magicDetailsFor)).toBe(21);
   });
 });

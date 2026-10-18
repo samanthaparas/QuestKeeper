@@ -76,6 +76,7 @@ Status as of 2026-10-03. "Merged" means the fix is on `main` (PR for `fix/new-pl
 | 53 | QA Rowan (a level-1 Bard) shows "6 spells are missing components. Fill in from the SRD". Check whether a freshly created caster gets this too, and fix it if so | Sheet | Small | Open (found 2026-10-17, needs a check) |
 | 54 | A disabled Next on the Skills step gives no reason beside the button (the "Chosen 0 of 2" hint is further up). Add a hint next to it | Creation | Small | Open (found 2026-10-17) |
 | 55 | No dark mode: the app ignores the system's dark setting. Optional | All pages | Large | Open (optional, found 2026-10-17) |
+| 56 | Magic armor (Armor of Invulnerability, Elven Chain, +1 Armor, Dragon Scale Mail and the rest) had no Wear button and didn't count toward AC. Fixed 2026-10-17: it counts as the armor it's made from plus its bonus; armor that can be any type (+1, Mithral, Adamantine, Armor of Resistance) reads the type from the name, like "+1 Chain Mail". Book-only armor still needs a typed AC | Sheet | Medium | Fixed (found 2026-10-17 at the table) |
 
 ## Reference pages (logged out)
 

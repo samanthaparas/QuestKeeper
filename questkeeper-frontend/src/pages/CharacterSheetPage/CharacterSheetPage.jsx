@@ -65,7 +65,12 @@ import { getFeatureSubclassId, sourceFromEntry } from "../../utils/featureSource
 import { getSetupTasks } from "../../utils/setupTasks";
 import { loadHomebrew } from "../../utils/homebrewCache";
 import { fillMissingComponents } from "../../utils/spellComponents";
-import { isArmorDetails, withAutoArmorClass } from "../../utils/armorClass";
+import {
+  isArmorDetails,
+  magicArmorFor,
+  withArmorBonus,
+  withAutoArmorClass,
+} from "../../utils/armorClass";
 import { getEquipment, getEquipmentDetails } from "../../utils/api";
 import { featuresForNewLevel, loadFeatureEntries, normalizeItemName } from "../../utils/srdDetails";
 import CompanionCard from "../../components/CompanionCard/CompanionCard";
@@ -245,7 +250,8 @@ function CharacterSheetPage() {
   const currentEntries = featureEntries.key === entriesKey ? featureEntries.entries : [];
 
   // SRD details for inventory items, by name, so armor and shields can be
-  // equipped and the AC worked out (null: not SRD gear).
+  // equipped and the AC worked out (null: not SRD gear). Magic armor gets the
+  // details of the armor it's made from, with its bonus added.
   const [gearDetails, setGearDetails] = useState({});
   const gearNames = (sheet?.equipment ?? []).map((item) => normalizeItemName(item.name)).join("|");
   useEffect(() => {
@@ -262,9 +268,12 @@ function CharacterSheetPage() {
             const match = list.find(
               (entry) => normalizeItemName(entry.name) === normalizeItemName(item.name),
             );
-            const index = match?.index ?? item.index;
+            // Magic armor ("Armor of Invulnerability", "+1 Chain Mail") isn't
+            // in the plain list; look up the armor it's made from instead.
+            const magicArmor = match ? null : magicArmorFor(item.name);
+            const index = match?.index ?? magicArmor?.base ?? item.index;
             const details = index ? await getEquipmentDetails(index).catch(() => null) : null;
-            return [normalizeItemName(item.name), details];
+            return [normalizeItemName(item.name), withArmorBonus(details, magicArmor?.bonus)];
           }),
         ),
       )
