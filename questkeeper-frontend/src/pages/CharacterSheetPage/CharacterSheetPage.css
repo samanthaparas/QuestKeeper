@@ -2348,3 +2348,26 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   background-color: var(--qk-terracotta);
   color: var(--qk-surface);
 }
+
+/* "Couldn't look up item details right now. Try again." on the Inventory tab. */
+.character-sheet__lookup-notice {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-left: 4px solid var(--qk-brass);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-brass-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.character-sheet__lookup-retry {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--qk-terracotta-hover);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}

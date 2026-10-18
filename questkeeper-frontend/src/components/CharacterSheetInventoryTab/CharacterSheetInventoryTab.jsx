@@ -33,6 +33,17 @@ function CharacterSheetInventoryTab({
 
   return (
     <section className="character-sheet__section">
+      {/* If the item look-up can't reach the rules server, say so (item names
+          can't link to their details and armor isn't recognised), with a retry. */}
+      {equipmentLookup.status === "failed" && (
+        <p className="character-sheet__lookup-notice" role="status">
+          Couldn&apos;t look up item details right now, so names can&apos;t open their descriptions and armor
+          won&apos;t count toward your AC yet. The rules server may be waking up.{" "}
+          <button type="button" className="character-sheet__lookup-retry" onClick={equipmentLookup.retry}>
+            Try again
+          </button>
+        </p>
+      )}
       <p className="character-sheet__attunement-summary">
         Attuned Items: {getAttunedCount(equipment)} / 3
       </p>

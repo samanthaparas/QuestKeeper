@@ -24,18 +24,24 @@ import "./ConditionBadges.css";
 // takes the timer off but keeps the condition.
 function ConditionBadges({ conditions = [], onChange, readOnly = false }) {
   const [isPicking, setIsPicking] = useState(false);
+  // The small "?" on the Exhaustion badge opens a card saying what each level does.
+  const [showExhaustion, setShowExhaustion] = useState(false);
   const pickerId = useId();
+  const exhaustionId = useId();
   const rootRef = useRef(null);
 
-  // A click elsewhere closes the picker.
+  // A click elsewhere closes the picker and the exhaustion card.
   useEffect(() => {
-    if (!isPicking) return undefined;
+    if (!isPicking && !showExhaustion) return undefined;
     function handlePointerDown(event) {
-      if (!rootRef.current?.contains(event.target)) setIsPicking(false);
+      if (!rootRef.current?.contains(event.target)) {
+        setIsPicking(false);
+        setShowExhaustion(false);
+      }
     }
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [isPicking]);
+  }, [isPicking, showExhaustion]);
 
   if (readOnly && conditions.length === 0) return null;
   const available = CONDITION_KEYS.filter((key) => !hasCondition(conditions, key));
@@ -44,7 +50,12 @@ function ConditionBadges({ conditions = [], onChange, readOnly = false }) {
     <div
       ref={rootRef}
       className="condition-badges"
-      onKeyDown={(event) => event.key === "Escape" && setIsPicking(false)}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          setIsPicking(false);
+          setShowExhaustion(false);
+        }
+      }}
     >
       <span className="condition-badges__label">Conditions</span>
 
@@ -79,6 +90,19 @@ function ConditionBadges({ conditions = [], onChange, readOnly = false }) {
                     +
                   </button>
                 </span>
+              )}
+              {isExhaustion && (
+                <button
+                  type="button"
+                  className="condition-badges__info"
+                  aria-label={`What does exhaustion level ${condition.level ?? 1} do?`}
+                  aria-expanded={showExhaustion}
+                  aria-controls={exhaustionId}
+                  title="What does this level do?"
+                  onClick={() => setShowExhaustion((open) => !open)}
+                >
+                  ?
+                </button>
               )}
               {typeof condition.rounds === "number" && readOnly && (
                 <span className="condition-badges__rounds">
@@ -131,40 +155,32 @@ function ConditionBadges({ conditions = [], onChange, readOnly = false }) {
                   ×
                 </button>
               )}
+              {/* What each level does, in a card that floats below the badge so
+                  the row stays one tidy line. */}
+              {isExhaustion && showExhaustion && (
+                <div id={exhaustionId} className="condition-badges__exhaustion" role="region" aria-label="What exhaustion does">
+                  <p className="condition-badges__exhaustion-now">
+                    Level {condition.level ?? 1}: {EXHAUSTION_LEVELS[(condition.level ?? 1) - 1].effect}
+                    {(condition.level ?? 1) > 1 && " You also have everything from the lower levels."}
+                  </p>
+                  <ol className="condition-badges__exhaustion-list">
+                    {EXHAUSTION_LEVELS.map((entry) => (
+                      <li
+                        key={entry.level}
+                        className={entry.level === (condition.level ?? 1) ? "condition-badges__exhaustion-current" : undefined}
+                        aria-current={entry.level === (condition.level ?? 1) ? "true" : undefined}
+                      >
+                        <b>Level {entry.level}.</b> {entry.effect}
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="condition-badges__exhaustion-rest">A long rest takes away one level.</p>
+                </div>
+              )}
             </li>
           );
         })}
       </ul>
-
-      {/* What the level means, so nobody has to look it up. */}
-      {(() => {
-        const exhaustion = conditions.find((condition) => condition.key === "exhaustion");
-        if (!exhaustion) return null;
-        const level = exhaustion.level ?? 1;
-        return (
-          <details className="condition-badges__exhaustion">
-            <summary>
-              What does exhaustion level {level} do?
-            </summary>
-            <p className="condition-badges__exhaustion-now">
-              {EXHAUSTION_LEVELS[level - 1].effect}
-              {level > 1 && " You also have everything from the lower levels."}
-            </p>
-            <ol className="condition-badges__exhaustion-list">
-              {EXHAUSTION_LEVELS.map((entry) => (
-                <li
-                  key={entry.level}
-                  className={entry.level === level ? "condition-badges__exhaustion-current" : undefined}
-                  aria-current={entry.level === level ? "true" : undefined}
-                >
-                  <b>Level {entry.level}.</b> {entry.effect}
-                </li>
-              ))}
-            </ol>
-            <p className="condition-badges__exhaustion-rest">A long rest takes away one level.</p>
-          </details>
-        );
-      })()}
 
       {!readOnly && available.length > 0 && (
         <div className="condition-badges__add">
