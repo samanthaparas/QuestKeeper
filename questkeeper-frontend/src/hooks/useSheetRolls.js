@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { rollCheck, rollDamageFor } from "../utils/rolls";
+import { checkFromDice, damageRollFromDice, rollCheck, rollDamageFor } from "../utils/rolls";
+import { parseDamage, parseDiceNumbers } from "../utils/attacks";
 import { listCharacterTables, logRoll } from "../utils/tableStore";
 
 // Remembered per character: whether rolls are shared, and (the same choice
@@ -29,6 +30,10 @@ export function useSheetRolls(characterId, characterName) {
   const [lastRoll, setLastRoll] = useState(null);
   const [tables, setTables] = useState([]);
   const [shareChoice, setShareChoice] = useState(null);
+  // "Real dice": tapping a roll asks for the numbers on your own dice instead
+  // of the app rolling. `pending` is the roll waiting for them.
+  const [realChoice, setRealChoice] = useState(null);
+  const [pending, setPending] = useState(null);
   const counter = useRef(0);
 
   // The tables this character sits at (none when signed out or not seated).
@@ -49,6 +54,14 @@ export function useSheetRolls(characterId, characterName) {
   const share = shareChoice ?? readStored(`qk-share-rolls-${characterId}`) !== "off";
   const sharing = Boolean(table) && share;
 
+  const realDice = realChoice ?? readStored(`qk-real-dice-${characterId}`) === "on";
+
+  function setRealDice(on) {
+    writeStored(`qk-real-dice-${characterId}`, on ? "on" : "off");
+    setRealChoice(on);
+    setPending(null);
+  }
+
   function setShare(on) {
     writeStored(`qk-share-rolls-${characterId}`, on ? "on" : "off");
     setShareChoice(on);
@@ -67,24 +80,80 @@ export function useSheetRolls(characterId, characterName) {
     [sharing, table, characterName],
   );
 
-  // Returns the roll too, for rolls the sheet acts on (a death save fills in
-  // a success or failure; a concentration save can end the spell).
+  // options.onResult(roll) is called with the finished roll, for rolls the
+  // sheet acts on (a death save fills in a success or failure; a concentration
+  // save can end the spell). With real dice the roll finishes later, once the
+  // player has typed their numbers, so those callers must use onResult.
   const roll = useCallback(
     (label, bonus, options = {}) => {
+      if (realDice) {
+        setPending({
+          type: "check",
+          label,
+          bonus: Number(bonus) || 0,
+          attack: options.attack ?? null,
+          onResult: options.onResult ?? null,
+        });
+        return null;
+      }
       const result = rollCheck({ label, bonus, mode, attack: options.attack ?? null });
       show(result);
       setMode("normal");
+      options.onResult?.(result);
       return result;
     },
-    [mode, show],
+    [mode, show, realDice],
   );
 
   const rollDamage = useCallback(
     (label, damage, { crit = false } = {}) => {
+      // Damage the app can't read as dice is always rolled (or shown) as before.
+      if (realDice && parseDamage(damage)) {
+        setPending({ type: "damage", label, damage, crit });
+        return;
+      }
       const result = rollDamageFor({ label, damage, crit });
       if (result) show(result);
     },
-    [show],
+    [show, realDice],
+  );
+
+  // The player typed the numbers on their dice ("6, 2, 3"). Returns an error
+  // in plain words to show beside the box, or null once the roll is done.
+  const submitRealDice = useCallback(
+    (text) => {
+      if (!pending) return null;
+      const dice = parseDiceNumbers(text);
+      if (!dice) return "Type the numbers on your dice, separated by commas.";
+
+      if (pending.type === "check") {
+        const result = checkFromDice({
+          label: pending.label,
+          bonus: pending.bonus,
+          mode,
+          dice,
+          attack: pending.attack,
+        });
+        if (result.error) return result.error;
+        show(result);
+        setMode("normal");
+        setPending(null);
+        pending.onResult?.(result);
+        return null;
+      }
+
+      const result = damageRollFromDice({
+        label: pending.label,
+        damage: pending.damage,
+        dice,
+        crit: pending.crit,
+      });
+      if (result.error) return result.error;
+      show(result);
+      setPending(null);
+      return null;
+    },
+    [pending, mode, show],
   );
 
   return {
@@ -94,6 +163,11 @@ export function useSheetRolls(characterId, characterName) {
     dismiss: () => setLastRoll(null),
     roll,
     rollDamage,
+    realDice,
+    setRealDice,
+    pending,
+    submitRealDice,
+    cancelRealDice: () => setPending(null),
     tableId: table?.id ?? null,
     tableSession: table?.session_number ?? 1,
     tableName: table?.name ?? null,

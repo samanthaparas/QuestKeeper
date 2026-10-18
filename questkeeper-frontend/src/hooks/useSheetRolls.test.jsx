@@ -68,4 +68,84 @@ describe("useSheetRolls", () => {
     expect(result.current.lastRoll).toMatchObject({ kind: "damage", total: 5, status: "private" });
     expect(logRoll).not.toHaveBeenCalled();
   });
+
+  describe("real dice", () => {
+    it("asks for the numbers instead of rolling, then adds the bonus", () => {
+      listCharacterTables.mockResolvedValue([]);
+      const { result } = renderHook(() => useSheetRolls("char-1", "Billie"));
+      const onResult = vi.fn();
+
+      act(() => result.current.setRealDice(true));
+      act(() => {
+        const returned = result.current.roll("Stealth", 5, { onResult });
+        expect(returned).toBeNull();
+      });
+      expect(result.current.pending).toMatchObject({ type: "check", label: "Stealth", bonus: 5 });
+      expect(result.current.lastRoll).toBeNull();
+
+      let problem;
+      act(() => {
+        problem = result.current.submitRealDice("14");
+      });
+
+      expect(problem).toBeNull();
+      expect(result.current.lastRoll).toMatchObject({ label: "Stealth", total: 19, detail: "d20 14 + 5" });
+      expect(result.current.pending).toBeNull();
+      expect(onResult).toHaveBeenCalledWith(expect.objectContaining({ natural: 14, total: 19 }));
+    });
+
+    it("keeps waiting and explains when the number can't be on a d20", () => {
+      listCharacterTables.mockResolvedValue([]);
+      const { result } = renderHook(() => useSheetRolls("char-1", "Billie"));
+      act(() => result.current.setRealDice(true));
+      act(() => result.current.roll("Stealth", 5));
+
+      let problem;
+      act(() => {
+        problem = result.current.submitRealDice("25");
+      });
+
+      expect(problem).toBe("A d20 only shows 1 to 20, not 25.");
+      expect(result.current.pending).not.toBeNull();
+    });
+
+    it("takes both d20s with advantage", () => {
+      listCharacterTables.mockResolvedValue([]);
+      const { result } = renderHook(() => useSheetRolls("char-1", "Billie"));
+      act(() => result.current.setRealDice(true));
+      act(() => result.current.setMode("advantage"));
+      act(() => result.current.roll("Stealth", 2));
+
+      act(() => {
+        result.current.submitRealDice("14, 7");
+      });
+
+      expect(result.current.lastRoll.natural).toBe(14);
+      expect(result.current.mode).toBe("normal");
+    });
+
+    it("adds up damage dice typed by the player, and remembers the choice", () => {
+      listCharacterTables.mockResolvedValue([]);
+      const { result } = renderHook(() => useSheetRolls("char-1", "Billie"));
+      act(() => result.current.setRealDice(true));
+      act(() => result.current.rollDamage("Fireball", "10d6"));
+
+      act(() => {
+        result.current.submitRealDice("6, 2, 3, 6, 1, 1, 5, 4, 6, 2");
+      });
+
+      expect(result.current.lastRoll).toMatchObject({ label: "Fireball", total: 36 });
+      expect(window.localStorage.getItem("qk-real-dice-char-1")).toBe("on");
+    });
+
+    it("still rolls damage the app can't read as dice", () => {
+      listCharacterTables.mockResolvedValue([]);
+      const { result } = renderHook(() => useSheetRolls("char-1", "Billie"));
+      act(() => result.current.setRealDice(true));
+      act(() => result.current.rollDamage("Odd", "special"));
+
+      expect(result.current.pending).toBeNull();
+    });
+  });
 });
+

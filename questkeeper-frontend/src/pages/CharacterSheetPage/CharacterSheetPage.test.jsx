@@ -553,6 +553,25 @@ describe("conditions on the sheet", () => {
 describe("death saves and concentration", () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it("takes a death save from real dice: type the d20 number and it counts", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet();
+    sheet.combat.hitPoints = { max: 20, current: 0, temporary: 0 };
+    renderSheet(sheet);
+
+    const panel = await screen.findByRole("region", { name: "Death saves" });
+    await user.click(screen.getByRole("radio", { name: "I roll real dice" }));
+    await user.click(within(panel).getByRole("button", { name: "Roll death save" }));
+
+    // The app asks for the number instead of rolling.
+    expect(within(panel).queryByText(/Rolled/)).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText(/Type the number on your d20/), "6");
+    await user.click(screen.getByRole("button", { name: "Use my roll" }));
+
+    expect(within(panel).getByText("Rolled 6: a failure.")).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: "Failures 1" })).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("shows death saves at 0 HP, rolls one, and clears them once healed", async () => {
     const user = userEvent.setup();
     const sheet = makeSheet();

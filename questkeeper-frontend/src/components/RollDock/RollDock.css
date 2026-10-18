@@ -337,3 +337,107 @@
   outline: 2px solid var(--qk-focus);
   outline-offset: 2px;
 }
+
+/* --- Real dice: typing the numbers on your own dice ---------------------- */
+.real-dice {
+  display: grid;
+  gap: 8px;
+  width: min(360px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+  box-shadow: 0 10px 24px var(--qk-shadow);
+}
+
+.real-dice__label {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.real-dice__label span {
+  color: var(--qk-text-muted);
+}
+
+.real-dice__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.real-dice__input {
+  flex: 1 1 140px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+.real-dice__go,
+.real-dice__cancel {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--qk-radius-control);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.real-dice__go {
+  border: 1px solid var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+.real-dice__go:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.real-dice__cancel {
+  border: 1px solid var(--qk-border);
+  background: none;
+  color: var(--qk-text);
+}
+
+.real-dice__error {
+  margin: 0;
+  color: var(--qk-danger);
+  font-size: 14px;
+}
+
+/* "New to dice?": a small explainer above the bar. */
+.roll-dock__help {
+  width: min(360px, calc(100vw - 32px));
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+  box-shadow: 0 6px 16px var(--qk-shadow);
+  font-size: 13px;
+}
+
+.roll-dock__help summary {
+  padding: 8px 12px;
+  color: var(--qk-text-muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.roll-dock__help-body {
+  display: grid;
+  gap: 8px;
+  max-height: 40vh;
+  padding: 0 12px 12px;
+  overflow-y: auto;
+  line-height: 1.5;
+}
+
+.roll-dock__help-body p {
+  margin: 0;
+}
