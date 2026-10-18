@@ -1,0 +1,48 @@
+/* The extra damage boxes: a list of common choices, then the dice and name. */
+.extra-damage-picker {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  /* Always reads left to right, even inside the centred roll card. */
+  text-align: left;
+}
+
+.extra-damage-picker__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.extra-damage-picker__field {
+  display: grid;
+  flex: 1 1 140px;
+  gap: 4px;
+  min-width: 0;
+}
+
+.extra-damage-picker__label {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.extra-damage-picker__input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+.extra-damage-picker__hint {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}

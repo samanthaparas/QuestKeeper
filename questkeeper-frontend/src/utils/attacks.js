@@ -131,6 +131,63 @@ export function damageFromDice(damageText, values, { crit = false } = {}) {
 
 // --- Extra damage on top of a weapon (Divine Smite, Sneak Attack, Hunter's Mark) --
 
+// Common extra damage for the picker, so a beginner doesn't have to know the
+// dice: { group, name, dice, label }. Picking one fills in the dice and the
+// name; both can still be changed. The numbers come from each feature's own
+// description (and your level), so check yours.
+const SNEAK_ATTACK_BY_LEVEL = [
+  ["1st to 2nd", "1d6"],
+  ["3rd to 4th", "2d6"],
+  ["5th to 6th", "3d6"],
+  ["7th to 8th", "4d6"],
+  ["9th to 10th", "5d6"],
+  ["11th to 12th", "6d6"],
+  ["13th to 14th", "7d6"],
+  ["15th to 16th", "8d6"],
+  ["17th to 18th", "9d6"],
+  ["19th to 20th", "10d6"],
+];
+
+export const EXTRA_DAMAGE_PRESETS = [
+  { group: "Paladin", name: "Divine Smite, 1st-level slot (2d8)", dice: "2d8", label: "Divine Smite" },
+  { group: "Paladin", name: "Divine Smite, 2nd-level slot (3d8)", dice: "3d8", label: "Divine Smite" },
+  { group: "Paladin", name: "Divine Smite, 3rd-level slot (4d8)", dice: "4d8", label: "Divine Smite" },
+  { group: "Paladin", name: "Divine Smite, 4th-level slot or higher (5d8)", dice: "5d8", label: "Divine Smite" },
+  { group: "Paladin", name: "Divine Favor (1d4)", dice: "1d4", label: "Divine Favor" },
+  ...SNEAK_ATTACK_BY_LEVEL.map(([levels, dice]) => ({
+    group: "Rogue: Sneak Attack by level",
+    name: `Sneak Attack, level ${levels} (${dice})`,
+    dice,
+    label: "Sneak Attack",
+  })),
+  { group: "Ranger", name: "Hunter's Mark (1d6)", dice: "1d6", label: "Hunter's Mark" },
+  { group: "Ranger", name: "Colossus Slayer (1d8)", dice: "1d8", label: "Colossus Slayer" },
+  { group: "Warlock", name: "Hex (1d6)", dice: "1d6", label: "Hex" },
+  { group: "Barbarian: Rage damage by level", name: "Rage, level 1 to 8 (+2)", dice: "+2", label: "Rage" },
+  { group: "Barbarian: Rage damage by level", name: "Rage, level 9 to 15 (+3)", dice: "+3", label: "Rage" },
+  { group: "Barbarian: Rage damage by level", name: "Rage, level 16 and up (+4)", dice: "+4", label: "Rage" },
+  { group: "Magic weapons", name: "Flaming weapon, like a Flame Tongue (2d6)", dice: "2d6", label: "Fire damage" },
+];
+
+// The last extra damage typed ("2d8" called "Smite"), kept so the next attack
+// can reuse it. It is never switched on by itself.
+export function readExtra() {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem("qk-extra-damage") ?? "null");
+    return { text: String(saved?.text ?? ""), label: String(saved?.label ?? "") };
+  } catch {
+    return { text: "", label: "" };
+  }
+}
+
+export function rememberExtra(text, label) {
+  try {
+    window.localStorage.setItem("qk-extra-damage", JSON.stringify({ text, label }));
+  } catch {
+    // Remembering is a convenience; the extra damage still works this time.
+  }
+}
+
 // The extra damage text, checked: "2d8", "1d6+2" or even a flat "+2". Returns
 // { dice: how many dice it uses } or { error } in plain words.
 export function checkExtraDamage(extraText) {

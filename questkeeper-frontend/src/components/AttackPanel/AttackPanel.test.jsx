@@ -259,6 +259,8 @@ describe("AttackPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "Use my dice" }));
 
     expect(screen.getByText(/Smite 2d8 \[6, 2\] = 8/)).toBeInTheDocument();
+    // And it says the extra went in, with the total.
+    expect(screen.getByRole("status")).toHaveTextContent("✓ Smite added: +8. Total damage: 19.");
     await userEvent.click(screen.getByRole("button", { name: "Deal 19 damage" }));
     expect(dealDamage).toHaveBeenCalledWith("t1", 19);
   });

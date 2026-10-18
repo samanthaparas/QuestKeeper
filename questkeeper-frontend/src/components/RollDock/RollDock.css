@@ -412,32 +412,123 @@
   font-size: 14px;
 }
 
-/* "New to dice?": a small explainer above the bar. */
+/* "New to dice?": a collapsed item in the sheet's help area. */
 .roll-dock__help {
-  width: min(360px, calc(100vw - 32px));
   border: 1px solid var(--qk-border);
-  border-radius: var(--qk-radius-card);
+  border-radius: var(--qk-radius-control);
   background-color: var(--qk-surface);
-  box-shadow: 0 6px 16px var(--qk-shadow);
   font-size: 13px;
 }
 
 .roll-dock__help summary {
   padding: 8px 12px;
-  color: var(--qk-text-muted);
-  font-weight: 700;
+  color: var(--qk-terracotta-hover);
+  font-weight: 600;
   cursor: pointer;
 }
 
 .roll-dock__help-body {
   display: grid;
   gap: 8px;
-  max-height: 40vh;
   padding: 0 12px 12px;
-  overflow-y: auto;
   line-height: 1.5;
 }
 
 .roll-dock__help-body p {
   margin: 0;
+}
+
+/* "Add extra damage" under a damage roll (a smite, a sneak attack). The card
+   widens while the form is open so the boxes fit. */
+.roll-result:has(.roll-result__extra) {
+  width: min(340px, calc(100vw - 32px));
+}
+
+.roll-result__extra {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  min-width: 0;
+  text-align: left;
+}
+
+
+.roll-result__extra-error {
+  margin: 0;
+  color: var(--qk-danger);
+  font-size: 13px;
+}
+
+/* "✓ Smite added: +10" and the new total under a damage roll. */
+.roll-result__added {
+  margin: 6px 0 0;
+  color: var(--qk-moss);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.roll-result__total-note {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* The total gives a small pulse when it changes (skipped for reduced motion). */
+@media (prefers-reduced-motion: no-preference) {
+  .roll-result__total {
+    animation: roll-total-pulse 0.5s ease-out;
+  }
+}
+
+@keyframes roll-total-pulse {
+  0% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* With real dice: the numbers on the extra damage dice, typed in the same form. */
+.roll-result__extra-numbers {
+  display: grid;
+  gap: 4px;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.roll-result__extra-numbers-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+/* "See my roll history": a plain link-style button under the roll. */
+.roll-result__history {
+  min-height: 32px;
+  margin-top: 4px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--qk-terracotta-hover);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Phones and small windows: the bar keeps just its controls (the hint is in Help). */
+@media (max-width: 700px) {
+  .roll-dock__hint {
+    display: none;
+  }
 }

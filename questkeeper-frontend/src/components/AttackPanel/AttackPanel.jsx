@@ -9,9 +9,12 @@ import {
   rollDamageWithExtra,
   damageFromDiceWithExtra,
   damageFromDice,
+  readExtra,
+  rememberExtra,
 } from "../../utils/attacks";
 import { attackRoll, dealDamage } from "../../utils/tableStore";
 import Button from "../Button/Button";
+import ExtraDamagePicker from "../ExtraDamagePicker/ExtraDamagePicker";
 import "./AttackPanel.css";
 
 const RESULT_TEXT = {
@@ -20,25 +23,6 @@ const RESULT_TEXT = {
   miss: "That misses!",
   awaiting: "Waiting for the DM to call it...",
 };
-
-// The last extra damage typed ("2d8" called "Smite"), kept so the next attack
-// can reuse it. It is never switched on by itself.
-function readExtra() {
-  try {
-    const saved = JSON.parse(window.localStorage.getItem("qk-extra-damage") ?? "null");
-    return { text: String(saved?.text ?? ""), label: String(saved?.label ?? "") };
-  } catch {
-    return { text: "", label: "" };
-  }
-}
-
-function rememberExtra(text, label) {
-  try {
-    window.localStorage.setItem("qk-extra-damage", JSON.stringify({ text, label }));
-  } catch {
-    // Remembering is a convenience; the extra damage still works this time.
-  }
-}
 
 // Shown on your own turn after tapping Attack on a weapon. Step 1: choose a
 // target and roll to hit. Step 2 (only after a hit): roll damage. The server
@@ -297,25 +281,16 @@ function AttackPanel({ attack, combat, onClose }) {
               </label>
               {extraOn && (
                 <>
-                  <div className="attack-panel__row">
-                    <input
-                      className="attack-panel__extra-input"
-                      type="text"
-                      aria-label="Extra damage dice"
-                      placeholder="2d8"
-                      value={extraText}
-                      onChange={(event) => changeExtra(() => setExtraText(event.target.value))}
-                    />
-                    <input
-                      className="attack-panel__extra-input"
-                      type="text"
-                      aria-label="Name for the extra damage (optional)"
-                      placeholder="Smite"
-                      maxLength={30}
-                      value={extraLabel}
-                      onChange={(event) => changeExtra(() => setExtraLabel(event.target.value))}
-                    />
-                  </div>
+                  <ExtraDamagePicker
+                    text={extraText}
+                    label={extraLabel}
+                    onChange={({ text, label }) =>
+                      changeExtra(() => {
+                        setExtraText(text);
+                        setExtraLabel(label);
+                      })
+                    }
+                  />
                   <p className="attack-panel__note">
                     Added to this attack&apos;s damage, and its dice are doubled on a critical hit too. With real
                     dice, type the weapon&apos;s dice first, then the extra dice.
@@ -334,6 +309,12 @@ function AttackPanel({ attack, combat, onClose }) {
             {damageRolled && (
               <>
                 <span className="attack-panel__rolled">{damageRolled.text}</span>
+                {damageRolled.extra && (
+                  <span className="attack-panel__added" role="status">
+                    ✓ {damageRolled.extra.label} added: +{damageRolled.extra.total}. Total damage:{" "}
+                    {damageRolled.total}.
+                  </span>
+                )}
                 <Button disabled={isBusy} onClick={() => submitDamage(damageRolled.total)}>
                   Deal {damageRolled.total} damage
                 </Button>
