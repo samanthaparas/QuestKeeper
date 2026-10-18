@@ -895,3 +895,9 @@
   border-radius: var(--qk-radius-control);
   background-color: var(--qk-surface);
 }
+
+/* "A d20 only shows 1 to 20" under the initiative box. */
+.table-page__init-prompt-error {
+  color: var(--qk-danger);
+  font-size: 14px;
+}

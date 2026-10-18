@@ -27,6 +27,13 @@ vi.mock("../../utils/characterStore", () => ({
 const fakeTurn = vi.hoisted(() => ({ value: null }));
 vi.mock("../../hooks/useTableTurn", () => ({ useTableTurn: () => fakeTurn.value }));
 
+// The banner's Apply button asks the database how much damage there is; here
+// it is always 2.
+vi.mock("../../utils/tableStore", async (importOriginal) => ({
+  ...(await importOriginal()),
+  resolveDamageRequest: vi.fn().mockResolvedValue(2),
+}));
+
 vi.mock("../../context/useAuth", () => ({
   useAuth: () => ({ user: { id: "user-1" } }),
 }));
@@ -272,6 +279,8 @@ it("a Short Rest spends Hit Dice to heal and says what happened", async () => {
   expect(screen.getByRole("status")).toHaveTextContent(
     "Short rest done. Rolled 5 (+2 CON each) and healed 7 HP: 10 → 17. 2 Hit Dice left.",
   );
+  // The Hit Dice box at the top follows along.
+  expect(screen.getByLabelText("Hit dice left")).toHaveValue(2);
   vi.restoreAllMocks();
 });
 
@@ -684,5 +693,40 @@ it("shows the Hit Dice left over the total, and a Short Rest lowers what's left"
   await user.clear(left);
   await user.type(left, "9");
   expect(left).toHaveValue(3); // can't be more than the total
+});
+
+describe("damage from the DM at 0 HP", () => {
+  afterEach(() => {
+    fakeTurn.value = null;
+  });
+
+  it("counts as a failed death save, and says so", async () => {
+    const sheet = makeSheet();
+    sheet.combat.hitPoints = { max: 20, current: 0, temporary: 0 };
+    sheet.deathSaves = { successes: 1, failures: 0 };
+    fakeTurn.value = {
+      table: { id: "t1", name: "Test night", round: 1 },
+      tableName: "Test night",
+      activeTables: [],
+      switchTable: () => {},
+      endTurn: () => {},
+      round: 1,
+      combatants: [],
+      now: null,
+      next: null,
+      upcoming: [],
+      myCombatant: null,
+      isMyTurn: false,
+      latestEvent: null,
+      damageRequests: [{ id: "r1", source: "Goblin", amount: 2 }],
+      refresh: () => {},
+    };
+    renderSheet(sheet);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Apply 2 damage" }));
+
+    expect(await screen.findByText(/already at 0 HP, so that's a failed death save/)).toBeInTheDocument();
+    expect(screen.getByText("Taking damage at 0 HP counts as a failed death save.")).toBeInTheDocument();
+  });
 });
 
