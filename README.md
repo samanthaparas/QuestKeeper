@@ -146,7 +146,7 @@ A DM creates a table with a join code, and players join with one of their charac
 
 **On the Dungeon Master's screen** (tabs for Combat, Story, Players and Prep):
 
-- An initiative tracker and a private Monster Library. Add many identical monsters at once with nicknames and icons, and roll initiative for every monster in one click.
+- An initiative tracker and a private Monster Library. Add many identical monsters at once with nicknames and icons, and roll initiative for every monster in one click. From the table screen the DM can either **Add to the fight** or **Save for later (library only)**, which saves a monster to the library without putting it in the fight and without leaving the screen.
 - **Clear monster turns:** each monster has a DM-only HP bar, the current fighter gets a banner saying what to do ("Kobold's turn: tap Attack, then Next turn"), and history from earlier turns is faded so it doesn't look new. On wide screens the attack panel opens beside the row so the Roll button never needs scrolling, and every box in it is labelled.
 - A full attack flow: players roll a virtual d20 or type a real one, and the database decides hit or miss against the **secret** AC. The DM can attack with monsters, send damage as a request the player applies, or deny an attack.
 - A **party strip** showing every character's portrait, HP, AC and conditions, plus concentration, death saves when someone is down, condition timers, and each companion's HP on its own line. A DM switch shares it with the players (the DM decides whether the party can see each other).

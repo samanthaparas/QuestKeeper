@@ -12,7 +12,7 @@ import "./AddCombatantForm.css";
 
 // Adds one or many monsters, friendly NPCs, or manually tracked party members.
 // `templates` are the DM's saved library entries; picking one fills the form.
-// `onSaveToLibrary` (optional) adds a "Save to library only" button, for
+// `onSaveToLibrary` (optional) adds a "Save for later (library only)" button, for
 // preparing a monster for later without putting it in tonight's fight.
 // It resolves { ok, message }.
 function AddCombatantForm({ onAdd, onSaveToLibrary, templates = [] }) {
@@ -250,19 +250,33 @@ function AddCombatantForm({ onAdd, onSaveToLibrary, templates = [] }) {
         >
           {showPieces ? "Hide nicknames and icons" : "Tell them apart"}
         </Button>
-        {onSaveToLibrary && (
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={!canSubmit || isBusy}
-            onClick={handleSaveToLibraryOnly}
-          >
-            Save to library only
+      </div>
+
+      {/* Two clearly different ends: into tonight's fight, or just saved for
+          another night. */}
+      <div className="add-combatant__row add-combatant__row--submit">
+        <div className="add-combatant__submit-choice">
+          <Button type="submit" disabled={!canSubmit || isBusy}>
+            {Number(count) > 1 ? `Add ${Math.min(Number(count), 20)} to the fight` : "Add to the fight"}
           </Button>
+          <span className="add-combatant__submit-note">Puts it in tonight&apos;s fight right now.</span>
+        </div>
+        {onSaveToLibrary && (
+          <div className="add-combatant__submit-choice">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!canSubmit || isBusy}
+              onClick={handleSaveToLibraryOnly}
+            >
+              Save for later (library only)
+            </Button>
+            <span className="add-combatant__submit-note">
+              Just preparing? It goes in your library for another night and is <strong>not</strong> added to
+              the fight.
+            </span>
+          </div>
         )}
-        <Button type="submit" disabled={!canSubmit || isBusy}>
-          {Number(count) > 1 ? `Add ${Math.min(Number(count), 20)} to the fight` : "Add to the fight"}
-        </Button>
       </div>
 
       {libraryNote && (
