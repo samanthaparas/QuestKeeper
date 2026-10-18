@@ -223,3 +223,66 @@
 .table-journal__more {
   justify-self: start;
 }
+
+/* Session number boxes: which session a note goes under, and the DM's current one. */
+.table-journal__session-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.table-journal__number {
+  box-sizing: border-box;
+  width: 84px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+.table-journal__current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.table-journal__lookback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.table-journal__select {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+/* Plain number boxes: no little up and down arrows (just type the number). */
+.table-journal__number {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.table-journal__number::-webkit-outer-spin-button,
+.table-journal__number::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}

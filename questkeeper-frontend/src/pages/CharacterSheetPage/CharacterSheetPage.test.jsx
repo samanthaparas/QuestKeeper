@@ -34,6 +34,15 @@ vi.mock("../../utils/tableStore", async (importOriginal) => ({
   resolveDamageRequest: vi.fn().mockResolvedValue(2),
 }));
 
+// The personal journal's notes live in Supabase; none here.
+vi.mock("../../utils/characterJournalStore", () => ({
+  listPersonalNotes: vi.fn().mockResolvedValue([]),
+  addPersonalNote: vi.fn().mockResolvedValue({}),
+  updatePersonalNote: vi.fn().mockResolvedValue(undefined),
+  deletePersonalNote: vi.fn().mockResolvedValue(undefined),
+  markNoteShared: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("../../context/useAuth", () => ({
   useAuth: () => ({ user: { id: "user-1" } }),
 }));
@@ -835,6 +844,21 @@ describe("help on the sheet", () => {
     renderSheet(sheet);
 
     expect(await screen.findByRole("tab", { name: "Features (1 choice left)" })).toBeInTheDocument();
+  });
+});
+
+describe("My Journal tab", () => {
+  it("gives a character with no table its own private journal", async () => {
+    const user = userEvent.setup();
+    renderSheet(makeSheet());
+
+    await user.click(await screen.findByRole("tab", { name: "My Journal" }));
+
+    expect(screen.getByRole("heading", { name: "My journal" })).toBeInTheDocument();
+    expect(screen.getByText(/Only you can read them/)).toBeInTheDocument();
+    // Not at a table, so there's no shared Journal & Handouts tab, and nothing to bring in.
+    expect(screen.queryByRole("tab", { name: "Journal & Handouts" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Bring notes into/ })).not.toBeInTheDocument();
   });
 });
 

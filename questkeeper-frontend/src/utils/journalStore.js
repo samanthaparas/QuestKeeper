@@ -19,21 +19,32 @@ export async function listJournal(tableId) {
   );
 }
 
-export async function addJournalEntry(tableId, { body, visibility }) {
+// sessionNumber: the session to file it under; leave it out for the table's
+// current session.
+export async function addJournalEntry(tableId, { body, visibility, sessionNumber }) {
   return unwrap(
     await supabase
       .from("table_journal_entries")
-      .insert({ table_id: tableId, body: body.trim(), visibility })
+      .insert({
+        table_id: tableId,
+        body: body.trim(),
+        visibility,
+        ...(sessionNumber ? { session_number: sessionNumber } : {}),
+      })
       .select()
       .single(),
   );
 }
 
-export async function updateJournalEntry(id, { body, visibility }) {
+export async function updateJournalEntry(id, { body, visibility, sessionNumber }) {
   unwrap(
     await supabase
       .from("table_journal_entries")
-      .update({ body: body.trim(), visibility })
+      .update({
+        body: body.trim(),
+        visibility,
+        ...(sessionNumber ? { session_number: sessionNumber } : {}),
+      })
       .eq("id", id),
   );
 }
@@ -48,6 +59,17 @@ export async function startNextSession(tableId, currentSession) {
     await supabase
       .from("game_tables")
       .update({ session_number: currentSession + 1 })
+      .eq("id", tableId),
+  );
+}
+
+// DM only: set the table's current session to any number (a campaign that
+// continues at session 41, say).
+export async function setSessionNumber(tableId, sessionNumber) {
+  unwrap(
+    await supabase
+      .from("game_tables")
+      .update({ session_number: sessionNumber })
       .eq("id", tableId),
   );
 }

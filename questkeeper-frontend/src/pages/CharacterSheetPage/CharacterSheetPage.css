@@ -1231,6 +1231,12 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    /* Scrolls with the wheel or trackpad, without a grey bar down the side. */
+    scrollbar-width: none;
+  }
+
+  .character-sheet__main::-webkit-scrollbar {
+    display: none;
   }
 }
 
