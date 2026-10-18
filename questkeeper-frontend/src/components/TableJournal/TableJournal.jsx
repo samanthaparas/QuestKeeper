@@ -3,6 +3,7 @@ import Button from "../Button/Button";
 import {
   addJournalEntry,
   deleteJournalEntry,
+  getTablePortraits,
   listJournal,
   setSessionNumber,
   startNextSession,
@@ -17,6 +18,7 @@ import {
   sessionChoices,
   wasEdited,
 } from "../../utils/journal";
+import { getInitials } from "../../utils/characterSheet";
 import "./TableJournal.css";
 
 const POLL_MS = 15000;
@@ -84,6 +86,8 @@ function VisibilityChoice({ value, onChange, name }) {
 // to set the table's current session. sessionNumber is the table's current one.
 function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
   const [entries, setEntries] = useState([]);
+  // Each writer's portrait, from the table's members (initials where there's none).
+  const [portraits, setPortraits] = useState(() => new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [draft, setDraftText] = useState(() => readDraft(tableId));
@@ -112,6 +116,14 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
       })
       .catch(() => setError("Couldn't load the journal. It will try again shortly."))
       .finally(() => setIsLoading(false));
+  }, [tableId]);
+
+  useEffect(() => {
+    let ignore = false;
+    getTablePortraits(tableId).then((found) => !ignore && setPortraits(found));
+    return () => {
+      ignore = true;
+    };
   }, [tableId]);
 
   // Live updates, plus a slow safety refresh in case they're off.
@@ -351,6 +363,14 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
                     }${entry.author_name === "DM" ? " table-journal__entry--dm" : ""}`}
                   >
                     <p className="table-journal__byline">
+                      {/* The writer's picture (or initials, like "DM"). */}
+                      <span className="table-journal__avatar" aria-hidden="true">
+                        {portraits.get(entry.author_id) ? (
+                          <img src={portraits.get(entry.author_id)} alt="" loading="lazy" />
+                        ) : (
+                          getInitials(entry.author_name)
+                        )}
+                      </span>
                       <strong className="table-journal__author">{entry.author_name}</strong>
                       <span className="table-journal__stamp">
                         {formatStamp(entry.created_at)}

@@ -2322,3 +2322,29 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
 .character-sheet__help-panel p {
   margin: 0;
 }
+
+/* At a table: switch between the table's journal and my private notes. */
+.character-sheet__journal-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.character-sheet__journal-switch button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.character-sheet__journal-switch button[aria-pressed="true"] {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}

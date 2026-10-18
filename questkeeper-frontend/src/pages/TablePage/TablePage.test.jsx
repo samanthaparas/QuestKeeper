@@ -60,6 +60,8 @@ vi.mock("../../utils/journalStore", () => ({
   updateJournalEntry: vi.fn(),
   deleteJournalEntry: vi.fn(),
   startNextSession: vi.fn(),
+  setSessionNumber: vi.fn(),
+  getTablePortraits: vi.fn().mockResolvedValue(new Map()),
   subscribeToJournal: vi.fn(() => () => {}),
 }));
 
@@ -1262,6 +1264,28 @@ describe("party strip", () => {
 
     expect(screen.queryByRole("list", { name: "Party" })).not.toBeInTheDocument();
     expect(getPartyStrip).not.toHaveBeenCalled();
+  });
+
+  it("fills in a missing portrait in the shared party view from the player's own sheet", async () => {
+    mockTable({ isDm: false });
+    useTable.mockReturnValue({
+      ...currentTable,
+      table: { ...currentTable.table, share_party: true },
+    });
+    // The party view came back without a portrait for this player, but their own
+    // sheet (loaded for the page) has one.
+    const { getCharacter } = await import("../../utils/characterStore");
+    getCharacter.mockResolvedValue({
+      abilityScores: { dexterity: 14 },
+      portraitUrl: "https://example.com/mine.png",
+    });
+    getPartyStrip.mockResolvedValue([{ ...billieSheet, userId: "player-1", portraitUrl: undefined }]);
+    renderPage();
+
+    await waitFor(() => expect(partyStrip()).toBeInTheDocument());
+    await waitFor(() =>
+      expect(partyStrip().querySelector("img")).toHaveAttribute("src", "https://example.com/mine.png"),
+    );
   });
 
   it("shows players HP, AC and conditions once shared, but no passives or switch", async () => {

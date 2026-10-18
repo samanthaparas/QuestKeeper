@@ -67,3 +67,8 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
+
+.personal-journal__title {
+  display: flex;
+  align-items: center;
+}

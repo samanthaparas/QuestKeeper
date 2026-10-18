@@ -16,6 +16,7 @@ import {
   sessionChoices,
   wasEdited,
 } from "../../utils/journal";
+import { getInitials } from "../../utils/characterSheet";
 import "../TableJournal/TableJournal.css";
 import "./PersonalJournal.css";
 
@@ -59,8 +60,9 @@ const SHARE_CHOICES = [
 // chooses it.
 //
 // characterId: whose journal. table: { id, name } when the character is at a
-// table, so notes can be brought in; null otherwise.
-function PersonalJournal({ characterId, table = null }) {
+// table, so notes can be brought in; null otherwise. name and portraitUrl:
+// the character's, shown beside the title.
+function PersonalJournal({ characterId, table = null, name = "", portraitUrl = "" }) {
   const [entries, setEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -212,7 +214,12 @@ function PersonalJournal({ characterId, table = null }) {
   return (
     <section className="table-journal personal-journal" aria-labelledby={`${draftId}-title`}>
       <div className="table-journal__head">
-        <h2 id={`${draftId}-title`} className="table-journal__title">
+        <h2 id={`${draftId}-title`} className="table-journal__title personal-journal__title">
+          {(portraitUrl || name) && (
+            <span className="table-journal__avatar table-journal__avatar--large" aria-hidden="true">
+              {portraitUrl ? <img src={portraitUrl} alt="" /> : getInitials(name)}
+            </span>
+          )}
           My journal
         </h2>
         <Button variant="secondary" onClick={startNextSession}>

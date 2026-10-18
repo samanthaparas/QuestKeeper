@@ -968,10 +968,24 @@ function TablePage() {
   // on the Combat tab from the Combat header (showMonsterForm).
   const selectedSheet =
     characters.find((sheet) => sheet.id === selectedPlayerId) ?? characters[0];
+  // Players' portraits for the turn order: the DM has everyone's sheets, a
+  // player has their own and, when the DM shares the party, everyone's.
+  const portraitByUser = new Map();
+  for (const mini of partyMinis) if (mini.userId && mini.portraitUrl) portraitByUser.set(mini.userId, mini.portraitUrl);
+  for (const member of members) {
+    const sheet = characters.find((entry) => entry.id === member.character_id);
+    if (sheet?.portraitUrl) portraitByUser.set(member.user_id, sheet.portraitUrl);
+  }
+  if (user?.id && mySheet?.portraitUrl) portraitByUser.set(user.id, mySheet.portraitUrl);
+
   const partyRows = isDm
     ? characters.map((sheet) => toPartyRow(sheet, { withPassives: true }))
     : partyShared
-      ? partyMinis.map((sheet) => toPartyRow(sheet))
+      // A picture the party view didn't send (an older database function) is
+      // filled in from the sheets this page has already loaded.
+      ? partyMinis.map((sheet) =>
+          toPartyRow({ ...sheet, portraitUrl: sheet.portraitUrl || portraitByUser.get(sheet.userId) || "" }),
+        )
       : [];
 
   // DM taps a name in the party strip: open that character's card.
@@ -1092,16 +1106,6 @@ function TablePage() {
       run(() => dmDenyAttack(player.id));
     }
   }
-
-  // Players' portraits for the turn order: the DM has everyone's sheets, a
-  // player has their own and, when the DM shares the party, everyone's.
-  const portraitByUser = new Map();
-  for (const mini of partyMinis) if (mini.userId && mini.portraitUrl) portraitByUser.set(mini.userId, mini.portraitUrl);
-  for (const member of members) {
-    const sheet = characters.find((entry) => entry.id === member.character_id);
-    if (sheet?.portraitUrl) portraitByUser.set(member.user_id, sheet.portraitUrl);
-  }
-  if (user?.id && mySheet?.portraitUrl) portraitByUser.set(user.id, mySheet.portraitUrl);
 
   function renderRow(combatant) {
     const isMe = combatant.kind === "player" && combatant.user_id === user?.id;

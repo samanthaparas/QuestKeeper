@@ -156,6 +156,9 @@ function CharacterSheetPage() {
   // The Help panel (what the boxes mean, and the dice) on screens with no side
   // panel to keep it in.
   const [showHelp, setShowHelp] = useState(false);
+  // At a table, the Journal tab switches between the table's journal (with its
+  // handouts) and the character's own private notes.
+  const [journalView, setJournalView] = useState("table");
   const [restMessage, setRestMessage] = useState("");
   const [levelUpSummary, setLevelUpSummary] = useState(null);
   const [activeTab, setActiveTab] = useState("actions");
@@ -2183,27 +2186,52 @@ function CharacterSheetPage() {
                     />
                   )}
 
-                  {activeTab === "journal" && roller.tableId && (
+                  {activeTab === "journal" && (
                     <div className="character-sheet__journal-stack">
-                      <TableHandouts tableId={roller.tableId} isDm={false} />
-                      <TableJournal
-                        tableId={roller.tableId}
-                        userId={user.id}
-                        isDm={false}
-                        sessionNumber={roller.tableSession}
-                      />
+                      {/* At a table: the table's journal and handouts, or my own
+                          private notes (which can be brought into the table). */}
+                      {roller.tableId && (
+                        <div className="character-sheet__journal-switch" role="group" aria-label="Which journal">
+                          <button
+                            type="button"
+                            aria-pressed={journalView === "table"}
+                            onClick={() => setJournalView("table")}
+                          >
+                            {roller.tableName ?? "Table"}: journal &amp; handouts
+                          </button>
+                          <button
+                            type="button"
+                            aria-pressed={journalView === "mine"}
+                            onClick={() => setJournalView("mine")}
+                          >
+                            My private notes
+                          </button>
+                        </div>
+                      )}
+
+                      {roller.tableId && journalView === "table" ? (
+                        <>
+                          <TableHandouts tableId={roller.tableId} isDm={false} />
+                          <TableJournal
+                            tableId={roller.tableId}
+                            userId={user.id}
+                            isDm={false}
+                            sessionNumber={roller.tableSession}
+                          />
+                        </>
+                      ) : (
+                        <PersonalJournal
+                          characterId={sheet.id}
+                          name={sheet.name}
+                          portraitUrl={sheet.portraitUrl}
+                          table={roller.tableId ? { id: roller.tableId, name: roller.tableName } : null}
+                        />
+                      )}
                     </div>
                   )}
 
                   {activeTab === "rolls" && (
                     <RollHistory history={roller.history} onClear={roller.clearHistory} />
-                  )}
-
-                  {activeTab === "myjournal" && (
-                    <PersonalJournal
-                      characterId={sheet.id}
-                      table={roller.tableId ? { id: roller.tableId, name: roller.tableName } : null}
-                    />
                   )}
 
                   {activeTab === "story" && (
