@@ -41,6 +41,16 @@ describe("ClassSkillChoiceStep", () => {
     );
   });
 
+  it("says beside Next why it is greyed out, and how many picks are left", async () => {
+    renderStep();
+
+    expect(screen.getByRole("status")).toHaveTextContent("Pick 2 more skills to continue.");
+    await userEvent.click(screen.getByRole("checkbox", { name: /Athletics/ }));
+    expect(screen.getByRole("status")).toHaveTextContent("Pick 1 more skill to continue.");
+    await userEvent.click(screen.getByRole("checkbox", { name: /History/ }));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
   it("marks a skill the background already gave you as locked and explains why", () => {
     renderStep();
 

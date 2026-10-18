@@ -57,6 +57,13 @@
   display: flex;
   gap: 16px;
   margin-top: 32px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.class-skill-choice-step__nav-hint {
+  color: var(--qk-text-muted);
+  font-size: 14px;
 }
 
 .class-skill-choice-step__counter {
