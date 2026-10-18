@@ -1540,17 +1540,17 @@ function TablePage() {
 
         {isDm && dmTab === "combat" && players.length > 0 && (
           <section className="table-page__section">
-            <h2 className="table-page__section-title">An enemy hits a player</h2>
+            <h2 className="table-page__section-title">Send damage to a player</h2>
             <p className="table-page__hint">
-              The player gets an Apply button on their own sheet. You never edit their
-              character.
+              Say who hit them and for how much. The player sees it on their own sheet
+              and taps Apply to take it. You never edit their character.
             </p>
             <form className="table-page__monster-form" onSubmit={handleHitPlayer}>
               <input
                 className="table-page__input"
                 aria-label="Who is attacking"
                 list="enemy-names"
-                placeholder="Who is attacking (e.g. Kobold)"
+                placeholder="Who hit them (e.g. Kobold)"
                 maxLength={80}
                 value={hitSource}
                 onChange={(event) => setHitSource(event.target.value)}
@@ -1577,12 +1577,13 @@ function TablePage() {
                 type="number"
                 min="1"
                 aria-label="Damage to the player"
-                placeholder="Dmg"
+                placeholder="Damage"
                 value={hitAmount}
                 onChange={(event) => setHitAmount(event.target.value)}
               />
               <Button type="submit" variant="danger" disabled={!hitAmount}>
-                Send hit
+                Send{hitAmount ? ` ${hitAmount}` : ""} damage to{" "}
+                {players.find((player) => player.user_id === (hitTargetUserId || players[0].user_id))?.name ?? "the player"}
               </Button>
             </form>
           </section>

@@ -132,8 +132,9 @@ describe("MonsterAttackPanel", () => {
 
     // The stat block's damage is already filled in.
     expect(await screen.findByLabelText("Damage dice")).toHaveValue("1d6+2");
+    expect(screen.getByText("Billie will see it and tap to take it.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Roll damage" }));
-    await userEvent.click(screen.getByRole("button", { name: "Send 6 damage" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send 6 damage to Billie" }));
 
     expect(postPlayerDamage).toHaveBeenCalledWith("t1", "u-billie", 6, "Kobold");
     expect(applyDamage).not.toHaveBeenCalled();
@@ -165,7 +166,7 @@ describe("MonsterAttackPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: /Roll d20/ }));
 
     await userEvent.type(await screen.findByLabelText("Physical damage total"), "5");
-    await userEvent.click(screen.getByRole("button", { name: "Send my damage" }));
+    await userEvent.click(screen.getByRole("button", { name: "Deal this damage to Sir Pip" }));
 
     expect(applyDamage).toHaveBeenCalledWith("c-pip", 5);
     expect(postPlayerDamage).not.toHaveBeenCalled();
@@ -180,7 +181,7 @@ describe("MonsterAttackPanel", () => {
     expect(await screen.findByText(/Critical hit!/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Roll damage" }));
 
-    expect(screen.getByRole("button", { name: "Send 10 damage" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send 10 damage to Billie" })).toBeInTheDocument();
   });
 
   it("lets the DM call the hit when the target has no AC saved", async () => {
