@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import CharacterSheetPage from "./CharacterSheetPage";
+import { RETRY_DELAYS } from "../../hooks/useSrdEquipmentLookup";
 import { getCharacter } from "../../utils/characterStore";
 import { listCharacterTables } from "../../utils/tableStore";
+import { getEquipment, getEquipmentDetails } from "../../utils/api";
 import { createCharacterSheet } from "../../utils/characterSheet";
 
 // --- Fakes for everything that would talk to the network ---
@@ -61,6 +63,7 @@ vi.mock("../../utils/api", async (importOriginal) => ({
   ...(await importOriginal()),
   getWeapons: vi.fn().mockResolvedValue([]),
   getEquipment: vi.fn().mockResolvedValue([]),
+  getEquipmentDetails: vi.fn().mockResolvedValue(null),
   getMagicItems: vi.fn().mockResolvedValue([]),
 }));
 
@@ -899,3 +902,38 @@ describe("The Journal tab", () => {
     expect(screen.getByText("Table journal")).toBeInTheDocument();
   });
 });
+
+describe("armor look-up when the rules server is slow", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    getEquipment.mockResolvedValue([]);
+    getEquipmentDetails.mockResolvedValue(null);
+  });
+
+  it("tries again on its own, so worn armor isn't lost for good", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    // The server is asleep at first, then wakes up.
+    let asleep = true;
+    getEquipment.mockImplementation(async () => {
+      if (asleep) throw new Error("waking up");
+      return [{ index: "leather-armor", name: "Leather Armor" }];
+    });
+    getEquipmentDetails.mockResolvedValue({ index: "leather-armor", name: "Leather Armor", armor_category: "Light", armor_class: { base: 11, dex_bonus: true } });
+    const sheet = makeSheet();
+    sheet.equipment = [{ index: "i1", name: "Leather Armor", quantity: 1 }];
+    renderSheet(sheet);
+
+    await screen.findByRole("tab", { name: "Inventory" });
+    await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(screen.getByRole("tab", { name: "Inventory" }));
+    // Not recognised as armor yet...
+    expect(screen.queryByRole("button", { name: "Wearing Leather Armor" })).not.toBeInTheDocument();
+
+    // ...but once the server is awake, the next retry finds it and the shield button appears.
+    asleep = false;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(RETRY_DELAYS[0] + 100);
+    });
+    expect(await screen.findByRole("button", { name: "Wearing Leather Armor" })).toBeInTheDocument();
+  });
+});
+
