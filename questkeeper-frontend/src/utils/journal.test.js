@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatStamp, groupBySession, wasEdited } from "./journal";
+import { formatStamp, groupBySession, wasEdited, readSessionNumber, sessionChoices } from "./journal";
 
 const entry = (id, session, created_at, extra = {}) => ({
   id,
@@ -33,3 +33,34 @@ describe("journal helpers", () => {
     expect(wasEdited(entry("a", 1, "2026-10-19T01:00:00Z", { updated_at: "2026-10-19T01:05:00Z" }))).toBe(true);
   });
 });
+
+describe("readSessionNumber", () => {
+  it("reads a whole number from 1 to 9999", () => {
+    expect(readSessionNumber("41")).toEqual({ value: 41 });
+    expect(readSessionNumber(" 7 ")).toEqual({ value: 7 });
+    expect(readSessionNumber("9999")).toEqual({ value: 9999 });
+  });
+
+  it("says what's wrong, in plain words", () => {
+    expect(readSessionNumber("0").error).toMatch(/whole number from 1 to 9999/);
+    expect(readSessionNumber("2.5").error).toMatch(/whole number/);
+    expect(readSessionNumber("10000").error).toMatch(/whole number/);
+    expect(readSessionNumber("").error).toMatch(/Type a session number/);
+  });
+
+  it("treats a blank as the current session when that's allowed", () => {
+    expect(readSessionNumber("", { allowBlank: true })).toEqual({ value: null });
+  });
+});
+
+describe("sessionChoices", () => {
+  it("counts each session's notes, newest session first, and always lists the current one", () => {
+    const entries = [{ session_number: 1 }, { session_number: 1 }, { session_number: 3 }];
+    expect(sessionChoices(entries, 5)).toEqual([
+      { session: 5, count: 0 },
+      { session: 3, count: 1 },
+      { session: 1, count: 2 },
+    ]);
+  });
+});
+

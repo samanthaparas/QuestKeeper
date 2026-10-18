@@ -4,11 +4,19 @@ import {
   addJournalEntry,
   deleteJournalEntry,
   listJournal,
+  setSessionNumber,
   startNextSession,
   subscribeToJournal,
   updateJournalEntry,
 } from "../../utils/journalStore";
-import { formatDay, formatStamp, groupBySession, wasEdited } from "../../utils/journal";
+import {
+  formatDay,
+  formatStamp,
+  groupBySession,
+  readSessionNumber,
+  sessionChoices,
+  wasEdited,
+} from "../../utils/journal";
 import "./TableJournal.css";
 
 const POLL_MS = 15000;
@@ -70,7 +78,10 @@ function VisibilityChoice({ value, onChange, name }) {
 // table, signed with the character's name (or "DM") and a time. Each note is
 // for the whole table or just its writer. Only the writer can edit or delete.
 //
-// isDm adds "Start session N". sessionNumber is the table's current session.
+// Anyone can file a note under any session number (to catch up on an earlier
+// session, or write about session 41 of a long campaign), and look back at any
+// session from the "Look back at" list. isDm adds "Start session N" and a box
+// to set the table's current session. sessionNumber is the table's current one.
 function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
   const [entries, setEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,7 +90,12 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
   const [showAll, setShowAll] = useState(false);
   const [visibility, setVisibility] = useState("table");
   const [isPosting, setIsPosting] = useState(false);
-  const [editing, setEditing] = useState(null); // { id, body, visibility }
+  const [editing, setEditing] = useState(null); // { id, body, visibility, session }
+  // Which session a new note goes under ("" = the table's current one), and
+  // what's being looked at: "recent", "all", or a session number.
+  const [noteSession, setNoteSession] = useState("");
+  const [view, setView] = useState("recent");
+  const [currentInput, setCurrentInput] = useState("");
   const draftId = useId();
   const choiceName = useId();
 
@@ -124,16 +140,48 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
   async function post(event) {
     event.preventDefault();
     if (!draft.trim()) return;
+    const chosen = readSessionNumber(noteSession, { allowBlank: true });
+    if (chosen.error) {
+      setError(chosen.error);
+      return;
+    }
     setIsPosting(true);
-    const posted = await run(() => addJournalEntry(tableId, { body: draft, visibility }));
+    const posted = await run(() =>
+      addJournalEntry(tableId, { body: draft, visibility, sessionNumber: chosen.value }),
+    );
     setIsPosting(false);
-    if (posted) setDraft("");
+    if (posted) {
+      setDraft("");
+      // Look at the session the note went into, so it's easy to find.
+      if (chosen.value && chosen.value !== sessionNumber) setView(String(chosen.value));
+    }
   }
 
   async function saveEdit(event) {
     event.preventDefault();
     if (!editing.body.trim()) return;
-    if (await run(() => updateJournalEntry(editing.id, editing))) setEditing(null);
+    const chosen = readSessionNumber(editing.session);
+    if (chosen.error) {
+      setError(chosen.error);
+      return;
+    }
+    if (await run(() => updateJournalEntry(editing.id, { ...editing, sessionNumber: chosen.value }))) {
+      setEditing(null);
+    }
+  }
+
+  // DM: set the table's current session to any number.
+  async function changeCurrentSession(event) {
+    event.preventDefault();
+    const chosen = readSessionNumber(currentInput);
+    if (chosen.error) {
+      setError(chosen.error);
+      return;
+    }
+    if (chosen.value === sessionNumber) return;
+    if (window.confirm(`Make session ${chosen.value} the current session? New notes will go under it.`)) {
+      if (await run(() => setSessionNumber(tableId, chosen.value))) setCurrentInput("");
+    }
   }
 
   function remove(entry) {
@@ -148,14 +196,27 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
     }
   }
 
-  // Just the newest few notes unless the reader asks for everything.
-  const hiddenCount = showAll ? 0 : Math.max(0, entries.length - SHOWN_NOTES);
+  // What's on screen: the newest few notes (the default), every session, or
+  // one session in full.
+  const choices = sessionChoices(entries, sessionNumber);
   const newestFirst = [...entries].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  const shown = hiddenCount ? newestFirst.slice(0, SHOWN_NOTES) : entries;
-  const sessions = groupBySession(shown);
-  // Show the current session's heading even before anyone writes in it.
-  if (!sessions.some((group) => group.session === sessionNumber)) {
-    sessions.unshift({ session: sessionNumber, startedAt: null, entries: [] });
+  const hiddenCount = view === "recent" && !showAll ? Math.max(0, entries.length - SHOWN_NOTES) : 0;
+  let sessions;
+  if (view === "recent") {
+    sessions = groupBySession(hiddenCount ? newestFirst.slice(0, SHOWN_NOTES) : entries);
+    // Show the current session's heading even before anyone writes in it.
+    if (!sessions.some((group) => group.session === sessionNumber)) {
+      sessions.unshift({ session: sessionNumber, startedAt: null, entries: [] });
+    }
+  } else if (view === "all") {
+    sessions = groupBySession(entries);
+    if (!sessions.some((group) => group.session === sessionNumber)) {
+      sessions.unshift({ session: sessionNumber, startedAt: null, entries: [] });
+    }
+  } else {
+    const wanted = Number(view);
+    sessions = groupBySession(entries.filter((entry) => (entry.session_number ?? 1) === wanted));
+    if (sessions.length === 0) sessions = [{ session: wanted, startedAt: null, entries: [] }];
   }
 
   return (
@@ -170,13 +231,31 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
           </Button>
         )}
       </div>
+      {isDm && (
+        <form className="table-journal__current" onSubmit={changeCurrentSession} noValidate>
+          <label htmlFor={`${draftId}-current`}>Current session is {sessionNumber}. Set it to:</label>
+          <input
+            id={`${draftId}-current`}
+            className="table-journal__number"
+            type="number"
+            min="1"
+            max="9999"
+            placeholder={String(sessionNumber)}
+            value={currentInput}
+            onChange={(event) => setCurrentInput(event.target.value)}
+          />
+          <Button type="submit" variant="secondary" disabled={currentInput.trim() === ""}>
+            Set
+          </Button>
+        </form>
+      )}
       <p className="table-journal__hint">
         Notes and recaps for the whole table. Each note is signed{" "}
         {isDm ? "“DM”" : "with your character's name"} and the time. Pick{" "}
         <strong>Just me</strong> for a private note only you can read.
       </p>
 
-      <form className="table-journal__composer" onSubmit={post}>
+      <form className="table-journal__composer" onSubmit={post} noValidate>
         <label className="table-journal__visually-hidden" htmlFor={draftId}>
           New note
         </label>
@@ -191,15 +270,52 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
         />
         <div className="table-journal__composer-row">
           <VisibilityChoice value={visibility} onChange={setVisibility} name={choiceName} />
+          <label className="table-journal__session-pick" htmlFor={`${draftId}-session`}>
+            Session
+            <input
+              id={`${draftId}-session`}
+              className="table-journal__number"
+              type="number"
+              min="1"
+              max="9999"
+              placeholder={String(sessionNumber)}
+              value={noteSession}
+              onChange={(event) => setNoteSession(event.target.value)}
+            />
+          </label>
           <Button type="submit" disabled={!draft.trim() || isPosting}>
             {isPosting
               ? "Saving..."
               : visibility === "private"
                 ? "Save private note"
-                : `Add to session ${sessionNumber}`}
+                : `Add to session ${noteSession.trim() || sessionNumber}`}
           </Button>
         </div>
+        <p className="table-journal__hint">
+          Leave Session as it is for the current session, or type another number to write about an earlier
+          one (or start a new one).
+        </p>
       </form>
+
+      {/* Look back at any earlier session, in full. */}
+      <div className="table-journal__lookback">
+        <label htmlFor={`${draftId}-view`}>Look back at</label>
+        <select
+          id={`${draftId}-view`}
+          className="table-journal__select"
+          value={view}
+          onChange={(event) => setView(event.target.value)}
+        >
+          <option value="recent">Newest notes</option>
+          <option value="all">Every session</option>
+          {choices.map(({ session, count }) => (
+            <option key={session} value={String(session)}>
+              Session {session} ({count} {count === 1 ? "note" : "notes"})
+              {session === sessionNumber ? ", current" : ""}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {error && (
         <p className="table-journal__error" role="alert">
@@ -246,7 +362,7 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
                     </p>
 
                     {isEditing ? (
-                      <form className="table-journal__edit" onSubmit={saveEdit}>
+                      <form className="table-journal__edit" onSubmit={saveEdit} noValidate>
                         <textarea
                           className="table-journal__input"
                           aria-label="Edit note"
@@ -255,6 +371,18 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
                           rows={3}
                           onChange={(event) => setEditing({ ...editing, body: event.target.value })}
                         />
+                        <label className="table-journal__session-pick">
+                          Session
+                          <input
+                            className="table-journal__number"
+                            type="number"
+                            min="1"
+                            max="9999"
+                            aria-label="Session number for this note"
+                            value={editing.session}
+                            onChange={(event) => setEditing({ ...editing, session: event.target.value })}
+                          />
+                        </label>
                         <div className="table-journal__composer-row">
                           <VisibilityChoice
                             value={editing.visibility}
@@ -281,7 +409,12 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
                           type="button"
                           className="table-journal__link"
                           onClick={() =>
-                            setEditing({ id: entry.id, body: entry.body, visibility: entry.visibility })
+                            setEditing({
+                              id: entry.id,
+                              body: entry.body,
+                              visibility: entry.visibility,
+                              session: String(entry.session_number ?? 1),
+                            })
                           }
                         >
                           Edit
@@ -303,7 +436,7 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
         ))
       )}
 
-      {(hiddenCount > 0 || (showAll && entries.length > SHOWN_NOTES)) && (
+      {view === "recent" && (hiddenCount > 0 || (showAll && entries.length > SHOWN_NOTES)) && (
         <Button
           variant="secondary"
           className="table-journal__more"

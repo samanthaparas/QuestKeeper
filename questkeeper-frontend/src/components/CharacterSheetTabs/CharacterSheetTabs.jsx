@@ -9,6 +9,8 @@ const CHARACTER_SHEET_TABS = [
   // Every roll made on this sheet, to look back at.
   { key: "rolls", label: "Rolls" },
   { key: "story", label: "Story" },
+  // This character's own session notes, whether or not it is at a table.
+  { key: "myjournal", label: "My Journal" },
   // The table's handouts and shared journal, only while at a table, so a
   // player never has to leave their sheet during a session.
   { key: "journal", label: "Journal & Handouts", tableOnly: true },

@@ -44,3 +44,36 @@ export function formatDay(when) {
 export function wasEdited(entry) {
   return new Date(entry.updated_at) - new Date(entry.created_at) > 60_000;
 }
+
+// The highest session number a note can be filed under.
+export const MAX_SESSION = 9999;
+
+// What was typed in a session box: a whole number from 1 to MAX_SESSION.
+// Returns { value } or { error } in plain words. A blank box means "use the
+// current session" ({ value: null }) when allowBlank is set.
+export function readSessionNumber(text, { allowBlank = false } = {}) {
+  const trimmed = String(text ?? "").trim();
+  if (trimmed === "") {
+    return allowBlank ? { value: null } : { error: "Type a session number, like 12." };
+  }
+  const number = Number(trimmed);
+  if (!Number.isInteger(number) || number < 1 || number > MAX_SESSION) {
+    return { error: `A session number is a whole number from 1 to ${MAX_SESSION}.` };
+  }
+  return { value: number };
+}
+
+// The "Look back at" choices: [{ session, count }], newest session first,
+// with the table's current session always included.
+export function sessionChoices(entries, currentSession) {
+  const counts = new Map();
+  for (const entry of entries) {
+    const session = entry.session_number ?? 1;
+    counts.set(session, (counts.get(session) ?? 0) + 1);
+  }
+  if (!counts.has(currentSession)) counts.set(currentSession, 0);
+  return [...counts.entries()]
+    .sort(([a], [b]) => b - a)
+    .map(([session, count]) => ({ session, count }));
+}
+

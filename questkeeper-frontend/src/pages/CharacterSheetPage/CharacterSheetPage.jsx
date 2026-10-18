@@ -82,6 +82,7 @@ import TableJournal from "../../components/TableJournal/TableJournal";
 import TurnBanner from "../../components/TurnBanner/TurnBanner";
 import AttackPanel from "../../components/AttackPanel/AttackPanel";
 import RollHistory from "../../components/RollHistory/RollHistory";
+import PersonalJournal from "../../components/PersonalJournal/PersonalJournal";
 import ShortRestPanel from "../../components/ShortRestPanel/ShortRestPanel";
 import CharacterSheetTabs from "../../components/CharacterSheetTabs/CharacterSheetTabs";
 import CharacterSheetActionsTab from "../../components/CharacterSheetActionsTab/CharacterSheetActionsTab";
@@ -2196,6 +2197,13 @@ function CharacterSheetPage() {
 
                   {activeTab === "rolls" && (
                     <RollHistory history={roller.history} onClear={roller.clearHistory} />
+                  )}
+
+                  {activeTab === "myjournal" && (
+                    <PersonalJournal
+                      characterId={sheet.id}
+                      table={roller.tableId ? { id: roller.tableId, name: roller.tableName } : null}
+                    />
                   )}
 
                   {activeTab === "story" && (
