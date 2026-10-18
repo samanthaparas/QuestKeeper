@@ -430,19 +430,25 @@ function CharacterSheetPage() {
       );
       return {
         sheet: { ...updatedSheet, features: [...(updatedSheet.features ?? []), ...added] },
-        addedFeatures: added.map((feature) => feature.name),
         featuresFailed: false,
       };
     } catch {
-      return { sheet: updatedSheet, addedFeatures: [], featuresFailed: true };
+      return { sheet: updatedSheet, featuresFailed: true };
     }
   }
 
   async function handleLevelUpComplete(leveledSheet) {
     setIsAddingLevelFeatures(true);
-    const { sheet: updatedSheet, addedFeatures, featuresFailed } = await withNewLevelFeatures(leveledSheet);
+    const { sheet: updatedSheet, featuresFailed } = await withNewLevelFeatures(leveledSheet);
     setIsAddingLevelFeatures(false);
-    const summary = { ...buildLevelUpSummary(sheet, updatedSheet), addedFeatures, featuresFailed };
+    // Lists both the features picked in the wizard (a Fighting Style) and the
+    // ones added for the new level.
+    const baseSummary = buildLevelUpSummary(sheet, updatedSheet);
+    const summary = {
+      ...baseSummary,
+      addedFeatures: baseSummary.newFeatures.map((feature) => feature.name),
+      featuresFailed,
+    };
     setSheet(updatedSheet);
     setLevelUpSummary(summary);
     setIsLevelingUp(false);
@@ -1621,6 +1627,10 @@ function CharacterSheetPage() {
                 <li>
                   Swapped Out: {levelUpSummary.removedSpells.map((spell) => spell.name).join(", ")}
                 </li>
+              )}
+
+              {levelUpSummary.newExpertise?.length > 0 && (
+                <li>Expertise: {levelUpSummary.newExpertise.join(", ")}</li>
               )}
 
               {levelUpSummary.addedFeatures?.length > 0 && (

@@ -36,7 +36,14 @@ import Button from "../Button/Button";
 import SourceBadge from "../SourceBadge/SourceBadge";
 import BookEntryPanel from "../BookEntryPanel/BookEntryPanel";
 import HomebrewDialog from "../HomebrewDialog/HomebrewDialog";
-import { mapSubclassToPanel } from "../../utils/srdDetails";
+import { loadFeatureEntries, mapSubclassToPanel } from "../../utils/srdDetails";
+import {
+  BOOK_OPTION,
+  formatOption,
+  getLevelUpFeatureChoices,
+  resolveLevelUpFeatureChoices,
+} from "../../utils/featureChoices";
+import { getFeatureSubclassId, sourceFromEntry } from "../../utils/featureSources";
 import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 
@@ -96,6 +103,13 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
   // "spell-1", "swap"), so switching a slot back and forth keeps the typing.
   const [bookDrafts, setBookDrafts] = useState({});
   const [selectedSpellDetails, setSelectedSpellDetails] = useState(null);
+
+  // Feature step (Fighting Style, Expertise, Invocations...): the choices
+  // this level asks for (null while loading), and what's been picked.
+  const [featureGroups, setFeatureGroups] = useState(null);
+  const [featureError, setFeatureError] = useState("");
+  const [featurePicks, setFeaturePicks] = useState({});
+  const [featureBookDrafts, setFeatureBookDrafts] = useState({});
 
   const currentStep = pendingLevelUp.steps[stepIndex];
 
@@ -176,6 +190,64 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
   const isSpellDetailLoading =
     Boolean(selectedSpellIndex) &&
     selectedSpellDetails?.index !== selectedSpellIndex;
+
+  // The class at the new level: with the subclass picked in this wizard, so
+  // a subclass's own choices are found too.
+  const pickedSubclass = pendingLevelUp.steps.find((step) => step.key === "subclass")?.data;
+  const leveledClass = pickedSubclass ? { ...sheet.class, subclass: pickedSubclass } : sheet.class;
+
+  // Load this level's feature choices once the player reaches that step.
+  useEffect(() => {
+    if (currentStep?.key !== "features") return;
+    let ignore = false;
+
+    loadFeatureEntries({
+      classId: leveledClass?.id,
+      subclassId: getFeatureSubclassId(leveledClass),
+      raceId: sheet.race?.id,
+      subraceId: sheet.race?.subrace?.id,
+    })
+      .then((entries) => {
+        if (ignore) return;
+        if (entries.length === 0) throw new Error("No features found");
+        setFeatureGroups(
+          getLevelUpFeatureChoices(entries, { ...sheet, class: leveledClass }, targetLevel),
+        );
+      })
+      .catch(() => {
+        if (ignore) return;
+        setFeatureGroups([]);
+        setFeatureError(
+          "Couldn't load this level's choices right now. You can make them later on the Features tab.",
+        );
+      });
+
+    return () => {
+      ignore = true;
+    };
+    // leveledClass is rebuilt each render; the step key and subclass are what matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep?.key, pickedSubclass?.id]);
+
+  // What goes on the sheet, or null while a pick is missing or repeated.
+  const resolvedFeatureChoices = featureGroups
+    ? resolveLevelUpFeatureChoices(featureGroups, featurePicks, featureBookDrafts, sheet, {
+        safeLink: getSafeSpellLink,
+        sourceOf: sourceFromEntry,
+      })
+    : null;
+
+  function setFeaturePick(groupKey, slot, value) {
+    setFeaturePicks((prev) => {
+      const slots = [...(prev[groupKey] ?? [])];
+      slots[slot] = value;
+      return { ...prev, [groupKey]: slots };
+    });
+  }
+
+  function setFeatureBookDraft(draftKey, draft) {
+    setFeatureBookDrafts((prev) => ({ ...prev, [draftKey]: draft }));
+  }
 
   // Load the list of subclasses once the player reaches that step.
   useEffect(() => {
@@ -376,6 +448,22 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
 
     if (step.key === "subclass") {
       return `New Subclass: ${step.data.name}`;
+    }
+
+    if (step.key === "features") {
+      const data = step.data ?? {};
+      const parts = (data.features ?? []).map((feature) =>
+        feature.link || !feature.description ? `${feature.name} (book)` : feature.name,
+      );
+      // List picks (Favored Enemy: Undead) show what was picked.
+      const withPicks = (data.features ?? []).map((feature, i) => {
+        const picks = (feature.choices ?? []).flatMap((choice) => choice.picked ?? []);
+        return picks.length ? `${feature.name}: ${picks.map(formatOption).join(", ")}` : parts[i];
+      });
+      if (data.expertise?.length) {
+        withPicks.push(`Expertise: ${data.expertise.map(formatOption).join(", ")}`);
+      }
+      return withPicks.length ? `Class choices: ${withPicks.join(" · ")}` : "Class choices: none made";
     }
 
     if (step.key === "spells") {
@@ -833,6 +921,62 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
         </div>
       )}
 
+      {currentStep?.key === "features" && (
+        <div className="level-up-wizard__step">
+          <h3 className="level-up-wizard__step-title">Class Choices</h3>
+          <p className="level-up-wizard__step-description">
+            At level {targetLevel}, {sheet.class?.name ?? "your class"} makes these
+            choices. Each one goes on the Features tab.
+          </p>
+
+          {!featureGroups && <p>Loading choices...</p>}
+          {featureError && <p className="level-up-wizard__error">{featureError}</p>}
+          {featureGroups?.length === 0 && !featureError && (
+            <p className="level-up-wizard__step-description">
+              Nothing to choose at this level.
+            </p>
+          )}
+
+          {featureGroups?.map((group) => (
+            <div className="level-up-wizard__feature-group" key={group.key}>
+              {Array.from({ length: group.choose }, (_, slot) => {
+                const slots = featurePicks[group.key] ?? [];
+                const value = slots[slot] ?? "";
+                // An option picked in another box of this choice isn't offered again.
+                const takenHere = new Set(
+                  slots.filter((pick, i) => i !== slot && pick && pick !== BOOK_OPTION),
+                );
+                const draftKey = `${group.key}#${slot}`;
+                const picked = group.optionEntries?.[value];
+                return (
+                  <FeaturePickSelect
+                    key={draftKey}
+                    label={`${group.title}${group.choose > 1 ? ` ${slot + 1}` : ""}`}
+                    value={value}
+                    options={group.options.filter((option) => !takenHere.has(option.value))}
+                    allowBook={group.kind === "option"}
+                    bookPrefix={group.bookPrefix}
+                    bookDraft={featureBookDrafts[draftKey]}
+                    onBookDraftChange={(draft) => setFeatureBookDraft(draftKey, draft)}
+                    onChange={(next) => setFeaturePick(group.key, slot, next)}
+                    description={picked?.description}
+                  />
+                );
+              })}
+            </div>
+          ))}
+
+          <Button
+            disabled={!featureGroups || (!featureError && !resolvedFeatureChoices)}
+            onClick={() =>
+              completeStep(resolvedFeatureChoices ?? { features: [], expertise: [] })
+            }
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
       {currentStep?.key === "spells" && (
         <div className="level-up-wizard__step">
           <h3 className="level-up-wizard__step-title">Spells</h3>
@@ -1127,6 +1271,89 @@ function SpellPickSelect({
               placeholder="V, S, M"
               value={draft.components}
               onChange={update("components")}
+            />
+          </label>
+          <label className="level-up-wizard__pick-label">
+            Book link (optional)
+            <input
+              type="url"
+              className="level-up-wizard__text-input"
+              placeholder="https://"
+              value={draft.link}
+              onChange={update("link")}
+            />
+          </label>
+          {isLinkBad && (
+            <p className="level-up-wizard__error">
+              Links need to start with http:// or https://.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// One labelled dropdown for a feature choice (a Fighting Style, a skill for
+// Expertise). A pick of features can also be "Book option instead": a typed
+// name and an optional link, for options from books that aren't in the SRD
+// (like Tasha's Blind Fighting). Only the name and link are saved.
+function FeaturePickSelect({
+  label,
+  value,
+  options,
+  allowBook,
+  bookPrefix,
+  bookDraft,
+  onBookDraftChange,
+  onChange,
+  description,
+}) {
+  const draft = bookDraft ?? { name: "", link: "" };
+  const update = (field) => (e) => onBookDraftChange({ ...draft, [field]: e.target.value });
+  const typedLink = draft.link.trim();
+  const isLinkBad = typedLink !== "" && !getSafeSpellLink(typedLink);
+
+  return (
+    <div className="level-up-wizard__pick">
+      <label className="level-up-wizard__pick-label">
+        {label}
+        <select
+          className="level-up-wizard__spell-select"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="">Choose one</option>
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+          {allowBook && <option value={BOOK_OPTION}>Book option instead (type it in)</option>}
+        </select>
+      </label>
+
+      {description && value !== BOOK_OPTION && (
+        <div className="level-up-wizard__feat-card">
+          {description.split("\n").map((line, index) => (
+            <p key={index}>{line}</p>
+          ))}
+        </div>
+      )}
+
+      {value === BOOK_OPTION && (
+        <div className="level-up-wizard__book-spell">
+          <p className="level-up-wizard__book-spell-hint">
+            Only the name and your link are saved. Read the option&apos;s text in
+            your book.
+          </p>
+          <label className="level-up-wizard__pick-label">
+            {bookPrefix ? `Name (saved as "${bookPrefix}…")` : "Name"}
+            <input
+              type="text"
+              className="level-up-wizard__text-input"
+              value={draft.name}
+              onChange={update("name")}
             />
           </label>
           <label className="level-up-wizard__pick-label">

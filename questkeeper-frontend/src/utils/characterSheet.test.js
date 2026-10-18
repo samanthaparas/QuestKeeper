@@ -75,6 +75,14 @@ import {
   getSubraceCantripTraitId,
   addRacialCantrip,
 } from "./characterSheet";
+import {
+  BOOK_OPTION,
+  expertiseFromSrd,
+  getInvocationsKnown,
+  getLevelUpFeatureChoices,
+  optionIndexesFromSrd,
+  resolveLevelUpFeatureChoices,
+} from "./featureChoices";
 
 describe("getAbilityModifier", () => {
   it("matches the 5e modifier table", () => {
@@ -2190,5 +2198,190 @@ describe("bonus spells added on the Spells tab", () => {
     );
     expect(getSafeSpellLink("javascript:alert(1)")).toBe("");
     expect(getSafeSpellLink("")).toBe("");
+  });
+});
+
+describe("feature choices on level-up", () => {
+  const safeLink = getSafeSpellLink;
+  const sourceOf = (entry) => entry.owner ?? null;
+
+  // Entries shaped like loadFeatureEntries' answer.
+  const style = {
+    key: "feature:ranger-fighting-style",
+    name: "Fighting Style",
+    level: 2,
+    description: "Pick a style.",
+    optionIndexes: { choose: 1, indexes: ["ranger-fighting-style-archery", "ranger-fighting-style-defense"] },
+    owner: { type: "class", id: "ranger" },
+  };
+  const archery = {
+    key: "feature:ranger-fighting-style-archery",
+    name: "Fighting Style: Archery",
+    level: 2,
+    optionOf: "Fighting Style",
+    description: "+2 to ranged attack rolls.",
+    owner: { type: "class", id: "ranger" },
+  };
+  const defense = { ...archery, key: "feature:ranger-fighting-style-defense", name: "Fighting Style: Defense" };
+  const favoredEnemy = {
+    key: "feature:favored-enemy-2-types",
+    name: "Favored Enemy (2 types)",
+    level: 6,
+    description: "One more enemy type.",
+    choices: [{ key: "enemy_type_options", label: "Enemy type", choose: 1, options: ["undead", "fey"], picked: [] }],
+  };
+  const ranger = (level, features = []) => ({ level, class: { id: "ranger" }, features });
+
+  it("adds a feature step only at levels that bring a pick", () => {
+    expect(getLevelUpStepKeys(2, { id: "paladin" })).toContain("features");
+    expect(getLevelUpStepKeys(6, { id: "ranger", spellcastingType: "known" })).toContain("features");
+    expect(getLevelUpStepKeys(10, { id: "fighter", subclass: { id: "champion" } })).toContain("features");
+    expect(getLevelUpStepKeys(10, { id: "fighter" })).not.toContain("features");
+    expect(getLevelUpStepKeys(5, { id: "wizard" })).not.toContain("features");
+    // Before spells, so a new Pact or Invocation is known when picking spells.
+    const warlock = getLevelUpStepKeys(3, { id: "warlock", spellcastingType: "known" }, {
+      type: "known",
+      cantripsKnown: [],
+      spellsKnown: [],
+    });
+    expect(warlock.indexOf("features")).toBeLessThan(warlock.indexOf("spells"));
+  });
+
+  it("follows the Player's Handbook for invocations known", () => {
+    expect([1, 2, 4, 5, 6, 7, 9, 12, 15, 18, 20].map(getInvocationsKnown)).toEqual([
+      0, 2, 2, 3, 3, 4, 5, 6, 7, 8, 8,
+    ]);
+  });
+
+  it("reads the SRD's option lists and Expertise skills", () => {
+    expect(
+      optionIndexesFromSrd({
+        subfeature_options: { choose: 2, type: "feature", from: { options: [{ item: { index: "metamagic-careful-spell" } }] } },
+      }),
+    ).toEqual({ choose: 2, indexes: ["metamagic-careful-spell"] });
+    // A Rogue's first Expertise nests the skill list inside another choice.
+    expect(
+      expertiseFromSrd({
+        expertise_options: {
+          choose: 1,
+          from: {
+            options: [
+              {
+                option_type: "choice",
+                choice: { choose: 2, from: { options: [{ item: { index: "skill-stealth" } }, { item: { index: "thieves-tools" } }] } },
+              },
+            ],
+          },
+        },
+      }),
+    ).toEqual({ choose: 2, skills: ["stealth"] });
+    expect(expertiseFromSrd(null)).toBeNull();
+  });
+
+  it("offers Fighting Styles the character doesn't have, and a typed prefix for book ones", () => {
+    const groups = getLevelUpFeatureChoices(
+      [style, archery, defense],
+      ranger(1, [{ name: "Fighting Style: Defense" }]),
+      2,
+    );
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({ kind: "option", choose: 1, bookPrefix: "Fighting Style: " });
+    expect(groups[0].options.map((option) => option.label)).toEqual(["Fighting Style: Archery"]);
+  });
+
+  it("doesn't offer a Favored Enemy picked at an earlier level", () => {
+    const sheet = ranger(5, [
+      { name: "Favored Enemy (1 type)", choices: [{ key: "enemy_type_options", picked: ["undead"] }] },
+    ]);
+    const [group] = getLevelUpFeatureChoices([favoredEnemy], sheet, 6);
+    expect(group.options.map((option) => option.value)).toEqual(["fey"]);
+  });
+
+  it("turns picks into features: SRD text for SRD options, only name and link for book ones", () => {
+    const sheet = ranger(1);
+    const groups = getLevelUpFeatureChoices([style, archery, defense], sheet, 2);
+    expect(resolveLevelUpFeatureChoices(groups, {}, {}, sheet, { safeLink, sourceOf })).toBeNull();
+
+    expect(
+      resolveLevelUpFeatureChoices(groups, { [style.key]: [archery.key] }, {}, sheet, { safeLink, sourceOf }),
+    ).toEqual({
+      features: [
+        { name: "Fighting Style: Archery", description: "+2 to ranged attack rolls.", source: archery.owner },
+      ],
+      expertise: [],
+    });
+
+    const book = (draft) =>
+      resolveLevelUpFeatureChoices(groups, { [style.key]: [BOOK_OPTION] }, { [`${style.key}#0`]: draft }, sheet, {
+        safeLink,
+        sourceOf,
+      });
+    expect(book({ name: "", link: "" })).toBeNull();
+    expect(book({ name: "Blind Fighting", link: "javascript:alert(1)" })).toBeNull();
+    expect(book({ name: "Fighting Style: Blind Fighting", link: "https://example.com/bf" })).toEqual({
+      features: [
+        { name: "Fighting Style: Blind Fighting", description: "", source: null, link: "https://example.com/bf" },
+      ],
+      expertise: [],
+    });
+  });
+
+  it("saves a list pick on its feature, and won't take a name already on the sheet", () => {
+    const sheet = ranger(5);
+    const groups = getLevelUpFeatureChoices([favoredEnemy], sheet, 6);
+    const result = resolveLevelUpFeatureChoices(groups, { [groups[0].key]: ["fey"] }, {}, sheet, {
+      safeLink,
+      sourceOf,
+    });
+    expect(result.features[0]).toMatchObject({ name: "Favored Enemy (2 types)" });
+    expect(result.features[0].choices[0].picked).toEqual(["fey"]);
+
+    const already = ranger(5, [{ name: "Favored Enemy (2 types)" }]);
+    expect(
+      resolveLevelUpFeatureChoices(groups, { [groups[0].key]: ["fey"] }, {}, already, { safeLink, sourceOf }),
+    ).toBeNull();
+  });
+
+  it("puts the picks on the sheet when the level-up finishes", () => {
+    const sheet = {
+      level: 5,
+      abilityScores: { constitution: 10 },
+      class: { id: "rogue" },
+      feats: [],
+      features: [],
+      skills: { stealth: true, perception: true },
+      skillExpertise: { stealth: true },
+      combat: {
+        hitPoints: { max: 30, current: 30, temporary: 0 },
+        hitDice: { total: 5, remaining: 5, die: 8 },
+        hpHistory: [],
+      },
+      pendingLevelUp: {
+        targetLevel: 6,
+        steps: [
+          { key: "hitPoints", data: { amount: 5 } },
+          {
+            key: "features",
+            data: {
+              features: [{ name: "Fighting Style: Blind Fighting", description: "", link: "https://example.com/bf" }],
+              expertise: ["perception"],
+            },
+          },
+        ],
+      },
+    };
+    const after = finalizeLevelUp(sheet);
+    expect(after.skillExpertise).toEqual({ stealth: true, perception: true });
+    expect(after.features[0]).toMatchObject({ name: "Fighting Style: Blind Fighting", link: "https://example.com/bf" });
+    expect(after.features[0].index).toEqual(expect.any(String));
+
+    const summary = buildLevelUpSummary(sheet, after);
+    expect(summary.newFeatures.map((feature) => feature.name)).toEqual(["Fighting Style: Blind Fighting"]);
+    expect(summary.newExpertise).toEqual(["Perception"]);
+  });
+
+  it("only keeps a web link on a feature", () => {
+    expect(createFeat({ name: "X", link: "javascript:alert(1)" }).link).toBeUndefined();
+    expect(createFeat({ name: "X", link: "https://example.com" }).link).toBe("https://example.com");
   });
 });

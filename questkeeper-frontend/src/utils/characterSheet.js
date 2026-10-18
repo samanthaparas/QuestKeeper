@@ -866,6 +866,31 @@ export function getLevelUpSpellPlan(characterClass, spellcasting, targetLevel) {
   };
 }
 
+// The levels (2 and up) where an SRD class picks a feature option: Fighting
+// Style, Expertise, Metamagic, Pact Boon, Eldritch Invocations, or a Ranger's
+// extra Favored Enemy and terrain. Kept as a table, like the spells-known
+// tables, so the wizard knows how many steps there are before anything loads.
+// Level 1 picks are made at creation. Homebrew classes aren't listed, since
+// their features don't say what they ask for.
+const CLASS_FEATURE_CHOICE_LEVELS = {
+  bard: [3, 10],
+  paladin: [2],
+  ranger: [2, 6, 10, 14],
+  rogue: [6],
+  sorcerer: [3, 10, 17],
+  warlock: [2, 3, 5, 7, 9, 12, 15, 18],
+};
+// Subclass picks: the Champion's Additional Fighting Style.
+const SUBCLASS_FEATURE_CHOICE_LEVELS = {
+  champion: [10],
+};
+
+export function hasLevelUpFeatureChoices(characterClass, level) {
+  const classLevels = CLASS_FEATURE_CHOICE_LEVELS[characterClass?.id] ?? [];
+  const subclassLevels = SUBCLASS_FEATURE_CHOICE_LEVELS[characterClass?.subclass?.id] ?? [];
+  return classLevels.includes(level) || subclassLevels.includes(level);
+}
+
 export function getLevelUpStepKeys(targetLevel, characterClass, spellcasting = null) {
   const steps = ["hitPoints"];
 
@@ -875,6 +900,12 @@ export function getLevelUpStepKeys(targetLevel, characterClass, spellcasting = n
 
   if (ABILITY_SCORE_IMPROVEMENT_LEVELS.includes(targetLevel)) {
     steps.push("abilityOrFeat");
+  }
+
+  // Fighting Style, Expertise and the like come before spells, so a Pact of
+  // the Tome or a new Invocation is known when spells are picked.
+  if (hasLevelUpFeatureChoices(characterClass, targetLevel)) {
+    steps.push("features");
   }
 
   // Only when this level brings a spell choice: a Ranger at 4 has no new
@@ -1026,6 +1057,7 @@ export function finalizeLevelUp(sheet) {
 
   const spellStep = pendingLevelUp.steps.find((s) => s.key === "spells");
   const subclassStep = pendingLevelUp.steps.find((s) => s.key === "subclass");
+  const featureStep = pendingLevelUp.steps.find((s) => s.key === "features");
 
   const conModifier = getAbilityModifier(sheet.abilityScores.constitution);
   const hpGained = Math.max(1, (hpStep?.data?.amount ?? 0) + conModifier);
@@ -1062,6 +1094,19 @@ export function finalizeLevelUp(sheet) {
         ]
       : (sheet.feats ?? []);
 
+  // The feature step's picks: the chosen Fighting Style, Invocations and so
+  // on go on as features, and Expertise doubles those skills' bonus.
+  const features = featureStep?.data?.features?.length
+    ? [...(sheet.features ?? []), ...featureStep.data.features.map(createFeat)]
+    : sheet.features;
+  const expertisePicks = featureStep?.data?.expertise ?? [];
+  const skillExpertise = expertisePicks.length
+    ? {
+        ...(sheet.skillExpertise ?? {}),
+        ...Object.fromEntries(expertisePicks.map((skill) => [skill, true])),
+      }
+    : sheet.skillExpertise;
+
   return {
     ...sheet,
     level: pendingLevelUp.targetLevel,
@@ -1069,6 +1114,8 @@ export function finalizeLevelUp(sheet) {
     abilityScores,
     spellcasting,
     feats,
+    ...(features ? { features } : {}),
+    ...(skillExpertise ? { skillExpertise } : {}),
     combat: {
       ...sheet.combat,
       hitPoints: {
@@ -1125,6 +1172,14 @@ export function buildLevelUpSummary(before, after) {
   const newSpells = allSpells(after).filter((spell) => !beforeIndexes.has(spell.index));
   const removedSpells = allSpells(before).filter((spell) => !afterIndexes.has(spell.index));
 
+  // Features that are new (picked in the wizard or added for the new level),
+  // and skills that gained Expertise.
+  const beforeFeatures = new Set((before.features ?? []).map((feature) => feature.index));
+  const newFeatures = (after.features ?? []).filter((feature) => !beforeFeatures.has(feature.index));
+  const newExpertise = SKILLS.filter(
+    (skill) => after.skillExpertise?.[skill.index] && !before.skillExpertise?.[skill.index],
+  ).map((skill) => skill.name);
+
   return {
     fromLevel: before.level,
     toLevel: after.level,
@@ -1136,6 +1191,8 @@ export function buildLevelUpSummary(before, after) {
     newSubclass,
     newSpells,
     removedSpells,
+    newFeatures,
+    newExpertise,
   };
 }
 
@@ -1513,13 +1570,17 @@ export function updateAttack(attacks, index, updates) {
 // ({ type: "race" | "subrace" | "class" | "subclass", id, key, level }).
 // Typed-in features have none.
 // choices: picks it asks for (see featureChoices.js), saved with it.
-export function createFeat({ name, description, source = null, choices = null }) {
+// A feature or feat for the sheet. A book option typed in on level-up keeps
+// a link to where it's written up (web links only), never the book's text.
+export function createFeat({ name, description, source = null, choices = null, link = "" }) {
+  const safeLink = getSafeSpellLink(link);
   return {
     index: crypto.randomUUID(),
     name,
     description: description || "",
     ...(source ? { source } : {}),
     ...(choices?.length ? { choices } : {}),
+    ...(safeLink ? { link: safeLink } : {}),
   };
 }
 

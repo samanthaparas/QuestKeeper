@@ -12,6 +12,12 @@ vi.mock("../../utils/api", () => ({
   getFeatDetails: vi.fn(),
   getClassSpells: vi.fn().mockResolvedValue([]),
   getSpellDetails: vi.fn(),
+  // Feature look-ups for the Class Choices step. Empty unless a test fills them.
+  getClassFeatures: vi.fn().mockResolvedValue([]),
+  getFeatureDetails: vi.fn(),
+  getRaceTraits: vi.fn().mockResolvedValue([]),
+  getSubraceTraits: vi.fn().mockResolvedValue([]),
+  getTraitDetails: vi.fn(),
   getClassDetails: vi.fn().mockResolvedValue({
     index: "rogue",
     subclasses: [
@@ -64,7 +70,12 @@ vi.mock("../../utils/api", () => ({
 
 import { MemoryRouter } from "react-router-dom";
 import LevelUpWizard from "./LevelUpWizard";
-import { getClassSpells, getSpellDetails } from "../../utils/api";
+import {
+  getClassFeatures,
+  getClassSpells,
+  getFeatureDetails,
+  getSpellDetails,
+} from "../../utils/api";
 
 // A level 2 Rogue, so the next level (3) includes the subclass step.
 const rogue = {
@@ -158,6 +169,7 @@ function makeRanger(level, spellsKnown) {
 }
 
 async function reachSpellStep(sheet, onComplete = vi.fn()) {
+  getClassFeatures.mockResolvedValue([]);
   getClassSpells.mockResolvedValue(rangerSpells);
   getSpellDetails.mockImplementation((index) =>
     Promise.resolve({ index, name: index, components: ["V"] }),
@@ -169,6 +181,13 @@ async function reachSpellStep(sheet, onComplete = vi.fn()) {
   );
   await userEvent.click(screen.getByRole("button", { name: /Take Average/ }));
   await userEvent.click(screen.getByRole("button", { name: "Next" }));
+  // Rangers make a class choice at 2 and 6 first. With no feature data it
+  // says it couldn't load them, and Next goes on.
+  const step = await screen.findByRole("heading", { name: /^(Class Choices|Spells)$/ });
+  if (step.textContent === "Class Choices") {
+    await screen.findByText(/Couldn't load this level's choices/);
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+  }
 }
 
 describe("LevelUpWizard spell step", () => {
@@ -300,5 +319,256 @@ describe("LevelUpWizard spell step", () => {
     await userEvent.click(screen.getByRole("button", { name: /Confirm & Finish/ }));
     const names = onComplete.mock.calls[0][0].spellcasting.spellsKnown.map((s) => s.name);
     expect(names).toEqual(["Hunter's Mark", "Goodberry", "Fog Cloud", "Absorb Elements"]);
+  });
+});
+
+// Class Choices: fake SRD features, shaped like the SRD API's answers.
+const fakeFeatures = {
+  "paladin-fighting-style": {
+    index: "paladin-fighting-style",
+    name: "Fighting Style",
+    level: 2,
+    class: { name: "Paladin" },
+    desc: ["You adopt a style of fighting."],
+    feature_specific: {
+      subfeature_options: {
+        choose: 1,
+        type: "feature",
+        from: {
+          options: [
+            { item: { index: "paladin-fighting-style-defense", name: "Fighting Style: Defense" } },
+            { item: { index: "paladin-fighting-style-dueling", name: "Fighting Style: Dueling" } },
+          ],
+        },
+      },
+    },
+  },
+  "paladin-fighting-style-defense": {
+    index: "paladin-fighting-style-defense",
+    name: "Fighting Style: Defense",
+    level: 2,
+    parent: { name: "Fighting Style" },
+    class: { name: "Paladin" },
+    desc: ["+1 to AC while wearing armor."],
+  },
+  "paladin-fighting-style-dueling": {
+    index: "paladin-fighting-style-dueling",
+    name: "Fighting Style: Dueling",
+    level: 2,
+    parent: { name: "Fighting Style" },
+    class: { name: "Paladin" },
+    desc: ["+2 damage with a one-handed weapon."],
+  },
+  "rogue-expertise-2": {
+    index: "rogue-expertise-2",
+    name: "Expertise",
+    level: 6,
+    class: { name: "Rogue" },
+    desc: ["Double your proficiency bonus for two skills."],
+    feature_specific: {
+      expertise_options: {
+        choose: 2,
+        type: "proficiency",
+        from: {
+          options: ["acrobatics", "insight", "perception", "stealth"].map((skill) => ({
+            option_type: "reference",
+            item: { index: `skill-${skill}` },
+          })),
+        },
+      },
+    },
+  },
+  "eldritch-invocations": {
+    index: "eldritch-invocations",
+    name: "Eldritch Invocations",
+    level: 2,
+    class: { name: "Warlock" },
+    desc: ["You learn invocations."],
+    feature_specific: {
+      invocations: [
+        { index: "eldritch-invocation-agonizing-blast" },
+        { index: "eldritch-invocation-thirsting-blade" },
+        { index: "eldritch-invocation-lifedrinker" },
+      ],
+    },
+  },
+  "eldritch-invocation-agonizing-blast": {
+    index: "eldritch-invocation-agonizing-blast",
+    name: "Eldritch Invocation: Agonizing Blast",
+    level: 2,
+    parent: { name: "Eldritch Invocations" },
+    class: { name: "Warlock" },
+    prerequisites: [{ type: "spell", spell: "/api/2014/spells/eldritch-blast" }],
+    desc: ["Add CHA to Eldritch Blast damage."],
+  },
+  "eldritch-invocation-thirsting-blade": {
+    index: "eldritch-invocation-thirsting-blade",
+    name: "Eldritch Invocation: Thirsting Blade",
+    level: 5,
+    parent: { name: "Eldritch Invocations" },
+    class: { name: "Warlock" },
+    prerequisites: [
+      { type: "level", level: 5 },
+      { type: "feature", feature: "/api/2014/features/pact-of-the-blade" },
+    ],
+    desc: ["Attack twice with your pact weapon."],
+  },
+  "eldritch-invocation-lifedrinker": {
+    index: "eldritch-invocation-lifedrinker",
+    name: "Eldritch Invocation: Lifedrinker",
+    level: 12,
+    parent: { name: "Eldritch Invocations" },
+    class: { name: "Warlock" },
+    prerequisites: [{ type: "level", level: 12 }],
+    desc: ["Extra necrotic damage."],
+  },
+};
+
+function makeCharacter(classId, className, level, extra = {}) {
+  return {
+    ...rogue,
+    name: `QA ${className}`,
+    level,
+    class: { id: classId, name: className, hitDie: 10 },
+    features: [],
+    ...extra,
+  };
+}
+
+async function reachClassChoices(sheet, featureIndexes, onComplete = vi.fn()) {
+  getClassFeatures.mockResolvedValue(featureIndexes.map((index) => ({ index, name: index })));
+  // Unknown features (the fake subclass lists) fail, and are skipped.
+  getFeatureDetails.mockImplementation((index) =>
+    fakeFeatures[index] ? Promise.resolve(fakeFeatures[index]) : Promise.reject(new Error("none")),
+  );
+  render(
+    <MemoryRouter>
+      <LevelUpWizard sheet={sheet} onComplete={onComplete} onCancel={vi.fn()} />
+    </MemoryRouter>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: /Take Average/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Next" }));
+  expect(await screen.findByRole("heading", { name: "Class Choices" })).toBeInTheDocument();
+}
+
+const paladinFeatures = [
+  "paladin-fighting-style",
+  "paladin-fighting-style-defense",
+  "paladin-fighting-style-dueling",
+];
+
+describe("LevelUpWizard class choices step", () => {
+  it("asks a level 2 Paladin for a Fighting Style and saves it with its text", async () => {
+    const onComplete = vi.fn();
+    await reachClassChoices(makeCharacter("paladin", "Paladin", 1), paladinFeatures, onComplete);
+
+    const style = await screen.findByLabelText("Fighting Style");
+    const next = screen.getByRole("button", { name: "Next" });
+    expect(next).toBeDisabled();
+    await userEvent.selectOptions(style, "feature:paladin-fighting-style-defense");
+    // The picked style's SRD text shows so the player can compare.
+    expect(screen.getByText("+1 to AC while wearing armor.")).toBeInTheDocument();
+    await userEvent.click(next);
+
+    expect(await screen.findByText(/Class choices: Fighting Style: Defense/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Confirm & Finish/ }));
+    const [feature] = onComplete.mock.calls[0][0].features;
+    expect(feature).toMatchObject({
+      name: "Fighting Style: Defense",
+      description: "+1 to AC while wearing armor.",
+    });
+  });
+
+  it("takes a typed-in book Fighting Style with a link and no book text", async () => {
+    const onComplete = vi.fn();
+    await reachClassChoices(makeCharacter("paladin", "Paladin", 1), paladinFeatures, onComplete);
+
+    await userEvent.selectOptions(await screen.findByLabelText("Fighting Style"), "__book__");
+    const next = screen.getByRole("button", { name: "Next" });
+    expect(next).toBeDisabled();
+    await userEvent.type(screen.getByLabelText(/^Name/), "Blind Fighting");
+    const link = screen.getByLabelText("Book link (optional)");
+    await userEvent.type(link, "javascript:alert(1)");
+    expect(screen.getByText(/Links need to start with http/)).toBeInTheDocument();
+    expect(next).toBeDisabled();
+    await userEvent.clear(link);
+    await userEvent.type(link, "https://example.com/blind-fighting");
+    await userEvent.click(next);
+
+    expect(
+      await screen.findByText(/Class choices: Fighting Style: Blind Fighting \(book\)/),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Confirm & Finish/ }));
+    const [feature] = onComplete.mock.calls[0][0].features;
+    expect(feature).toMatchObject({
+      name: "Fighting Style: Blind Fighting",
+      description: "",
+      link: "https://example.com/blind-fighting",
+    });
+  });
+
+  it("gives a level 6 Rogue Expertise in two skills they're proficient in", async () => {
+    const onComplete = vi.fn();
+    await reachClassChoices(
+      makeCharacter("rogue", "Rogue", 5, {
+        skills: { stealth: true, perception: true, acrobatics: true },
+        skillExpertise: { stealth: true },
+        class: { id: "rogue", name: "Rogue", hitDie: 8, subclass: { id: "thief", name: "Thief" } },
+      }),
+      ["rogue-expertise-2"],
+      onComplete,
+    );
+
+    const first = await screen.findByLabelText("Expertise 1");
+    // Only proficient skills without Expertise yet; Insight isn't trained.
+    expect(within(first).getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "Choose one",
+      "Acrobatics",
+      "Perception",
+    ]);
+    await userEvent.selectOptions(first, "perception");
+    const second = screen.getByLabelText("Expertise 2");
+    expect(within(second).queryByRole("option", { name: "Perception" })).toBeNull();
+    await userEvent.selectOptions(second, "acrobatics");
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    await userEvent.click(await screen.findByRole("button", { name: /Confirm & Finish/ }));
+    expect(onComplete.mock.calls[0][0].skillExpertise).toEqual({
+      stealth: true,
+      perception: true,
+      acrobatics: true,
+    });
+  });
+
+  it("asks a level 5 Warlock for one new invocation, hiding ones for higher levels", async () => {
+    await reachClassChoices(
+      makeCharacter("warlock", "Warlock", 4, {
+        features: [{ index: "x", name: "Eldritch Invocation: Agonizing Blast" }],
+        class: { id: "warlock", name: "Warlock", hitDie: 8, subclass: { id: "fiend", name: "The Fiend" } },
+      }),
+      [
+        "eldritch-invocations",
+        "eldritch-invocation-agonizing-blast",
+        "eldritch-invocation-thirsting-blade",
+        "eldritch-invocation-lifedrinker",
+      ],
+    );
+
+    // The Player's Handbook: 2 invocations known at level 4, 3 at level 5.
+    const pick = await screen.findByLabelText("Eldritch Invocations");
+    expect(screen.queryByLabelText("Eldritch Invocations 2")).toBeNull();
+    const labels = within(pick).getAllByRole("option").map((option) => option.textContent);
+    expect(labels).toEqual([
+      "Choose one",
+      "Eldritch Invocation: Thirsting Blade (needs Pact Of The Blade)",
+      "Book option instead (type it in)",
+    ]);
+  });
+
+  it("lets the player go on if the choices can't be loaded", async () => {
+    await reachClassChoices(makeCharacter("paladin", "Paladin", 1), []);
+    expect(await screen.findByText(/Couldn't load this level's choices/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(await screen.findByText("Class choices: none made")).toBeInTheDocument();
   });
 });
