@@ -135,6 +135,7 @@ function formatRollNote(roll, modifier, total) {
 // physical roll works like attacks: type just the die, and Dexterity is added.
 function InitiativePrompt({ combatant, dexterity, onSet, nudgeId = null }) {
   const [dieInput, setDieInput] = useState("");
+  const [dieError, setDieError] = useState("");
   const cardRef = useRef(null);
   const nudged = nudgeId !== null;
 
@@ -155,7 +156,13 @@ function InitiativePrompt({ combatant, dexterity, onSet, nudgeId = null }) {
   function useMyRoll(event) {
     event.preventDefault();
     const roll = Number(dieInput);
-    if (dieInput === "" || !Number.isInteger(roll) || roll < 1 || roll > 20) return;
+    if (dieInput === "") return;
+    // A d20 only shows 1 to 20; say so instead of doing nothing.
+    if (!Number.isInteger(roll) || roll < 1 || roll > 20) {
+      setDieError("A d20 only shows 1 to 20. Type the number on your die.");
+      return;
+    }
+    setDieError("");
     onSet(roll + modifier, formatRollNote(roll, modifier, roll + modifier));
     setDieInput("");
   }
@@ -185,7 +192,8 @@ function InitiativePrompt({ combatant, dexterity, onSet, nudgeId = null }) {
           </span>
         </div>
         <span className="table-page__init-prompt-or">or</span>
-        <form className="table-page__init-prompt-option" onSubmit={useMyRoll}>
+        {/* noValidate: our own message below says why, instead of the browser's. */}
+        <form className="table-page__init-prompt-option" onSubmit={useMyRoll} noValidate>
           <label className="table-page__init-prompt-label" htmlFor="init-prompt-die">
             Rolling real dice? Type just the number on your d20:
           </label>
@@ -198,12 +206,22 @@ function InitiativePrompt({ combatant, dexterity, onSet, nudgeId = null }) {
               max="20"
               placeholder="d20"
               value={dieInput}
-              onChange={(event) => setDieInput(event.target.value)}
+              aria-describedby={dieError ? "init-prompt-die-error" : undefined}
+              aria-invalid={dieError ? true : undefined}
+              onChange={(event) => {
+                setDieInput(event.target.value);
+                setDieError("");
+              }}
             />
             <Button type="submit" variant="secondary" disabled={dieInput === ""}>
               Use my roll
             </Button>
           </div>
+          {dieError && (
+            <span id="init-prompt-die-error" className="table-page__init-prompt-error" role="alert">
+              {dieError}
+            </span>
+          )}
           <span className="table-page__init-prompt-note">We add your {bonus} for you.</span>
         </form>
       </div>

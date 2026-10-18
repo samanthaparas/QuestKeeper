@@ -1009,6 +1009,8 @@ describe("initiative prompt for players", () => {
     await userEvent.click(screen.getByRole("button", { name: "Use my roll" }));
 
     expect(setMyInitiative).not.toHaveBeenCalled();
+    // And it says why, instead of silently doing nothing.
+    expect(screen.getByRole("alert")).toHaveTextContent("A d20 only shows 1 to 20");
   });
 
   it("does not repeat the controls on the player's own waiting row", async () => {

@@ -356,22 +356,25 @@ function CharacterSheetPage() {
   }
 
   // The new level's class and subclass features, added for the player so
-  // they don't have to go looking. Gives up after a few seconds (the server
-  // may be waking up) and says so in the summary instead.
+  // they don't have to go looking. The free server can take about 20 seconds
+  // to wake up, so it waits up to 45 seconds (and tries once more if the first
+  // look-up fails quickly) before saying so in the summary instead.
   async function withNewLevelFeatures(updatedSheet) {
-    const lookup = loadFeatureEntries({
-      classId: updatedSheet.class?.id,
-      subclassId: getFeatureSubclassId(updatedSheet.class),
-      raceId: updatedSheet.race?.id,
-      subraceId: updatedSheet.race?.subrace?.id,
-    }).then((entries) =>
-      featuresForNewLevel(
-        entries,
-        updatedSheet.level,
-        (updatedSheet.features ?? []).map((feature) => feature.name),
-      ),
-    );
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("slow")), 8000));
+    const attempt = () =>
+      loadFeatureEntries({
+        classId: updatedSheet.class?.id,
+        subclassId: getFeatureSubclassId(updatedSheet.class),
+        raceId: updatedSheet.race?.id,
+        subraceId: updatedSheet.race?.subrace?.id,
+      }).then((entries) =>
+        featuresForNewLevel(
+          entries,
+          updatedSheet.level,
+          (updatedSheet.features ?? []).map((feature) => feature.name),
+        ),
+      );
+    const lookup = attempt().catch(() => attempt());
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("slow")), 45000));
     try {
       const found = await Promise.race([lookup, timeout]);
       const added = found.map((entry) =>
@@ -594,7 +597,9 @@ function CharacterSheetPage() {
     const after = applyDamageToHitPoints(before, amount);
 
     persistSheet(
-      withDamageEffects({ ...sheet, combat: { ...sheet.combat, hitPoints: after } }, before, after),
+      withDamageEffects({ ...sheet, combat: { ...sheet.combat, hitPoints: after } }, before, after, {
+        incoming: amount,
+      }),
     );
 
     // Tell the player where it went, so "my HP didn't change" is never a mystery.
@@ -603,6 +608,10 @@ function CharacterSheetPage() {
     const parts = [];
     if (fromTemp > 0) parts.push(`${fromTemp} from temporary HP`);
     if (fromHp > 0) parts.push(`${fromHp} from HP`);
+    // Already at 0 HP, there's no HP left to lose, but the hit still counts.
+    if (parts.length === 0 && before.current <= 0 && amount > 0) {
+      return `Applied ${amount} damage. You were already at 0 HP, so that's a failed death save.`;
+    }
     return `Applied ${amount} damage: ${parts.join(" and ") || "nothing left to lose"}.`;
   }
 
@@ -611,9 +620,12 @@ function CharacterSheetPage() {
   // clear hit, so it also ends concentration at 0 HP and counts as a failed
   // death save when already at 0. A number typed in the HP box only gives the
   // reminder: clearing the box to retype it passes through 0 on the way.
-  function withDamageEffects(next, before, after, { typed = false } = {}) {
+  function withDamageEffects(next, before, after, { typed = false, incoming = 0 } = {}) {
     const lost = before.current + (before.temporary ?? 0) - (after.current + (after.temporary ?? 0));
-    if (lost <= 0) return next;
+    // A hit on someone already at 0 HP loses no HP (there's none left), but it
+    // is still a hit, so it counts as a failed death save.
+    const hitAtZero = !typed && before.current <= 0 && (lost > 0 || incoming > 0);
+    if (lost <= 0 && !hitAtZero) return next;
 
     let result = next;
     if (sheet.concentration) {
