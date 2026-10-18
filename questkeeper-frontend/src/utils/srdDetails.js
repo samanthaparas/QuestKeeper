@@ -1,4 +1,4 @@
-import { choicesFromSrd } from "./featureChoices";
+import { choicesFromSrd, expertiseFromSrd, optionIndexesFromSrd } from "./featureChoices";
 import {
   getFeatDescriptionLines,
   getSpellcastingAbility,
@@ -839,6 +839,12 @@ export async function loadFeatureEntries({
         otherSubclass: Boolean(ownSubclassId),
         // What the player picks for it (Favored Enemy: a creature type).
         choices: choicesFromSrd(data.feature_specific),
+        // Pick-from-features choices (Fighting Style, Metamagic, Invocations)
+        // and Expertise's skills, for the level-up wizard to ask about.
+        optionIndexes: optionIndexesFromSrd(data.feature_specific),
+        expertise: expertiseFromSrd(data.feature_specific),
+        // What an option needs first (a level, a Pact, a spell).
+        prerequisites: Array.isArray(data.prerequisites) ? data.prerequisites : [],
         // One pick from a list (a Dragon Ancestor colour, a Metamagic):
         // shown, but not ticked, so the player chooses theirs.
         optionOf: data.parent?.name ?? null,

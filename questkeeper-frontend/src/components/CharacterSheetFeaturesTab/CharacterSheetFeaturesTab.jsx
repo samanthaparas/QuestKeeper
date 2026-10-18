@@ -28,6 +28,7 @@ import {
   normalizeItemName,
 } from "../../utils/srdDetails";
 import Button from "../Button/Button";
+import { getSafeSpellLink } from "../../utils/characterSheet";
 import { findStraySubclassFeatures, sourceFromEntry } from "../../utils/featureSources";
 import {
   choicesFor,
@@ -454,9 +455,21 @@ function CharacterSheetFeaturesTab({
           }}
           extraRowContent={(feature) => {
             const choices = choicesFor(feature, allEntries);
-            if (choices.length === 0) return null;
+            // A book option picked on level-up links to where it's written up.
+            const link = getSafeSpellLink(feature.link);
+            if (choices.length === 0 && !link) return null;
             return (
               <span className="character-sheet__feature-choices">
+                {link && (
+                  <a
+                    className="character-sheet__spell-link"
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Book link
+                  </a>
+                )}
                 {choices.flatMap((choice) =>
                   Array.from({ length: choice.choose }, (_, slot) => (
                     <label key={`${choice.key}-${slot}`} className="character-sheet__feature-choice">
