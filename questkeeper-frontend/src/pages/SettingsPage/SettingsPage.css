@@ -95,3 +95,10 @@
   height: 20px;
   accent-color: var(--qk-terracotta);
 }
+
+/* The Appearance choices sit in a row, and wrap on a narrow phone. */
+.settings-page__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 24px;
+}

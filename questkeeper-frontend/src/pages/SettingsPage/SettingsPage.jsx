@@ -9,6 +9,7 @@ import {
   updatePassword,
 } from "../../utils/account";
 import { getMotionPreference, setMotionPreference } from "../../utils/motionPreference";
+import { getThemePreference, setThemePreference } from "../../utils/themePreference";
 import "./SettingsPage.css";
 
 const MIN_PASSWORD = 6; // Supabase's own minimum
@@ -39,8 +40,8 @@ function SaveMessage({ state }) {
   );
 }
 
-// Your account and this device's preferences: display name, Reduce Motion,
-// email and password.
+// Your account and this device's preferences: display name, Appearance,
+// Reduce Motion, email and password.
 function SettingsPage() {
   const { user } = useAuth();
 
@@ -48,6 +49,7 @@ function SettingsPage() {
   const [nameState, saveName] = useSaveState();
 
   const [motion, setMotion] = useState(getMotionPreference);
+  const [theme, setTheme] = useState(getThemePreference);
 
   const [email, setEmail] = useState("");
   const [emailState, saveEmail] = useSaveState();
@@ -60,6 +62,11 @@ function SettingsPage() {
     const value = event.target.checked ? "reduce" : "device";
     setMotion(value);
     setMotionPreference(value);
+  }
+
+  function handleTheme(value) {
+    setTheme(value);
+    setThemePreference(value);
   }
 
   async function handleEmail(event) {
@@ -116,6 +123,33 @@ function SettingsPage() {
           <SaveMessage state={nameState} />
         </div>
       </form>
+
+      <section className="settings-page__card" aria-labelledby="settings-theme-heading">
+        <h2 className="settings-page__heading" id="settings-theme-heading">
+          Appearance
+        </h2>
+        <p className="settings-page__hint">
+          Light or dark. &ldquo;Match my device&rdquo; follows your phone's or computer's own setting.
+          Saved on this device.
+        </p>
+        <div className="settings-page__choices" role="radiogroup" aria-labelledby="settings-theme-heading">
+          {[
+            ["device", "Match my device"],
+            ["light", "Light"],
+            ["dark", "Dark"],
+          ].map(([value, label]) => (
+            <label key={value} className="settings-page__switch">
+              <input
+                type="radio"
+                name="theme"
+                checked={theme === value}
+                onChange={() => handleTheme(value)}
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+      </section>
 
       <section className="settings-page__card" aria-labelledby="settings-motion-heading">
         <h2 className="settings-page__heading" id="settings-motion-heading">

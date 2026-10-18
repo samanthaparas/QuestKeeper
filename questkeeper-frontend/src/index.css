@@ -31,6 +31,14 @@
   --qk-danger: #a64136;
   --qk-warning: #a66a2c;
   --qk-focus: #487c83;
+  --qk-danger-soft: #fbe9e5;
+
+  /* Text on a filled terracotta or danger button or bar, and the fill of
+     text boxes. These flip in dark mode. */
+  --qk-on-accent: #fff;
+  --qk-input-bg: #fff;
+
+  color-scheme: light;
 
   /* Typography */
   --qk-font-display: "Fraunces", Georgia, serif;
@@ -57,6 +65,59 @@
   --qk-radius-control: 10px;
   --qk-radius-card: 14px;
   --qk-radius-large: 18px;
+}
+
+/* ---------- Dark mode ----------
+   Follows the device's setting unless Settings > Appearance says otherwise
+   (data-theme on <html>). Only the tokens change; screens read the tokens. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --qk-background: #1f1814;
+    --qk-surface: #2a211c;
+    --qk-surface-muted: #3a2e27;
+    --qk-text: #f2e6d6;
+    --qk-text-muted: #c2ad99;
+    --qk-border: #57463a;
+    --qk-shadow: rgba(0, 0, 0, 0.45);
+    --qk-terracotta: #e08a68;
+    --qk-terracotta-hover: #f0a283;
+    --qk-terracotta-soft: #4a2d22;
+    --qk-moss: #9cc19f;
+    --qk-moss-soft: #263a29;
+    --qk-brass: #d9a65c;
+    --qk-brass-soft: #3d3022;
+    --qk-danger: #ef9284;
+    --qk-danger-soft: #43231f;
+    --qk-warning: #e0a463;
+    --qk-focus: #8cc6cc;
+    --qk-on-accent: #1f1814;
+    --qk-input-bg: #1f1814;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --qk-background: #1f1814;
+  --qk-surface: #2a211c;
+  --qk-surface-muted: #3a2e27;
+  --qk-text: #f2e6d6;
+  --qk-text-muted: #c2ad99;
+  --qk-border: #57463a;
+  --qk-shadow: rgba(0, 0, 0, 0.45);
+  --qk-terracotta: #e08a68;
+  --qk-terracotta-hover: #f0a283;
+  --qk-terracotta-soft: #4a2d22;
+  --qk-moss: #9cc19f;
+  --qk-moss-soft: #263a29;
+  --qk-brass: #d9a65c;
+  --qk-brass-soft: #3d3022;
+  --qk-danger: #ef9284;
+  --qk-danger-soft: #43231f;
+  --qk-warning: #e0a463;
+  --qk-focus: #8cc6cc;
+  --qk-on-accent: #1f1814;
+  --qk-input-bg: #1f1814;
+  color-scheme: dark;
 }
 
 /* ---------- Global Reset ---------- */
