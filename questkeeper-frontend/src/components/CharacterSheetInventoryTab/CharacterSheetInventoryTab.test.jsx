@@ -40,6 +40,18 @@ describe("CharacterSheetInventoryTab", () => {
     expect(names[2]).toContain("Pouch");
   });
 
+  it("keeps the pencil and trash buttons behind an Edit button", async () => {
+    renderTab();
+
+    expect(screen.queryByRole("button", { name: "Edit Pouch" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByRole("button", { name: "Edit Pouch" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Pouch" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("button", { name: "Remove Pouch" })).not.toBeInTheDocument();
+  });
+
   it("uses a P toggle for proficiency and a star for attunement", async () => {
     const handlers = renderTab();
 

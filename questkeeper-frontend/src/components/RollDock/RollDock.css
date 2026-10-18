@@ -285,6 +285,9 @@
     right: 8px;
     bottom: 8px;
     justify-items: stretch;
+    /* The base max-width (for the corner card) would stop it short of the
+       right edge and leave it off-centre. */
+    max-width: none;
   }
 
   .roll-dock__bar {
@@ -530,5 +533,40 @@
 @media (max-width: 700px) {
   .roll-dock__hint {
     display: none;
+  }
+}
+
+/* Phones: the dock is one tidy card. Each choice is a full-width segmented
+   control (equal parts), stacked, with the share tick centred beneath. */
+@media (max-width: 600px) {
+  .roll-dock__bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: 8px;
+    justify-items: stretch;
+  }
+
+  .roll-dock__label {
+    display: none;
+  }
+
+  .roll-dock__modes {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+
+  .roll-dock__mode {
+    min-height: 34px;
+    padding: 0 6px;
+    white-space: nowrap;
+  }
+
+  .roll-dock__share,
+  .roll-dock__mode-hint,
+  .roll-dock__condition {
+    justify-content: center;
+    text-align: center;
   }
 }

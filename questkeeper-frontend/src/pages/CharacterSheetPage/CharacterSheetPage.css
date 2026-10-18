@@ -1671,6 +1671,14 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   padding-bottom: 96px;
 }
 
+/* Phones: the dice bar spans the bottom and can be two rows tall, so leave
+   room for all of it under the last card. */
+@media (max-width: 600px) {
+  .character-sheet {
+    padding-bottom: 140px;
+  }
+}
+
 /* A save is one pill: the proficiency dot tucked inside on the left, then
    "Save +3", which rolls. Kept as narrow as the old badge so the ability
    cards don't spill out of their boxes. */
@@ -2390,4 +2398,101 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
 
 .character-sheet__vital--hit-dice .character-sheet__vital-unit {
   margin: 0 1px;
+}
+
+/* Phones: the small text-sized controls get a finger-sized tap area (about
+   44px, WCAG 2.5.8). Buttons in text lines grow with padding; the "↺ auto"
+   button, inside a tight card, keeps its look and gets an invisible bigger
+   area instead. */
+@media (max-width: 600px) {
+  .character-sheet__edit-details,
+  .character-sheet__tap-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-block: 0;
+  }
+
+  .character-sheet__ac-mode--button {
+    position: relative;
+  }
+
+  .character-sheet__ac-mode--button::after {
+    content: "";
+    position: absolute;
+    inset: -14px -8px;
+  }
+}
+
+/* ---------- Phone polish ---------- */
+@media (max-width: 600px) {
+  /* "Playing at ..." and its link: two centred lines, no dot between. */
+  .character-sheet__content > .character-sheet__table-link {
+    text-align: center;
+  }
+
+  .character-sheet__table-line {
+    display: block;
+  }
+
+  .character-sheet__table-link .character-sheet__tap-link {
+    display: flex;
+    justify-content: center;
+    min-height: 36px;
+  }
+
+  .character-sheet__table-sep {
+    display: none;
+  }
+
+  /* AC and its temporary bonus box fit inside the one-column AC card. */
+  .character-sheet__vital--ac .character-sheet__vital-value {
+    gap: 2px;
+  }
+
+  .character-sheet__vital--ac .character-sheet__vital-input {
+    width: 28px;
+    padding: 0 2px;
+  }
+
+  .character-sheet__vital--ac .character-sheet__vital-input.character-sheet__ac-bonus {
+    width: 26px;
+  }
+
+  /* All saves: a small centred pill, not a bar across the sheet. */
+  .character-sheet__all-saves {
+    align-self: center;
+    justify-content: center;
+    padding: 2px 14px;
+  }
+
+  /* Ability cards: everything centred, and shorter. */
+  .character-sheet__vitals .character-sheet__ability-card {
+    gap: 1px 4px;
+    padding: 5px 4px 6px;
+  }
+
+  .character-sheet__vitals .character-sheet__ability-input {
+    width: 34px;
+    min-height: 26px;
+    padding: 0;
+  }
+
+  .character-sheet__vitals .character-sheet__ability-save-badge {
+    justify-self: center;
+    padding: 2px 10px;
+    font-size: 11px;
+  }
+
+  /* Inspiration, Gold, Level Up and the rests come before the tabs. */
+  .character-sheet__tabbar .character-sheet__actions {
+    order: -1;
+    /* Its own tinted panel, with room below, so it reads as a separate
+       section from the tab buttons. */
+    margin-bottom: 8px;
+    padding: 8px;
+    border: 1px solid var(--qk-border);
+    border-radius: var(--qk-radius-card);
+    background-color: var(--qk-surface-muted);
+  }
 }

@@ -1533,13 +1533,21 @@ function CharacterSheetPage() {
     <p className="character-sheet__table-link">
       {roller.tableId ? (
         <>
-          Playing at <strong>{roller.tableName}</strong> ·{" "}
-          <Link to={`/games/${roller.tableId}`}>Open the game page</Link>
+          <span className="character-sheet__table-line">
+            Playing at <strong>{roller.tableName}</strong>
+          </span>
+          <span className="character-sheet__table-sep"> · </span>
+          <Link className="character-sheet__table-line character-sheet__tap-link" to={`/games/${roller.tableId}`}>
+            Open the game page
+          </Link>
         </>
       ) : (
         <>
-          Not at a table yet ·{" "}
-          <Link to={`/games?character=${sheet.id}`}>Join a table</Link>
+          <span className="character-sheet__table-line">Not at a table yet</span>
+          <span className="character-sheet__table-sep"> · </span>
+          <Link className="character-sheet__table-line character-sheet__tap-link" to={`/games?character=${sheet.id}`}>
+            Join a table
+          </Link>
         </>
       )}
     </p>

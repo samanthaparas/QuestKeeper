@@ -76,6 +76,7 @@ function CharacterSheetInventoryTab({
         }
         emptyText="Track what you carry: weapons, armor, potions and treasure. Tap Add Item to add your first thing. Weapons you add here can be turned into attacks on the Actions tab with one tap."
         addButtonLabel="Add Item"
+        hasEditToggle
         onAdd={onEquipmentAdd}
         onUpdate={onEquipmentUpdate}
         onRemove={onEquipmentRemove}

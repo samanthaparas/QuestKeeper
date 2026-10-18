@@ -12,6 +12,13 @@ import { useOpenFromLink } from "../hooks/useOpenFromLink";
 
 // Feats: the SRD ones (full text), homebrew ones, and the feats from the
 // official books (a short summary and a link to their full rules).
+// "You gain +1 Str. Also more." -> "You gain +1 Str."
+function firstSentence(text) {
+  if (!text) return null;
+  const match = String(text).trim().match(/^.*?[.!?](?=\s|$)/);
+  return match ? match[0] : String(text).trim();
+}
+
 function FeatsPage() {
   const [featResults, setFeatResults] = useState([]);
   const [selectedResult, setSelectedResult] = useState(null);
@@ -33,6 +40,8 @@ function FeatsPage() {
             source: item.source,
             sourceGroup: item.sourceGroup,
             preview: item.preview ?? null,
+            // Phones can't hover, so the card shows the summary's first sentence.
+            tagline: firstSentence(item.preview),
             description: "Select this feat to view more details.",
           })),
         );

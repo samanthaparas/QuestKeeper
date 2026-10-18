@@ -22,7 +22,8 @@
 .source-badge--srd {
   border-color: var(--qk-border);
   background-color: var(--qk-surface-muted);
-  color: var(--qk-text-muted);
+  /* Full text color: the muted brown was 3.9:1 on this background at 11px. */
+  color: var(--qk-text);
 }
 
 /* Published books we link to but can't include. */

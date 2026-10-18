@@ -149,6 +149,9 @@ function EditableItemList({
   // until it is unlocked, so it can't be changed by accident.
   isLocked = null,
   onToggleLock = null,
+  // Equipment: the pencil and trash buttons stay hidden (rows stay one calm
+  // line on a phone) until "Edit" is tapped beside Add.
+  hasEditToggle = false,
 }) {
   const primaryField = fields[0];
   const textareaField = fields.find((field) => field.type === "textarea");
@@ -159,6 +162,8 @@ function EditableItemList({
   const [editingId, setEditingId] = useState(null);
   const [values, setValues] = useState(() => createEmptyValues(fields));
   const [expandedIds, setExpandedIds] = useState(() => new Set());
+  const [isEditMode, setIsEditMode] = useState(false);
+  const showRowButtons = !hasEditToggle || isEditMode;
 
   function resetForm() {
     setValues(createEmptyValues(fields));
@@ -296,6 +301,15 @@ function EditableItemList({
               Cancel
             </Button>
           )}
+          {hasEditToggle && items.length > 0 && !isAdding && (
+            <Button
+              variant="secondary"
+              aria-pressed={isEditMode}
+              onClick={() => setIsEditMode((on) => !on)}
+            >
+              {isEditMode ? "Done" : "Edit"}
+            </Button>
+          )}
           {isAdding ? (
             <Button type="submit" form={formId}>
               {editingId ? "Save Changes" : addButtonLabel}
@@ -430,8 +444,12 @@ function EditableItemList({
                           Lock
                         </button>
                       )}
-                      <IconButton kind="edit" label={`Edit ${getLabel(item)}`} onClick={() => handleEdit(item)} />
-                      <IconButton kind="remove" label={`Remove ${getLabel(item)}`} onClick={() => handleRemoveClick(item, id)} />
+                      {showRowButtons && (
+                        <>
+                          <IconButton kind="edit" label={`Edit ${getLabel(item)}`} onClick={() => handleEdit(item)} />
+                          <IconButton kind="remove" label={`Remove ${getLabel(item)}`} onClick={() => handleRemoveClick(item, id)} />
+                        </>
+                      )}
                     </>
                   )}
                 </span>

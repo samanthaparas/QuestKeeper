@@ -72,6 +72,11 @@
   color: var(--qk-text-muted);
   font-size: 13px;
   line-height: 1.3;
+  /* A long first sentence stops at two lines so cards stay even. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* Hover preview: on devices that can hover, the card's own face is covered

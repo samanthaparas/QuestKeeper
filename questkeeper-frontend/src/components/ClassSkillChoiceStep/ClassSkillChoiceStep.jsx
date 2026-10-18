@@ -71,6 +71,15 @@ function ClassSkillChoiceStep({
     backgroundSkills.length === backgroundMax &&
     extraChoices.every((choice) => (extraPicks[choice.id] ?? []).length === choice.choose);
 
+  // Why Next is greyed out, said next to the button: how many picks are left.
+  const picksLeft =
+    Math.max(0, maxChoices - chosenSkills.length) +
+    Math.max(0, backgroundMax - backgroundSkills.length) +
+    extraChoices.reduce(
+      (sum, choice) => sum + Math.max(0, choice.choose - (extraPicks[choice.id] ?? []).length),
+      0,
+    );
+
   function toggleExtra(choice, skillIndex) {
     setExtraPicks((prev) => {
       const current = prev[choice.id] ?? [];
@@ -359,6 +368,11 @@ function ClassSkillChoiceStep({
         <Button disabled={!isComplete} onClick={handleNext}>
           Next
         </Button>
+        {!isComplete && (
+          <span className="class-skill-choice-step__nav-hint" role="status">
+            Pick {picksLeft} more skill{picksLeft === 1 ? "" : "s"} to continue.
+          </span>
+        )}
       </div>
     </div>
   );
