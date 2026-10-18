@@ -398,18 +398,41 @@ function PersonalJournal({ characterId, table = null, name = "", portraitUrl = "
               {group.entries.map((entry) => {
                 const isEditing = editing?.id === entry.id;
                 return (
-                  <li key={entry.id} className="table-journal__entry">
-                    <p className="table-journal__byline">
-                      <span className="table-journal__stamp">
-                        {formatStamp(entry.created_at)}
-                        {wasEdited(entry) ? " · edited" : ""}
-                      </span>
-                      {entry.shared_table_id && (
-                        <span className="personal-journal__shared">
-                          {entry.shared_as === "private" ? "Brought in as Just me" : "Shared with a table"}
+                  <li key={entry.id} className="table-journal__entry table-journal__entry--plain">
+                    {/* Time and Edit / Delete on one line, then the note. */}
+                    <div className="table-journal__entry-head">
+                      <p className="table-journal__byline">
+                        <span className="table-journal__stamp">
+                          {formatStamp(entry.created_at)}
+                          {wasEdited(entry) ? " · edited" : ""}
                         </span>
+                        {entry.shared_table_id && (
+                          <span className="personal-journal__shared">
+                            {entry.shared_as === "private" ? "Brought in as Just me" : "Shared with a table"}
+                          </span>
+                        )}
+                      </p>
+                      {!isEditing && (
+                        <p className="table-journal__actions">
+                          <button
+                            type="button"
+                            className="table-journal__link"
+                            onClick={() =>
+                              setEditing({ id: entry.id, body: entry.body, session: String(entry.session_number ?? 1) })
+                            }
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="table-journal__link table-journal__link--danger"
+                            onClick={() => remove(entry)}
+                          >
+                            Delete
+                          </button>
+                        </p>
                       )}
-                    </p>
+                    </div>
                     {isEditing ? (
                       <form className="table-journal__edit" onSubmit={saveEdit} noValidate>
                         <textarea
@@ -449,26 +472,6 @@ function PersonalJournal({ characterId, table = null, name = "", portraitUrl = "
                       </form>
                     ) : (
                       <p className="table-journal__body">{entry.body}</p>
-                    )}
-                    {!isEditing && (
-                      <p className="table-journal__actions">
-                        <button
-                          type="button"
-                          className="table-journal__link"
-                          onClick={() =>
-                            setEditing({ id: entry.id, body: entry.body, session: String(entry.session_number ?? 1) })
-                          }
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="table-journal__link table-journal__link--danger"
-                          onClick={() => remove(entry)}
-                        >
-                          Delete
-                        </button>
-                      </p>
                     )}
                   </li>
                 );

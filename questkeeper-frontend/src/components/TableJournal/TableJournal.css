@@ -136,8 +136,11 @@
 
 .table-journal__entry {
   display: grid;
-  gap: 4px;
-  padding: 10px 14px;
+  /* The writer's picture on the left, the note beside it. */
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 4px 16px;
+  padding: 14px 18px;
   border: 1px solid var(--qk-border);
   border-left: 4px solid var(--qk-moss);
   border-radius: 0 var(--qk-radius-small) var(--qk-radius-small) 0;
@@ -316,4 +319,47 @@
   width: 44px;
   height: 44px;
   font-size: 15px;
+}
+
+/* A note without a picture column (your private journal). */
+.table-journal__entry--plain {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The note: a header line (name and time on the left, Edit and Delete on the
+   right), then the words. */
+.table-journal__entry-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.table-journal__entry-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+/* A bigger picture beside a note, so the face can actually be seen. */
+.table-journal__avatar--note {
+  width: 64px;
+  height: 64px;
+  margin: 2px 0 0;
+  border-width: 3px;
+  font-size: 20px;
+}
+
+@media (max-width: 600px) {
+  .table-journal__entry {
+    gap: 4px 12px;
+    padding: 12px 14px;
+  }
+
+  .table-journal__avatar--note {
+    width: 48px;
+    height: 48px;
+    font-size: 16px;
+  }
 }

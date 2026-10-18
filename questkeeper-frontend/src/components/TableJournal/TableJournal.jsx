@@ -362,92 +362,98 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
                       entry.visibility === "private" ? " table-journal__entry--private" : ""
                     }${entry.author_name === "DM" ? " table-journal__entry--dm" : ""}`}
                   >
-                    <p className="table-journal__byline">
-                      {/* The writer's picture (or initials, like "DM"). */}
-                      <span className="table-journal__avatar" aria-hidden="true">
-                        {portraits.get(entry.author_id) ? (
-                          <img src={portraits.get(entry.author_id)} alt="" loading="lazy" />
-                        ) : (
-                          getInitials(entry.author_name)
-                        )}
-                      </span>
-                      <strong className="table-journal__author">{entry.author_name}</strong>
-                      <span className="table-journal__stamp">
-                        {formatStamp(entry.created_at)}
-                        {wasEdited(entry) ? " · edited" : ""}
-                      </span>
-                      {entry.visibility === "private" && (
-                        <span className="table-journal__private">🔒 Just me</span>
+                    {/* The writer's picture (or initials, like "DM"), then the note. */}
+                    <span className="table-journal__avatar table-journal__avatar--note" aria-hidden="true">
+                      {portraits.get(entry.author_id) ? (
+                        <img src={portraits.get(entry.author_id)} alt="" loading="lazy" />
+                      ) : (
+                        getInitials(entry.author_name)
                       )}
-                    </p>
+                    </span>
 
-                    {isEditing ? (
-                      <form className="table-journal__edit" onSubmit={saveEdit} noValidate>
-                        <textarea
-                          className="table-journal__input"
-                          aria-label="Edit note"
-                          value={editing.body}
-                          maxLength={MAX_LENGTH}
-                          rows={3}
-                          onChange={(event) => setEditing({ ...editing, body: event.target.value })}
-                        />
-                        <label className="table-journal__session-pick">
-                          Session
-                          <input
-                            className="table-journal__number"
-                            type="number"
-                            min="1"
-                            max="9999"
-                            aria-label="Session number for this note"
-                            value={editing.session}
-                            onChange={(event) => setEditing({ ...editing, session: event.target.value })}
-                          />
-                        </label>
-                        <div className="table-journal__composer-row">
-                          <VisibilityChoice
-                            value={editing.visibility}
-                            name={`${choiceName}-${entry.id}`}
-                            onChange={(next) => setEditing({ ...editing, visibility: next })}
-                          />
-                          <span className="table-journal__edit-buttons">
-                            <Button variant="secondary" onClick={() => setEditing(null)}>
-                              Cancel
-                            </Button>
-                            <Button type="submit" disabled={!editing.body.trim()}>
-                              Save
-                            </Button>
+                    <div className="table-journal__entry-main">
+                      {/* Name, time and (for your own notes) Edit and Delete on one line. */}
+                      <div className="table-journal__entry-head">
+                        <p className="table-journal__byline">
+                          <strong className="table-journal__author">{entry.author_name}</strong>
+                          <span className="table-journal__stamp">
+                            {formatStamp(entry.created_at)}
+                            {wasEdited(entry) ? " · edited" : ""}
                           </span>
-                        </div>
-                      </form>
-                    ) : (
-                      <p className="table-journal__body">{entry.body}</p>
-                    )}
+                          {entry.visibility === "private" && (
+                            <span className="table-journal__private">🔒 Just me</span>
+                          )}
+                        </p>
+                        {isMine && !isEditing && (
+                          <p className="table-journal__actions">
+                            <button
+                              type="button"
+                              className="table-journal__link"
+                              onClick={() =>
+                                setEditing({
+                                  id: entry.id,
+                                  body: entry.body,
+                                  visibility: entry.visibility,
+                                  session: String(entry.session_number ?? 1),
+                                })
+                              }
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="table-journal__link table-journal__link--danger"
+                              onClick={() => remove(entry)}
+                            >
+                              Delete
+                            </button>
+                          </p>
+                        )}
+                      </div>
 
-                    {isMine && !isEditing && (
-                      <p className="table-journal__actions">
-                        <button
-                          type="button"
-                          className="table-journal__link"
-                          onClick={() =>
-                            setEditing({
-                              id: entry.id,
-                              body: entry.body,
-                              visibility: entry.visibility,
-                              session: String(entry.session_number ?? 1),
-                            })
-                          }
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="table-journal__link table-journal__link--danger"
-                          onClick={() => remove(entry)}
-                        >
-                          Delete
-                        </button>
-                      </p>
-                    )}
+                      {isEditing ? (
+                        <form className="table-journal__edit" onSubmit={saveEdit} noValidate>
+                          <textarea
+                            className="table-journal__input"
+                            aria-label="Edit note"
+                            value={editing.body}
+                            maxLength={MAX_LENGTH}
+                            rows={3}
+                            onChange={(event) => setEditing({ ...editing, body: event.target.value })}
+                          />
+                          <label className="table-journal__session-pick">
+                            Session
+                            <input
+                              className="table-journal__number"
+                              type="number"
+                              min="1"
+                              max="9999"
+                              aria-label="Session number for this note"
+                              value={editing.session}
+                              onChange={(event) => setEditing({ ...editing, session: event.target.value })}
+                            />
+                          </label>
+                          <div className="table-journal__composer-row">
+                            <VisibilityChoice
+                              value={editing.visibility}
+                              name={`${choiceName}-${entry.id}`}
+                              onChange={(next) => setEditing({ ...editing, visibility: next })}
+                            />
+                            <span className="table-journal__edit-buttons">
+                              <Button variant="secondary" onClick={() => setEditing(null)}>
+                                Cancel
+                              </Button>
+                              <Button type="submit" disabled={!editing.body.trim()}>
+                                Save
+                              </Button>
+                            </span>
+                          </div>
+                        </form>
+                      ) : (
+                        <p className="table-journal__body">{entry.body}</p>
+                      )}
+
+                    </div>
                   </li>
                 );
               })}
