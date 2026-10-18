@@ -2371,3 +2371,23 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* Hit Dice reads as one tight group: "1 / 1 d 10" (left, total, die size),
+   instead of three wide boxes with gaps between them. */
+.character-sheet__vital--hit-dice .character-sheet__vital-value {
+  gap: 2px;
+}
+
+.character-sheet__vital--hit-dice .character-sheet__vital-input {
+  width: 34px;
+  padding: 0 2px;
+}
+
+/* Locked: the total and die size are plain numbers, so they hug their digits. */
+.character-sheet__vitals--locked .character-sheet__vital--hit-dice input[readonly] {
+  width: 30px;
+}
+
+.character-sheet__vital--hit-dice .character-sheet__vital-unit {
+  margin: 0 1px;
+}
