@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AttackPanel from "./AttackPanel";
 import { attackRoll, dealDamage } from "../../utils/tableStore";
+import { installFakeStorage } from "../../test/fakeStorage";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
 
@@ -263,6 +264,8 @@ describe("AttackPanel", () => {
   });
 
   it("only applies the extra damage when it's switched on for this attack", async () => {
+    // A stand-in for the browser's storage (CI's Node has none that works here).
+    installFakeStorage();
     window.localStorage.setItem("qk-extra-damage", JSON.stringify({ text: "2d8", label: "Smite" }));
     vi.spyOn(Math, "random").mockReturnValue(0.5); // d8 -> 5
     render(
