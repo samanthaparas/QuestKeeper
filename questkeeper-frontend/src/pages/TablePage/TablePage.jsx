@@ -290,7 +290,8 @@ function CombatantRow({
   const initiativeBonus = Number(readStatBlock(hp?.stat_block).initiativeBonus) || 0;
   const [showAttack, setShowAttack] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  // A player's Remove asks first, on the row.
+  // Remove asks first, on the row: a player (with the choice of letting them
+  // come back) or a monster or ally.
   const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   // Monsters and allies are run by the DM and have hidden HP; players run themselves.
@@ -433,6 +434,26 @@ function CombatantRow({
                 </span>
               )}
 
+              {/* Monsters and allies ask before they go, since it can't be undone. */}
+              {isNpc && isDm && confirmingRemove && (
+                <span className="table-page__remove-confirm" role="group" aria-label={`Remove ${combatant.name}?`}>
+                  <span>Remove {combatant.name} from the fight?</span>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    onClick={() => {
+                      setConfirmingRemove(false);
+                      onRemove(combatant);
+                    }}
+                  >
+                    Remove
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={() => setConfirmingRemove(false)}>
+                    Keep
+                  </Button>
+                </span>
+              )}
+
               {isNpc && !isSplit && history}
             </div>
 
@@ -449,7 +470,7 @@ function CombatantRow({
                 <IconButton
                   icon="remove"
                   label={`Remove ${combatant.name}`}
-                  onClick={() => onRemove(combatant)}
+                  onClick={() => setConfirmingRemove(true)}
                 />
               </div>
             )}
@@ -593,7 +614,7 @@ function CombatantRow({
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={() => (isNpc ? onRemove(combatant) : setConfirmingRemove(true))}
+                    onClick={() => setConfirmingRemove(true)}
                   >
                     Remove
                   </Button>

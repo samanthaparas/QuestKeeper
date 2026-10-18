@@ -11,6 +11,7 @@ import {
   setCombatantInitiative,
   applyDamage,
   postPlayerDamage,
+  removeCombatant,
   dmDenyAttack,
   dmResolveAttack,
   addCombatant,
@@ -1200,6 +1201,23 @@ describe("monster row layout", () => {
       .getAllByRole("button")
       .map((button) => button.getAttribute("aria-label") ?? button.textContent);
     expect(names).toEqual(["Edit Kobold", "Remove Kobold", "Attack", "Take damage", "Heal"]);
+  });
+
+  it("asks before removing a monster, and Keep leaves it alone", async () => {
+    renderPage();
+
+    const row = await waitFor(() => rowFor("Kobold"));
+    await userEvent.click(within(row).getByRole("button", { name: "Remove Kobold" }));
+    expect(removeCombatant).not.toHaveBeenCalled();
+    expect(row).toHaveTextContent("Remove Kobold from the fight?");
+
+    await userEvent.click(within(row).getByRole("button", { name: "Keep" }));
+    expect(removeCombatant).not.toHaveBeenCalled();
+    expect(row).not.toHaveTextContent("from the fight?");
+
+    await userEvent.click(within(row).getByRole("button", { name: "Remove Kobold" }));
+    await userEvent.click(within(row).getByRole("button", { name: "Remove" }));
+    expect(removeCombatant).toHaveBeenCalledTimes(1);
   });
 
   it("labels Damage and Heal as changing that monster's HP", async () => {
