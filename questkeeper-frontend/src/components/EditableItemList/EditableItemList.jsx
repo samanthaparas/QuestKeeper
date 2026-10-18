@@ -12,7 +12,7 @@ function formatNotesLines(notes) {
 
 function createEmptyValues(fields) {
   return fields.reduce((acc, field) => {
-    acc[field.key] = field.defaultValue ?? "";
+    acc[field.key] = field.defaultValue ?? (field.type === "checkbox" ? false : "");
     return acc;
   }, {});
 }
@@ -42,6 +42,21 @@ function FieldHint({ text }) {
 }
 
 function EditableItemField({ field, value, onChange }) {
+  // A tick box with its label beside it (a spell's "Doesn't count toward
+  // spells known"). Its value is true or false, not text.
+  if (field.type === "checkbox") {
+    return (
+      <label className="character-sheet__resource-form-check">
+        <input
+          type="checkbox"
+          checked={Boolean(value)}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        {field.label}
+      </label>
+    );
+  }
+
   if (field.type === "select") {
     return (
       <select
@@ -199,7 +214,8 @@ function EditableItemList({
 
   function handleEdit(item) {
     const nextValues = fields.reduce((acc, field) => {
-      acc[field.key] = item[field.key] != null ? String(item[field.key]) : "";
+      if (field.type === "checkbox") acc[field.key] = Boolean(item[field.key]);
+      else acc[field.key] = item[field.key] != null ? String(item[field.key]) : "";
       return acc;
     }, {});
     setValues(nextValues);

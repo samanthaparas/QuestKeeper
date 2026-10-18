@@ -354,6 +354,23 @@
   min-width: 200px;
 }
 
+/* A tick box inside an add/edit form, with its words beside it. */
+.character-sheet__resource-form-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--qk-text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* A spell's book link, in the spell row. */
+.character-sheet__spell-link {
+  color: var(--qk-terracotta);
+  font-size: 13px;
+}
+
 .character-sheet__level-up-summary {
   max-width: var(--qk-reading-width);
   margin: 0 auto;

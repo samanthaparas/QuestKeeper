@@ -80,7 +80,8 @@ describe("class rules", () => {
       equipmentDescription: "Thieves' tools",
       skillChoice: { choose: 2, options: [{ index: "arcana", name: "Arcana" }, { index: "history", name: "History" }] },
     });
-    expect(getLevelUpStepKeys(3, snapshot)).toEqual(["hitPoints", "subclass", "spells"]);
+    // A prepared homebrew caster has no spells-known table, so nothing to learn.
+    expect(getLevelUpStepKeys(3, snapshot)).toEqual(["hitPoints", "subclass"]);
     // A prepared caster picks cantrips only at creation.
     expect(getStartingSpellCounts(snapshot, raw.levelOneSpellcasting)).toEqual({ cantrips: 2, spells: 0 });
   });

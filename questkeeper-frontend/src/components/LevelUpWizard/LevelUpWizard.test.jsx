@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // The wizard can open the homebrew pop-up, which loads the Supabase client.
@@ -64,6 +64,7 @@ vi.mock("../../utils/api", () => ({
 
 import { MemoryRouter } from "react-router-dom";
 import LevelUpWizard from "./LevelUpWizard";
+import { getClassSpells, getSpellDetails } from "../../utils/api";
 
 // A level 2 Rogue, so the next level (3) includes the subclass step.
 const rogue = {
@@ -134,5 +135,170 @@ describe("LevelUpWizard subclass step", () => {
     expect(await screen.findByText("A dashing duelist.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Make it as homebrew" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Choose / })).not.toBeInTheDocument();
+  });
+});
+
+// A Ranger's spell step: how many picks, and the optional swap.
+const rangerSpells = [
+  { index: "hunters-mark", name: "Hunter's Mark", level: 1 },
+  { index: "cure-wounds", name: "Cure Wounds", level: 1 },
+  { index: "goodberry", name: "Goodberry", level: 1 },
+  { index: "fog-cloud", name: "Fog Cloud", level: 1 },
+  { index: "pass-without-trace", name: "Pass without Trace", level: 2 },
+];
+
+function makeRanger(level, spellsKnown) {
+  return {
+    ...rogue,
+    name: "QA Ranger",
+    level,
+    class: { id: "ranger", name: "Ranger", hitDie: 10, spellcastingType: "known" },
+    spellcasting: { type: "known", cantripsKnown: [], spellsKnown },
+  };
+}
+
+async function reachSpellStep(sheet, onComplete = vi.fn()) {
+  getClassSpells.mockResolvedValue(rangerSpells);
+  getSpellDetails.mockImplementation((index) =>
+    Promise.resolve({ index, name: index, components: ["V"] }),
+  );
+  render(
+    <MemoryRouter>
+      <LevelUpWizard sheet={sheet} onComplete={onComplete} onCancel={vi.fn()} />
+    </MemoryRouter>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: /Take Average/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Next" }));
+}
+
+describe("LevelUpWizard spell step", () => {
+  it("asks a level 1 Ranger for two new spells", async () => {
+    await reachSpellStep(makeRanger(1, []));
+
+    const first = await screen.findByLabelText("New spell 1");
+    const second = screen.getByLabelText("New spell 2");
+    const next = screen.getByRole("button", { name: "Next" });
+    expect(next).toBeDisabled();
+
+    await userEvent.selectOptions(first, "hunters-mark");
+    // A spell picked in one box isn't offered in the other.
+    expect(within(second).queryByRole("option", { name: /Hunter's Mark/ })).toBeNull();
+    await userEvent.selectOptions(second, "cure-wounds");
+    expect(next).toBeEnabled();
+    // Level 2 Rangers only have level 1 slots.
+    expect(within(first).queryByRole("option", { name: /Pass without Trace/ })).toBeNull();
+  });
+
+  // Level 6, not 4, so there's no Ability Score Improvement step in the way.
+  it("lets a level 5 Ranger swap a spell when there's nothing new to learn", async () => {
+    const onComplete = vi.fn();
+    await reachSpellStep(
+      makeRanger(5, [
+        { index: "hunters-mark", name: "Hunter's Mark", level: 1 },
+        { index: "cure-wounds", name: "Cure Wounds", level: 1 },
+        { index: "goodberry", name: "Goodberry", level: 1 },
+        { index: "fog-cloud", name: "Fog Cloud", level: 1 },
+      ]),
+      onComplete,
+    );
+
+    expect(await screen.findByText(/No new spells for a Ranger at level 6/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/New spell/)).toBeNull();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /Swap one spell you know/ }));
+    const next = screen.getByRole("button", { name: "Next" });
+    expect(next).toBeDisabled();
+    await userEvent.selectOptions(screen.getByLabelText("Forget"), "cure-wounds");
+    await userEvent.selectOptions(screen.getByLabelText("Learn instead"), "pass-without-trace");
+    await userEvent.click(next);
+
+    expect(await screen.findByText("Swapped Cure Wounds for Pass without Trace")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Confirm & Finish/ }));
+    const names = onComplete.mock.calls[0][0].spellcasting.spellsKnown.map((s) => s.name);
+    expect(names).toEqual(["Hunter's Mark", "Goodberry", "Fog Cloud", "Pass without Trace"]);
+  });
+
+  it("takes a typed-in book spell for a pick, and it counts like any other", async () => {
+    const onComplete = vi.fn();
+    await reachSpellStep(makeRanger(1, []), onComplete);
+
+    await userEvent.selectOptions(await screen.findByLabelText("New spell 1"), "__book__");
+    await userEvent.selectOptions(screen.getByLabelText("New spell 2"), "hunters-mark");
+    const next = screen.getByRole("button", { name: "Next" });
+    // Not done until it has a name.
+    expect(next).toBeDisabled();
+
+    // A level 2 Ranger can only cast level 1 spells.
+    const levels = within(screen.getByLabelText("Spell level")).getAllByRole("option");
+    expect(levels.map((option) => option.textContent)).toEqual(["Level 1"]);
+
+    await userEvent.type(screen.getByLabelText("Spell name"), "Ensnaring Strike");
+    await userEvent.type(screen.getByLabelText("Components (optional)"), "V");
+    expect(next).toBeEnabled();
+
+    // A link that isn't a web link is turned away.
+    const link = screen.getByLabelText("Book link (optional)");
+    await userEvent.type(link, "javascript:alert(1)");
+    expect(screen.getByText(/Links need to start with http/)).toBeInTheDocument();
+    expect(next).toBeDisabled();
+    await userEvent.clear(link);
+    await userEvent.type(link, "https://example.com/ensnaring-strike");
+    await userEvent.click(next);
+
+    expect(
+      await screen.findByText("New spells: Ensnaring Strike (book), Hunter's Mark"),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Confirm & Finish/ }));
+    const known = onComplete.mock.calls[0][0].spellcasting.spellsKnown;
+    const book = known.find((spell) => spell.name === "Ensnaring Strike");
+    expect(book).toMatchObject({
+      level: 1,
+      components: "V",
+      link: "https://example.com/ensnaring-strike",
+    });
+    expect(book.index).toBeTruthy();
+    expect(book.bonusSpell).toBeUndefined();
+  });
+
+  it("won't take a book spell that's already on the sheet", async () => {
+    await reachSpellStep(makeRanger(1, [
+      { index: "abc", name: "Ensnaring Strike", level: 1 },
+    ]));
+
+    await userEvent.selectOptions(await screen.findByLabelText("New spell"), "__book__");
+    await userEvent.type(screen.getByLabelText("Spell name"), "ensnaring strike");
+    expect(screen.getByText(/is already on your sheet/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+  });
+
+  it("lets the swap learn a book spell instead", async () => {
+    const onComplete = vi.fn();
+    await reachSpellStep(
+      makeRanger(5, [
+        { index: "hunters-mark", name: "Hunter's Mark", level: 1 },
+        { index: "cure-wounds", name: "Cure Wounds", level: 1 },
+        { index: "goodberry", name: "Goodberry", level: 1 },
+        { index: "fog-cloud", name: "Fog Cloud", level: 1 },
+      ]),
+      onComplete,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: /Swap one spell you know/ }),
+    );
+    await userEvent.selectOptions(screen.getByLabelText("Forget"), "cure-wounds");
+    await userEvent.selectOptions(screen.getByLabelText("Learn instead"), "__book__");
+    // A level 6 Ranger casts up to level 2.
+    const levels = within(screen.getByLabelText("Spell level")).getAllByRole("option");
+    expect(levels.map((option) => option.textContent)).toEqual(["Level 1", "Level 2"]);
+    await userEvent.type(screen.getByLabelText("Spell name"), "Absorb Elements");
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(
+      await screen.findByText("Swapped Cure Wounds for Absorb Elements (book)"),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Confirm & Finish/ }));
+    const names = onComplete.mock.calls[0][0].spellcasting.spellsKnown.map((s) => s.name);
+    expect(names).toEqual(["Hunter's Mark", "Goodberry", "Fog Cloud", "Absorb Elements"]);
   });
 });
