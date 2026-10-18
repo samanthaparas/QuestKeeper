@@ -204,3 +204,44 @@
   outline: 2px solid var(--qk-focus);
   outline-offset: 1px;
 }
+
+/* "What does exhaustion level 3 do?": the six levels, with yours highlighted. */
+.condition-badges__exhaustion {
+  flex-basis: 100%;
+  font-size: 13px;
+}
+
+.condition-badges__exhaustion summary {
+  cursor: pointer;
+  color: var(--qk-terracotta-hover);
+  font-weight: 700;
+}
+
+.condition-badges__exhaustion-now {
+  margin: 6px 0 0;
+  font-weight: 700;
+}
+
+.condition-badges__exhaustion-list {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.condition-badges__exhaustion-list li {
+  padding: 3px 8px;
+  border-radius: var(--qk-radius-small);
+  color: var(--qk-text-muted);
+}
+
+.condition-badges__exhaustion-list .condition-badges__exhaustion-current {
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+}
+
+.condition-badges__exhaustion-rest {
+  margin: 6px 0 0;
+  color: var(--qk-text-muted);
+}

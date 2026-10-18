@@ -3,6 +3,7 @@ import RuleTerm from "../RulesText/RuleTerm";
 import {
   CONDITION_KEYS,
   MAX_EXHAUSTION,
+  EXHAUSTION_LEVELS,
   conditionWord,
   hasCondition,
   setConditionRounds,
@@ -134,6 +135,36 @@ function ConditionBadges({ conditions = [], onChange, readOnly = false }) {
           );
         })}
       </ul>
+
+      {/* What the level means, so nobody has to look it up. */}
+      {(() => {
+        const exhaustion = conditions.find((condition) => condition.key === "exhaustion");
+        if (!exhaustion) return null;
+        const level = exhaustion.level ?? 1;
+        return (
+          <details className="condition-badges__exhaustion">
+            <summary>
+              What does exhaustion level {level} do?
+            </summary>
+            <p className="condition-badges__exhaustion-now">
+              {EXHAUSTION_LEVELS[level - 1].effect}
+              {level > 1 && " You also have everything from the lower levels."}
+            </p>
+            <ol className="condition-badges__exhaustion-list">
+              {EXHAUSTION_LEVELS.map((entry) => (
+                <li
+                  key={entry.level}
+                  className={entry.level === level ? "condition-badges__exhaustion-current" : undefined}
+                  aria-current={entry.level === level ? "true" : undefined}
+                >
+                  <b>Level {entry.level}.</b> {entry.effect}
+                </li>
+              ))}
+            </ol>
+            <p className="condition-badges__exhaustion-rest">A long rest takes away one level.</p>
+          </details>
+        );
+      })()}
 
       {!readOnly && available.length > 0 && (
         <div className="condition-badges__add">

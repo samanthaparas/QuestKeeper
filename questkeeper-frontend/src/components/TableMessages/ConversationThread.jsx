@@ -26,6 +26,12 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
   const [unreadWhenOpened] = useState(() => conversation?.unread ?? 0);
   const endRef = useRef(null);
   const fileRef = useRef(null);
+  // Which messages were here when it opened, so ones that arrive while it's
+  // open (from someone else) can be marked "New".
+  const knownIds = useRef(null);
+  const [arrivedIds, setArrivedIds] = useState(() => new Set());
+  // Where the messages that were unread when it opened start (fixed at the first load).
+  const [firstNew, setFirstNew] = useState(Infinity);
 
   useEffect(() => {
     let ignore = false;
@@ -34,6 +40,12 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
         if (ignore) return;
         setMessages(found);
         setIsLoading(false);
+        if (!knownIds.current) setFirstNew(found.length - unreadWhenOpened);
+        if (knownIds.current) {
+          const fresh = found.filter((message) => !knownIds.current.has(message.id) && message.sender_id !== myId);
+          if (fresh.length > 0) setArrivedIds((previous) => new Set([...previous, ...fresh.map((message) => message.id)]));
+        }
+        knownIds.current = new Set(found.map((message) => message.id));
         markConversationRead(conversationId).then(onRead).catch(() => {});
       })
       .catch(() => !ignore && setError("Couldn't load this conversation."));
@@ -76,8 +88,6 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
     }
   }
 
-  const firstNew = messages.length - unreadWhenOpened;
-
   return (
     <div className="table-messages__thread">
       {conversation && <p className="table-messages__privacy">{whoCanSee(conversation, people, myId)}</p>}
@@ -89,15 +99,17 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
         )}
         {messages.map((message, index) => {
           const mine = message.sender_id === myId;
+          const isNew = !mine && (index >= firstNew || arrivedIds.has(message.id));
           return (
             <li
               key={message.id}
               className={`table-messages__message${mine ? " table-messages__message--mine" : ""}${
-                index >= firstNew && !mine ? " table-messages__message--new" : ""
+                isNew ? " table-messages__message--new" : ""
               }`}
             >
               <span className="table-messages__meta">
                 {personName(people, message.sender_id, myId)} · {messageTime(message.created_at)}
+                {isNew && <span className="table-messages__new-chip"> · New</span>}
               </span>
               {message.image_path && <MessageImage path={message.image_path} />}
               {message.body && <p className="table-messages__text">{message.body}</p>}

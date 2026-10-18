@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
@@ -66,6 +66,30 @@ describe("ConditionBadges", () => {
   it("shows rounds left on read-only badges", () => {
     render(<ConditionBadges conditions={[{ key: "poisoned", rounds: 2 }]} readOnly />);
     expect(screen.getByText("· 2 rounds left")).toBeInTheDocument();
+  });
+
+  it("explains what the current exhaustion level does, and shows all six", () => {
+    render(<ConditionBadges conditions={[{ key: "exhaustion", level: 3 }]} onChange={vi.fn()} />);
+
+    expect(screen.getByText("What does exhaustion level 3 do?")).toBeInTheDocument();
+    expect(screen.getAllByText("Disadvantage on attack rolls and saving throws.").length).toBeGreaterThan(0);
+    expect(screen.getByText(/You also have everything from the lower levels/)).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem").filter((item) => /^Level \d\./.test(item.textContent))).toHaveLength(6);
+    // Level 3 is the one marked as yours.
+    expect(screen.getByText("Level 3.").closest("li")).toHaveAttribute("aria-current", "true");
+    expect(screen.getByText(/A long rest takes away one level/)).toBeInTheDocument();
+  });
+
+  it("shows the explanation to the DM too, but nothing without exhaustion", () => {
+    const { rerender } = render(
+      <ConditionBadges conditions={[{ key: "exhaustion", level: 1 }]} onChange={vi.fn()} readOnly />,
+    );
+    expect(screen.getByText("What does exhaustion level 1 do?")).toBeInTheDocument();
+    // Level 1 has nothing "lower" to add.
+    expect(screen.queryByText(/everything from the lower levels/)).not.toBeInTheDocument();
+
+    rerender(<ConditionBadges conditions={[{ key: "poisoned" }]} onChange={vi.fn()} />);
+    expect(screen.queryByText(/What does exhaustion level/)).not.toBeInTheDocument();
   });
 });
 
