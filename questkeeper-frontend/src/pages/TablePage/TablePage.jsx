@@ -60,7 +60,7 @@ import PartyStrip from "../../components/PartyStrip/PartyStrip";
 import DmStoryTab from "../../components/DmStoryTab/DmStoryTab";
 import TableJournal from "../../components/TableJournal/TableJournal";
 import TableHandouts from "../../components/TableHandouts/TableHandouts";
-import { addJournalEntry } from "../../utils/journalStore";
+import { addJournalEntry, getTablePortraits } from "../../utils/journalStore";
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
@@ -743,6 +743,20 @@ function TablePage() {
     .filter(Boolean)
     .join(",");
 
+  // Everyone at the table: each player's portrait (a public picture), so the
+  // turn order shows faces whether or not the DM is sharing the party's HP.
+  const [tablePortraits, setTablePortraits] = useState(() => new Map());
+  useEffect(() => {
+    if (!id) return undefined;
+    let cancelled = false;
+    getTablePortraits(id).then((found) => {
+      if (!cancelled) setTablePortraits(found);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, characterIds]);
+
   // DM: keep the players' (read-only) character sheets fresh.
   useEffect(() => {
     if (!isDm || !characterIds) return undefined;
@@ -968,9 +982,10 @@ function TablePage() {
   // on the Combat tab from the Combat header (showMonsterForm).
   const selectedSheet =
     characters.find((sheet) => sheet.id === selectedPlayerId) ?? characters[0];
-  // Players' portraits for the turn order: the DM has everyone's sheets, a
-  // player has their own and, when the DM shares the party, everyone's.
-  const portraitByUser = new Map();
+  // Players' portraits for the turn order: everyone at the table gets them from
+  // the table's portrait list; the DM's sheets, a player's own sheet and the
+  // shared party view fill in anything it missed.
+  const portraitByUser = new Map(tablePortraits);
   for (const mini of partyMinis) if (mini.userId && mini.portraitUrl) portraitByUser.set(mini.userId, mini.portraitUrl);
   for (const member of members) {
     const sheet = characters.find((entry) => entry.id === member.character_id);
