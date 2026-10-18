@@ -13,7 +13,7 @@ import "./Concentration.css";
 // conSave: the character's Constitution save bonus.
 // rounds: how many rounds the spell has left, or null for no timer (most
 // concentration spells last 1 minute, which is 10 rounds). The sheet counts
-// it down as the table's rounds pass; onRoundsChange(n) sets it, 0 clears it.
+// it down at the end of each of the character's own turns; onRoundsChange(n) sets it, 0 clears it.
 // onStart(name), onEnd(), onRollCheck() (the sheet rolls and decides).
 function Concentration({
   spell,

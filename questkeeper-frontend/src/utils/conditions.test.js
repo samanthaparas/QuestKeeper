@@ -8,7 +8,7 @@ import {
   toggleCondition,
   setConditionRounds,
   tickConditionRounds,
-  roundsElapsed,
+  turnsElapsed,
 } from "./conditions";
 import { applyRest, createCharacterSheet } from "./characterSheet";
 
@@ -61,11 +61,13 @@ describe("condition timers", () => {
     expect(conditions).toEqual([{ key: "frightened", rounds: 2 }, { key: "prone" }]);
   });
 
-  it("only counts rounds at the same table, going forward", () => {
-    expect(roundsElapsed({ tableId: "t1", round: 2 }, "t1", 4)).toBe(2);
-    expect(roundsElapsed({ tableId: "t1", round: 5 }, "t1", 1)).toBe(0);
-    expect(roundsElapsed({ tableId: "t2", round: 2 }, "t1", 4)).toBe(0);
-    expect(roundsElapsed(undefined, "t1", 4)).toBe(0);
+  it("only counts your own turns at the same table, going forward", () => {
+    expect(turnsElapsed({ tableId: "t1", turns: 2 }, "t1", 4)).toBe(2);
+    expect(turnsElapsed({ tableId: "t1", turns: 5 }, "t1", 1)).toBe(0);
+    expect(turnsElapsed({ tableId: "t2", turns: 2 }, "t1", 4)).toBe(0);
+    expect(turnsElapsed(undefined, "t1", 4)).toBe(0);
+    // Older saved sheets counted whole rounds instead; they start fresh.
+    expect(turnsElapsed({ tableId: "t1", round: 2 }, "t1", 4)).toBe(0);
   });
 });
 

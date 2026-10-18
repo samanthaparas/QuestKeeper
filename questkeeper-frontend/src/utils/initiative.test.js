@@ -7,6 +7,7 @@ import {
   getNextTurn,
   rollInitiative,
   rollMonsterInitiative,
+  countMyTurnsEnded,
 } from "./initiative";
 
 function makeCombatant(overrides) {
@@ -178,3 +179,25 @@ describe("rollMonsterInitiative", () => {
     vi.restoreAllMocks();
   });
 });
+
+describe("countMyTurnsEnded", () => {
+  // Turn order: Billie (17), Kobold (12), Thorn (12), Mira (5).
+  it("counts the full rounds before this one, plus this round's once the turn has passed you", () => {
+    // Thorn is third. Round 1, Billie up: nobody's turn has ended yet.
+    expect(countMyTurnsEnded(fight, "Billie", 1, "Thorn")).toBe(0);
+    // Still Thorn's own turn: it hasn't ended.
+    expect(countMyTurnsEnded(fight, "Thorn", 1, "Thorn")).toBe(0);
+    // Mira is up after Thorn: Thorn's turn this round has ended.
+    expect(countMyTurnsEnded(fight, "Mira", 1, "Thorn")).toBe(1);
+    // Round 2, Billie up again: one full round of turns is done.
+    expect(countMyTurnsEnded(fight, "Billie", 2, "Thorn")).toBe(1);
+    expect(countMyTurnsEnded(fight, "Mira", 2, "Thorn")).toBe(2);
+  });
+
+  it("says it can't tell when you're not in the fight or no turn has started", () => {
+    expect(countMyTurnsEnded(fight, "Billie", 1, "Nobody")).toBeNull();
+    expect(countMyTurnsEnded(fight, null, 1, "Thorn")).toBeNull();
+    expect(countMyTurnsEnded(fight, "Billie", undefined, "Thorn")).toBeNull();
+  });
+});
+

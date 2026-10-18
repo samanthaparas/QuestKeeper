@@ -103,10 +103,12 @@ export function tickConditionRounds(conditions = [], elapsed) {
   return { conditions: remaining, ended };
 }
 
-// How many rounds passed since the sheet last looked at the table's round.
-// None when it's a different table or a new fight (the round went back down).
-export function roundsElapsed(seen, tableId, round) {
-  if (!seen || seen.tableId !== tableId || typeof round !== "number") return 0;
-  return Math.max(0, round - seen.round);
+// How many of your own turns have ended since the sheet last looked (see
+// countMyTurnsEnded). None when it's a different table, a new fight (the count
+// went back down), or older saved data that counted rounds instead.
+export function turnsElapsed(seen, tableId, turns) {
+  if (!seen || seen.tableId !== tableId || typeof turns !== "number") return 0;
+  if (typeof seen.turns !== "number") return 0;
+  return Math.max(0, turns - seen.turns);
 }
 

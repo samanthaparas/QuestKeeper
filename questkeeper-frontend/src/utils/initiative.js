@@ -30,6 +30,20 @@ export function getTurnOrder(combatants) {
   return sortCombatants(combatants).filter(takesTurns);
 }
 
+// How many of YOUR turns have ended so far in this fight: every full round
+// before this one, plus this round's if the turn has already moved past you.
+// Timed effects ("Bless, 2 rounds") count down on this, so they end at the end
+// of your own turn, not at the end of the whole round. null when it can't be
+// told (not in the fight yet, or no turn has started).
+export function countMyTurnsEnded(combatants, currentId, round, myId) {
+  if (!myId || typeof round !== "number") return null;
+  const order = getTurnOrder(combatants);
+  const mine = order.findIndex((combatant) => combatant.id === myId);
+  const current = order.findIndex((combatant) => combatant.id === currentId);
+  if (mine === -1 || current === -1) return null;
+  return round - 1 + (current > mine ? 1 : 0);
+}
+
 // How many people the banner lists after whoever is going now.
 export const UPCOMING_COUNT = 2;
 
