@@ -613,31 +613,40 @@ describe("condition timers on the sheet", () => {
     fakeTurn.value = null;
   });
 
-  function fightAtRound(round) {
+  // A three-person fight in turn order: a monster, then this character, then
+  // another monster. `current` is whose turn it is ("a", "me" or "b").
+  function fightWith({ round, current }) {
+    const combatants = [
+      { id: "a", name: "Goblin", kind: "monster", initiative: 20, created_at: "1" },
+      { id: "me", name: "Test", kind: "player", initiative: 15, created_at: "2" },
+      { id: "b", name: "Ogre", kind: "monster", initiative: 10, created_at: "3" },
+    ];
     return {
-      table: { id: "t1", name: "Test night", round },
+      table: { id: "t1", name: "Test night", round, current_combatant_id: current },
       tableName: "Test night",
       activeTables: [],
       switchTable: () => {},
       endTurn: () => {},
       round,
-      combatants: [],
+      combatants,
       now: null,
       next: null,
       upcoming: [],
-      myCombatant: null,
-      isMyTurn: false,
+      myCombatant: combatants[1],
+      isMyTurn: current === "me",
       latestEvent: null,
       damageRequests: [],
       refresh: () => {},
     };
   }
 
-  it("takes a round off timed conditions as the table's round goes up, and says when one wears off", async () => {
+  it("takes a round off timed conditions when your own turn ends, and says when one wears off", async () => {
     const sheet = makeSheet();
     sheet.conditions = [{ key: "poisoned", rounds: 1 }, { key: "frightened", rounds: 3 }];
-    sheet.roundSeen = { tableId: "t1", round: 2 };
-    fakeTurn.value = fightAtRound(3);
+    // One of this character's turns had already been counted; the turn has now
+    // moved past it again (round 2, on the last monster).
+    sheet.roundSeen = { tableId: "t1", turns: 1 };
+    fakeTurn.value = fightWith({ round: 2, current: "b" });
     renderSheet(sheet);
 
     expect(await screen.findByText("⏱ Poisoned has ended (the rounds ran out).")).toBeInTheDocument();
@@ -645,23 +654,43 @@ describe("condition timers on the sheet", () => {
     expect(screen.queryByRole("button", { name: "Remove Poisoned" })).not.toBeInTheDocument();
   });
 
-  it("doesn't count down when a new fight starts back at round 1", async () => {
+  it("doesn't count a round until your own turn has ended", async () => {
     const sheet = makeSheet();
     sheet.conditions = [{ key: "frightened", rounds: 3 }];
-    sheet.roundSeen = { tableId: "t1", round: 6 };
-    fakeTurn.value = fightAtRound(1);
+    sheet.roundSeen = { tableId: "t1", turns: 1 };
+    // Round 2, but the first monster is still up: this character hasn't had
+    // (or finished) its turn this round, so nothing is counted.
+    fakeTurn.value = fightWith({ round: 2, current: "a" });
     renderSheet(sheet);
 
     expect(await screen.findByText("⏱ 3 rounds")).toBeInTheDocument();
   });
 
-  it("counts a timed concentration spell down and ends it when the rounds run out", async () => {
+  it("doesn't count down when a new fight starts back at round 1", async () => {
     const sheet = makeSheet();
-    sheet.concentration = { spell: "Bless", rounds: 2 };
-    sheet.roundSeen = { tableId: "t1", round: 1 };
-    fakeTurn.value = fightAtRound(3);
+    sheet.conditions = [{ key: "frightened", rounds: 3 }];
+    sheet.roundSeen = { tableId: "t1", turns: 6 };
+    fakeTurn.value = fightWith({ round: 1, current: "a" });
     renderSheet(sheet);
 
+    expect(await screen.findByText("⏱ 3 rounds")).toBeInTheDocument();
+  });
+
+  it("ends a timed concentration spell at the end of your own turn, not at the end of the round", async () => {
+    const sheet = makeSheet();
+    sheet.concentration = { spell: "Bless", rounds: 2 };
+    sheet.roundSeen = { tableId: "t1", turns: 1 };
+
+    // Two rounds on, the first monster is up and this character's turn hasn't
+    // come around yet: one of the two rounds is used, so Bless is still going.
+    fakeTurn.value = fightWith({ round: 3, current: "a" });
+    const { unmount } = renderSheet(sheet);
+    expect(await screen.findByText("⏱ 1 round")).toBeInTheDocument();
+    unmount();
+
+    // Once this character's turn has ended, it runs out.
+    fakeTurn.value = fightWith({ round: 3, current: "b" });
+    renderSheet(sheet);
     expect(await screen.findByText("⏱ Bless has ended (the rounds ran out).")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "+ Concentrating" })).toBeInTheDocument();
   });

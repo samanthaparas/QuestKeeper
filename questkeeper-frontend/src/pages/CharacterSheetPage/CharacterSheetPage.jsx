@@ -10,7 +10,8 @@ import { RollContext } from "../../components/RollDock/rollContext";
 import ConditionBadges from "../../components/ConditionBadges/ConditionBadges";
 import DeathSaves from "../../components/DeathSaves/DeathSaves";
 import Concentration from "../../components/Concentration/Concentration";
-import { conditionWord, roundsElapsed, rollNotesFor, tickConditionRounds } from "../../utils/conditions";
+import { conditionWord, turnsElapsed, rollNotesFor, tickConditionRounds } from "../../utils/conditions";
+import { countMyTurnsEnded } from "../../utils/initiative";
 import { applyDamageToHitPoints } from "../../utils/attacks";
 import { getCharacter, saveCharacter } from "../../utils/characterStore";
 import {
@@ -174,23 +175,32 @@ function CharacterSheetPage() {
   // character's table.
   const roller = useSheetRolls(sheet?.id, sheet?.name);
 
-  // Timed conditions ("Poisoned for 3 rounds") lose a round each time the
-  // table's round goes up, and end at 0. The sheet remembers the last round
-  // it counted (roundSeen), so a reload never counts a round twice. (Two
-  // tabs of the same sheet open at once would each count it.)
+  // Timed conditions ("Poisoned for 3 rounds") and a timed concentration spell
+  // lose a round at the end of each of this character's own turns, and end at
+  // 0. The sheet remembers how many of its turns it has counted (roundSeen),
+  // so a reload never counts one twice. (Two tabs of the same sheet open at
+  // once would each count it.)
   const [endedConditionsNote, setEndedConditionsNote] = useState("");
   const fightTableId = tableCombat?.table?.id ?? null;
-  const fightRound = tableCombat?.round ?? null;
-  const elapsedRounds = sheet ? roundsElapsed(sheet.roundSeen, fightTableId, fightRound) : 0;
+  const fightTurns = tableCombat
+    ? countMyTurnsEnded(
+        tableCombat.combatants ?? [],
+        tableCombat.table?.current_combatant_id,
+        tableCombat.round,
+        tableCombat.myCombatant?.id,
+      )
+    : null;
+  const elapsedRounds = sheet ? turnsElapsed(sheet.roundSeen, fightTableId, fightTurns) : 0;
   // A concentration spell can be timed the same way ("Bless, 10 rounds").
   const hasTimers =
     Boolean(sheet?.conditions?.some((condition) => typeof condition.rounds === "number")) ||
     typeof sheet?.concentration?.rounds === "number";
-  // Out of step with the fight: a round passed, or it's a new fight (the
-  // round went back to 1) or a different table, which just resets the count.
+  // Out of step with the fight: one of this character's turns ended, or it's a
+  // new fight or a different table, which just resets the count.
   const roundOutOfStep =
     Boolean(fightTableId) &&
-    (sheet?.roundSeen?.tableId !== fightTableId || sheet?.roundSeen?.round !== fightRound);
+    fightTurns !== null &&
+    (sheet?.roundSeen?.tableId !== fightTableId || sheet?.roundSeen?.turns !== fightTurns);
   useEffect(() => {
     if (!hasTimers || !roundOutOfStep) return undefined;
     // After this render, so the save doesn't happen mid-render.
@@ -214,7 +224,7 @@ function CharacterSheetPage() {
         ...sheet,
         conditions,
         concentration,
-        roundSeen: { tableId: fightTableId, round: fightRound },
+        roundSeen: { tableId: fightTableId, turns: fightTurns },
       });
       if (names.length > 0) {
         setEndedConditionsNote(
@@ -225,7 +235,7 @@ function CharacterSheetPage() {
     return () => clearTimeout(timer);
     // Runs once per new round; the sheet itself is read fresh inside.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasTimers, roundOutOfStep, elapsedRounds, fightTableId, fightRound]);
+  }, [hasTimers, roundOutOfStep, elapsedRounds, fightTableId, fightTurns]);
 
   const entriesKey = sheet
     ? [sheet.class?.id, getFeatureSubclassId(sheet.class), sheet.race?.id, sheet.race?.subrace?.id].join("|")
@@ -579,8 +589,8 @@ function CharacterSheetPage() {
   // Prone, Poisoned, Exhaustion 2...
   function handleConditionsChange(conditions) {
     setEndedConditionsNote("");
-    // Mid-fight, a new timer starts counting from this round.
-    const roundSeen = fightTableId ? { tableId: fightTableId, round: fightRound } : sheet.roundSeen;
+    // Mid-fight, a new timer starts counting from this turn.
+    const roundSeen = fightTableId && fightTurns !== null ? { tableId: fightTableId, turns: fightTurns } : sheet.roundSeen;
     persistSheet({ ...sheet, conditions, roundSeen });
   }
 
@@ -689,7 +699,7 @@ function CharacterSheetPage() {
   function handleConcentrationRounds(rounds) {
     const next = { spell: sheet.concentration.spell };
     if (rounds > 0) next.rounds = rounds;
-    const roundSeen = fightTableId ? { tableId: fightTableId, round: fightRound } : sheet.roundSeen;
+    const roundSeen = fightTableId && fightTurns !== null ? { tableId: fightTableId, turns: fightTurns } : sheet.roundSeen;
     persistSheet({ ...sheet, concentration: next, roundSeen });
   }
 

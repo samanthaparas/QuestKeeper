@@ -19,7 +19,7 @@ import "./ConditionBadges.css";
 // readOnly: just the badges (the DM's view of a player's card).
 //
 // Any condition can be timed: ⏱ gives it a number of rounds, which go down
-// as the table's rounds pass (the sheet does the counting). − at 1 round
+// at the end of each of the character's own turns (the sheet does the counting). − at 1 round
 // takes the timer off but keeps the condition.
 function ConditionBadges({ conditions = [], onChange, readOnly = false }) {
   const [isPicking, setIsPicking] = useState(false);
@@ -98,7 +98,7 @@ function ConditionBadges({ conditions = [], onChange, readOnly = false }) {
                     >
                       −
                     </button>
-                    <span className="condition-badges__rounds" aria-live="polite">
+                    <span className="condition-badges__rounds" aria-live="polite" title="Counts down at the end of your turn">
                       ⏱ {condition.rounds} {condition.rounds === 1 ? "round" : "rounds"}
                     </span>
                     <button
