@@ -97,3 +97,55 @@
   font-size: 14px;
   font-weight: 700;
 }
+
+/* Typing the numbers on real damage dice. */
+.attack-panel__dice {
+  display: grid;
+  gap: 8px;
+}
+
+.attack-panel__dice-label {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.attack-panel__dice-input {
+  flex: 1 1 180px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+/* "Add extra damage": a smite or sneak attack on top of the weapon. */
+.attack-panel__extra {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.attack-panel__extra-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.attack-panel__extra-input {
+  flex: 1 1 140px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 16px;
+}

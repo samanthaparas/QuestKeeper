@@ -670,7 +670,11 @@ function CharacterSheetPage() {
 
   // A death save: d20, no bonus. Shared with the table like any roll.
   function handleRollDeathSave() {
-    const result = roller.roll("Death save", 0);
+    // With real dice the roll finishes after the player types their number.
+    roller.roll("Death save", 0, { onResult: applyDeathSaveRoll });
+  }
+
+  function applyDeathSaveRoll(result) {
     const { deathSaves, regainsHp } = applyDeathSave(sheet.deathSaves, result.natural);
     if (regainsHp) {
       setDeathSaveNote("Natural 20! You're back up with 1 HP.");
@@ -710,10 +714,13 @@ function CharacterSheetPage() {
 
   // The CON save after damage: a failure ends the spell.
   function handleConcentrationCheck(conSave) {
-    const result = roller.roll(`Concentration (CON save, DC ${concentrationCheck.dc})`, conSave);
-    const kept = result.total >= concentrationCheck.dc;
-    setConcentrationCheck(null);
-    if (!kept) persistSheet({ ...sheet, concentration: null });
+    const dc = concentrationCheck.dc;
+    roller.roll(`Concentration (CON save, DC ${dc})`, conSave, {
+      onResult: (result) => {
+        setConcentrationCheck(null);
+        if (result.total < dc) persistSheet({ ...sheet, concentration: null });
+      },
+    });
   }
 
   function handleMaxHpChange(value) {

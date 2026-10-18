@@ -199,6 +199,92 @@ describe("AttackPanel", () => {
     expect(dealDamage).toHaveBeenCalledWith("t1", 8);
   });
 
+  it("adds up the dice a player typed, plus the bonus, before dealing the damage", async () => {
+    render(
+      <AttackPanel
+        attack={{ ...dagger, damage: "10d6+4" }}
+        combat={makeCombat({ attack_state: "hit" })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await userEvent.type(
+      screen.getByLabelText(/Rolled real dice\? Type the number on each die/),
+      "6, 2, 3, 6, 1, 1, 5, 4, 6, 2",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Use my dice" }));
+
+    expect(screen.getByText(/= 40/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Deal 40 damage" }));
+    expect(dealDamage).toHaveBeenCalledWith("t1", 40);
+  });
+
+  it("doubles typed dice on a critical hit and rejects the wrong number of dice", async () => {
+    render(
+      <AttackPanel
+        attack={{ ...dagger, damage: "1d6+3" }}
+        combat={makeCombat({ attack_state: "hit", attack_crit: true })}
+        onClose={vi.fn()}
+      />,
+    );
+    const box = screen.getByLabelText(/Rolled real dice\? Type the number on each die/);
+
+    await userEvent.type(box, "4, 2");
+    await userEvent.click(screen.getByRole("button", { name: "Use my dice" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("1d6 needs 1 number, and you typed 2.");
+
+    await userEvent.clear(box);
+    await userEvent.type(box, "4");
+    await userEvent.click(screen.getByRole("button", { name: "Use my dice" }));
+    expect(screen.getByRole("button", { name: "Deal 11 damage" })).toBeInTheDocument();
+  });
+
+  it("adds a smite on top of the weapon: weapon dice first, then the smite dice", async () => {
+    render(
+      <AttackPanel
+        attack={{ ...dagger, damage: "2d8+3" }}
+        combat={makeCombat({ attack_state: "hit" })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(screen.getByLabelText(/Add extra damage/));
+    await userEvent.type(screen.getByLabelText("Extra damage dice"), "2d8");
+    await userEvent.type(screen.getByLabelText("Name for the extra damage (optional)"), "Smite");
+    // The prompt now counts both sets of dice.
+    expect(screen.getByText(/4 numbers for 2d8, then 2 for Smite/)).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/Rolled real dice\? Type the number on each die/), "5, 3, 6, 2");
+    await userEvent.click(screen.getByRole("button", { name: "Use my dice" }));
+
+    expect(screen.getByText(/Smite 2d8 \[6, 2\] = 8/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Deal 19 damage" }));
+    expect(dealDamage).toHaveBeenCalledWith("t1", 19);
+  });
+
+  it("only applies the extra damage when it's switched on for this attack", async () => {
+    window.localStorage.setItem("qk-extra-damage", JSON.stringify({ text: "2d8", label: "Smite" }));
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // d8 -> 5
+    render(
+      <AttackPanel
+        attack={{ ...dagger, damage: "1d8+3" }}
+        combat={makeCombat({ attack_state: "hit" })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // Remembered, but off: a plain roll is just the weapon.
+    await userEvent.click(screen.getByRole("button", { name: "Roll damage" }));
+    expect(screen.getByRole("button", { name: "Deal 8 damage" })).toBeInTheDocument();
+
+    // Switch it on and the remembered smite is added.
+    await userEvent.click(screen.getByLabelText(/Add extra damage/));
+    expect(screen.getByLabelText("Extra damage dice")).toHaveValue("2d8");
+    await userEvent.click(screen.getByRole("button", { name: "Roll damage" }));
+    expect(screen.getByRole("button", { name: "Deal 18 damage" })).toBeInTheDocument();
+    window.localStorage.clear();
+  });
+
   it("shows the server's error, such as 'It is not your turn'", async () => {
     attackRoll.mockRejectedValue(new Error("It is not your turn"));
     render(<AttackPanel attack={dagger} combat={makeCombat()} onClose={vi.fn()} />);

@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useId, useState } from "react";
+import { describeDiceNeeded, diceNeeded } from "../../utils/attacks";
 import { useRoller } from "./rollContext";
 import "./RollDock.css";
 
@@ -30,13 +31,46 @@ function RollDock() {
 
   if (!roller) return null;
   const { lastRoll, mode, setMode, tableName, share, setShare, conditionNotes = [] } = roller;
+  const { realDice, setRealDice, pending } = roller;
 
   return (
     <div className="roll-dock">
+      {pending && <RealDiceEntry key={`${pending.label}-${pending.type}`} roller={roller} />}
       {lastRoll && <RollResult key={lastRoll.id} roll={lastRoll} roller={roller} />}
 
+      <DiceHelp />
+
       <div className="roll-dock__bar" role="group" aria-label="Dice rolls">
-        <span className="roll-dock__hint">Tap any underlined + number to roll it</span>
+        <span className="roll-dock__hint">
+          {realDice
+            ? "Tap any underlined number, then type what your dice show"
+            : "Tap any underlined + number to roll it"}
+        </span>
+        {/* Who rolls: the app, or you with real dice (the app adds the bonus). */}
+        {setRealDice && (
+          <div className="roll-dock__modes" role="radiogroup" aria-label="Who rolls the dice">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!realDice}
+              className="roll-dock__mode"
+              title="The app rolls for you"
+              onClick={() => setRealDice(false)}
+            >
+              App rolls
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={Boolean(realDice)}
+              className="roll-dock__mode"
+              title="You roll real dice and type the numbers; the app adds your bonus"
+              onClick={() => setRealDice(true)}
+            >
+              I roll real dice
+            </button>
+          </div>
+        )}
         <span className="roll-dock__label" aria-hidden="true">
           Next d20:
         </span>
@@ -80,6 +114,106 @@ function RollDock() {
         )}
       </div>
     </div>
+  );
+}
+
+// A short, plain-language explanation for people new to the dice.
+function DiceHelp() {
+  return (
+    <details className="roll-dock__help">
+      <summary>New to dice? What does this mean?</summary>
+      <div className="roll-dock__help-body">
+        <p>
+          <strong>d20</strong> is a 20-sided die. For most checks, saves and attacks you roll one d20 and
+          add the bonus shown on the number you tapped. That total is compared with a target number: the
+          DM&apos;s DC, or an enemy&apos;s armor (AC). Higher is better.
+        </p>
+        <p>
+          <strong>Natural 20 or natural 1</strong> means the number on the die itself, before any bonus.
+          A natural 20 on an attack is a critical hit.
+        </p>
+        <p>
+          <strong>Advantage</strong> means roll two d20 and keep the higher one. <strong>Disadvantage</strong>{" "}
+          means keep the lower one.
+        </p>
+        <p>
+          <strong>Damage</strong> uses other dice: 2d6 means roll two six-sided dice and add them up, then
+          add any bonus.
+        </p>
+        <p>
+          <strong>Rolling real dice?</strong> Choose &ldquo;I roll real dice&rdquo;, tap a number, and type
+          what each die shows. The app adds everything up and your bonus for you.
+        </p>
+      </div>
+    </details>
+  );
+}
+
+// Asks for the numbers on the player's own dice: one d20 for a check (two
+// with advantage or disadvantage), or one number per damage die.
+function RealDiceEntry({ roller }) {
+  const { pending, mode, submitRealDice, cancelRealDice } = roller;
+  const inputId = useId();
+  const [text, setText] = useState("");
+  const [error, setError] = useState("");
+
+  let prompt;
+  let placeholder;
+  if (pending.type === "check") {
+    prompt =
+      mode === "normal"
+        ? "Type the number on your d20."
+        : `You have ${mode}: type both d20 numbers, like 14, 7.`;
+    placeholder = mode === "normal" ? "d20" : "14, 7";
+  } else {
+    const needed = diceNeeded(pending.damage).reduce((sum, { count }) => sum + count, 0);
+    prompt = `Type the number on each die (${needed} ${needed === 1 ? "number" : "numbers"} for ${describeDiceNeeded(
+      pending.damage,
+    )}), separated by commas. We add them up and your bonus${pending.crit ? ", and double the dice for the critical hit" : ""}.`;
+    placeholder = "6, 2, 3, ...";
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    const problem = submitRealDice(text);
+    if (problem) setError(problem);
+  }
+
+  return (
+    <form className="real-dice" onSubmit={handleSubmit} aria-label={`${pending.label}: your dice`}>
+      <label className="real-dice__label" htmlFor={inputId}>
+        <strong>{pending.label}</strong>
+        <span>{prompt}</span>
+      </label>
+      <div className="real-dice__row">
+        <input
+          id={inputId}
+          className="real-dice__input"
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          autoFocus
+          placeholder={placeholder}
+          value={text}
+          aria-invalid={error ? true : undefined}
+          onChange={(event) => {
+            setText(event.target.value);
+            setError("");
+          }}
+        />
+        <button type="submit" className="real-dice__go" disabled={text.trim() === ""}>
+          Use my roll
+        </button>
+        <button type="button" className="real-dice__cancel" onClick={cancelRealDice}>
+          Cancel
+        </button>
+      </div>
+      {error && (
+        <p className="real-dice__error" role="alert">
+          {error}
+        </p>
+      )}
+    </form>
   );
 }
 
