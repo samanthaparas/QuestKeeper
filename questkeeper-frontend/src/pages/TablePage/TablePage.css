@@ -245,15 +245,24 @@
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
+  /* Big enough to actually see the picture. */
+  width: 56px;
+  height: 56px;
   overflow: hidden;
-  border: 2px solid var(--qk-border);
+  border: 3px solid var(--qk-border);
   border-radius: 50%;
   background-color: var(--qk-terracotta-soft);
   color: var(--qk-terracotta-hover);
   font-family: var(--qk-font-display);
-  font-size: 13px;
+  font-size: 18px;
+}
+
+@media (max-width: 600px) {
+  .table-page__row-portrait {
+    width: 44px;
+    height: 44px;
+    font-size: 15px;
+  }
 }
 
 .table-page__row-portrait img {

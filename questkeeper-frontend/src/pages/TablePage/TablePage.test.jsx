@@ -1551,3 +1551,37 @@ describe("the Adventurer game page", () => {
     expect(gameTab()).toHaveTextContent("Combat");
   });
 });
+
+describe("other players' portraits in the turn order", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCharactersByIds.mockResolvedValue([]);
+  });
+
+  it("shows every player's picture to a player, even when the DM isn't sharing the party", async () => {
+    const { getTablePortraits } = await import("../../utils/journalStore");
+    getTablePortraits.mockResolvedValue(new Map([["player-2", "https://example.com/pippa.png"]]));
+    mockTable({ isDm: false, combatActive: false, currentId: null });
+    useTable.mockReturnValue({
+      ...currentTable,
+      table: { ...currentTable.table, share_party: false },
+      combatants: [
+        ...combatants,
+        { id: "c-pippa", kind: "player", user_id: "player-2", name: "Pippa", initiative: null, status: "healthy", damage_taken: 0, created_at: "2026-10-03T00:00:04Z" },
+        { id: "c-velarion", kind: "player", user_id: "player-3", name: "Velarion", initiative: null, status: "healthy", damage_taken: 0, created_at: "2026-10-03T00:00:05Z" },
+      ],
+    });
+    renderPage();
+
+    await waitFor(() =>
+      expect(rowFor("Pippa").querySelector(".table-page__row-portrait img")).toHaveAttribute(
+        "src",
+        "https://example.com/pippa.png",
+      ),
+    );
+    // A player with no picture on file still shows their initials.
+    expect(rowFor("Velarion").querySelector(".table-page__row-portrait img")).toBeNull();
+    expect(rowFor("Velarion").querySelector(".table-page__row-portrait")).toHaveTextContent("V");
+  });
+});
+
