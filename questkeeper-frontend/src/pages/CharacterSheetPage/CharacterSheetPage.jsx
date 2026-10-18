@@ -65,6 +65,7 @@ import Button from "../../components/Button/Button";
 import { getFeatureSubclassId, sourceFromEntry } from "../../utils/featureSources";
 import { getSetupTasks } from "../../utils/setupTasks";
 import { loadHomebrew } from "../../utils/homebrewCache";
+import { RETRY_DELAYS } from "../../hooks/useSrdEquipmentLookup";
 import { fillMissingComponents } from "../../utils/spellComponents";
 import {
   isArmorDetails,
@@ -272,36 +273,60 @@ function CharacterSheetPage() {
   // details of the armor it's made from, with its bonus added.
   const [gearDetails, setGearDetails] = useState({});
   const gearNames = (sheet?.equipment ?? []).map((item) => normalizeItemName(item.name)).join("|");
+  // If the rules server can't be reached (the free plan's server can take up to
+  // a minute to wake up), nothing is remembered for those items and the look-up
+  // tries again after a pause, a few times, so armor isn't lost for good.
+  const [gearAttempt, setGearAttempt] = useState(0);
+  const gearFailures = useRef(0);
   useEffect(() => {
     const items = (sheet?.equipment ?? []).filter(
       (item) => !(normalizeItemName(item.name) in gearDetails),
     );
     if (items.length === 0) return undefined;
     let ignore = false;
+    let timer = null;
+    let listFailed = false;
     getEquipment("2014")
-      .catch(() => [])
+      .catch(() => {
+        listFailed = true;
+        return [];
+      })
       .then((list) =>
-        Promise.all(
-          items.map(async (item) => {
-            const match = list.find(
-              (entry) => normalizeItemName(entry.name) === normalizeItemName(item.name),
-            );
-            // Magic armor ("Armor of Invulnerability", "+1 Chain Mail") isn't
-            // in the plain list; look up the armor it's made from instead.
-            const magicArmor = match ? null : magicArmorFor(item.name);
-            const index = match?.index ?? magicArmor?.base ?? item.index;
-            const details = index ? await getEquipmentDetails(index).catch(() => null) : null;
-            return [normalizeItemName(item.name), withArmorBonus(details, magicArmor?.bonus)];
-          }),
-        ),
+        listFailed
+          ? []
+          : Promise.all(
+              items.map(async (item) => {
+                const match = list.find(
+                  (entry) => normalizeItemName(entry.name) === normalizeItemName(item.name),
+                );
+                // Magic armor ("Armor of Invulnerability", "+1 Chain Mail") isn't
+                // in the plain list; look up the armor it's made from instead.
+                const magicArmor = match ? null : magicArmorFor(item.name);
+                const index = match?.index ?? magicArmor?.base ?? item.index;
+                const details = index ? await getEquipmentDetails(index).catch(() => null) : null;
+                return [normalizeItemName(item.name), withArmorBonus(details, magicArmor?.bonus)];
+              }),
+            ),
       )
-      .then((pairs) => !ignore && setGearDetails((known) => ({ ...known, ...Object.fromEntries(pairs) })));
+      .then((pairs) => {
+        if (ignore) return;
+        if (listFailed) {
+          gearFailures.current += 1;
+          if (gearFailures.current <= RETRY_DELAYS.length) {
+            timer = setTimeout(() => setGearAttempt((count) => count + 1), RETRY_DELAYS[gearFailures.current - 1]);
+          }
+          return;
+        }
+        gearFailures.current = 0;
+        setGearDetails((known) => ({ ...known, ...Object.fromEntries(pairs) }));
+      });
     return () => {
       ignore = true;
+      clearTimeout(timer);
     };
-    // Look up only when the inventory's names change.
+    // Look up only when the inventory's names change (or a retry is due).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gearNames]);
+  }, [gearNames, gearAttempt]);
   const gearDetailsFor = (item) => gearDetails[normalizeItemName(item.name)];
 
   // The player's homebrew, so a race, background or subclass picked as a
