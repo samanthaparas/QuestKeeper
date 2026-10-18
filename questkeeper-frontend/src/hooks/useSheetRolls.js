@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { checkFromDice, damageRollFromDice, rollCheck, rollDamageFor } from "../utils/rolls";
-import { parseDamage, parseDiceNumbers } from "../utils/attacks";
+import {
+  checkExtraDamage,
+  damageFromDice,
+  parseDamage,
+  parseDiceNumbers,
+  rollDamage as rollDamageText,
+} from "../utils/attacks";
 import { listCharacterTables, logRoll } from "../utils/tableStore";
 
 // Remembered per character: whether rolls are shared, and (the same choice
@@ -10,6 +16,19 @@ function readStored(key) {
     return window.localStorage.getItem(key);
   } catch {
     return null;
+  }
+}
+
+// The roll history kept per character on this device: the last HISTORY_LIMIT
+// rolls, newest first.
+const HISTORY_LIMIT = 100;
+
+function readHistory(characterId) {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(`qk-roll-history-${characterId}`) ?? "[]");
+    return Array.isArray(saved) ? saved.slice(0, HISTORY_LIMIT) : [];
+  } catch {
+    return [];
   }
 }
 
@@ -34,6 +53,20 @@ export function useSheetRolls(characterId, characterName) {
   // of the app rolling. `pending` is the roll waiting for them.
   const [realChoice, setRealChoice] = useState(null);
   const [pending, setPending] = useState(null);
+  // Every roll made on this sheet, newest first, so a quick roll can be looked
+  // at again later (the Rolls tab). Kept on this device.
+  const [historyState, setHistoryState] = useState({ id: null, entries: [] });
+  // A different character (or the first load): read that character's saved
+  // history instead of showing the last one's.
+  if (characterId && historyState.id !== characterId) {
+    setHistoryState({ id: characterId, entries: readHistory(characterId) });
+  }
+  const history = historyState.id === characterId ? historyState.entries : [];
+  const setHistory = useCallback(
+    (update) => setHistoryState((state) => ({ ...state, entries: update(state.entries) })),
+    [],
+  );
+  const historyIds = useRef({});
   const counter = useRef(0);
 
   // The tables this character sits at (none when signed out or not seated).
@@ -47,6 +80,20 @@ export function useSheetRolls(characterId, characterName) {
       ignore = true;
     };
   }, [characterId]);
+
+  // Save the history again whenever it changes.
+  useEffect(() => {
+    if (!characterId || historyState.id !== characterId) return;
+    try {
+      window.localStorage.setItem(`qk-roll-history-${characterId}`, JSON.stringify(historyState.entries));
+    } catch {
+      // Remembering is a convenience; the rolls still show this visit.
+    }
+  }, [historyState, characterId]);
+
+  function clearHistory() {
+    setHistory(() => []);
+  }
 
   const preferredId = readStored(`qk-active-table-${characterId}`);
   const table = tables.find((entry) => entry.id === preferredId) ?? tables[0] ?? null;
@@ -72,12 +119,32 @@ export function useSheetRolls(characterId, characterName) {
       counter.current += 1;
       const id = counter.current;
       setLastRoll({ ...roll, id, status: sharing ? "sharing" : "private" });
+      // Remember it, with only what the history list needs.
+      const entryId = `${Date.now()}-${id}`;
+      historyIds.current[id] = entryId;
+      setHistory((entries) =>
+        [
+          {
+            id: entryId,
+            at: Date.now(),
+            kind: roll.kind,
+            label: roll.label,
+            total: roll.total,
+            detail: roll.detail,
+            isNatural20: Boolean(roll.isNatural20),
+            isNatural1: Boolean(roll.isNatural1),
+            isCrit: Boolean(roll.isCrit),
+            extras: [],
+          },
+          ...entries,
+        ].slice(0, HISTORY_LIMIT),
+      );
       if (!sharing) return;
       logRoll(table.id, { who: characterName, label: roll.label, detail: roll.detail, total: roll.total })
         .then(() => setLastRoll((current) => (current?.id === id ? { ...current, status: "shared" } : current)))
         .catch(() => setLastRoll((current) => (current?.id === id ? { ...current, status: "failed" } : current)));
     },
-    [sharing, table, characterName],
+    [sharing, table, characterName, setHistory],
   );
 
   // options.onResult(roll) is called with the finished roll, for rolls the
@@ -118,6 +185,82 @@ export function useSheetRolls(characterId, characterName) {
     [show, realDice],
   );
 
+  // Adds the extra dice or bonus to the damage roll now on screen: its total and
+  // its breakdown grow, and it is shared with the table as its own line.
+  const addExtraToLastRoll = useCallback(
+    (baseId, label, rolled) => {
+      setLastRoll((current) =>
+        current?.id === baseId
+          ? {
+              ...current,
+              total: current.total + rolled.total,
+              detail: `${current.detail} | ${label} ${rolled.text}`,
+              // What's been added, so the card can say so.
+              extras: [...(current.extras ?? []), { label, total: rolled.total }],
+            }
+          : current,
+      );
+      // The history entry grows along with the roll on screen.
+      const entryId = historyIds.current[baseId];
+      if (entryId) {
+        setHistory((entries) =>
+          entries.map((entry) =>
+            entry.id === entryId
+              ? {
+                  ...entry,
+                  total: entry.total + rolled.total,
+                  detail: `${entry.detail} | ${label} ${rolled.text}`,
+                  extras: [...(entry.extras ?? []), { label, total: rolled.total }],
+                }
+              : entry,
+          ),
+        );
+      }
+      if (sharing) {
+        logRoll(table.id, {
+          who: characterName,
+          label: `${label} (extra damage)`,
+          detail: rolled.text.replace(/ = \d+$/, ""),
+          total: rolled.total,
+        }).catch(() => {});
+      }
+    },
+    [sharing, table, characterName, setHistory],
+  );
+
+  // "Add extra damage" on a damage roll (a smite, a sneak attack). The app
+  // rolls the extra. With real dice, diceText holds the numbers the player
+  // typed in the same form; without it, a prompt asks for them next. Returns
+  // an error in plain words, or null.
+  const addExtraDamage = useCallback(
+    (extraText, name, diceText = null) => {
+      const base = lastRoll;
+      if (!base || base.kind !== "damage") return "Roll damage first, then add the extra.";
+      const check = checkExtraDamage(extraText);
+      if (check.error) return check.error;
+      const label = String(name ?? "").trim() || "Extra";
+      const crit = Boolean(base.isCrit);
+
+      if (realDice && check.dice > 0) {
+        if (diceText === null) {
+          setPending({ type: "extra", label, damage: extraText, crit, baseId: base.id });
+          return null;
+        }
+        const dice = parseDiceNumbers(diceText);
+        if (!dice) return "Type the numbers on your dice, separated by commas.";
+        const typed = damageFromDice(extraText, dice, { crit });
+        if (typed.error) return typed.error;
+        addExtraToLastRoll(base.id, label, typed);
+        return null;
+      }
+      const rolled = rollDamageText(extraText, { crit });
+      if (!rolled) return "Write the extra damage like 2d8 or 1d6+2.";
+      addExtraToLastRoll(base.id, label, rolled);
+      return null;
+    },
+    [lastRoll, realDice, addExtraToLastRoll],
+  );
+
   // The player typed the numbers on their dice ("6, 2, 3"). Returns an error
   // in plain words to show beside the box, or null once the roll is done.
   const submitRealDice = useCallback(
@@ -142,6 +285,14 @@ export function useSheetRolls(characterId, characterName) {
         return null;
       }
 
+      if (pending.type === "extra") {
+        const extra = damageFromDice(pending.damage, dice, { crit: pending.crit });
+        if (extra.error) return extra.error;
+        addExtraToLastRoll(pending.baseId, pending.label, extra);
+        setPending(null);
+        return null;
+      }
+
       const result = damageRollFromDice({
         label: pending.label,
         damage: pending.damage,
@@ -153,7 +304,7 @@ export function useSheetRolls(characterId, characterName) {
       setPending(null);
       return null;
     },
-    [pending, mode, show],
+    [pending, mode, show, addExtraToLastRoll],
   );
 
   return {
@@ -163,10 +314,13 @@ export function useSheetRolls(characterId, characterName) {
     dismiss: () => setLastRoll(null),
     roll,
     rollDamage,
+    history,
+    clearHistory,
     realDice,
     setRealDice,
     pending,
     submitRealDice,
+    addExtraDamage,
     cancelRealDice: () => setPending(null),
     tableId: table?.id ?? null,
     tableSession: table?.session_number ?? 1,

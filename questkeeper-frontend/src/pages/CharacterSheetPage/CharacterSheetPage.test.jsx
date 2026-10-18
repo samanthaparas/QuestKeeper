@@ -472,6 +472,19 @@ describe("click to roll", () => {
     expect(result).toHaveTextContent("Only you saw this");
   });
 
+  it("keeps a history of rolls on the Rolls tab, reachable from the roll card", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    renderSheet(makeSheet());
+
+    await user.click(await screen.findByRole("button", { name: "Roll Stealth, +0" }));
+    await user.click(screen.getByRole("button", { name: "See my roll history" }));
+
+    expect(screen.getByRole("heading", { name: "Your rolls" })).toBeInTheDocument();
+    const items = screen.getAllByRole("listitem");
+    expect(items.some((item) => item.textContent.includes("Stealth") && item.textContent.includes("d20 11"))).toBe(true);
+  });
+
   it("rolls with advantage once, then goes back to normal", async () => {
     const user = userEvent.setup();
     vi.spyOn(Math, "random").mockReturnValueOnce(0.1).mockReturnValueOnce(0.9).mockReturnValue(0.5);
@@ -775,6 +788,53 @@ describe("damage from the DM at 0 HP", () => {
 
     expect(await screen.findByText(/already at 0 HP, so that's a failed death save/)).toBeInTheDocument();
     expect(screen.getByText("Taking damage at 0 HP counts as a failed death save.")).toBeInTheDocument();
+  });
+});
+
+describe("help on the sheet", () => {
+  afterEach(() => {
+    delete window.matchMedia;
+  });
+
+  it("keeps the explanations out of the middle, behind a Help button on smaller screens", async () => {
+    const user = userEvent.setup();
+    renderSheet(makeSheet());
+
+    const help = await screen.findByRole("button", { name: "? Help" });
+    expect(help).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("What do these boxes mean?")).not.toBeInTheDocument();
+
+    await user.click(help);
+    expect(help).toHaveAttribute("aria-expanded", "true");
+    const panel = screen.getByRole("region", { name: "Help with the sheet" });
+    expect(within(panel).getByText("What do these boxes mean?")).toBeInTheDocument();
+    expect(within(panel).getByText("New to dice? What does this mean?")).toBeInTheDocument();
+    expect(within(panel).getByText(/20-sided die/)).toBeInTheDocument();
+
+    await user.click(help);
+    expect(screen.queryByRole("region", { name: "Help with the sheet" })).not.toBeInTheDocument();
+  });
+
+  it("puts both explanations in the side panel on wide screens, with no Help button", async () => {
+    window.matchMedia = vi.fn((query) => ({
+      matches: query.includes("min-width: 1300px"),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    renderSheet(makeSheet());
+
+    const side = await screen.findByRole("complementary", { name: "Portrait and quick controls" });
+    expect(within(side).getByText("What do these boxes mean?")).toBeInTheDocument();
+    expect(within(side).getByText("New to dice? What does this mean?")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "? Help" })).not.toBeInTheDocument();
+  });
+
+  it("shows the setup choices still to make as a count on the Features tab", async () => {
+    const sheet = makeSheet();
+    sheet.languages = "Common\nChoose 1 more (Half-Elf)";
+    renderSheet(sheet);
+
+    expect(await screen.findByRole("tab", { name: "Features (1 choice left)" })).toBeInTheDocument();
   });
 });
 

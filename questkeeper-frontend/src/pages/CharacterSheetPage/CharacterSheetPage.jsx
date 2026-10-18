@@ -5,7 +5,7 @@ import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useTableTurn } from "../../hooks/useTableTurn";
 import { useSheetRolls } from "../../hooks/useSheetRolls";
 import RollButton from "../../components/RollDock/RollButton";
-import RollDock from "../../components/RollDock/RollDock";
+import RollDock, { DiceHelp, DiceHelpBody } from "../../components/RollDock/RollDock";
 import { RollContext } from "../../components/RollDock/rollContext";
 import ConditionBadges from "../../components/ConditionBadges/ConditionBadges";
 import DeathSaves from "../../components/DeathSaves/DeathSaves";
@@ -81,6 +81,7 @@ import TableHandouts from "../../components/TableHandouts/TableHandouts";
 import TableJournal from "../../components/TableJournal/TableJournal";
 import TurnBanner from "../../components/TurnBanner/TurnBanner";
 import AttackPanel from "../../components/AttackPanel/AttackPanel";
+import RollHistory from "../../components/RollHistory/RollHistory";
 import ShortRestPanel from "../../components/ShortRestPanel/ShortRestPanel";
 import CharacterSheetTabs from "../../components/CharacterSheetTabs/CharacterSheetTabs";
 import CharacterSheetActionsTab from "../../components/CharacterSheetActionsTab/CharacterSheetActionsTab";
@@ -151,6 +152,9 @@ function CharacterSheetPage() {
   const [compactPanel, setCompactPanel] = useState("stats");
   const [isLevelingUp, setIsLevelingUp] = useState(false);
   const [showShortRest, setShowShortRest] = useState(false);
+  // The Help panel (what the boxes mean, and the dice) on screens with no side
+  // panel to keep it in.
+  const [showHelp, setShowHelp] = useState(false);
   const [restMessage, setRestMessage] = useState("");
   const [levelUpSummary, setLevelUpSummary] = useState(null);
   const [activeTab, setActiveTab] = useState("actions");
@@ -1420,6 +1424,26 @@ function CharacterSheetPage() {
     </button>
   );
 
+  // What the boxes at the top mean. On wide screens it is a collapsed item in
+  // the side panel; on smaller ones it is in the Help panel under the tabs.
+  const glossaryBody = (
+    <>
+      <p className="character-sheet__glossary-tip">
+        Tip: tap any bonus to roll it. The dot beside a Save marks that saving throw as proficient. Use All
+        saves for extras like a Paladin&apos;s Aura of Protection, and the small box beside AC for a temporary
+        bonus like Haste.
+      </p>
+      <dl>
+        {SHEET_TERMS.map(([term, meaning]) => (
+          <div key={term}>
+            <dt>{term}</dt>
+            <dd>{meaning}</dd>
+          </div>
+        ))}
+      </dl>
+    </>
+  );
+
   // Inspiration, Gold, Level Up and the rests. Where they sit depends on the
   // screen: a side panel on wide screens, the top card on laptops and
   // tablets, and under the tabs on phones (see controlsPlace).
@@ -1610,20 +1634,6 @@ function CharacterSheetPage() {
                       >
                         ✏️ Edit details
                       </button>
-                      {/* Choices still to make, listed on the Features tab. */}
-                      {setupTasks.length > 0 && (
-                        <>
-                          {" "}
-                          <button
-                            type="button"
-                            className="character-sheet__setup-link"
-                            onClick={() => setActiveTab("features")}
-                          >
-                            ⚠ {setupTasks.length} setup{" "}
-                            {setupTasks.length === 1 ? "choice" : "choices"} left
-                          </button>
-                        </>
-                      )}
                     </p>
                   </div>
 
@@ -1980,33 +1990,39 @@ function CharacterSheetPage() {
 
                 {isCompact && compactPanel === "skills" && skillsPanel}
 
-                <details className="character-sheet__glossary">
-                  <summary>What do these boxes mean?</summary>
-                  <p className="character-sheet__glossary-tip">
-                    Tip: tap any bonus to roll it. The dot beside a Save marks
-                    that saving throw as proficient. Use All saves for extras
-                    like a Paladin&apos;s Aura of Protection, and the small box
-                    beside AC for a temporary bonus like Haste.
-                  </p>
-                  <dl>
-                    {SHEET_TERMS.map(([term, meaning]) => (
-                      <div key={term}>
-                        <dt>{term}</dt>
-                        <dd>{meaning}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </details>
-
                 <div className="character-sheet__tabbar">
                   <CharacterSheetTabs
                     activeTab={activeTab}
                     onSelect={setActiveTab}
                     hasTable={Boolean(roller.tableId)}
                     hasSpellcasting={hasSpellcasting}
+                    // Setup choices still to make show as a count on Features.
+                    badges={{ features: setupTasks.length }}
                   />
+                  {/* No side panel on smaller screens: one Help button opens the
+                      explanations (what the boxes mean, and the dice). */}
+                  {controlsPlace !== "side" && (
+                    <button
+                      type="button"
+                      className="character-sheet__help-button"
+                      aria-expanded={showHelp}
+                      aria-controls="character-sheet-help"
+                      onClick={() => setShowHelp((open) => !open)}
+                    >
+                      ? Help
+                    </button>
+                  )}
                   {controlsPlace === "tabbar" && quickControls}
                 </div>
+
+                {controlsPlace !== "side" && showHelp && (
+                  <section id="character-sheet-help" className="character-sheet__help-panel" aria-label="Help with the sheet">
+                    <h2 className="character-sheet__help-title">What do these boxes mean?</h2>
+                    {glossaryBody}
+                    <h2 className="character-sheet__help-title">New to dice? What does this mean?</h2>
+                    <DiceHelpBody />
+                  </section>
+                )}
 
                 {showShortRest && (
                   <ShortRestPanel
@@ -2178,6 +2194,10 @@ function CharacterSheetPage() {
                     </div>
                   )}
 
+                  {activeTab === "rolls" && (
+                    <RollHistory history={roller.history} onClear={roller.clearHistory} />
+                  )}
+
                   {activeTab === "story" && (
                     <CharacterSheetStoryTab
                       backstory={sheet.backstory}
@@ -2208,6 +2228,12 @@ function CharacterSheetPage() {
                   />
                   {quickControls}
                   {tableLink}
+                  {/* Help, kept out of the middle of the sheet. */}
+                  <details className="character-sheet__glossary">
+                    <summary>What do these boxes mean?</summary>
+                    {glossaryBody}
+                  </details>
+                  <DiceHelp />
                 </aside>
               )}
             </div>
@@ -2242,7 +2268,12 @@ function CharacterSheetPage() {
   // The roll bar also reminds you of conditions that change your rolls.
   return (
     <RollContext.Provider
-      value={{ ...roller, conditionNotes: rollNotesFor(sheet.conditions ?? []) }}
+      value={{
+        ...roller,
+        conditionNotes: rollNotesFor(sheet.conditions ?? []),
+        // "See my roll history" on the roll card jumps to the Rolls tab.
+        openHistory: () => setActiveTab("rolls"),
+      }}
     >
       {sheetPage}
     </RollContext.Provider>

@@ -77,4 +77,17 @@ describe("CharacterSheetTabs", () => {
     );
     expect(screen.getByRole("tab", { name: "Journal & Handouts" })).toBeInTheDocument();
   });
+
+  it("shows a count on a tab, and says what it means to screen readers", () => {
+    render(<CharacterSheetTabs activeTab="actions" onSelect={() => {}} badges={{ features: 2 }} />);
+
+    expect(screen.getByRole("tab", { name: /Features/ })).toHaveTextContent("2");
+    expect(screen.getByRole("tab", { name: "Features (2 choices left)" })).toBeInTheDocument();
+  });
+
+  it("shows no count when there's nothing left to do", () => {
+    render(<CharacterSheetTabs activeTab="actions" onSelect={() => {}} badges={{ features: 0 }} />);
+    expect(screen.getByRole("tab", { name: "Features" })).toBeInTheDocument();
+  });
 });
+

@@ -138,14 +138,11 @@
   cursor: pointer;
 }
 
-.attack-panel__extra-input {
-  flex: 1 1 140px;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--qk-border);
-  border-radius: var(--qk-radius-control);
-  background-color: var(--qk-surface);
-  color: var(--qk-text);
-  font: inherit;
-  font-size: 16px;
+
+/* Says the extra damage is in, and what the total came to. */
+.attack-panel__added {
+  flex-basis: 100%;
+  color: var(--qk-moss);
+  font-size: 14px;
+  font-weight: 700;
 }

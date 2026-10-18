@@ -90,7 +90,9 @@
   width: 100%;
   height: auto;
   aspect-ratio: 1;
-  max-width: 220px;
+  /* Shrinks on short windows so the side panel doesn't need to scroll. */
+  max-width: min(220px, 22vh);
+  margin-inline: auto;
   border-radius: var(--qk-radius-card);
 }
 

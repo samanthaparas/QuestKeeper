@@ -1,0 +1,139 @@
+/* The Rolls tab: a list of every roll made on this sheet. */
+.roll-history {
+  display: grid;
+  gap: 12px;
+}
+
+.roll-history__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.roll-history__title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 22px;
+}
+
+.roll-history__clear {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.roll-history__note,
+.roll-history__empty {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.roll-history__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.roll-history__filter {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.roll-history__filter[aria-pressed="true"] {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+.roll-history__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.roll-history__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.roll-history__main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.roll-history__main p {
+  margin: 0;
+}
+
+.roll-history__label {
+  font-weight: 700;
+}
+
+.roll-history__detail {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.roll-history__extra {
+  color: var(--qk-moss);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.roll-history__when {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+}
+
+.roll-history__total {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 32px;
+  line-height: 1;
+}
+
+.roll-history__chip {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.roll-history__chip--good {
+  background-color: var(--qk-moss-soft);
+  color: var(--qk-moss);
+}
+
+.roll-history__chip--bad {
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-terracotta-hover);
+}
