@@ -20,6 +20,7 @@ describe("SettingsPage", () => {
   beforeEach(() => {
     installFakeStorage();
     delete document.documentElement.dataset.motion;
+    delete document.documentElement.dataset.theme;
     vi.clearAllMocks();
   });
 
@@ -34,6 +35,22 @@ describe("SettingsPage", () => {
 
     expect(updateDisplayName).toHaveBeenCalledWith("Samantha");
     expect(await screen.findByText("Display name saved.")).toBeInTheDocument();
+  });
+
+  it("lets you pick Dark, Light, or Match my device, and remembers it", async () => {
+    render(<SettingsPage />);
+    expect(screen.getByLabelText("Match my device")).toBeChecked();
+
+    await userEvent.click(screen.getByLabelText("Dark"));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(window.localStorage.getItem("qk-theme")).toBe("dark");
+
+    await userEvent.click(screen.getByLabelText("Light"));
+    expect(document.documentElement.dataset.theme).toBe("light");
+
+    await userEvent.click(screen.getByLabelText("Match my device"));
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+    expect(window.localStorage.getItem("qk-theme")).toBeNull();
   });
 
   it("turns Reduce Motion on for this device", async () => {

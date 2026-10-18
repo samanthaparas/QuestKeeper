@@ -38,7 +38,7 @@
   padding: 0 10px;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-control);
-  background-color: #fff;
+  background-color: var(--qk-input-bg);
   color: var(--qk-text);
   font: inherit;
 }

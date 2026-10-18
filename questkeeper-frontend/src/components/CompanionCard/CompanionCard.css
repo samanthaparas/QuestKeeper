@@ -73,7 +73,7 @@
   padding: 0 4px;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-small);
-  background-color: #fff;
+  background-color: var(--qk-input-bg);
   color: var(--qk-text);
   font: inherit;
   text-align: center;
@@ -128,7 +128,7 @@
 .companion-card__save--bonus {
   border-color: var(--qk-terracotta);
   background-color: var(--qk-terracotta);
-  color: #fff;
+  color: var(--qk-on-accent);
 }
 
 .companion-card__save--editing {
@@ -179,7 +179,7 @@
   padding: 0 10px;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-small);
-  background-color: #fff;
+  background-color: var(--qk-input-bg);
   color: var(--qk-text);
   font-family: var(--qk-font-display);
   font-size: 18px;
@@ -253,7 +253,7 @@
   padding: 0 10px;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-small);
-  background-color: #fff;
+  background-color: var(--qk-input-bg);
   color: var(--qk-text);
   font: inherit;
 }

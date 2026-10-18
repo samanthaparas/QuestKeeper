@@ -141,7 +141,7 @@
   padding: 12px 16px;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-control);
-  background-color: #fff;
+  background-color: var(--qk-input-bg);
 }
 
 /* DM's monster rows with something on the right (history, or an open Attack
@@ -365,7 +365,7 @@
   padding: 0 10px;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-control);
-  background-color: #fff;
+  background-color: var(--qk-input-bg);
   color: var(--qk-text);
   font: inherit;
 }
@@ -433,7 +433,7 @@
 .table-page__log li {
   padding: 8px 12px;
   border-left: 3px solid var(--qk-brass);
-  background-color: #fff;
+  background-color: var(--qk-input-bg);
   border-radius: 0 var(--qk-radius-small) var(--qk-radius-small) 0;
 }
 
@@ -467,7 +467,7 @@
   padding: 0 16px;
   border: 1px solid var(--qk-border);
   border-radius: 999px;
-  background-color: #fff;
+  background-color: var(--qk-input-bg);
   color: var(--qk-text);
   font: inherit;
   font-weight: 700;
@@ -477,7 +477,7 @@
 .table-page__tab--active {
   border-color: var(--qk-terracotta);
   background-color: var(--qk-terracotta);
-  color: #fff;
+  color: var(--qk-on-accent);
 }
 
 /* An enemy with an attack waiting on the DM's call stands out in its own row. */
@@ -691,7 +691,7 @@
   padding: 4px 10px;
   border-radius: var(--qk-radius-small);
   background-color: var(--qk-terracotta);
-  color: #fff;
+  color: var(--qk-on-accent);
   font-size: 14px;
   font-weight: 700;
 }

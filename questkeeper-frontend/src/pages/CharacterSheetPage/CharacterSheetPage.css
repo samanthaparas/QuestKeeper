@@ -1310,7 +1310,7 @@ button.character-sheet__ability-save-badge:focus-visible {
    so an accidental click is easy to spot. */
 button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-badge--plain) {
   background-color: var(--qk-terracotta);
-  color: #fff;
+  color: var(--qk-on-accent);
   font-weight: 700;
 }
 

@@ -7,7 +7,7 @@
   padding: 12px 14px;
   border: 2px solid var(--qk-danger);
   border-radius: var(--qk-radius-card);
-  background-color: #fbe9e5;
+  background-color: var(--qk-danger-soft);
 }
 
 .death-saves__head {

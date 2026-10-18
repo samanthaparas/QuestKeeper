@@ -78,7 +78,7 @@
   padding: 0 10px;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-small);
-  background-color: #fff;
+  background-color: var(--qk-input-bg);
   color: var(--qk-text);
   font: inherit;
   font-size: 14px;
