@@ -12,6 +12,7 @@ import {
   getSpellSlots,
   formatModifier,
   describeSpellLock,
+  getSafeSpellLink,
 } from "../../utils/characterSheet";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
 import { spellsMissingComponents } from "../../utils/spellComponents";
@@ -255,12 +256,33 @@ function CharacterSheetSpellsTab({
             width: "large",
           },
           {
+            // Book spells aren't in the SRD: a link to where they're written
+            // up (like dnd5e.wikidot.com), never the book's own text.
+            key: "link",
+            type: "url",
+            placeholder: "Book link (optional)",
+            width: "large",
+            getHint: (values) =>
+              values.name?.trim() && !findSrdIndex(values.name)
+                ? "Not an SRD spell? Type its level and components yourself, and paste a link to where it's written up if you like."
+                : "",
+          },
+          {
+            key: "bonusSpell",
+            type: "checkbox",
+            label: "Doesn't count toward spells known",
+            getHint: (values) =>
+              values.bonusSpell
+                ? "For spells a subclass or feature gives you for free (Fey Wanderer Magic, Primal Awareness). Level-up won't count them."
+                : "",
+          },
+          {
             key: "notes",
             type: "textarea",
             placeholder: "Notes (optional) - one line per bullet point",
           },
         ]}
-        emptyText="Add the spells your character knows or has prepared. Tap Add Spell and start typing a name: its level and components fill in for you."
+        emptyText="Add the spells your character knows or has prepared. Tap Add Spell and start typing a name: an SRD spell's level and components fill in for you. Book spells can be typed in with a link."
         addButtonLabel="Add Spell"
         onAdd={onSpellAdd}
         onUpdate={onSpellUpdate}
@@ -281,6 +303,24 @@ function CharacterSheetSpellsTab({
             <span className="character-sheet__resource-reset">
               {spell.level === 0 ? "Cantrip" : `Level ${spell.level}`}
             </span>
+            {spell.bonusSpell && (
+              <span
+                className="character-sheet__resource-reset"
+                title="Doesn't count toward spells known"
+              >
+                Bonus
+              </span>
+            )}
+            {getSafeSpellLink(spell.link) && (
+              <a
+                className="character-sheet__spell-link"
+                href={getSafeSpellLink(spell.link)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Book link
+              </a>
+            )}
             {spell.components && (
               <span className="character-sheet__resource-reset">
                 {spell.components}

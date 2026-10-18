@@ -16,6 +16,10 @@ import {
   formatModifier,
   getProficiencyBonus,
   getMaxSpellLevel,
+  getLevelUpSpellPlan,
+  countsTowardSpellsKnown,
+  getBookSpellChoice,
+  getSafeSpellLink,
 } from "../../utils/characterSheet";
 
 import {
@@ -36,6 +40,10 @@ import { mapSubclassToPanel } from "../../utils/srdDetails";
 import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 
+// The dropdown value for "Book spell instead": the player types the spell in
+// themselves, for spells from books that aren't in the SRD list.
+const BOOK_PICK = "__book__";
+
 function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
   const targetLevel = sheet.level + 1;
   const hitDie = sheet.class?.hitDie ?? 8;
@@ -44,7 +52,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
   const [pendingLevelUp, setPendingLevelUp] = useState(() =>
     createPendingLevelUp(
       targetLevel,
-      getLevelUpStepKeys(targetLevel, sheet.class),
+      getLevelUpStepKeys(targetLevel, sheet.class, sheet.spellcasting),
     ),
   );
   const [stepIndex, setStepIndex] = useState(0);
@@ -74,7 +82,19 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
   const [classSpells, setClassSpells] = useState([]);
   const [isSpellsLoading, setIsSpellsLoading] = useState(true);
   const [spellsError, setSpellsError] = useState("");
+  // Spell step: one slot per new cantrip and per new spell (an empty string
+  // until picked), the optional swap, and the spell whose details are showing.
+  const spellPlan = getLevelUpSpellPlan(sheet.class, sheet.spellcasting, targetLevel);
+  const [cantripPicks, setCantripPicks] = useState(() => Array(spellPlan.cantrips).fill(""));
+  const [spellPicks, setSpellPicks] = useState(() => Array(spellPlan.spells).fill(""));
+  const [isSwapping, setIsSwapping] = useState(false);
+  const [swapRemoveIndex, setSwapRemoveIndex] = useState("");
+  const [swapAddIndex, setSwapAddIndex] = useState("");
+  const [isSavingSpells, setIsSavingSpells] = useState(false);
   const [selectedSpellIndex, setSelectedSpellIndex] = useState("");
+  // What was typed for each "Book spell instead" pick, by slot ("cantrip-0",
+  // "spell-1", "swap"), so switching a slot back and forth keeps the typing.
+  const [bookDrafts, setBookDrafts] = useState({});
   const [selectedSpellDetails, setSelectedSpellDetails] = useState(null);
 
   const currentStep = pendingLevelUp.steps[stepIndex];
@@ -86,14 +106,53 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
 
   // Follows the class's own slots, so half casters and Warlocks only see spells they can cast.
   const maxSpellLevel = getMaxSpellLevel(sheet.class, targetLevel);
-  const knownSpellIndexes = new Set([
-    ...(sheet.spellcasting?.cantripsKnown ?? []).map((s) => s.index),
-    ...(sheet.spellcasting?.spellsKnown ?? []).map((s) => s.index),
-  ]);
+  // Spells already on the sheet are never offered again. Spells typed in by
+  // hand have a made-up index, so they're matched by name too.
+  const sheetSpells = [
+    ...(sheet.spellcasting?.cantripsKnown ?? []),
+    ...(sheet.spellcasting?.spellsKnown ?? []),
+  ];
+  const knownSpellIndexes = new Set(sheetSpells.map((s) => s.index));
+  const knownSpellNames = new Set(sheetSpells.map((s) => s.name?.toLowerCase()));
   const availableSpells = classSpells.filter(
     (spell) =>
-      spell.level <= maxSpellLevel && !knownSpellIndexes.has(spell.index),
+      spell.level <= maxSpellLevel &&
+      !knownSpellIndexes.has(spell.index) &&
+      !knownSpellNames.has(spell.name.toLowerCase()),
   );
+  const availableCantrips = availableSpells.filter((spell) => spell.level === 0);
+  const availableLeveled = availableSpells.filter((spell) => spell.level > 0);
+  // Only class spells count toward spells known, so only they can be swapped
+  // out (a subclass's bonus spells stay put).
+  const swappableSpells = (sheet.spellcasting?.spellsKnown ?? []).filter(
+    countsTowardSpellsKnown,
+  );
+  // If the list has fewer spells left than picks, the player takes what's
+  // there. A homebrew class's one pick is only a guess, so it can be skipped.
+  const neededCantrips = Math.min(spellPlan.cantrips, availableCantrips.length);
+  const neededSpells = spellPlan.isEstimate
+    ? 0
+    : Math.min(spellPlan.spells, availableLeveled.length);
+  // A typed book spell, or null while it's unfinished or already on the sheet.
+  function bookChoiceFor(slotKey, isCantrip) {
+    const choice = getBookSpellChoice(bookDrafts[slotKey], { isCantrip, maxSpellLevel });
+    if (!choice || knownSpellNames.has(choice.name.toLowerCase())) return null;
+    return choice;
+  }
+  // A slot is done once it has an SRD spell, or a finished book spell.
+  const isPickDone = (value, slotKey, isCantrip) =>
+    Boolean(value) && (value !== BOOK_PICK || Boolean(bookChoiceFor(slotKey, isCantrip)));
+  const donePicks = (picks, prefix, isCantrip) =>
+    picks.filter((value, slot) => isPickDone(value, `${prefix}-${slot}`, isCantrip)).length;
+  const isSpellStepValid =
+    donePicks(cantripPicks, "cantrip", true) >= neededCantrips &&
+    donePicks(spellPicks, "spell", false) >= neededSpells &&
+    (!isSwapping ||
+      (Boolean(swapRemoveIndex) && isPickDone(swapAddIndex, "swap", false)));
+
+  function setBookDraft(slotKey, draft) {
+    setBookDrafts((prev) => ({ ...prev, [slotKey]: draft }));
+  }
 
   useEffect(() => {
     if (currentStep?.key !== "spells") return;
@@ -240,22 +299,60 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
     completeStep(data);
   }
 
-  function confirmSpell() {
-    if (!selectedSpellIndex) {
-      completeStep(null);
-      return;
-    }
+  // Changes one pick slot, and shows that spell's details.
+  function setPick(setPicks, slot, index) {
+    setPicks((prev) => prev.map((value, i) => (i === slot ? index : value)));
+    if (index && index !== BOOK_PICK) setSelectedSpellIndex(index);
+  }
 
-    const spell = classSpells.find((s) => s.index === selectedSpellIndex);
+  // The spells picked in every other slot, so one spell can't be picked twice.
+  function takenElsewhere(exceptIndex) {
+    return new Set(
+      [...cantripPicks, ...spellPicks, isSwapping ? swapAddIndex : ""].filter(
+        (index) => index && index !== BOOK_PICK && index !== exceptIndex,
+      ),
+    );
+  }
+
+  async function confirmSpells() {
+    setIsSavingSpells(true);
+    // V, S, M come from each spell's details; if a lookup fails the spell is
+    // still added, and "Fill in from the SRD" on the Spells tab can fix it.
+    // A book spell is used as typed; it has no SRD details to look up.
+    const toChoice = async (index, slotKey, isCantrip) => {
+      if (index === BOOK_PICK) return bookChoiceFor(slotKey, isCantrip);
+      const spell = classSpells.find((s) => s.index === index);
+      const details = await getSpellDetails(index).catch(() => null);
+      return {
+        index: spell.index,
+        name: spell.name,
+        level: spell.level,
+        components: (details?.components ?? []).join(", "),
+      };
+    };
+
+    // Unfinished slots are skipped (allowed when the list ran short).
+    const chosen = (picks, prefix, isCantrip) =>
+      Promise.all(
+        picks
+          .map((value, slot) => [value, `${prefix}-${slot}`])
+          .filter(([value, slotKey]) => isPickDone(value, slotKey, isCantrip))
+          .map(([value, slotKey]) => toChoice(value, slotKey, isCantrip)),
+      );
+    const [cantrips, spells, swapAdd] = await Promise.all([
+      chosen(cantripPicks, "cantrip", true),
+      chosen(spellPicks, "spell", false),
+      isSwapping ? toChoice(swapAddIndex, "swap", false) : null,
+    ]);
+    const removed = swappableSpells.find((s) => s.index === swapRemoveIndex);
+    setIsSavingSpells(false);
+
     completeStep({
-      spellIndex: spell.index,
-      spellName: spell.name,
-      spellLevel: spell.level,
-      // V, S, M from the spell's details (already loaded for the preview).
-      components:
-        selectedSpellDetails?.index === spell.index
-          ? (selectedSpellDetails.components ?? []).join(", ")
-          : "",
+      cantrips,
+      spells,
+      swap: swapAdd
+        ? { removeIndex: removed.index, removeName: removed.name, add: swapAdd }
+        : null,
     });
   }
 
@@ -282,9 +379,19 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
     }
 
     if (step.key === "spells") {
-      return step.data
-        ? `New Spell: ${step.data.spellName}`
-        : "No new spell learned";
+      const data = step.data ?? {};
+      // Book spells have no SRD index; "(book)" shows which ones were typed in.
+      const nameOf = (spell) => (spell.index ? spell.name : `${spell.name} (book)`);
+      const names = (list) => list.map(nameOf).join(", ");
+      const parts = [];
+      if (data.cantrips?.length) parts.push(`New cantrips: ${names(data.cantrips)}`);
+      if (data.spells?.length) {
+        parts.push(
+          `${spellPlan.isSpellbook ? "Added to spellbook" : "New spells"}: ${names(data.spells)}`,
+        );
+      }
+      if (data.swap) parts.push(`Swapped ${data.swap.removeName} for ${nameOf(data.swap.add)}`);
+      return parts.length ? parts.join(" · ") : "No spell changes";
     }
 
     return null;
@@ -728,30 +835,139 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
 
       {currentStep?.key === "spells" && (
         <div className="level-up-wizard__step">
-          <h3 className="level-up-wizard__step-title">Learn a New Spell</h3>
-          <p className="level-up-wizard__step-description">
-            Pick one new spell {sheet.name} learns at level {targetLevel}.
-          </p>
+          <h3 className="level-up-wizard__step-title">Spells</h3>
+          {spellPlan.cantrips > 0 && (
+            <p className="level-up-wizard__step-description">
+              At level {targetLevel}, {sheet.name} learns {spellPlan.cantrips} new{" "}
+              {spellPlan.cantrips === 1 ? "cantrip" : "cantrips"}.
+            </p>
+          )}
+          {spellPlan.spells > 0 && (
+            <p className="level-up-wizard__step-description">
+              {spellPlan.isSpellbook
+                ? `Copy ${spellPlan.spells} new spells into ${sheet.name}'s spellbook`
+                : `${sheet.name} learns ${spellPlan.spells} new ${
+                    spellPlan.spells === 1 ? "spell" : "spells"
+                  }`}
+              , up to level {maxSpellLevel}.
+            </p>
+          )}
+          {spellPlan.spells === 0 && spellPlan.canSwap && (
+            <p className="level-up-wizard__step-description">
+              No new spells for a {sheet.class?.name ?? "character"} at level{" "}
+              {targetLevel}, but you may swap one you know.
+            </p>
+          )}
+          {spellPlan.isEstimate && (
+            <p className="level-up-wizard__step-description">
+              QuestKeeper doesn&apos;t have your homebrew class&apos;s spells-known
+              table, so it offers one spell. Leave it empty if your class doesn&apos;t
+              learn one at this level.
+            </p>
+          )}
 
           {isSpellsLoading && <p>Loading spell list...</p>}
           {spellsError && (
             <p className="level-up-wizard__error">{spellsError}</p>
           )}
 
-          {!isSpellsLoading && !spellsError && availableSpells.length > 0 && (
-            <select
-              className="level-up-wizard__spell-select"
-              value={selectedSpellIndex}
-              onChange={(e) => setSelectedSpellIndex(e.target.value)}
-            >
-              <option value="">Choose a spell</option>
-              {availableSpells.map((spell) => (
-                <option key={spell.index} value={spell.index}>
-                  {spell.level === 0 ? "Cantrip" : `Level ${spell.level}`} —{" "}
-                  {spell.name}
-                </option>
+          {!isSpellsLoading && !spellsError && (
+            <>
+              {cantripPicks.map((value, slot) => (
+                <SpellPickSelect
+                  key={`cantrip-${slot}`}
+                  label={`New cantrip${cantripPicks.length > 1 ? ` ${slot + 1}` : ""}`}
+                  value={value}
+                  options={availableCantrips.filter(
+                    (spell) => !takenElsewhere(value).has(spell.index),
+                  )}
+                  onChange={(index) => setPick(setCantripPicks, slot, index)}
+                  isCantrip
+                  bookDraft={bookDrafts[`cantrip-${slot}`]}
+                  onBookDraftChange={(draft) => setBookDraft(`cantrip-${slot}`, draft)}
+                  knownSpellNames={knownSpellNames}
+                />
               ))}
-            </select>
+              {spellPicks.map((value, slot) => (
+                <SpellPickSelect
+                  key={`spell-${slot}`}
+                  label={`${spellPlan.isSpellbook ? "Spellbook spell" : "New spell"}${
+                    spellPicks.length > 1 ? ` ${slot + 1}` : ""
+                  }`}
+                  value={value}
+                  options={availableLeveled.filter(
+                    (spell) => !takenElsewhere(value).has(spell.index),
+                  )}
+                  onChange={(index) => setPick(setSpellPicks, slot, index)}
+                  maxSpellLevel={maxSpellLevel}
+                  bookDraft={bookDrafts[`spell-${slot}`]}
+                  onBookDraftChange={(draft) => setBookDraft(`spell-${slot}`, draft)}
+                  knownSpellNames={knownSpellNames}
+                />
+              ))}
+
+              {(spellPlan.cantrips > 0 || spellPlan.spells > 0) &&
+                availableSpells.length === 0 && (
+                  <p className="level-up-wizard__step-description">
+                    {sheet.name} already knows every spell available at this level.
+                  </p>
+                )}
+
+              {/* A known caster may trade one spell for another each level,
+                  e.g. a placeholder picked before the spell they wanted. */}
+              {spellPlan.canSwap && swappableSpells.length > 0 && (
+                <div className="level-up-wizard__swap">
+                  <label className="level-up-wizard__ability-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={isSwapping}
+                      onChange={(e) => setIsSwapping(e.target.checked)}
+                    />
+                    <span className="level-up-wizard__ability-checkbox-text">
+                      <span>Swap one spell you know (optional)</span>
+                      <span className="level-up-wizard__ability-checkbox-hint">
+                        Replace a spell with another {sheet.class?.name ?? "class"} spell
+                        of level {maxSpellLevel} or lower, from the list or a book.
+                      </span>
+                    </span>
+                  </label>
+                  {isSwapping && (
+                    <>
+                      <label className="level-up-wizard__pick-label">
+                        Forget
+                        <select
+                          className="level-up-wizard__spell-select"
+                          value={swapRemoveIndex}
+                          onChange={(e) => setSwapRemoveIndex(e.target.value)}
+                        >
+                          <option value="">Choose a spell to forget</option>
+                          {swappableSpells.map((spell) => (
+                            <option key={spell.index} value={spell.index}>
+                              Level {spell.level} — {spell.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <SpellPickSelect
+                        label="Learn instead"
+                        value={swapAddIndex}
+                        options={availableLeveled.filter(
+                          (spell) => !takenElsewhere(swapAddIndex).has(spell.index),
+                        )}
+                        onChange={(index) => {
+                          setSwapAddIndex(index);
+                          if (index && index !== BOOK_PICK) setSelectedSpellIndex(index);
+                        }}
+                        maxSpellLevel={maxSpellLevel}
+                        bookDraft={bookDrafts.swap}
+                        onBookDraftChange={(draft) => setBookDraft("swap", draft)}
+                        knownSpellNames={knownSpellNames}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           {selectedSpellIndex && (
@@ -784,18 +1000,17 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
             </div>
           )}
 
-          {!isSpellsLoading && !spellsError && availableSpells.length === 0 && (
-            <p className="level-up-wizard__step-description">
-              {sheet.name} already knows every spell available at this level.
-              Nothing new to learn this time.
-            </p>
-          )}
+          <p className="level-up-wizard__step-description">
+            Spells from your subclass or other features (like Fey Wanderer Magic)
+            go on the Spells tab with &ldquo;Doesn&apos;t count toward spells
+            known&rdquo; ticked.
+          </p>
 
           <Button
-            disabled={availableSpells.length > 0 && !selectedSpellIndex}
-            onClick={confirmSpell}
+            disabled={isSpellsLoading || !isSpellStepValid || isSavingSpells}
+            onClick={confirmSpells}
           >
-            Next
+            {isSavingSpells ? "Saving…" : "Next"}
           </Button>
         </div>
       )}
@@ -824,6 +1039,113 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
       <Button variant="secondary" onClick={onCancel}>
         Cancel
       </Button>
+    </div>
+  );
+}
+
+// One labelled dropdown of spells to pick from, cantrips shown as "Cantrip".
+// The last choice, "Book spell instead", opens boxes to type in a spell from a
+// book that isn't in the SRD list (like Ensnaring Strike), so the player
+// doesn't have to take a stand-in and fix it later.
+function SpellPickSelect({
+  label,
+  value,
+  options,
+  onChange,
+  isCantrip = false,
+  maxSpellLevel = 0,
+  bookDraft,
+  onBookDraftChange,
+  knownSpellNames,
+}) {
+  const draft = bookDraft ?? { name: "", level: "1", components: "", link: "" };
+  const update = (field) => (e) => onBookDraftChange({ ...draft, [field]: e.target.value });
+  const typedName = draft.name.trim();
+  const typedLink = draft.link.trim();
+  const isLinkBad = typedLink !== "" && !getSafeSpellLink(typedLink);
+  const isAlreadyKnown = typedName !== "" && knownSpellNames?.has(typedName.toLowerCase());
+
+  return (
+    <div className="level-up-wizard__pick">
+      <label className="level-up-wizard__pick-label">
+        {label}
+        <select
+          className="level-up-wizard__spell-select"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="">Choose a spell</option>
+          {options.map((spell) => (
+            <option key={spell.index} value={spell.index}>
+              {spell.level === 0 ? "Cantrip" : `Level ${spell.level}`} — {spell.name}
+            </option>
+          ))}
+          <option value={BOOK_PICK}>Book spell instead (type it in)</option>
+        </select>
+      </label>
+
+      {value === BOOK_PICK && (
+        <div className="level-up-wizard__book-spell">
+          <p className="level-up-wizard__book-spell-hint">
+            Only the name, level and your link are saved. Read the spell&apos;s
+            text in your book.
+          </p>
+          <label className="level-up-wizard__pick-label">
+            Spell name
+            <input
+              type="text"
+              className="level-up-wizard__text-input"
+              value={draft.name}
+              onChange={update("name")}
+            />
+          </label>
+          {isAlreadyKnown && (
+            <p className="level-up-wizard__error">{typedName} is already on your sheet.</p>
+          )}
+          {/* Capped at the highest level the class can cast at the new level. */}
+          {!isCantrip && (
+            <label className="level-up-wizard__pick-label">
+              Spell level
+              <select
+                className="level-up-wizard__spell-select"
+                value={draft.level}
+                onChange={update("level")}
+              >
+                {Array.from({ length: maxSpellLevel }, (_, i) => i + 1).map((level) => (
+                  <option key={level} value={String(level)}>
+                    Level {level}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="level-up-wizard__pick-label">
+            Components (optional)
+            <input
+              type="text"
+              className="level-up-wizard__text-input"
+              placeholder="V, S, M"
+              value={draft.components}
+              onChange={update("components")}
+            />
+          </label>
+          <label className="level-up-wizard__pick-label">
+            Book link (optional)
+            <input
+              type="url"
+              className="level-up-wizard__text-input"
+              placeholder="https://"
+              value={draft.link}
+              onChange={update("link")}
+            />
+          </label>
+          {isLinkBad && (
+            <p className="level-up-wizard__error">
+              Links need to start with http:// or https://.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

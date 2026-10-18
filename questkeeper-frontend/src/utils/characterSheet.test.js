@@ -17,6 +17,13 @@ import {
   rollD20,
   finalizeLevelUp,
   buildLevelUpSummary,
+  getLevelUpSpellPlan,
+  getLevelUpStepKeys,
+  applyLevelUpSpellChoices,
+  countsTowardSpellsKnown,
+  addManualSpell,
+  getSafeSpellLink,
+  getBookSpellChoice,
   createResource,
   createCompanionCreature,
   createCompanionAbilityScores,
@@ -650,7 +657,7 @@ describe("buildLevelUpSummary", () => {
       },
     });
 
-    expect(buildLevelUpSummary(before, after).newSpell.name).toBe("Mage Hand");
+    expect(buildLevelUpSummary(before, after).newSpells.map((s) => s.name)).toEqual(["Mage Hand"]);
   });
 
   it("reports a newly learned leveled spell", () => {
@@ -665,14 +672,14 @@ describe("buildLevelUpSummary", () => {
       },
     });
 
-    expect(buildLevelUpSummary(before, after).newSpell.name).toBe("Shield");
+    expect(buildLevelUpSummary(before, after).newSpells.map((s) => s.name)).toEqual(["Shield"]);
   });
 
   it("reports no new spell when nothing was learned", () => {
     const before = baseSheet({ spellcasting: null });
     const after = baseSheet({ spellcasting: null });
 
-    expect(buildLevelUpSummary(before, after).newSpell).toBeNull();
+    expect(buildLevelUpSummary(before, after).newSpells).toEqual([]);
   });
 });
 
@@ -1874,3 +1881,314 @@ describe("long rest and companions", () => {
   });
 });
 
+
+// --- Level-up spell counts (QA tracker #57-#59) ----------------------------------
+
+// A pretend SRD spell for level-up picks.
+const fakeSpell = (name, level = 1) => ({
+  index: name.toLowerCase().replace(/ /g, "-"),
+  name,
+  level,
+});
+
+// Takes a class from level 1 to `toLevel`, picking whatever each level's
+// spell plan asks for (cantrips and spells named after the level), and
+// returns the finished sheet and the plan at each level.
+function levelUpTo(characterClass, toLevel, startingSpellcasting) {
+  let sheet = {
+    level: 1,
+    abilityScores: { constitution: 10 },
+    class: characterClass,
+    spellcasting: startingSpellcasting,
+    feats: [],
+    combat: {
+      hitPoints: { max: 10, current: 10, temporary: 0 },
+      hitDice: { total: 1, remaining: 1, die: 10 },
+      hpHistory: [],
+    },
+  };
+  const plans = {};
+  while (sheet.level < toLevel) {
+    const target = sheet.level + 1;
+    const plan = getLevelUpSpellPlan(sheet.class, sheet.spellcasting, target);
+    plans[target] = plan;
+    const choices = {
+      cantrips: Array.from({ length: plan.cantrips }, (_, i) =>
+        fakeSpell(`Cantrip ${target}-${i}`, 0),
+      ),
+      spells: Array.from({ length: plan.spells }, (_, i) => fakeSpell(`Spell ${target}-${i}`)),
+      swap: null,
+    };
+    sheet = finalizeLevelUp({
+      ...sheet,
+      pendingLevelUp: {
+        targetLevel: target,
+        steps: [
+          { key: "hitPoints", data: { amount: 5 } },
+          ...(getLevelUpStepKeys(target, sheet.class, sheet.spellcasting).includes("spells")
+            ? [{ key: "spells", data: choices }]
+            : []),
+        ],
+      },
+    });
+  }
+  return { sheet, plans };
+}
+
+const startWith = (cantrips, spells) => ({
+  type: "known",
+  cantripsKnown: Array.from({ length: cantrips }, (_, i) => fakeSpell(`Start cantrip ${i}`, 0)),
+  spellsKnown: Array.from({ length: spells }, (_, i) => fakeSpell(`Start spell ${i}`)),
+});
+
+describe("getLevelUpSpellPlan", () => {
+  const ranger = { id: "ranger", name: "Ranger", spellcastingType: "known" };
+
+  it("gives a Ranger 2 spells at level 2, none at 4/6/8/10, and 7 in all by level 11", () => {
+    const { sheet, plans } = levelUpTo(ranger, 11, null);
+
+    expect(plans[2].spells).toBe(2);
+    [3, 5, 7, 9, 11].forEach((level) => expect(plans[level].spells).toBe(1));
+    [4, 6, 8, 10].forEach((level) => expect(plans[level].spells).toBe(0));
+    expect(sheet.spellcasting.spellsKnown).toHaveLength(7);
+    expect(sheet.spellcasting.cantripsKnown).toHaveLength(0);
+  });
+
+  it("still offers a Ranger the swap on a level with no new spells", () => {
+    const { plans } = levelUpTo(ranger, 4, null);
+    expect(plans[2].canSwap).toBe(false); // nothing known yet to swap
+    expect(plans[4]).toMatchObject({ spells: 0, canSwap: true });
+    expect(
+      getLevelUpStepKeys(4, ranger, { cantripsKnown: [], spellsKnown: [fakeSpell("Hunter's Mark")] }),
+    ).toContain("spells");
+  });
+
+  it("ignores spells ticked as not counting toward spells known", () => {
+    const spellcasting = {
+      cantripsKnown: [],
+      spellsKnown: [
+        fakeSpell("Hunter's Mark"),
+        fakeSpell("Cure Wounds"),
+        { ...fakeSpell("Charm Person"), bonusSpell: true },
+      ],
+    };
+    // A level 2 Ranger knows 2; going to 3 they should learn 1 more.
+    expect(getLevelUpSpellPlan(ranger, spellcasting, 3).spells).toBe(1);
+  });
+
+  it("doesn't count racial cantrips toward cantrips known", () => {
+    const wizard = { id: "wizard", spellcastingType: "prepared" };
+    const spellcasting = {
+      cantripsKnown: [
+        fakeSpell("Fire Bolt", 0),
+        fakeSpell("Light", 0),
+        fakeSpell("Mage Hand", 0),
+        { ...fakeSpell("Prestidigitation", 0), locked: true, grantedBy: "High Elf" },
+      ],
+      spellsKnown: [],
+    };
+    expect(getLevelUpSpellPlan(wizard, spellcasting, 4).cantrips).toBe(1);
+  });
+
+  it("follows the SRD tables for the known casters", () => {
+    const bard = levelUpTo({ id: "bard", spellcastingType: "known" }, 10, startWith(2, 4));
+    expect(bard.sheet.spellcasting.spellsKnown).toHaveLength(14);
+    expect(bard.sheet.spellcasting.cantripsKnown).toHaveLength(4);
+    expect(bard.plans[10].spells).toBe(2);
+
+    const sorcerer = levelUpTo({ id: "sorcerer", spellcastingType: "known" }, 12, startWith(4, 2));
+    expect(sorcerer.plans[12].spells).toBe(0);
+    expect(sorcerer.sheet.spellcasting.spellsKnown).toHaveLength(12);
+    expect(sorcerer.sheet.spellcasting.cantripsKnown).toHaveLength(6);
+
+    const warlock = levelUpTo({ id: "warlock", spellcastingType: "known" }, 11, startWith(2, 2));
+    expect(warlock.plans[10].spells).toBe(0);
+    expect(warlock.sheet.spellcasting.spellsKnown).toHaveLength(11);
+    expect(warlock.sheet.spellcasting.cantripsKnown).toHaveLength(4);
+  });
+
+  it("gives a Wizard 2 spellbook spells every level, and cantrips at 4 and 10", () => {
+    const wizard = { id: "wizard", spellcastingType: "prepared" };
+    const { sheet, plans } = levelUpTo(wizard, 10, startWith(3, 6));
+    Object.values(plans).forEach((plan) => {
+      expect(plan).toMatchObject({ spells: 2, canSwap: false, isSpellbook: true });
+    });
+    expect(sheet.spellcasting.spellsKnown).toHaveLength(6 + 2 * 9);
+    expect(plans[4].cantrips).toBe(1);
+    expect(plans[10].cantrips).toBe(1);
+    expect(sheet.spellcasting.cantripsKnown).toHaveLength(5);
+  });
+
+  it("gives prepared casters no spells to learn, only new cantrips", () => {
+    const cleric = { id: "cleric", spellcastingType: "prepared" };
+    const { plans } = levelUpTo(cleric, 10, startWith(3, 0));
+    Object.values(plans).forEach((plan) => expect(plan).toMatchObject({ spells: 0, canSwap: false }));
+    expect(plans[4].cantrips).toBe(1);
+    expect(plans[5].cantrips).toBe(0);
+    expect(getLevelUpStepKeys(5, cleric, startWith(4, 0))).not.toContain("spells");
+
+    const druid = { id: "druid", spellcastingType: "prepared" };
+    expect(getLevelUpSpellPlan(druid, startWith(2, 0), 4).cantrips).toBe(1);
+  });
+
+  it("never gives a Paladin a spell step", () => {
+    const paladin = { id: "paladin", spellcastingType: "prepared" };
+    for (let level = 2; level <= 20; level += 1) {
+      expect(getLevelUpStepKeys(level, paladin, null)).not.toContain("spells");
+    }
+  });
+
+  it("offers a homebrew known caster one optional spell per level once it has slots", () => {
+    const homebrew = { id: "hb_1", spellcastingType: "known", casterProgression: "half" };
+    expect(getLevelUpSpellPlan(homebrew, null, 2)).toMatchObject({ spells: 1, cantrips: 0, isEstimate: true });
+    const prepared = { id: "hb_2", spellcastingType: "prepared", casterProgression: "full" };
+    expect(getLevelUpStepKeys(3, prepared, null)).not.toContain("spells");
+  });
+
+  it("gives non-casters no spell step", () => {
+    expect(getLevelUpStepKeys(5, { id: "fighter", spellcastingType: null }, null)).toEqual([
+      "hitPoints",
+    ]);
+  });
+});
+
+describe("applyLevelUpSpellChoices", () => {
+  it("swaps one known spell for another", () => {
+    const spellcasting = {
+      type: "known",
+      cantripsKnown: [],
+      spellsKnown: [fakeSpell("Hunter's Mark"), fakeSpell("Cure Wounds")],
+    };
+    const result = applyLevelUpSpellChoices(spellcasting, { id: "ranger" }, {
+      cantrips: [],
+      spells: [fakeSpell("Pass without Trace", 2)],
+      swap: { removeIndex: "cure-wounds", removeName: "Cure Wounds", add: fakeSpell("Goodberry") },
+    });
+    expect(result.spellsKnown.map((s) => s.name)).toEqual([
+      "Hunter's Mark",
+      "Pass without Trace",
+      "Goodberry",
+    ]);
+  });
+
+  it("still reads an older saved single-spell choice", () => {
+    const result = applyLevelUpSpellChoices(null, { spellcastingType: "known" }, {
+      spellIndex: "shield",
+      spellName: "Shield",
+      spellLevel: 1,
+    });
+    expect(result.spellsKnown.map((s) => s.name)).toEqual(["Shield"]);
+  });
+
+  it("shows a swap in the level-up summary as one in and one out", () => {
+    const before = {
+      level: 4,
+      abilityScores: {},
+      feats: [],
+      combat: { hitPoints: { max: 30 } },
+      spellcasting: { cantripsKnown: [], spellsKnown: [fakeSpell("Cure Wounds")] },
+    };
+    const after = {
+      ...before,
+      level: 5,
+      spellcasting: { cantripsKnown: [], spellsKnown: [fakeSpell("Goodberry")] },
+    };
+    const summary = buildLevelUpSummary(before, after);
+    expect(summary.newSpells.map((s) => s.name)).toEqual(["Goodberry"]);
+    expect(summary.removedSpells.map((s) => s.name)).toEqual(["Cure Wounds"]);
+  });
+});
+
+describe("book spells picked on level-up", () => {
+  it("keeps the name, level, components and a safe link, and nothing else", () => {
+    expect(
+      getBookSpellChoice(
+        {
+          name: "  Lightning Arrow ",
+          level: "3",
+          components: "V, S",
+          link: "https://dnd5e.wikidot.com/spell:lightning-arrow",
+          desc: "book text",
+        },
+        { maxSpellLevel: 3 },
+      ),
+    ).toEqual({
+      name: "Lightning Arrow",
+      level: 3,
+      components: "V, S",
+      link: "https://dnd5e.wikidot.com/spell:lightning-arrow",
+    });
+  });
+
+  it("isn't ready without a name, above the class's highest level, or with a bad link", () => {
+    expect(getBookSpellChoice({ name: " ", level: "1" }, { maxSpellLevel: 1 })).toBeNull();
+    expect(getBookSpellChoice({ name: "Elemental Weapon", level: "3" }, { maxSpellLevel: 2 })).toBeNull();
+    expect(
+      getBookSpellChoice(
+        { name: "Absorb Elements", level: "1", link: "javascript:alert(1)" },
+        { maxSpellLevel: 1 },
+      ),
+    ).toBeNull();
+    expect(getBookSpellChoice(undefined)).toBeNull();
+  });
+
+  it("makes a cantrip pick level 0 whatever level was typed", () => {
+    expect(getBookSpellChoice({ name: "Booming Blade", level: "4" }, { isCantrip: true })).toEqual({
+      name: "Booming Blade",
+      level: 0,
+      components: "",
+    });
+  });
+
+  it("adds a book spell to spells known with its own index and link", () => {
+    const spellcasting = { type: "known", cantripsKnown: [], spellsKnown: [] };
+    const result = applyLevelUpSpellChoices(spellcasting, { id: "ranger" }, {
+      cantrips: [],
+      spells: [{ name: "Ensnaring Strike", level: 1, components: "V", link: "https://example.com/es" }],
+      swap: null,
+    });
+    const [spell] = result.spellsKnown;
+    expect(spell).toMatchObject({
+      name: "Ensnaring Strike",
+      level: 1,
+      components: "V",
+      link: "https://example.com/es",
+    });
+    expect(spell.index).toEqual(expect.any(String));
+    expect(countsTowardSpellsKnown(spell)).toBe(true);
+  });
+
+  it("drops a link that isn't a web link when saving", () => {
+    const result = applyLevelUpSpellChoices(null, { spellcastingType: "known" }, {
+      spells: [{ name: "Absorb Elements", level: 1, link: "javascript:alert(1)" }],
+    });
+    expect(result.spellsKnown[0].link).toBeUndefined();
+  });
+});
+
+describe("bonus spells added on the Spells tab", () => {
+  it("saves the 'doesn't count' tick and a book link", () => {
+    const spellcasting = addManualSpell(
+      { class: { spellcastingType: "known" }, spellcasting: null },
+      {
+        name: "Absorb Elements",
+        level: "1",
+        notes: "",
+        components: "S",
+        bonusSpell: true,
+        link: "https://dnd5e.wikidot.com/spell:absorb-elements",
+      },
+    );
+    const [spell] = spellcasting.spellsKnown;
+    expect(spell).toMatchObject({ bonusSpell: true, link: "https://dnd5e.wikidot.com/spell:absorb-elements" });
+    expect(countsTowardSpellsKnown(spell)).toBe(false);
+  });
+
+  it("only opens web links", () => {
+    expect(getSafeSpellLink("https://dnd5e.wikidot.com/spell:misty-step")).toBe(
+      "https://dnd5e.wikidot.com/spell:misty-step",
+    );
+    expect(getSafeSpellLink("javascript:alert(1)")).toBe("");
+    expect(getSafeSpellLink("")).toBe("");
+  });
+});

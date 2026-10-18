@@ -777,7 +777,96 @@ export function buildStartingProficiencies(classProficiencies = []) {
 
 export const ABILITY_SCORE_IMPROVEMENT_LEVELS = [4, 8, 12, 16, 19];
 
-export function getLevelUpStepKeys(targetLevel, characterClass) {
+// --- How many spells each level brings ------------------------------------------
+// The "Spells Known" and "Cantrips Known" columns of the 2014 SRD class tables,
+// for levels 1 to 20 (the first number is level 1). These are the same numbers
+// the SRD's class level data carries; they're kept here so the level-up can
+// work out its steps straight away, without waiting on a lookup.
+// Classes that "know" a set number of spells:
+const SPELLS_KNOWN_BY_LEVEL = {
+  bard: [4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 15, 16, 18, 19, 19, 20, 22, 22, 22],
+  ranger: [0, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11],
+  sorcerer: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15],
+  warlock: [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15],
+};
+
+// Every class with cantrips. Paladins and Rangers have none.
+const CANTRIPS_KNOWN_BY_LEVEL = {
+  bard: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+  cleric: [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+  druid: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+  sorcerer: [4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
+  warlock: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+  wizard: [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+};
+
+// A Wizard copies two new spells into their spellbook every level.
+const WIZARD_SPELLBOOK_SPELLS_PER_LEVEL = 2;
+
+// Whether a spell on the sheet counts toward the class's spells (or cantrips)
+// known. Spells from a race (Tiefling's Thaumaturgy), and ones the player
+// ticked "Doesn't count toward spells known" (a Fey Wanderer's Misty Step, a
+// Ranger's Primal Awareness spells), are extras on top of the class's number.
+export function countsTowardSpellsKnown(spell) {
+  return !spell?.bonusSpell && !spell?.grantedBy;
+}
+
+// What the spell step of a level-up offers, for any class:
+//   cantrips   - how many new cantrips to pick
+//   spells     - how many new leveled spells to pick (spellbook spells for a Wizard)
+//   canSwap    - whether they may swap one spell they know for another
+//   isSpellbook - true for a Wizard (the picks go in the spellbook)
+//   isEstimate - true for a homebrew class, which has no spells-known table
+//                here, so the one spell offered is a guess the player can skip
+// Picks are "the class's number at the new level minus what the sheet already
+// counts", so a sheet that is short catches up and one that is over (from an
+// older version of the app) isn't pushed further over.
+export function getLevelUpSpellPlan(characterClass, spellcasting, targetLevel) {
+  const none = { cantrips: 0, spells: 0, canSwap: false, isSpellbook: false, isEstimate: false };
+  const { id, type } = classRules(characterClass);
+  if (!type) return none;
+
+  const maxSpellLevel = getMaxSpellLevel(characterClass, targetLevel);
+  const counted = (list) => (list ?? []).filter(countsTowardSpellsKnown).length;
+  const countedCantrips = counted(spellcasting?.cantripsKnown);
+  const countedSpells = counted(spellcasting?.spellsKnown);
+  const fromTable = (table, have) =>
+    table ? Math.max(0, table[Math.min(20, targetLevel) - 1] - have) : 0;
+
+  const cantrips = fromTable(CANTRIPS_KNOWN_BY_LEVEL[id], countedCantrips);
+
+  if (id === "wizard") {
+    return {
+      ...none,
+      cantrips,
+      spells: maxSpellLevel > 0 ? WIZARD_SPELLBOOK_SPELLS_PER_LEVEL : 0,
+      isSpellbook: true,
+    };
+  }
+
+  // Clerics, Druids and Paladins prepare from their whole list each day, so
+  // there is nothing to "learn" beyond new cantrips.
+  if (type !== "known") return { ...none, cantrips };
+
+  const knownTable = SPELLS_KNOWN_BY_LEVEL[id];
+  // Homebrew "known" casters: one new spell per level once they have slots.
+  const spells = knownTable
+    ? fromTable(knownTable, countedSpells)
+    : maxSpellLevel > 0
+      ? 1
+      : 0;
+
+  return {
+    ...none,
+    cantrips,
+    spells,
+    // Each level, a known caster may trade one spell they know for another.
+    canSwap: maxSpellLevel > 0 && countedSpells > 0,
+    isEstimate: !knownTable,
+  };
+}
+
+export function getLevelUpStepKeys(targetLevel, characterClass, spellcasting = null) {
   const steps = ["hitPoints"];
 
   if (getSubclassLevel(characterClass) === targetLevel) {
@@ -788,7 +877,10 @@ export function getLevelUpStepKeys(targetLevel, characterClass) {
     steps.push("abilityOrFeat");
   }
 
-  if (characterClass?.spellcastingType) {
+  // Only when this level brings a spell choice: a Ranger at 4 has no new
+  // spells but may still swap one; a Paladin never learns spells.
+  const plan = getLevelUpSpellPlan(characterClass, spellcasting, targetLevel);
+  if (plan.cantrips > 0 || plan.spells > 0 || plan.canSwap) {
     steps.push("spells");
   }
 
@@ -844,26 +936,83 @@ export function applyAbilityScoreChoice(abilityScores, choice) {
   return result;
 }
 
-function addSpellToSpellcasting(spellcasting, characterClass, spellChoice) {
+// One spell picked on level-up, in the shape the sheet stores. A book spell
+// has no SRD index, so it gets a made-up one (like Add Spell on the Spells
+// tab), and keeps its book link if it has a safe one.
+function toSpellEntry(choice) {
+  const link = getSafeSpellLink(choice.link);
+  return {
+    index: choice.index ?? crypto.randomUUID(),
+    name: choice.name,
+    level: choice.level,
+    notes: "",
+    components: choice.components ?? "",
+    ...(link ? { link } : {}),
+  };
+}
+
+// Turns a "Book spell instead" pick from the level-up wizard into a spell
+// choice, or null if it isn't finished yet. Only the name, level, components
+// and a link are kept: the book's own text never goes on the sheet. Cantrip
+// slots are always level 0; spell slots must be 1 up to the highest level the
+// class can cast at the new level. A link must be a web link so it can't run
+// code; a blank link is fine.
+export function getBookSpellChoice(draft, { isCantrip = false, maxSpellLevel = 0 } = {}) {
+  const name = String(draft?.name ?? "").trim();
+  if (!name) return null;
+
+  const level = isCantrip ? 0 : Number(draft?.level);
+  if (!isCantrip && (!Number.isInteger(level) || level < 1 || level > maxSpellLevel)) {
+    return null;
+  }
+
+  const typedLink = String(draft?.link ?? "").trim();
+  const link = getSafeSpellLink(typedLink);
+  if (typedLink && !link) return null;
+
+  return {
+    name,
+    level,
+    components: String(draft?.components ?? "").trim(),
+    ...(link ? { link } : {}),
+  };
+}
+
+// Applies the spell step's choices: new cantrips, new spells, and an optional
+// swap ({ removeIndex, add }) that trades one known spell for another.
+// Older saved level-ups held a single { spellIndex, spellName, spellLevel }.
+export function applyLevelUpSpellChoices(spellcasting, characterClass, choices) {
   const base = spellcasting ?? {
-    type: characterClass?.spellcastingType ?? "known",
+    type: getSpellcastingType(characterClass) ?? "known",
     cantripsKnown: [],
     spellsKnown: [],
   };
+  if (!choices) return base;
 
-  const entry = {
-    index: spellChoice.spellIndex,
-    name: spellChoice.spellName,
-    level: spellChoice.spellLevel,
-    notes: "",
-    components: spellChoice.components ?? "",
-  };
+  const picks = choices.spellIndex
+    ? [{
+        index: choices.spellIndex,
+        name: choices.spellName,
+        level: choices.spellLevel,
+        components: choices.components,
+      }]
+    : [...(choices.cantrips ?? []), ...(choices.spells ?? [])];
 
-  if (spellChoice.spellLevel === 0) {
-    return { ...base, cantripsKnown: [...base.cantripsKnown, entry] };
+  let cantripsKnown = [...(base.cantripsKnown ?? [])];
+  let spellsKnown = [...(base.spellsKnown ?? [])];
+
+  const swap = choices.swap;
+  if (swap?.removeIndex && swap.add) {
+    spellsKnown = spellsKnown.filter((spell) => spell.index !== swap.removeIndex);
+    picks.push(swap.add);
   }
 
-  return { ...base, spellsKnown: [...base.spellsKnown, entry] };
+  picks.forEach((choice) => {
+    if (choice.level === 0) cantripsKnown = [...cantripsKnown, toSpellEntry(choice)];
+    else spellsKnown = [...spellsKnown, toSpellEntry(choice)];
+  });
+
+  return { ...base, cantripsKnown, spellsKnown };
 }
 
 export function finalizeLevelUp(sheet) {
@@ -890,7 +1039,7 @@ export function finalizeLevelUp(sheet) {
     : sheet.class;
 
   const spellcastingAfterSpellStep = spellStep?.data
-    ? addSpellToSpellcasting(sheet.spellcasting, sheet.class, spellStep.data)
+    ? applyLevelUpSpellChoices(sheet.spellcasting, sheet.class, spellStep.data)
     : sheet.spellcasting;
 
   const spellcasting = getSpellcastingType(characterClass)
@@ -965,17 +1114,16 @@ export function buildLevelUpSummary(before, after) {
       ? after.class.subclass
       : null;
 
-  const beforeCantripCount = before.spellcasting?.cantripsKnown?.length ?? 0;
-  const afterCantripCount = after.spellcasting?.cantripsKnown?.length ?? 0;
-  const beforeSpellCount = before.spellcasting?.spellsKnown?.length ?? 0;
-  const afterSpellCount = after.spellcasting?.spellsKnown?.length ?? 0;
-
-  let newSpell = null;
-  if (afterCantripCount > beforeCantripCount) {
-    newSpell = after.spellcasting.cantripsKnown.at(-1);
-  } else if (afterSpellCount > beforeSpellCount) {
-    newSpell = after.spellcasting.spellsKnown.at(-1);
-  }
+  // Spells that are new after the level-up, and any swapped out, matched by
+  // their index so a swap shows as one out and one in.
+  const allSpells = (sheet) => [
+    ...(sheet.spellcasting?.cantripsKnown ?? []),
+    ...(sheet.spellcasting?.spellsKnown ?? []),
+  ];
+  const beforeIndexes = new Set(allSpells(before).map((spell) => spell.index));
+  const afterIndexes = new Set(allSpells(after).map((spell) => spell.index));
+  const newSpells = allSpells(after).filter((spell) => !beforeIndexes.has(spell.index));
+  const removedSpells = allSpells(before).filter((spell) => !afterIndexes.has(spell.index));
 
   return {
     fromLevel: before.level,
@@ -986,7 +1134,8 @@ export function buildLevelUpSummary(before, after) {
     abilityChanges,
     newFeat,
     newSubclass,
-    newSpell,
+    newSpells,
+    removedSpells,
   };
 }
 
@@ -1384,7 +1533,11 @@ export function updateFeat(feats, index, updates) {
   );
 }
 
-export function addManualSpell(sheet, { name, level, notes, components }) {
+// A spell added by hand on the Spells tab. It can be an SRD spell or any typed
+// name, with an optional link to where the book's text lives (never the text
+// itself). "bonusSpell" marks one that doesn't count toward spells known,
+// like a subclass's always-known spells.
+export function addManualSpell(sheet, { name, level, notes, components, bonusSpell, link }) {
   const base = sheet.spellcasting ?? {
     type: sheet.class?.spellcastingType ?? "known",
     cantripsKnown: [],
@@ -1398,6 +1551,8 @@ export function addManualSpell(sheet, { name, level, notes, components }) {
     level: numericLevel,
     notes: notes || "",
     components: components || "",
+    ...(bonusSpell ? { bonusSpell: true } : {}),
+    ...(link ? { link } : {}),
   };
 
   if (numericLevel === 0) {
@@ -1405,6 +1560,12 @@ export function addManualSpell(sheet, { name, level, notes, components }) {
   }
 
   return { ...base, spellsKnown: [...base.spellsKnown, entry] };
+}
+
+// Only web links can be opened from a spell, so a typed "javascript:" can't run.
+export function getSafeSpellLink(link) {
+  const trimmed = String(link ?? "").trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : "";
 }
 
 export function removeSpell(spellcasting, listKey, index) {

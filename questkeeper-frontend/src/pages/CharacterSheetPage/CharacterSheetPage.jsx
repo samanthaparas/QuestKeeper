@@ -1176,6 +1176,8 @@ function CharacterSheetPage() {
       level: values.level,
       notes: values.notes.trim(),
       components: values.components.trim(),
+      bonusSpell: Boolean(values.bonusSpell),
+      link: values.link?.trim() ?? "",
     });
     persistSheet({ ...sheet, spellcasting });
   }
@@ -1190,6 +1192,8 @@ function CharacterSheetPage() {
         level: Number(values.level),
         notes: values.notes.trim(),
         components: values.components.trim(),
+        bonusSpell: Boolean(values.bonusSpell),
+        link: values.link?.trim() ?? "",
       },
     );
     persistSheet({ ...sheet, spellcasting });
@@ -1606,8 +1610,17 @@ function CharacterSheetPage() {
                 <li>New Subclass: {levelUpSummary.newSubclass.name}</li>
               )}
 
-              {levelUpSummary.newSpell && (
-                <li>New Spell: {levelUpSummary.newSpell.name}</li>
+              {levelUpSummary.newSpells?.length > 0 && (
+                <li>
+                  New {levelUpSummary.newSpells.length === 1 ? "Spell" : "Spells"}:{" "}
+                  {levelUpSummary.newSpells.map((spell) => spell.name).join(", ")}
+                </li>
+              )}
+
+              {levelUpSummary.removedSpells?.length > 0 && (
+                <li>
+                  Swapped Out: {levelUpSummary.removedSpells.map((spell) => spell.name).join(", ")}
+                </li>
               )}
 
               {levelUpSummary.addedFeatures?.length > 0 && (

@@ -286,3 +286,69 @@
     flex-direction: column;
   }
 }
+
+/* Spell step: each pick has its own label above its dropdown. */
+.level-up-wizard__pick-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--qk-text);
+}
+
+.level-up-wizard__pick-label .level-up-wizard__spell-select {
+  margin-top: 6px;
+}
+
+.level-up-wizard__swap {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.level-up-wizard__swap .level-up-wizard__spell-select {
+  margin-bottom: 0;
+}
+
+/* "Book spell instead": the typed-in boxes sit in a box under that pick. */
+.level-up-wizard__book-spell {
+  display: grid;
+  gap: 12px;
+  margin: -8px 0 20px;
+  padding: 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+}
+
+.level-up-wizard__book-spell .level-up-wizard__spell-select {
+  margin-bottom: 0;
+}
+
+.level-up-wizard__book-spell .level-up-wizard__error {
+  margin: 0;
+}
+
+.level-up-wizard__book-spell-hint {
+  margin: 0;
+  font-size: 14px;
+  color: var(--qk-text-muted);
+}
+
+.level-up-wizard__text-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 0 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 400;
+}
+
+.level-up-wizard__text-input:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
