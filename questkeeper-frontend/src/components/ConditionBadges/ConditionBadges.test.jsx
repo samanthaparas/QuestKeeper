@@ -68,28 +68,48 @@ describe("ConditionBadges", () => {
     expect(screen.getByText("· 2 rounds left")).toBeInTheDocument();
   });
 
-  it("explains what the current exhaustion level does, and shows all six", () => {
+  it("opens a card explaining what the current exhaustion level does, with all six levels", async () => {
     render(<ConditionBadges conditions={[{ key: "exhaustion", level: 3 }]} onChange={vi.fn()} />);
 
-    expect(screen.getByText("What does exhaustion level 3 do?")).toBeInTheDocument();
-    expect(screen.getAllByText("Disadvantage on attack rolls and saving throws.").length).toBeGreaterThan(0);
-    expect(screen.getByText(/You also have everything from the lower levels/)).toBeInTheDocument();
-    expect(screen.getAllByRole("listitem").filter((item) => /^Level \d\./.test(item.textContent))).toHaveLength(6);
+    // Tucked away until asked for, so the row stays one tidy line.
+    expect(screen.queryByRole("region", { name: "What exhaustion does" })).not.toBeInTheDocument();
+    const info = screen.getByRole("button", { name: "What does exhaustion level 3 do?" });
+    expect(info).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.click(info);
+    const card = screen.getByRole("region", { name: "What exhaustion does" });
+    expect(card).toHaveTextContent("Level 3: Disadvantage on attack rolls and saving throws.");
+    expect(card).toHaveTextContent("You also have everything from the lower levels");
+    expect(card.querySelectorAll("li")).toHaveLength(6);
     // Level 3 is the one marked as yours.
     expect(screen.getByText("Level 3.").closest("li")).toHaveAttribute("aria-current", "true");
-    expect(screen.getByText(/A long rest takes away one level/)).toBeInTheDocument();
+    expect(card).toHaveTextContent("A long rest takes away one level.");
+
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("region", { name: "What exhaustion does" })).not.toBeInTheDocument();
   });
 
-  it("shows the explanation to the DM too, but nothing without exhaustion", () => {
+  it("closes the card when you click elsewhere", async () => {
+    render(
+      <div>
+        <ConditionBadges conditions={[{ key: "exhaustion", level: 1 }]} onChange={vi.fn()} />
+        <p>Somewhere else</p>
+      </div>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "What does exhaustion level 1 do?" }));
+    expect(screen.getByRole("region", { name: "What exhaustion does" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Somewhere else"));
+    expect(screen.queryByRole("region", { name: "What exhaustion does" })).not.toBeInTheDocument();
+  });
+
+  it("offers the same card to the DM, and nothing without exhaustion", () => {
     const { rerender } = render(
       <ConditionBadges conditions={[{ key: "exhaustion", level: 1 }]} onChange={vi.fn()} readOnly />,
     );
-    expect(screen.getByText("What does exhaustion level 1 do?")).toBeInTheDocument();
-    // Level 1 has nothing "lower" to add.
-    expect(screen.queryByText(/everything from the lower levels/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "What does exhaustion level 1 do?" })).toBeInTheDocument();
 
     rerender(<ConditionBadges conditions={[{ key: "poisoned" }]} onChange={vi.fn()} />);
-    expect(screen.queryByText(/What does exhaustion level/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /What does exhaustion level/ })).not.toBeInTheDocument();
   });
 });
-

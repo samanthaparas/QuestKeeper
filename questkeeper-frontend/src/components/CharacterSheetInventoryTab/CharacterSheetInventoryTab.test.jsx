@@ -4,8 +4,12 @@ import userEvent from "@testing-library/user-event";
 import CharacterSheetInventoryTab from "./CharacterSheetInventoryTab";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
+// What the SRD item look-up says (a test can change it).
+const lookup = vi.hoisted(() => ({
+  value: { findMatches: () => [], loadDetails: () => {}, status: "ready", retry: () => {} },
+}));
 vi.mock("../../hooks/useSrdEquipmentLookup", () => ({
-  useSrdEquipmentLookup: () => ({ findMatches: () => [], loadDetails: vi.fn() }),
+  useSrdEquipmentLookup: () => lookup.value,
 }));
 
 const EQUIPMENT = [
@@ -51,4 +55,21 @@ describe("CharacterSheetInventoryTab", () => {
     await userEvent.click(screen.getByRole("button", { name: "Proficient with Pouch" }));
     expect(handlers.onEquipmentProficientToggle).toHaveBeenCalledWith("i2", undefined);
   });
+
+  it("says so when the item details can't be looked up, with a way to try again", async () => {
+    const retry = vi.fn();
+    lookup.value = { findMatches: () => [], loadDetails: () => {}, status: "failed", retry };
+    renderTab();
+
+    expect(screen.getByRole("status")).toHaveTextContent("Couldn't look up item details right now");
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(retry).toHaveBeenCalled();
+  });
+
+  it("stays quiet when the look-up worked", () => {
+    lookup.value = { findMatches: () => [], loadDetails: () => {}, status: "ready", retry: () => {} };
+    renderTab();
+    expect(screen.queryByText(/Couldn't look up item details/)).not.toBeInTheDocument();
+  });
 });
+

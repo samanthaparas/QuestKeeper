@@ -205,27 +205,64 @@
   outline-offset: 1px;
 }
 
-/* "What does exhaustion level 3 do?": the six levels, with yours highlighted. */
-.condition-badges__exhaustion {
-  flex-basis: 100%;
-  font-size: 13px;
+/* The "?" on the Exhaustion badge, and the card it opens. */
+.condition-badges__info {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #7a5a9a;
+  border-radius: 50%;
+  background: none;
+  color: #3d2a52;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
-.condition-badges__exhaustion summary {
-  cursor: pointer;
-  color: var(--qk-terracotta-hover);
-  font-weight: 700;
+.condition-badges__info:hover,
+.condition-badges__info[aria-expanded="true"] {
+  background-color: #7a5a9a;
+  color: #fff;
+}
+
+.condition-badges__info:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.condition-badges__badge {
+  position: relative;
+}
+
+.condition-badges__exhaustion {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  width: min(340px, 86vw);
+  padding: 12px 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  box-shadow: 0 8px 22px var(--qk-shadow);
+  color: var(--qk-text);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
 }
 
 .condition-badges__exhaustion-now {
-  margin: 6px 0 0;
+  margin: 0;
   font-weight: 700;
 }
 
 .condition-badges__exhaustion-list {
   display: grid;
   gap: 2px;
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -242,6 +279,6 @@
 }
 
 .condition-badges__exhaustion-rest {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   color: var(--qk-text-muted);
 }
