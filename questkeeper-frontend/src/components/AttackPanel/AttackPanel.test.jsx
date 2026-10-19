@@ -164,7 +164,8 @@ describe("AttackPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "Roll damage" }));
     await userEvent.click(screen.getByRole("button", { name: "Deal 6 damage" }));
 
-    expect(dealDamage).toHaveBeenCalledWith("t1", 6);
+    // Sent with its type, so the table log (and later resistances) know it.
+    expect(dealDamage).toHaveBeenCalledWith("t1", 6, [{ amount: 6, type: "piercing", source: "Dagger" }]);
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -197,7 +198,8 @@ describe("AttackPanel", () => {
     await userEvent.type(screen.getByLabelText("Your physical damage total"), "8");
     await userEvent.click(screen.getByRole("button", { name: "Deal my damage" }));
 
-    expect(dealDamage).toHaveBeenCalledWith("t1", 8);
+    // A total typed by hand has no breakdown.
+    expect(dealDamage).toHaveBeenCalledWith("t1", 8, null);
   });
 
   it("adds up the dice a player typed, plus the bonus, before dealing the damage", async () => {
@@ -217,7 +219,7 @@ describe("AttackPanel", () => {
 
     expect(screen.getByText(/= 40/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Deal 40 damage" }));
-    expect(dealDamage).toHaveBeenCalledWith("t1", 40);
+    expect(dealDamage).toHaveBeenCalledWith("t1", 40, [{ amount: 40, type: "piercing", source: "Dagger" }]);
   });
 
   it("doubles typed dice on a critical hit and rejects the wrong number of dice", async () => {
@@ -253,7 +255,7 @@ describe("AttackPanel", () => {
     await userEvent.type(screen.getByLabelText("Extra damage dice"), "2d8");
     await userEvent.type(screen.getByLabelText("Name for the extra damage (optional)"), "Smite");
     // The prompt now counts both sets of dice.
-    expect(screen.getByText(/4 numbers for 2d8, then 2 for Smite/)).toBeInTheDocument();
+    expect(screen.getByText(/4 numbers: 2d8, then 2d8 \(the last 2 for Smite\)/)).toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText(/Rolled real dice\? Type the number on each die/), "5, 3, 6, 2");
     await userEvent.click(screen.getByRole("button", { name: "Use my dice" }));
@@ -262,7 +264,11 @@ describe("AttackPanel", () => {
     // And it says the extra went in, with the total.
     expect(screen.getByRole("status")).toHaveTextContent("✓ Smite added: +8. Total damage: 19.");
     await userEvent.click(screen.getByRole("button", { name: "Deal 19 damage" }));
-    expect(dealDamage).toHaveBeenCalledWith("t1", 19);
+    // The smite has no type (the player didn't give one), but stays its own part.
+    expect(dealDamage).toHaveBeenCalledWith("t1", 19, [
+      { amount: 11, type: "piercing", source: "Dagger" },
+      { amount: 8, type: "", source: "Smite" },
+    ]);
   });
 
   it("only applies the extra damage when it's switched on for this attack", async () => {
@@ -297,5 +303,48 @@ describe("AttackPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: /Roll d20/ }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("It is not your turn");
+  });
+
+  it("rolls an enchanted weapon's extra dice as their own type, doubles them on a crit, and sends both", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // every d4 -> 3
+    const enchanted = {
+      ...dagger,
+      name: "The Darling Deceiver",
+      toHit: 10,
+      damageParts: [
+        { dice: "1d4+5", type: "piercing", source: "The Darling Deceiver" },
+        { dice: "1d4", type: "fire", source: "Elemental Weapon" },
+      ],
+      modifiers: [
+        { source: "Elemental Weapon", text: "+1 to hit" },
+        { source: "Elemental Weapon", text: "+1d4 fire damage" },
+      ],
+      isEnchanted: true,
+    };
+    render(<AttackPanel attack={enchanted} combat={makeCombat({ attack_state: "hit", attack_crit: true })} onClose={vi.fn()} />);
+
+    expect(screen.getByText(/✨ \+1 to hit \(Elemental Weapon\), \+1d4 fire damage \(Elemental Weapon\)/)).toBeInTheDocument();
+    expect(screen.getByText(/1d4\+5 piercing \+ 1d4 fire, every die doubled/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Roll damage" }));
+    // 3 x 2 + 5 = 11 piercing, 3 x 2 = 6 fire.
+    await userEvent.click(screen.getByRole("button", { name: "Deal 17 damage" }));
+    expect(dealDamage).toHaveBeenCalledWith("t1", 17, [
+      { amount: 11, type: "piercing", source: "The Darling Deceiver" },
+      { amount: 6, type: "fire", source: "Elemental Weapon" },
+    ]);
+  });
+
+  it("uses the enchanted to-hit for the attack roll", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // d20 -> 11
+    attackRoll.mockResolvedValue("hit");
+    render(
+      <AttackPanel
+        attack={{ ...dagger, toHit: 10, damageParts: [{ dice: "1d4+5", type: "piercing" }], modifiers: [], isEnchanted: false }}
+        combat={makeCombat()}
+        onClose={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Roll d20 \(\+10\)/ }));
+    expect(attackRoll).toHaveBeenCalledWith(expect.objectContaining({ bonus: 10 }));
   });
 });

@@ -146,3 +146,11 @@
   font-size: 14px;
   font-weight: 700;
 }
+
+/* "✨ +1 to hit (Elemental Weapon), +1d4 fire damage (Elemental Weapon)" */
+.attack-panel__effects {
+  margin: 0;
+  color: var(--qk-terracotta);
+  font-size: 14px;
+  font-weight: 700;
+}

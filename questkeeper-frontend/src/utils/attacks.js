@@ -250,6 +250,84 @@ function damageFromDiceFlat(extraText) {
   return { total, text: `${parts.map((part) => `${part.sign < 0 ? "-" : "+"}${part.value}`).join(" ")} = ${total}` };
 }
 
+// --- Damage in typed parts (a weapon plus Elemental Weapon's fire) ------------------
+//
+// parts: [{ dice: "1d4+5", type: "piercing", source: "Darling Deceiver" },
+//         { dice: "1d4", type: "fire", source: "Elemental Weapon" }]
+// Each part is rolled on its own and keeps its type, so a monster that
+// resists fire can be dealt the right amount later. On a critical hit every
+// part's dice are doubled (the group's rule, as in rollDamage). Returns
+// { total, text, parts: [{ amount, type, source }] } or { error }.
+
+const typeLabel = (part) => (part.type ? ` ${part.type}` : "");
+
+function joinParts(results, parts) {
+  const rolled = results.map((result, i) => ({
+    amount: result.total,
+    type: parts[i].type ?? "",
+    source: parts[i].source ?? "",
+  }));
+  const text = results
+    .map((result, i) => `${i === 0 ? "" : `${parts[i].source || "Extra"} `}${result.text}${typeLabel(parts[i])}`)
+    .join(" | ");
+  return { total: rolled.reduce((sum, part) => sum + part.amount, 0), text, parts: rolled };
+}
+
+export function rollDamageParts(parts, { crit = false } = {}) {
+  const usable = (parts ?? []).filter((part) => String(part.dice ?? "").trim());
+  if (usable.length === 0 || !parseDamage(usable[0].dice)) {
+    return { error: "This attack's damage can't be read as dice." };
+  }
+  const results = [];
+  for (const part of usable) {
+    const result = rollDamage(part.dice, { crit });
+    if (!result) return { error: `Write ${part.source || "the extra"} damage like 2d8 or 1d6+2.` };
+    results.push(result);
+  }
+  return joinParts(results, usable);
+}
+
+// Real dice for every part: the player types the number on each die in
+// order (the weapon's dice first, then each extra's), in one list.
+export function damageFromDiceParts(parts, values, { crit = false } = {}) {
+  const usable = (parts ?? []).filter((part) => String(part.dice ?? "").trim());
+  if (usable.some((part) => !parseDamage(part.dice))) {
+    return { error: "Some of this damage can't be read as dice. Type your total damage instead." };
+  }
+  const counts = usable.map((part) => diceNeeded(part.dice).reduce((sum, { count }) => sum + count, 0));
+  const wanted = counts.reduce((sum, count) => sum + count, 0);
+  if (wanted === 0) {
+    return { error: "This attack's damage has no dice the app can read. Type your total damage instead." };
+  }
+  const order = usable
+    .map((part) => describeDiceNeeded(part.dice))
+    .filter(Boolean)
+    .join(", then ");
+  if (!Array.isArray(values) || values.length !== wanted) {
+    const numbers = `${wanted} ${wanted === 1 ? "number" : "numbers"}`;
+    return {
+      error:
+        usable.length === 1
+          ? `${order} needs ${numbers}, and you typed ${values?.length ?? 0}.`
+          : `${order} need ${numbers} in all, and you typed ${values?.length ?? 0}.`,
+    };
+  }
+  const results = [];
+  let next = 0;
+  for (const [i, part] of usable.entries()) {
+    const result = counts[i] === 0 ? damageFromDiceFlat(part.dice) : damageFromDice(part.dice, values.slice(next, next + counts[i]), { crit });
+    if (result.error) return result;
+    next += counts[i];
+    results.push(result);
+  }
+  return joinParts(results, usable);
+}
+
+// "6 piercing, 3 fire": what each part dealt, for messages.
+export function describeDealtParts(parts = []) {
+  return parts.map((part) => `${part.amount}${part.type ? ` ${part.type}` : ""}`).join(", ");
+}
+
 // Applies incoming damage to a sheet's hit points: temporary HP absorbs first,
 // then current HP, which never drops below 0.
 export function applyDamageToHitPoints(hitPoints, amount) {

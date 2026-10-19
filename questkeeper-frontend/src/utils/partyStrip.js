@@ -10,6 +10,7 @@ import {
   getProficiencyBonus,
   getSkillModifier,
 } from "./characterSheet";
+import { getActiveEffects } from "./combatEffects";
 
 // The passive scores a DM checks quietly ("does anyone notice the trapdoor?").
 export const PASSIVE_SKILLS = ["perception", "insight", "investigation"];
@@ -88,6 +89,15 @@ export function toPartyRow(sheet, { withPassives = false } = {}) {
     concentrationRounds:
       typeof sheet.concentration?.rounds === "number" ? sheet.concentration.rounds : null,
     companion: toCompanionRow(sheet),
+    // Spells changing their attacks ("Elemental Weapon (fire) on Darling
+    // Deceiver"). Only full sheets have these, so in practice it's the DM's
+    // strip; players' mini sheets don't carry them.
+    effects: getActiveEffects(sheet).map(
+      (effect) =>
+        `${effect.spell}${effect.damageType ? ` (${effect.damageType.toLowerCase()})` : ""}${
+          effect.attackName ? ` on ${effect.attackName}` : ""
+        }`,
+    ),
     // At 0 HP only: { successes, failures }.
     deathSaves:
       max > 0 && current <= 0

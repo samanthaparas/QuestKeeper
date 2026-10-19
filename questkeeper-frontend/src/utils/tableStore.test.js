@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
-import { pickActiveTable } from "./tableStore";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { dealDamage, pickActiveTable } from "./tableStore";
 
-vi.mock("./supabaseClient", () => ({ supabase: {} }));
+const rpc = vi.hoisted(() => vi.fn());
+vi.mock("./supabaseClient", () => ({ supabase: { rpc } }));
 
 const original = { id: "t-old", name: "Sam's Silly Garden Chase" };
 const newest = { id: "t-new", name: "Final Fight Practice" };
@@ -29,5 +30,47 @@ describe("pickActiveTable", () => {
 
   it("works with a single table", () => {
     expect(pickActiveTable([original], ["t-old"]).table.id).toBe("t-old");
+  });
+});
+
+describe("dealDamage", () => {
+  beforeEach(() => rpc.mockReset());
+  const parts = [
+    { amount: 8, type: "piercing", source: "The Darling Deceiver" },
+    { amount: 3, type: "fire", source: "Elemental Weapon" },
+  ];
+
+  it("sends the damage types with the total (never the sources)", async () => {
+    rpc.mockResolvedValue({ data: null, error: null });
+    await dealDamage("t1", 11, parts);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("deal_damage", {
+      p_table_id: "t1",
+      p_amount: 11,
+      p_parts: [
+        { amount: 8, type: "piercing" },
+        { amount: 3, type: "fire" },
+      ],
+    });
+  });
+
+  it("sends just the total for a number typed by hand, as before", async () => {
+    rpc.mockResolvedValue({ data: null, error: null });
+    await dealDamage("t1", 8, null);
+    expect(rpc).toHaveBeenCalledWith("deal_damage", { p_table_id: "t1", p_amount: 8 });
+  });
+
+  it("falls back to the total when the database hasn't been updated yet", async () => {
+    rpc
+      .mockResolvedValueOnce({ data: null, error: { code: "PGRST202", message: "Could not find the function" } })
+      .mockResolvedValueOnce({ data: null, error: null });
+    await dealDamage("t1", 11, parts);
+    expect(rpc).toHaveBeenLastCalledWith("deal_damage", { p_table_id: "t1", p_amount: 11 });
+  });
+
+  it("passes on any other problem (it's not your turn) without trying again", async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: "It is not your turn" } });
+    await expect(dealDamage("t1", 11, parts)).rejects.toMatchObject({ message: "It is not your turn" });
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 });

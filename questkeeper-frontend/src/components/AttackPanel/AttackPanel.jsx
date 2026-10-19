@@ -1,17 +1,16 @@
 import { useState } from "react";
 import { rollDie, formatModifier } from "../../utils/characterSheet";
 import {
-  rollDamage,
   parseDamage,
   parseDiceNumbers,
   describeDiceNeeded,
   checkExtraDamage,
-  rollDamageWithExtra,
-  damageFromDiceWithExtra,
-  damageFromDice,
+  rollDamageParts,
+  damageFromDiceParts,
   readExtra,
   rememberExtra,
 } from "../../utils/attacks";
+import { describeDamageParts } from "../../utils/combatEffects";
 import { attackRoll, dealDamage } from "../../utils/tableStore";
 import Button from "../Button/Button";
 import ExtraDamagePicker from "../ExtraDamagePicker/ExtraDamagePicker";
@@ -27,6 +26,12 @@ const RESULT_TEXT = {
 // Shown on your own turn after tapping Attack on a weapon. Step 1: choose a
 // target and roll to hit. Step 2 (only after a hit): roll damage. The server
 // compares your roll to the enemy's secret AC, so you never see it.
+//
+// `attack` is the attack as it is right now (getEffectiveAttack): its to-hit
+// includes active effects like Elemental Weapon, and its damage comes in
+// typed parts (1d4+5 piercing, 1d4 fire). Each part is rolled and sent
+// separately, so damage types are never merged. An attack without parts
+// (older callers) is one part: its own damage and type.
 function AttackPanel({ attack, combat, onClose }) {
   const me = combat.myCombatant;
   const targets = combat.combatants.filter(
@@ -49,12 +54,25 @@ function AttackPanel({ attack, combat, onClose }) {
   const [extraLabel, setExtraLabel] = useState(() => readExtra().label);
 
   const bonus = Number(attack.toHit) || 0;
-  const damageParts = parseDamage(attack.damage);
-  const canRollDamage = damageParts !== null;
-  const diceCount = (damageParts ?? []).reduce((sum, part) => sum + (part.type === "dice" ? part.count : 0), 0);
-  const hasFlatBonus = (damageParts ?? []).some((part) => part.type === "flat");
+  const attackParts = attack.damageParts ?? [
+    { dice: attack.damage ?? "", type: String(attack.damageType ?? "").toLowerCase(), source: attack.name },
+  ];
+  const weaponParts = parseDamage(attackParts[0]?.dice);
+  const canRollDamage = weaponParts !== null;
+  const hasFlatBonus = (weaponParts ?? []).some((part) => part.type === "flat");
   const extra = extraOn && extraText.trim() ? { text: extraText.trim(), label: extraLabel.trim() || "Extra" } : null;
+  // Everything rolled for this hit: the attack's parts, then the extra
+  // damage typed in the box (no type: the player didn't say one).
+  const allParts = extra ? [...attackParts, { dice: extra.text, type: "", source: extra.label }] : attackParts;
+  const diceCount = allParts.reduce(
+    (sum, part) => sum + (parseDamage(part.dice) ?? []).reduce((total, piece) => total + (piece.type === "dice" ? piece.count : 0), 0),
+    0,
+  );
   const extraDice = extra ? (checkExtraDamage(extra.text).dice ?? 0) : 0;
+  const diceOrder = allParts
+    .map((part) => describeDiceNeeded(part.dice))
+    .filter(Boolean)
+    .join(", then ");
   const hasHit = me.attack_state === "hit";
   const isAwaitingDm = me.attack_state === "awaiting_dm";
   // The outcome follows the live state, so "Waiting for the DM" turns into
@@ -116,9 +134,11 @@ function AttackPanel({ attack, combat, onClose }) {
     submitAttack(natural);
   }
 
-  async function submitDamage(amount) {
+  // parts: what each damage type dealt, when the app worked it out (not for
+  // a total typed by hand, which has no breakdown).
+  async function submitDamage(amount, parts = null) {
     await run(async () => {
-      await dealDamage(combat.table.id, amount);
+      await dealDamage(combat.table.id, amount, parts);
       combat.refresh();
       onClose();
     });
@@ -131,19 +151,26 @@ function AttackPanel({ attack, combat, onClose }) {
     change();
   }
 
+  // The manual extra's share of a roll, for the "✓ Smite added" line.
+  function withExtraNote(result) {
+    if (!extra) return result;
+    const added = result.parts.at(-1);
+    return { ...result, extra: { label: extra.label, total: added.amount } };
+  }
+
   function rollDamageDice() {
-    if (!extra) {
-      setDamageRolled(rollDamage(attack.damage, { crit: me.attack_crit }));
+    if (extra && checkExtraDamage(extra.text).error) {
+      setError(checkExtraDamage(extra.text).error);
       return;
     }
-    const result = rollDamageWithExtra(attack.damage, extra.text, { crit: me.attack_crit, label: extra.label });
+    const result = rollDamageParts(allParts, { crit: me.attack_crit });
     if (result.error) {
       setError(result.error);
       return;
     }
     setError("");
-    rememberExtra(extraText, extraLabel);
-    setDamageRolled(result);
+    if (extra) rememberExtra(extraText, extraLabel);
+    setDamageRolled(withExtraNote(result));
   }
 
   // Real damage dice: the player types the number on each die and the app adds
@@ -156,16 +183,18 @@ function AttackPanel({ attack, combat, onClose }) {
       setError("Type the numbers on your dice, separated by commas.");
       return;
     }
-    const result = extra
-      ? damageFromDiceWithExtra(attack.damage, extra.text, numbers, { crit: me.attack_crit, label: extra.label })
-      : damageFromDice(attack.damage, numbers, { crit: me.attack_crit });
+    if (extra && checkExtraDamage(extra.text).error) {
+      setError(checkExtraDamage(extra.text).error);
+      return;
+    }
+    const result = damageFromDiceParts(allParts, numbers, { crit: me.attack_crit });
     if (result.error) {
       setError(result.error);
       return;
     }
     setError("");
     if (extra) rememberExtra(extraText, extraLabel);
-    setDamageRolled(result);
+    setDamageRolled(withExtraNote(result));
     setPhysicalDice("");
   }
 
@@ -193,6 +222,13 @@ function AttackPanel({ attack, combat, onClose }) {
           Close
         </Button>
       </header>
+
+      {/* An enchanted weapon says so, and what it adds. */}
+      {attack.isEnchanted && (
+        <p className="attack-panel__effects">
+          ✨ {attack.modifiers.map((modifier) => `${modifier.text} (${modifier.source})`).join(", ")}
+        </p>
+      )}
 
       {error && (
         <p className="attack-panel__error" role="alert">
@@ -266,7 +302,10 @@ function AttackPanel({ attack, combat, onClose }) {
         <div className="attack-panel__damage">
           <p className="attack-panel__note">
             Now roll damage
-            {attack.damage ? ` (${attack.damage}${me.attack_crit ? ", dice roll doubled" : ""})` : ""}.
+            {attackParts[0]?.dice
+              ? ` (${describeDamageParts(attackParts)}${me.attack_crit ? ", every die doubled" : ""})`
+              : ""}
+            .
           </p>
 
           {canRollDamage && (
@@ -315,7 +354,7 @@ function AttackPanel({ attack, combat, onClose }) {
                     {damageRolled.total}.
                   </span>
                 )}
-                <Button disabled={isBusy} onClick={() => submitDamage(damageRolled.total)}>
+                <Button disabled={isBusy} onClick={() => submitDamage(damageRolled.total, damageRolled.parts)}>
                   Deal {damageRolled.total} damage
                 </Button>
               </>
@@ -327,9 +366,9 @@ function AttackPanel({ attack, combat, onClose }) {
             // your bonus.
             <form className="attack-panel__dice" onSubmit={submitPhysicalDice}>
               <label className="attack-panel__dice-label" htmlFor="attack-panel-dice">
-                Rolled real dice? Type the number on each die ({diceCount + extraDice}{" "}
-                {diceCount + extraDice === 1 ? "number" : "numbers"} for {describeDiceNeeded(attack.damage)}
-                {extra && extraDice > 0 ? `, then ${extraDice} for ${extra.label}` : ""}), separated by commas.
+                Rolled real dice? Type the number on each die ({diceCount}{" "}
+                {diceCount === 1 ? "number" : "numbers"}: {diceOrder}
+                {extra && extraDice > 0 ? ` (the last ${extraDice} for ${extra.label})` : ""}), separated by commas.
                 We add them up{hasFlatBonus ? " and your bonus" : ""}
                 {me.attack_crit ? ", doubling the dice for the critical hit" : ""}.
               </label>

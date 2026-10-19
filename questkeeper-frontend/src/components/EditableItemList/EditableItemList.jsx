@@ -645,6 +645,8 @@ function EditableItemList({
                   </span>
                 )}
               </li>
+              {/* Something opened under this row (a spell's cast panel). */}
+              {rowPanel && rowPanel(item) && <li className="character-sheet__row-panel">{rowPanel(item)}</li>}
               </Fragment>
             );
           })}

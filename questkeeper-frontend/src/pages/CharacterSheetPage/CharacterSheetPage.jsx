@@ -114,6 +114,18 @@ import TableHandouts from "../../components/TableHandouts/TableHandouts";
 import TableJournal from "../../components/TableJournal/TableJournal";
 import TurnBanner from "../../components/TurnBanner/TurnBanner";
 import AttackPanel from "../../components/AttackPanel/AttackPanel";
+import {
+  castEffect,
+  effectTemplateForSpell,
+  endEffect,
+  endEffectsForRest,
+  getActiveEffects,
+  getCastSlotLevels,
+  getEffectiveAttack,
+  getEligibleWeapons,
+  previewEffect,
+  withEffectsEnded,
+} from "../../utils/combatEffects";
 import RollHistory from "../../components/RollHistory/RollHistory";
 import PersonalJournal from "../../components/PersonalJournal/PersonalJournal";
 import ShortRestPanel from "../../components/ShortRestPanel/ShortRestPanel";
@@ -674,7 +686,9 @@ function CharacterSheetPage() {
     // auto-filled weapon attacks follow new scores (see refreshWeaponAttacks).
     // A summoned companion whose spell has ended (concentration broken, the
     // minute run out) is marked as gone, never left looking present.
-    const updated = withSummonEnded(withCurrentNumbers(sheet, next));
+    // So is an effect like Elemental Weapon whose concentration has ended
+    // (see combatEffects.js): the weapon goes back to its own numbers.
+    const updated = withEffectsEnded(withSummonEnded(withCurrentNumbers(sheet, next)));
     setSheet(updated);
     pendingUpdateRef.current = updated;
 
@@ -915,7 +929,9 @@ function CharacterSheetPage() {
   // Sets the spell's rounds left (0 takes the timer off). Mid-fight, the
   // count starts from this round.
   function handleConcentrationRounds(rounds) {
-    const next = { spell: sheet.concentration.spell };
+    // Keeps what it's held for (an effect's id), so a timer doesn't end it.
+    const next = { ...sheet.concentration };
+    delete next.rounds;
     if (rounds > 0) next.rounds = rounds;
     const roundSeen = fightTableId && fightTurns !== null ? { tableId: fightTableId, turns: fightTurns } : sheet.roundSeen;
     persistSheet({ ...sheet, concentration: next, roundSeen });
@@ -1444,8 +1460,44 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, spellcasting });
   }
 
+  // " Elemental Weapon ended." for the rest message.
+  const effectsEndedNote = (names) => (names.length ? ` ${names.join(" and ")} ended.` : "");
+
+  // --- Spells the sheet casts for you (Elemental Weapon) -------------------
+
+  // The Cast panel's choices for a spell, or null when it isn't one the sheet
+  // can run (most spells are just tracked as before).
+  function castOptionsFor(spellName) {
+    const template = effectTemplateForSpell(spellName);
+    if (!template) return null;
+    return {
+      template,
+      weapons: getEligibleWeapons(sheet, template).map((attack) => ({ index: attack.index, name: attack.name })),
+      slotLevels: getCastSlotLevels(sheet, template),
+      otherConcentration:
+        sheet.concentration?.spell && sheet.concentration.spell !== template.spell ? sheet.concentration.spell : "",
+      preview: (choices) => previewEffect(sheet, template.key, choices),
+    };
+  }
+
+  // Casts it (spends the slot, starts concentration). Returns an error to
+  // show in the panel, or "" when done.
+  function handleCastEffect(key, choices) {
+    const result = castEffect(sheet, key, choices);
+    if (result.error) return result.error;
+    setConcentrationCheck(null);
+    persistSheet(result.sheet);
+    return "";
+  }
+
+  function handleEndEffect(effectId) {
+    if (sheet.concentration?.effectId === effectId) setConcentrationCheck(null);
+    persistSheet(endEffect(sheet, effectId));
+  }
+
   function handleLongRest() {
-    const rested = applyRest(sheet, "long");
+    // Spells like Elemental Weapon (up to an hour) end with the rest.
+    const { sheet: rested, ended: endedEffects } = endEffectsForRest(applyRest(sheet, "long"), "long");
     // A summoned companion isn't healed by the rest: its spell ends instead.
     const isSummon = Boolean(getSummonTemplate(sheet.companionCreature));
     const companionName =
@@ -1465,12 +1517,15 @@ function CharacterSheetPage() {
         regained > 0
           ? `, you got ${regained} Hit ${regained === 1 ? "Die" : "Dice"} back,`
           : ""
-      } and spell slots and abilities are refilled.${summonEnded}`,
+      } and spell slots and abilities are refilled.${summonEnded}${effectsEndedNote(endedEffects)}`,
     );
   }
 
   function handleShortRest(rolls) {
-    const { sheet: rested, summary } = takeShortRest(sheet, rolls);
+    const shortRest = takeShortRest(sheet, rolls);
+    const { summary } = shortRest;
+    // A short rest is an hour or more, which outlasts Elemental Weapon.
+    const { sheet: rested, ended: endedEffects } = endEffectsForRest(shortRest.sheet, "short");
     persistSheet(rested);
     setShowShortRest(false);
     // Tireless (Deft Explorer) takes a level of exhaustion off a short rest.
@@ -1492,7 +1547,8 @@ function CharacterSheetPage() {
           } left. Short-rest abilities are refilled.`
         : "Short rest done. Short-rest abilities are refilled.") +
         exhaustionNote +
-        summonNote,
+        summonNote +
+        effectsEndedNote(endedEffects),
     );
   }
 
@@ -2476,13 +2532,20 @@ function CharacterSheetPage() {
                       attackPanelFor={(attack) =>
                         tableCombat?.isMyTurn && attackWith && attack.index === attackWith.index ? (
                           <AttackPanel
-                            attack={attackWith}
+                            // Worked out fresh each time, so an effect that
+                            // ends mid-attack stops counting at once.
+                            attack={getEffectiveAttack(
+                              sheet,
+                              (sheet.attacks ?? []).find((item) => item.index === attackWith.index) ?? attackWith,
+                            )}
                             combat={tableCombat}
                             onClose={() => setAttackWith(null)}
                           />
                         ) : null
                       }
                       attacks={sheet.attacks ?? []}
+                      effectiveAttackFor={(attack) => getEffectiveAttack(sheet, attack)}
+                      onEndEffect={handleEndEffect}
                       onAttackAdd={handleAttackAdd}
                       onAttackUpdate={handleAttackUpdate}
                       onAttackRemove={handleAttackRemove}
@@ -2553,6 +2616,10 @@ function CharacterSheetPage() {
                       onSpellLockToggle={handleSpellLockToggle}
                       spellsStartAt={getSpellsStartAt(sheet.class, sheet.level)}
                       onFillComponents={handleFillComponents}
+                      castOptionsFor={castOptionsFor}
+                      onCastEffect={handleCastEffect}
+                      activeEffects={getActiveEffects(sheet)}
+                      onEndEffect={handleEndEffect}
                     />
                   )}
 

@@ -3,6 +3,7 @@ import { parseDamage } from "../../utils/attacks";
 import RollButton from "../RollDock/RollButton";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
+import { EffectStrip } from "../CastEffectPanel/CastEffectPanel";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
 import { useSrdEquipmentLookup } from "../../hooks/useSrdEquipmentLookup";
 import Button from "../Button/Button";
@@ -47,6 +48,11 @@ function damageTypeFilters(attacks) {
 function CharacterSheetActionsTab({
   onAttack,
   attackPanelFor = null,
+  // An attack as it is right now, with effects like Elemental Weapon counted
+  // (getEffectiveAttack). The saved attack is what's edited; this is what's
+  // shown and rolled.
+  effectiveAttackFor = null,
+  onEndEffect = () => {},
   attacks,
   onAttackAdd,
   onAttackUpdate,
@@ -57,6 +63,24 @@ function CharacterSheetActionsTab({
   proficiencyBonus = 2,
   fightingStyles = [],
 }) {
+  // Without effects (or an older caller), an attack is just as saved.
+  const liveAttack = (attack) =>
+    effectiveAttackFor
+      ? effectiveAttackFor(attack)
+      : {
+          ...attack,
+          toHit: Number(attack.toHit) || 0,
+          damageParts: [{ dice: attack.damage ?? "", type: attack.damageType ?? "", source: attack.name }],
+          modifiers: [],
+          effects: [],
+          isEnchanted: false,
+        };
+  // One damage text for the roll dock's critical-hit damage ("1d4+5+1d4").
+  const rollableDamage = (live) =>
+    live.damageParts
+      .map((part) => part.dice)
+      .filter(Boolean)
+      .join("+");
   const [allWeapons, setAllWeapons] = useState([]);
   const [addingWeapon, setAddingWeapon] = useState(null);
   const [inventoryError, setInventoryError] = useState("");
@@ -225,28 +249,48 @@ function CharacterSheetActionsTab({
             key: "toHit",
             label: "To Hit",
             width: "70px",
-            format: (item) => (
-              <RollButton
-                label={`${item.name} attack`}
-                bonus={Number(item.toHit) || 0}
-                attack={{ name: item.name, damage: item.damage }}
-              >
-                {formatModifier(item.toHit)}
-              </RollButton>
-            ),
+            format: (item) => {
+              const live = liveAttack(item);
+              return (
+                <RollButton
+                  label={`${item.name} attack`}
+                  bonus={live.toHit}
+                  attack={{ name: item.name, damage: rollableDamage(live) }}
+                >
+                  {live.isEnchanted ? "✨ " : ""}
+                  {formatModifier(live.toHit)}
+                </RollButton>
+              );
+            },
           },
           {
             key: "damage",
             label: "Damage",
             width: "100px",
-            format: (item) =>
-              parseDamage(item.damage) ? (
-                <RollButton label={`${item.name} damage`} damage={item.damage}>
-                  {item.damage}
-                </RollButton>
-              ) : (
-                item.damage
-              ),
+            // The weapon's damage, then each effect's extra dice as its own
+            // roll with its type ("+1d4 fire"), so types never merge.
+            format: (item) => {
+              const [own, ...extras] = liveAttack(item).damageParts;
+              return (
+                <>
+                  {parseDamage(own.dice) ? (
+                    <RollButton label={`${item.name} damage`} damage={own.dice}>
+                      {own.dice}
+                    </RollButton>
+                  ) : (
+                    own.dice
+                  )}
+                  {extras.map((part) => (
+                    <span className="character-sheet__extra-damage" key={part.source}>
+                      {" + "}
+                      <RollButton label={`${item.name}: ${part.source} (${part.type})`} damage={part.dice}>
+                        {part.dice} {part.type}
+                      </RollButton>
+                    </span>
+                  ))}
+                </>
+              );
+            },
           },
           { key: "damageType", label: "Type", width: "110px" },
         ]}
@@ -254,7 +298,28 @@ function CharacterSheetActionsTab({
         footer={inventoryFooter}
         addButtonLabel="Add Weapon"
         rowAction={onAttack ? { label: "Attack", onClick: onAttack } : null}
-        rowPanel={attackPanelFor}
+        // Under each enchanted weapon: what's on it and End. The attack
+        // panel (on your turn at a table) opens under it too.
+        rowPanel={(attack) => {
+          const live = liveAttack(attack);
+          const panel = attackPanelFor ? attackPanelFor(attack) : null;
+          if (!live.isEnchanted && !panel) return null;
+          return (
+            <>
+              <EffectStrip
+                effects={live.effects}
+                describe={(effect) =>
+                  live.modifiers
+                    .filter((modifier) => modifier.source === effect.spell)
+                    .map((modifier) => modifier.text)
+                    .join(", ")
+                }
+                onEnd={onEndEffect}
+              />
+              {panel}
+            </>
+          );
+        }}
         onAdd={onAttackAdd}
         onUpdate={onAttackUpdate}
         onRemove={onAttackRemove}
