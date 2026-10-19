@@ -138,6 +138,25 @@
   cursor: pointer;
 }
 
+/* An on-hit feature: its tick box, then a short note on how often it can
+   land (or why it's greyed out), on one line when there's room. */
+.attack-panel__on-hit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 12px;
+  align-items: center;
+}
+
+.attack-panel__on-hit-note {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.attack-panel__on-hit label:has(input:disabled) {
+  color: var(--qk-text-muted);
+  cursor: not-allowed;
+}
+
 
 /* Says the extra damage is in, and what the total came to. */
 .attack-panel__added {

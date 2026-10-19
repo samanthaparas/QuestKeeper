@@ -38,7 +38,13 @@ const RESULT_TEXT = {
 // chosen before rolling to hit and can't change after, so the -5 and the +10
 // always go together. Extra damage with a condition ("vs undead") gets a
 // tick box at the damage step.
-function AttackPanel({ attack, combat, onClose, sharpshooter = null }) {
+//
+// onHitFeatures: features that can add damage to this hit (Dreadful
+// Strikes), each with its eligibility for this target this turn
+// (onHitEligibility). They're offered after a hit, off unless ticked, and
+// onOnHitDealt(features) is called only once their damage is dealt, so a
+// miss or leaving it unticked uses nothing.
+function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatures = [], onOnHitDealt = () => {} }) {
   const me = combat.myCombatant;
   const targets = combat.combatants.filter(
     (combatant) => combatant.kind === "monster" && combatant.status !== "down",
@@ -61,13 +67,23 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null }) {
 
   // Extra damage with a condition, switched on for this hit.
   const [optionalOn, setOptionalOn] = useState(() => new Set());
+  // On-hit features ticked for this hit (by key).
+  const [onHitOn, setOnHitOn] = useState(() => new Set());
+  const chosenOnHit = onHitFeatures.filter(
+    (feature) => onHitOn.has(feature.key) && feature.eligibility?.status !== "used",
+  );
   const bonus = Number(attack.toHit) || 0;
   const optionalParts = attack.optionalParts ?? [];
   const chosenOptional = optionalParts.filter((part) => optionalOn.has(part.key));
   const savedParts = attack.damageParts ?? [
     { dice: attack.damage ?? "", type: String(attack.damageType ?? "").toLowerCase(), source: attack.name },
   ];
-  const attackParts = [...savedParts, ...chosenOptional];
+  // Each on-hit feature is its own part, in its own damage type.
+  const attackParts = [
+    ...savedParts,
+    ...chosenOptional,
+    ...chosenOnHit.map((feature) => ({ dice: feature.dice, type: feature.type, source: feature.name })),
+  ];
   const weaponParts = parseDamage(attackParts[0]?.dice);
   const canRollDamage = weaponParts !== null;
   const hasFlatBonus = (weaponParts ?? []).some((part) => part.type === "flat");
@@ -85,6 +101,9 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null }) {
     .filter(Boolean)
     .join(", then ");
   const hasHit = me.attack_state === "hit";
+  // The creature this hit landed on (the server keeps it until damage is
+  // dealt). Only its name is shown, which players already see.
+  const targetName = combat.combatants.find((combatant) => combatant.id === me.attack_target)?.name ?? "this creature";
   const isAwaitingDm = me.attack_state === "awaiting_dm";
   // The outcome follows the live state, so "Waiting for the DM" turns into
   // "That hits!" the moment the DM calls it.
@@ -155,6 +174,9 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null }) {
   async function submitDamage(amount, parts = null) {
     await run(async () => {
       await dealDamage(combat.table.id, amount, parts);
+      // Only now does an on-hit feature count as used (its dice were in
+      // this damage).
+      if (parts && chosenOnHit.length > 0) onOnHitDealt(chosenOnHit);
       combat.refresh();
       onClose();
     });
@@ -358,6 +380,47 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null }) {
                   Add {part.dice} {part.type} ({part.condition})
                 </label>
               ))}
+            </div>
+          )}
+
+          {/* Features that add damage on a hit (Dreadful Strikes). */}
+          {canRollDamage && onHitFeatures.length > 0 && (
+            <div className="attack-panel__extra">
+              {onHitFeatures.map((feature) => {
+                const used = feature.eligibility?.status === "used";
+                const manual = feature.eligibility?.status === "manual";
+                const noteId = `on-hit-note-${feature.key}`;
+                return (
+                  <div key={feature.key} className="attack-panel__on-hit">
+                    <label className="attack-panel__extra-toggle">
+                      <input
+                        type="checkbox"
+                        checked={!used && onHitOn.has(feature.key)}
+                        disabled={used}
+                        aria-describedby={noteId}
+                        onChange={(event) =>
+                          changeExtra(() =>
+                            setOnHitOn((previous) => {
+                              const next = new Set(previous);
+                              if (event.target.checked) next.add(feature.key);
+                              else next.delete(feature.key);
+                              return next;
+                            }),
+                          )
+                        }
+                      />
+                      {feature.name}: +{feature.dice} {feature.type}
+                    </label>
+                    <span id={noteId} className="attack-panel__on-hit-note">
+                      {used
+                        ? `Already used on ${targetName} this turn.`
+                        : manual
+                          ? `${feature.note} QuestKeeper can't tell whose turn it is, so check this yourself.`
+                          : feature.note}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
 

@@ -138,6 +138,10 @@ import {
   getEffectiveAttack,
   getAttackBreakdown,
   canUseSharpshooter,
+  getOnHitFeatures,
+  onHitEligibility,
+  recordOnHit,
+  turnKeyFor,
   getEligibleWeapons,
   previewEffect,
   withEffectsEnded,
@@ -2696,6 +2700,25 @@ function CharacterSheetPage() {
                                   }
                                 : null
                             }
+                            // Dreadful Strikes and the like: offered for the
+                            // creature this hit landed on, this turn.
+                            onHitFeatures={getOnHitFeatures(
+                              sheet,
+                              getSubclassFeatureDamage(sheet.class?.subclass?.id, homebrewList),
+                            ).map((feature) => ({
+                              ...feature,
+                              eligibility: onHitEligibility(sheet, feature, {
+                                turnKey: turnKeyFor(tableCombat.table),
+                                targetId: tableCombat.myCombatant?.attack_target ?? null,
+                              }),
+                            }))}
+                            onOnHitDealt={(features) => {
+                              const turnKey = turnKeyFor(tableCombat.table);
+                              const targetId = tableCombat.myCombatant?.attack_target ?? null;
+                              persistSheet(
+                                features.reduce((next, feature) => recordOnHit(next, feature, turnKey, targetId), sheet),
+                              );
+                            }}
                             onClose={() => {
                               setSharpshooter(attackWith.index, false);
                               setAttackWith(null);
@@ -2728,6 +2751,10 @@ function CharacterSheetPage() {
                         })
                       }
                       onEndEffect={handleEndEffect}
+                      onHitFeatures={getOnHitFeatures(
+                        sheet,
+                        getSubclassFeatureDamage(sheet.class?.subclass?.id, homebrewList),
+                      )}
                       onAttackAdd={handleAttackAdd}
                       onAttackUpdate={handleAttackUpdate}
                       onAttackRemove={handleAttackRemove}

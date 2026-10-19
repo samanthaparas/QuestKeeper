@@ -4,6 +4,11 @@ import {
   addFlatDamage,
   canUseSharpshooter,
   getAttackBreakdown,
+  getOnHitFeatures,
+  onHitEligibility,
+  onHitPart,
+  recordOnHit,
+  turnKeyFor,
   castEffect,
   describeDamageParts,
   effectTemplateForSpell,
@@ -717,5 +722,88 @@ describe("linked weapons stay in step (regressions)", () => {
     expect(getEffectiveAttack(back, back.attacks[0], { sharpshooter: true })).toMatchObject({ toHit: 8 });
     expect(getOutOfDateNumbers(back, loaded).attacks).toEqual([]);
     expect(fillPendingAttacks(back, loaded)).toBe(back);
+  });
+});
+
+// --- On-hit features: Dreadful Strikes -------------------------------------------
+describe("Dreadful Strikes as an on-hit feature", () => {
+  const feyWanderer = (level, extra = {}) =>
+    ranger({ level, class: { id: "ranger", subclass: { id: "hb-fey", name: "Fey Wanderer" } }, ...extra });
+  const tableOn = (round, currentId, active = true) => ({ combat_active: active, round, current_combatant_id: currentId });
+
+  it("comes from the character's class or features, with dice by Ranger level", () => {
+    expect(getOnHitFeatures(feyWanderer(2))).toEqual([]);
+    expect(getOnHitFeatures(feyWanderer(3))[0]).toMatchObject({ name: "Dreadful Strikes", dice: "1d4", type: "psychic", limit: "oncePerTargetPerTurn" });
+    expect(getOnHitFeatures(feyWanderer(10))[0].dice).toBe("1d4");
+    expect(getOnHitFeatures(feyWanderer(11))[0].dice).toBe("1d6");
+    // Listed as a feature counts too; a Ranger of another subclass doesn't get it.
+    expect(getOnHitFeatures(ranger({ level: 5, features: [{ name: "Dreadful Strikes" }] }))[0].dice).toBe("1d4");
+    expect(getOnHitFeatures(ranger({ level: 11, class: { id: "ranger", subclass: { name: "Hunter" } } }))).toEqual([]);
+    // A homebrew subclass's own damage steps win.
+    const homebrew = [{ name: "Dreadful Strikes", damage: [{ level: 3, dice: "1d8", type: "Psychic" }] }];
+    expect(getOnHitFeatures(feyWanderer(5), homebrew)[0]).toMatchObject({ dice: "1d8", type: "psychic" });
+  });
+
+  it("knows the turn only while a fight is running", () => {
+    expect(turnKeyFor(tableOn(2, "c-pippa"))).toBe("2:c-pippa");
+    expect(turnKeyFor(tableOn(2, "c-pippa", false))).toBeNull();
+    expect(turnKeyFor({ combat_active: true, round: 1, current_combatant_id: null })).toBeNull();
+    expect(turnKeyFor(null)).toBeNull();
+  });
+
+  it("lands once per creature per turn, other creatures still can, and a new turn resets it", () => {
+    const [dreadful] = getOnHitFeatures(feyWanderer(11));
+    const turn = turnKeyFor(tableOn(1, "c-pippa"));
+    let sheet = feyWanderer(11);
+    expect(onHitEligibility(sheet, dreadful, { turnKey: turn, targetId: "goblin-1" }).status).toBe("ok");
+    sheet = recordOnHit(sheet, dreadful, turn, "goblin-1");
+    // A second hit on the same goblin this turn: not again.
+    expect(onHitEligibility(sheet, dreadful, { turnKey: turn, targetId: "goblin-1" }).status).toBe("used");
+    // Another goblin this turn: yes.
+    expect(onHitEligibility(sheet, dreadful, { turnKey: turn, targetId: "goblin-2" }).status).toBe("ok");
+    sheet = recordOnHit(sheet, dreadful, turn, "goblin-2");
+    expect(sheet.onHitUses["dreadful strikes"].targets).toEqual(["goblin-1", "goblin-2"]);
+    // Someone else's turn, or the next round: fresh.
+    expect(onHitEligibility(sheet, dreadful, { turnKey: turnKeyFor(tableOn(1, "c-orc")), targetId: "goblin-1" }).status).toBe("ok");
+    expect(onHitEligibility(sheet, dreadful, { turnKey: turnKeyFor(tableOn(2, "c-pippa")), targetId: "goblin-1" }).status).toBe("ok");
+    // Recording in a new turn starts a new list.
+    const next = recordOnHit(sheet, dreadful, turnKeyFor(tableOn(2, "c-pippa")), "goblin-1");
+    expect(next.onHitUses["dreadful strikes"]).toEqual({ turn: "2:c-pippa", targets: ["goblin-1"] });
+  });
+
+  it("falls back to the player keeping track when the turn or target isn't known, and records nothing", () => {
+    const [dreadful] = getOnHitFeatures(feyWanderer(11));
+    const sheet = feyWanderer(11);
+    expect(onHitEligibility(sheet, dreadful, { turnKey: null, targetId: "goblin-1" }).status).toBe("manual");
+    expect(onHitEligibility(sheet, dreadful, { turnKey: "1:c-pippa", targetId: null }).status).toBe("manual");
+    expect(recordOnHit(sheet, dreadful, null, "goblin-1")).toBe(sheet);
+  });
+
+  it("adds its own psychic part after the weapon's and Elemental Weapon's, all doubled on a crit, weapon untouched", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // d4 -> 3, d6 -> 4
+    const [dreadful] = getOnHitFeatures(feyWanderer(11));
+    const { sheet } = castEffect(feyWanderer(11), "elementalWeapon", { attackIndex: "a1", damageType: "Fire", slotLevel: 3 });
+    const before = JSON.stringify(deceiver);
+    const parts = [...getEffectiveAttack(sheet, deceiver).damageParts, onHitPart(dreadful)];
+    const result = rollDamageParts(parts, { crit: true });
+    expect(result.parts).toEqual([
+      { amount: 11, type: "piercing", source: "The Darling Deceiver" },
+      { amount: 6, type: "fire", source: "Elemental Weapon" },
+      { amount: 8, type: "psychic", source: "Dreadful Strikes" },
+    ]);
+    expect(JSON.stringify(deceiver)).toBe(before);
+    vi.restoreAllMocks();
+  });
+});
+
+describe("Sharpshooter's -5 / +10 is the 2014 feat only", () => {
+  const longbow = { name: "Longbow", weapon_category: "Martial", weapon_range: "Ranged", damage: { damage_dice: "1d8" } };
+  const details = (name) => (String(name).toLowerCase() === "longbow" ? longbow : null);
+  const bow = { index: "b", name: "Longbow", toHit: 9, damage: "1d8+5" };
+  it("offers the toggle for the 2014 feat or one with no edition saved, never 2024 or homebrew", () => {
+    expect(canUseSharpshooter(ranger({ feats: [{ name: "Sharpshooter", edition: "2014" }] }), bow, details)).toBe(true);
+    expect(canUseSharpshooter(ranger({ feats: [{ name: "Sharpshooter" }] }), bow, details)).toBe(true);
+    expect(canUseSharpshooter(ranger({ feats: [{ name: "Sharpshooter", edition: "2024" }] }), bow, details)).toBe(false);
+    expect(canUseSharpshooter(ranger({ feats: [{ name: "Sharpshooter", edition: "Homebrew" }] }), bow, details)).toBe(false);
   });
 });

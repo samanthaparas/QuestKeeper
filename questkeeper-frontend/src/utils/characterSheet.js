@@ -743,15 +743,21 @@ export function isMagicWeaponAttack(attack) {
 
 // Does the character have this feat? Feats are kept on the Feats list, and
 // older sheets sometimes have them as a feature instead ("Feat: Sharpshooter").
-export function hasFeat(sheet, featName) {
+// edition: only count that ruleset's version ("2014" or "2024"). A feat
+// picked on level-up remembers its edition; one typed in by hand (or a
+// feature) has none and counts as 2014, the app's default ruleset. A
+// homebrew feat of the same name never counts: its rules are its own.
+export function hasFeat(sheet, featName, { edition = null } = {}) {
   const wanted = String(featName).trim().toLowerCase();
-  const names = [...(sheet?.feats ?? []), ...(sheet?.features ?? [])].map((entry) =>
+  const nameOf = (entry) =>
     String(entry?.name ?? "")
       .replace(/^feat:\s*/i, "")
       .trim()
-      .toLowerCase(),
+      .toLowerCase();
+  const editionOf = (entry) => String(entry?.edition ?? "2014");
+  return [...(sheet?.feats ?? []), ...(sheet?.features ?? [])].some(
+    (entry) => nameOf(entry) === wanted && (!edition || editionOf(entry) === edition),
   );
-  return names.includes(wanted);
 }
 
 // Weapon attacks are saved as plain numbers (to hit +5, damage 1d8+3), so

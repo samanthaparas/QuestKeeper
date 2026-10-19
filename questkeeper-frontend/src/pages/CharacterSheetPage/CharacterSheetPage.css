@@ -707,6 +707,17 @@
   outline-offset: 3px;
 }
 
+/* "Dreadful Strikes +1d6 psychic on a hit (each creature once per turn)",
+   above the attacks list. */
+.character-sheet__on-hit-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 8px;
+  color: var(--qk-text);
+  font-size: 14px;
+}
+
 /* Damage parts side by side, each with its type; they wrap as a whole. */
 .character-sheet__damage-parts {
   display: inline;
