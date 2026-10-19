@@ -1269,3 +1269,17 @@ describe("Edit buttons on the other lists", () => {
     }
   });
 });
+
+describe("roll bar during level-up", () => {
+  it("steps aside while levelling up and comes back on the sheet", async () => {
+    const user = userEvent.setup();
+    renderSheet(makeSheet());
+    expect(await screen.findByText(/Tap a number to roll it/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Level Up" }));
+    expect(screen.queryByText(/Tap a number to roll it/)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(await screen.findByText(/Tap a number to roll it/)).toBeInTheDocument();
+  });
+});
