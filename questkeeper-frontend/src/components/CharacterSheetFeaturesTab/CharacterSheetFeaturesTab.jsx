@@ -28,7 +28,8 @@ import {
   normalizeItemName,
 } from "../../utils/srdDetails";
 import Button from "../Button/Button";
-import { getGrantDamage, getSafeSpellLink } from "../../utils/characterSheet";
+import { getGrantDamage, getGrantRollDice, getSafeSpellLink } from "../../utils/characterSheet";
+import RollButton from "../RollDock/RollButton";
 import { findStraySubclassFeatures, sourceFromEntry } from "../../utils/featureSources";
 import {
   choicesFor,
@@ -61,6 +62,8 @@ function CharacterSheetFeaturesTab({
   optionalFeaturesOn = {},
   onOptionalFeatureSwitch = () => {},
   isReplacedFeature = () => false,
+  // For a feature's own tap-to-roll (Tireless: 1d8 + Wisdom).
+  abilityScores = {},
   background = null,
   // From the sheet page, which loads them once (the tab loads its own if not).
   featureEntries = null,
@@ -518,10 +521,21 @@ function CharacterSheetFeaturesTab({
             const grantNote = [damage ? `Extra damage: ${damage}` : "", grant?.note ?? ""]
               .filter(Boolean)
               .join(" · ");
+            // Tireless: roll its temporary HP with this character's Wisdom.
+            const rollDice = getGrantRollDice(grant, abilityScores);
             if (choices.length === 0 && !link && !grantNote) return null;
             return (
               <span className="character-sheet__feature-choices">
                 {grantNote && <span className="character-sheet__feature-choice-note">{grantNote}</span>}
+                {rollDice && (
+                  <RollButton
+                    label={grant.roll.label}
+                    damage={rollDice}
+                    className="character-sheet__feature-roll"
+                  >
+                    🎲 {rollDice}
+                  </RollButton>
+                )}
                 {link && (
                   <a
                     className="character-sheet__spell-link"

@@ -87,6 +87,7 @@ import {
   getStaleInitiative,
   applyInitiativeUpdate,
   getFreeCastsToSplit,
+  getGrantRollDice,
   applyFreeCastsSplit,
   updateFeat,
   updateSpell,
@@ -2644,6 +2645,7 @@ describe("Tasha's optional Ranger features", () => {
     expect(getOptionalClassFeatures({ id: "ranger" }).map((option) => option.key)).toEqual([
       "favoredFoe",
       "deftExplorer",
+      "naturesVeil",
       "primalAwareness",
     ]);
     expect(getOptionalClassFeatures({ id: "wizard" })).toEqual([]);
@@ -3287,5 +3289,82 @@ describe("splitting an older shared Primal Awareness pool", () => {
     const pool = thirteen.resources.find((resource) => resource.name === "Primal Awareness free casts");
     expect([pool.current, pool.max]).toEqual([3, 4]);
     expect(thirteen.resources.some((resource) => resource.freeCastFor)).toBe(false);
+  });
+});
+
+describe("Nature's Veil (Tasha's) in place of Hide in Plain Sight", () => {
+  const ranger = (level, features = []) => ({
+    level,
+    class: { id: "ranger", name: "Ranger" },
+    resources: [],
+    features,
+    combat: { speed: 30 },
+  });
+
+  it("replaces Hide in Plain Sight on an existing level 10 Ranger, with uses equal to proficiency", () => {
+    const sheet = ranger(10, [{ index: "h", name: "Hide in Plain Sight" }, { index: "x", name: "Extra Attack" }]);
+    expect(describeOptionSwitch(sheet, "naturesVeil", true)).toEqual({
+      remove: ["Hide in Plain Sight"],
+      add: ["Nature's Veil"],
+    });
+    const after = switchOptionalFeature(sheet, "naturesVeil", true);
+    expect(after.features.map((feature) => feature.name)).toEqual(["Extra Attack", "Nature's Veil"]);
+    expect(after.resources).toEqual([
+      expect.objectContaining({ name: "Nature's Veil", max: 4, current: 4, resetOn: "long", perProficiency: true }),
+    ]);
+    // Hide in Plain Sight is never offered or added alongside it.
+    expect(isReplacedByOption(after, "Hide in Plain Sight")).toBe(true);
+  });
+
+  it("arrives at level 10 for a Ranger who switched it on earlier, and grows with proficiency", () => {
+    const early = switchOptionalFeature(ranger(3), "naturesVeil", true);
+    expect(early.features).toEqual([]);
+    const ten = applyOptionalFeatureLevel({ ...early, level: 10 }, 10);
+    expect(ten.features.map((feature) => feature.name)).toEqual(["Nature's Veil"]);
+    const thirteen = applyOptionalFeatureLevel({ ...ten, level: 13 }, 13);
+    expect(thirteen.resources[0].max).toBe(5);
+    expect(thirteen.features).toHaveLength(1);
+  });
+
+  it("can be switched back off, taking its uses with it", () => {
+    const on = switchOptionalFeature(ranger(10, [{ index: "h", name: "Hide in Plain Sight" }]), "naturesVeil", true);
+    const off = switchOptionalFeature(on, "naturesVeil", false);
+    expect(off.features).toEqual([]);
+    expect(off.resources).toEqual([]);
+  });
+});
+
+describe("Deft Explorer: Tireless", () => {
+  const tireless = getOptionalClassFeatures({ id: "ranger" })
+    .find((option) => option.key === "deftExplorer")
+    .grants.find((grant) => grant.name === "Deft Explorer: Tireless");
+
+  it("rolls 1d8 plus the character's Wisdom modifier", () => {
+    expect(getGrantRollDice(tireless, { wisdom: 14 })).toBe("1d8+2");
+    expect(getGrantRollDice(tireless, { wisdom: 8 })).toBe("1d8-1");
+    expect(tireless.note).toMatch(/1d8 \+ Wisdom modifier temporary HP/);
+  });
+
+  const rester = (features, exhaustion) => ({
+    abilityScores: { constitution: 12 },
+    features,
+    resources: [],
+    conditions: exhaustion ? [{ key: "exhaustion", level: exhaustion }] : [],
+    combat: { hitPoints: { current: 10, max: 20, temporary: 0 }, hitDice: { total: 5, remaining: 5, die: 10 } },
+  });
+
+  it("takes one level of exhaustion off a short rest, and says so", () => {
+    const { sheet, summary } = takeShortRest(rester([{ name: "Deft Explorer: Tireless" }], 2));
+    expect(sheet.conditions).toEqual([{ key: "exhaustion", level: 1 }]);
+    expect(summary.exhaustion).toEqual({ from: 2, to: 1 });
+    // At exhaustion 1 it goes away entirely, never below 0.
+    expect(takeShortRest(rester([{ name: "Deft Explorer: Tireless" }], 1)).sheet.conditions).toEqual([]);
+    expect(takeShortRest(rester([{ name: "Deft Explorer: Tireless" }], 0)).summary.exhaustion).toBeNull();
+  });
+
+  it("doesn't help a character without Tireless on a short rest", () => {
+    const { sheet, summary } = takeShortRest(rester([{ name: "Natural Explorer (1 terrain type)" }], 2));
+    expect(sheet.conditions).toEqual([{ key: "exhaustion", level: 2 }]);
+    expect(summary.exhaustion).toBeNull();
   });
 });
