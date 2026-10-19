@@ -63,6 +63,9 @@ import {
   getFightingStyles,
   getOutOfDateNumbers,
   applySpeedUpdates,
+  withAutoInitiative,
+  setTypedInitiative,
+  applyInitiativeUpdate,
   splitMagicWeaponName,
   addSubclassSpells,
   subclassSpellsToGrant,
@@ -542,7 +545,11 @@ function CharacterSheetPage() {
   // AC (when on auto) and auto-filled weapon attacks, worked out again.
   const weaponDetailsFor = (name) => gearDetails[normalizeItemName(name)] ?? null;
   function withCurrentNumbers(before, next) {
-    return withAutoArmorClass(refreshWeaponAttacks(before, next, weaponDetailsFor), gearDetailsFor);
+    // Initiative follows Dexterity too (see withAutoInitiative).
+    return withAutoInitiative(
+      before,
+      withAutoArmorClass(refreshWeaponAttacks(before, next, weaponDetailsFor), gearDetailsFor),
+    );
   }
 
   // Saved numbers that are out of date (often from before they followed
@@ -553,7 +560,10 @@ function CharacterSheetPage() {
     sheet.acMode === "auto" ? computeWornArmorClass(sheet, gearDetailsFor) : null,
   );
   const outOfDateCount =
-    (outOfDate.armorClass ? 1 : 0) + outOfDate.attacks.length + outOfDate.speed.length;
+    (outOfDate.armorClass ? 1 : 0) +
+    (outOfDate.initiative ? 1 : 0) +
+    outOfDate.attacks.length +
+    outOfDate.speed.length;
 
   // Bonus spells the homebrew subclass gives that the sheet doesn't have yet
   // (a character who passed those levels before bonus spells existed), and
@@ -579,7 +589,8 @@ function CharacterSheetPage() {
       worked.has(attack.index) ? { ...attack, ...worked.get(attack.index) } : attack,
     );
     // persistSheet works the auto AC out again as it saves.
-    persistSheet(applySpeedUpdates({ ...sheet, attacks }, outOfDate.speed));
+    const updated = applySpeedUpdates({ ...sheet, attacks }, outOfDate.speed);
+    persistSheet(outOfDate.initiative ? applyInitiativeUpdate(updated) : updated);
   }
 
   // "Keep mine": these numbers stay as typed and aren't offered again. The AC
@@ -593,7 +604,8 @@ function CharacterSheetPage() {
       ),
       ...(outOfDate.armorClass ? { acMode: "manual" } : {}),
     };
-    persistSheet(applySpeedUpdates(next, outOfDate.speed, { keep: true }));
+    const kept = applySpeedUpdates(next, outOfDate.speed, { keep: true });
+    persistSheet(outOfDate.initiative ? applyInitiativeUpdate(kept, { keep: true }) : kept);
   }
 
   function persistSheet(next) {
@@ -706,13 +718,12 @@ function CharacterSheetPage() {
     });
   }
 
+  // A typed Initiative keeps following Dexterity, with the difference kept
+  // as a bonus (see setTypedInitiative).
   function handleInitiativeChange(value) {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) return;
-    persistSheet({
-      ...sheet,
-      combat: { ...sheet.combat, initiative: numeric },
-    });
+    persistSheet(setTypedInitiative(sheet, numeric));
   }
 
   function handleSpeedChange(value) {
@@ -1947,10 +1958,23 @@ function CharacterSheetPage() {
                     >
                       Init
                     </RollButton>
+                    {sheet.initiativeMode === "auto" && (
+                      <span
+                        className="character-sheet__ac-mode"
+                        title={`Your Dexterity modifier${
+                          sheet.combat?.initiativeBonus
+                            ? `, plus a ${formatModifier(sheet.combat.initiativeBonus)} bonus`
+                            : ""
+                        }. Type a number to add a bonus (like Alert's +5).`}
+                      >
+                        auto
+                      </span>
+                    )}
                     <input
                       type="number"
                       className="character-sheet__vital-input"
                       value={combat.initiative}
+                      aria-label="Initiative"
                       readOnly={statsLocked}
                       onChange={(e) => handleInitiativeChange(e.target.value)}
                     />
@@ -2195,6 +2219,12 @@ function CharacterSheetPage() {
                         <li>
                           AC {outOfDate.armorClass.saved} → {outOfDate.armorClass.worked} (from your
                           armor and Dexterity)
+                        </li>
+                      )}
+                      {outOfDate.initiative && (
+                        <li>
+                          Initiative {formatModifier(outOfDate.initiative.saved)} →{" "}
+                          {formatModifier(outOfDate.initiative.worked)} (from your Dexterity)
                         </li>
                       )}
                       {outOfDate.speed.map((item) => (

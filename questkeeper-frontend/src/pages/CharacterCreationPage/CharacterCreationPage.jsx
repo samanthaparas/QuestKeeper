@@ -585,10 +585,13 @@ function CharacterCreationPage() {
         classId: characterClass?.id,
       }),
       acMode: "auto",
+      // Initiative follows Dexterity from the start (bonus 0).
+      initiativeMode: "auto",
       spellcasting: finalSpellcasting,
       combat: {
         armorClass: startingArmorClass,
         initiative: dexModifier,
+        initiativeBonus: 0,
         speed: finalRace?.speed ?? 30,
         hitPoints: { max: maxHitPoints, current: maxHitPoints, temporary: 0 },
         hitDice: { total: 1, remaining: 1, die: hitDie },

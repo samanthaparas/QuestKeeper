@@ -835,7 +835,7 @@ export function getOutOfDateNumbers(sheet, weaponDetailsFor, workedArmorClass = 
       bonus: grant.speed,
     }));
 
-  return { armorClass, attacks, speed };
+  return { armorClass, attacks, speed, initiative: getStaleInitiative(sheet) };
 }
 
 // An earlier version wrote Roving's speed to an unused top-level "speed"
@@ -2416,4 +2416,81 @@ export function markSpellsGrantedBy(sheet, spellIndexes, source) {
       spellsKnown: mark(sheet.spellcasting?.spellsKnown),
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Initiative. It used to be saved once at creation as the Dexterity modifier
+// and never updated, so a higher Dexterity didn't show. Now, on "auto", it's
+// the Dexterity modifier plus any bonus the player has (Alert's +5, a magic
+// item), saved as combat.initiativeBonus and kept on top of later changes.
+// "manual" keeps a number the player chose not to have worked out. Older
+// sheets have neither: they follow along once their saved number matches
+// Dexterity, and otherwise the sheet offers an update (never changing it on
+// its own).
+
+const dexterityModifier = (sheet) => getAbilityModifier(sheet?.abilityScores?.dexterity ?? 10);
+
+// What Initiative works out to on auto: Dexterity plus the bonus.
+export function getWorkedInitiative(sheet) {
+  return dexterityModifier(sheet) + (Number(sheet?.combat?.initiativeBonus) || 0);
+}
+
+function withInitiative(sheet, initiative, extra = {}) {
+  return { ...sheet, ...extra, combat: { ...sheet.combat, initiative, ...(extra.combat ?? {}) } };
+}
+
+// Keeps a saved Initiative in step with Dexterity as the sheet changes.
+// before: the sheet just before this change (for older sheets, a saved
+// number that matched the old Dexterity follows the new one).
+export function withAutoInitiative(before, next) {
+  if (!next?.combat || next.initiativeMode === "manual") return next;
+  const saved = Number(next.combat.initiative) || 0;
+
+  if (next.initiativeMode === "auto") {
+    const worked = getWorkedInitiative(next);
+    return saved === worked ? next : withInitiative(next, worked);
+  }
+
+  // An older sheet: it starts following only when its number was the
+  // Dexterity modifier and Dexterity has now changed.
+  const wasDexterity = before && Number(before.combat?.initiative) === dexterityModifier(before);
+  if (wasDexterity && dexterityModifier(before) !== dexterityModifier(next)) {
+    return withInitiative(next, dexterityModifier(next), {
+      initiativeMode: "auto",
+      combat: { initiativeBonus: 0 },
+    });
+  }
+  return next;
+}
+
+// A number typed in the Init box (Edit stats). On auto (or an older sheet)
+// the difference from Dexterity is kept as a bonus, so it still follows
+// Dexterity later; on manual it's kept as it is.
+export function setTypedInitiative(sheet, typed) {
+  const value = Number(typed) || 0;
+  if (sheet.initiativeMode === "manual") return withInitiative(sheet, value);
+  return withInitiative(sheet, value, {
+    initiativeMode: "auto",
+    combat: { initiativeBonus: value - dexterityModifier(sheet) },
+  });
+}
+
+// For the "out of date" notice: a saved Initiative that isn't what it works
+// out to (an older sheet's stale number, like +3 with Dexterity 20).
+export function getStaleInitiative(sheet) {
+  if (!sheet?.combat || sheet.initiativeMode === "manual") return null;
+  const saved = Number(sheet.combat.initiative) || 0;
+  const worked = sheet.initiativeMode === "auto" ? getWorkedInitiative(sheet) : dexterityModifier(sheet);
+  return saved === worked ? null : { saved, worked };
+}
+
+// Update: Initiative goes on auto from Dexterity. keep: the player's number
+// stays and isn't asked about again (manual).
+export function applyInitiativeUpdate(sheet, { keep = false } = {}) {
+  if (keep) return { ...sheet, initiativeMode: "manual" };
+  const bonus = sheet.initiativeMode === "auto" ? Number(sheet.combat?.initiativeBonus) || 0 : 0;
+  return withInitiative(sheet, dexterityModifier(sheet) + bonus, {
+    initiativeMode: "auto",
+    combat: { initiativeBonus: bonus },
+  });
 }

@@ -82,6 +82,10 @@ import {
   subclassSpellsCountedByHand,
   markSpellsGrantedBy,
   applySpeedUpdates,
+  withAutoInitiative,
+  setTypedInitiative,
+  getStaleInitiative,
+  applyInitiativeUpdate,
   updateFeat,
   updateSpell,
   getSpellcastingAbility,
@@ -2602,6 +2606,8 @@ describe("Fighting Styles and renamed weapons in the numbers", () => {
         { index: "a", name: "Longbow", saved: { toHit: 5, damage: "1d8+3" }, worked: { toHit: 9, damage: "1d8+4" } },
       ],
       speed: [],
+      // No Initiative was saved (0) with Dexterity +4.
+      initiative: { saved: 0, worked: 4 },
     });
     expect(JSON.stringify(pippa)).toBe(before);
     // A typed-in AC (manual) is never questioned.
@@ -3153,5 +3159,53 @@ describe("subclass-level stand-in features", () => {
     );
     // From an empty sheet, the picks equal the table: 4, 4, 5, 5, 6, 6, 7.
     expect(counts).toEqual([4, 4, 5, 5, 6, 6, 7]);
+  });
+});
+
+describe("Initiative follows Dexterity", () => {
+  const sheet = (dexterity, combat = {}, extra = {}) => ({
+    abilityScores: { dexterity },
+    combat: { initiative: 0, ...combat },
+    ...extra,
+  });
+
+  it("on auto, follows a Dexterity increase and keeps a bonus on top", () => {
+    const before = sheet(18, { initiative: 4, initiativeBonus: 0 }, { initiativeMode: "auto" });
+    expect(withAutoInitiative(before, { ...before, abilityScores: { dexterity: 20 } }).combat.initiative).toBe(5);
+    // Alert's +5 stays: 4 + 5 = 9, then 5 + 5 = 10.
+    const alert = sheet(18, { initiative: 9, initiativeBonus: 5 }, { initiativeMode: "auto" });
+    expect(withAutoInitiative(alert, { ...alert, abilityScores: { dexterity: 20 } }).combat.initiative).toBe(10);
+  });
+
+  it("starts following on an older sheet whose number was its Dexterity", () => {
+    const before = sheet(18, { initiative: 4 });
+    const after = withAutoInitiative(before, { ...before, abilityScores: { dexterity: 20 } });
+    expect(after).toMatchObject({ initiativeMode: "auto", combat: { initiative: 5, initiativeBonus: 0 } });
+  });
+
+  it("leaves a stale older number alone, and offers it as an update", () => {
+    // Pippa: saved +3 at creation (Dexterity 16), now Dexterity 20.
+    const pippa = sheet(20, { initiative: 3 });
+    expect(withAutoInitiative(sheet(18, { initiative: 3 }), pippa)).toBe(pippa);
+    expect(getStaleInitiative(pippa)).toEqual({ saved: 3, worked: 5 });
+
+    const updated = applyInitiativeUpdate(pippa);
+    expect(updated).toMatchObject({ initiativeMode: "auto", combat: { initiative: 5, initiativeBonus: 0 } });
+    expect(getStaleInitiative(updated)).toBeNull();
+
+    // Keep mine: stays +3, isn't asked again, and doesn't move with Dexterity.
+    const kept = applyInitiativeUpdate(pippa, { keep: true });
+    expect(kept.combat.initiative).toBe(3);
+    expect(getStaleInitiative(kept)).toBeNull();
+    expect(withAutoInitiative(kept, { ...kept, abilityScores: { dexterity: 22 } }).combat.initiative).toBe(3);
+  });
+
+  it("keeps a typed number's difference from Dexterity as a bonus", () => {
+    const typed = setTypedInitiative(sheet(20, { initiative: 5 }, { initiativeMode: "auto" }), 10);
+    expect(typed).toMatchObject({ initiativeMode: "auto", combat: { initiative: 10, initiativeBonus: 5 } });
+    expect(setTypedInitiative(sheet(20, { initiative: 3 }, { initiativeMode: "manual" }), 7)).toMatchObject({
+      initiativeMode: "manual",
+      combat: { initiative: 7 },
+    });
   });
 });
