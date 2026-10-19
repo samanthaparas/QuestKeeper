@@ -30,9 +30,17 @@ export function getSetupTasks(sheet, entries = [], homebrew = []) {
     });
 
   // Features with a pick still to make (Favored Enemy, Natural Explorer).
+  // Says what to pick and, when known, the level it came with, so a level 1
+  // pick still open at level 6 isn't mistaken for the new one.
   (sheet.features ?? []).forEach((feature) => {
-    if (missingPicks(choicesFor(feature, entries)) > 0) {
-      tasks.push({ key: `feature:${feature.index}`, label: `Choose for ${feature.name}` });
+    const choices = choicesFor(feature, entries);
+    if (missingPicks(choices) > 0) {
+      const what = choices.find((choice) => (choice.picked ?? []).filter(Boolean).length < choice.choose);
+      const fromLevel = feature.source?.level ? ` (from level ${feature.source.level})` : "";
+      tasks.push({
+        key: `feature:${feature.index}`,
+        label: `Choose ${what ? `the ${what.label.toLowerCase()}` : "a pick"} for ${feature.name}${fromLevel}`,
+      });
     }
   });
 

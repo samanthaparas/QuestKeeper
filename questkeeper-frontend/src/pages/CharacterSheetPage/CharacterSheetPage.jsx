@@ -60,6 +60,14 @@ import {
   setSpellSlot,
   getSpellsStartAt,
   refreshWeaponAttacks,
+  getFightingStyles,
+  getOutOfDateNumbers,
+  splitMagicWeaponName,
+  isReplacedByOption,
+  applyExpertiseChoices,
+  getOptionalClassFeatures,
+  describeOptionSwitch,
+  switchOptionalFeature,
 } from "../../utils/characterSheet";
 import LevelUpWizard from "../../components/LevelUpWizard/LevelUpWizard";
 import Button from "../../components/Button/Button";
@@ -73,6 +81,7 @@ import {
   magicArmorFor,
   withArmorBonus,
   withAutoArmorClass,
+  computeWornArmorClass,
 } from "../../utils/armorClass";
 import { getEquipment, getEquipmentDetails } from "../../utils/api";
 import { featuresForNewLevel, loadFeatureEntries, normalizeItemName } from "../../utils/srdDetails";
@@ -273,15 +282,26 @@ function CharacterSheetPage() {
   // equipped and the AC worked out (null: not SRD gear). Magic armor gets the
   // details of the armor it's made from, with its bonus added.
   const [gearDetails, setGearDetails] = useState({});
-  const gearNames = (sheet?.equipment ?? []).map((item) => normalizeItemName(item.name)).join("|");
+  // Inventory items, plus the weapon behind each attack ("Longbow" for a
+  // "+1 Longbow" or a renamed one), so attack numbers can be checked too.
+  const lookupItems = [
+    ...(sheet?.equipment ?? []),
+    ...(sheet?.attacks ?? []).map((attack) => ({
+      name: splitMagicWeaponName(attack.baseWeapon || attack.name).baseName,
+    })),
+  ];
+  const gearNames = lookupItems.map((item) => normalizeItemName(item.name)).join("|");
   // If the rules server can't be reached (the free plan's server can take up to
   // a minute to wake up), nothing is remembered for those items and the look-up
   // tries again after a pause, a few times, so armor isn't lost for good.
   const [gearAttempt, setGearAttempt] = useState(0);
   const gearFailures = useRef(0);
   useEffect(() => {
-    const items = (sheet?.equipment ?? []).filter(
-      (item) => !(normalizeItemName(item.name) in gearDetails),
+    const items = lookupItems.filter(
+      (item, position) =>
+        !(normalizeItemName(item.name) in gearDetails) &&
+        lookupItems.findIndex((other) => normalizeItemName(other.name) === normalizeItemName(item.name)) ===
+          position,
     );
     if (items.length === 0) return undefined;
     let ignore = false;
@@ -417,7 +437,7 @@ function CharacterSheetPage() {
           entries,
           updatedSheet.level,
           [...(updatedSheet.features ?? []).map((feature) => feature.name), ...skippedFeatures],
-        ),
+        ).filter((entry) => !isReplacedByOption(updatedSheet, entry.name)),
       );
     const lookup = attempt().catch(() => attempt());
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("slow")), 45000));
@@ -497,9 +517,41 @@ function CharacterSheetPage() {
 
   // The numbers saved on the sheet that come from its scores and level: the
   // AC (when on auto) and auto-filled weapon attacks, worked out again.
+  const weaponDetailsFor = (name) => gearDetails[normalizeItemName(name)] ?? null;
   function withCurrentNumbers(before, next) {
-    const weaponDetailsFor = (name) => gearDetails[normalizeItemName(name)] ?? null;
     return withAutoArmorClass(refreshWeaponAttacks(before, next, weaponDetailsFor), gearDetailsFor);
+  }
+
+  // Saved numbers that are out of date (often from before they followed
+  // level-ups). Only changed when the player taps Update.
+  const outOfDate = getOutOfDateNumbers(
+    sheet,
+    weaponDetailsFor,
+    sheet.acMode === "auto" ? computeWornArmorClass(sheet, gearDetailsFor) : null,
+  );
+  const outOfDateCount = (outOfDate.armorClass ? 1 : 0) + outOfDate.attacks.length;
+
+  function handleUpdateNumbers() {
+    const worked = new Map(outOfDate.attacks.map((item) => [item.index, item.worked]));
+    const attacks = (sheet.attacks ?? []).map((attack) =>
+      worked.has(attack.index) ? { ...attack, ...worked.get(attack.index) } : attack,
+    );
+    // persistSheet works the auto AC out again as it saves.
+    persistSheet({ ...sheet, attacks });
+  }
+
+  // "Keep mine": these numbers stay as typed and aren't offered again. The AC
+  // goes to manual (the player can switch auto back on beside it).
+  function handleKeepNumbers() {
+    const keep = new Set(outOfDate.attacks.map((item) => item.index));
+    const next = {
+      ...sheet,
+      attacks: (sheet.attacks ?? []).map((attack) =>
+        keep.has(attack.index) ? { ...attack, manual: true } : attack,
+      ),
+      ...(outOfDate.armorClass ? { acMode: "manual" } : {}),
+    };
+    persistSheet(next);
   }
 
   function persistSheet(next) {
@@ -1129,7 +1181,27 @@ function CharacterSheetPage() {
 
   // A pick for a feature's choice (Favored Enemy: Undead).
   function handleFeatureChoose(id, choices) {
-    persistSheet({ ...sheet, features: updateFeat(sheet.features, id, { choices }) });
+    // A pick that grants Expertise (Canny) doubles that skill, with the
+    // feature saved as where it came from.
+    const withExpertise = applyExpertiseChoices(sheet, id, choices);
+    persistSheet({ ...withExpertise, features: updateFeat(sheet.features, id, { choices }) });
+  }
+
+  // Switching one of Tasha's optional class features on or off, after the
+  // player sees what comes off and what goes on.
+  function handleOptionalFeatureSwitch(key, turnOn) {
+    const option = getOptionalClassFeatures(sheet.class).find((item) => item.key === key);
+    const { remove, add } = describeOptionSwitch(sheet, key, turnOn);
+    const lines = [
+      turnOn ? `Use ${option.name} instead of ${option.replaces}?` : `Stop using ${option.name}?`,
+      remove.length ? `Comes off: ${remove.join(", ")}` : "",
+      add.length ? `Goes on: ${add.join(", ")}` : "",
+      turnOn
+        ? ""
+        : `To get ${option.replaces} back, use "Add from my class and race" on the Features tab.`,
+    ].filter(Boolean);
+    if (!window.confirm(lines.join("\n\n"))) return;
+    persistSheet(switchOptionalFeature(sheet, key, turnOn));
   }
 
   // Removing features that belong to another subclass (the player confirms
@@ -1290,6 +1362,7 @@ function CharacterSheetPage() {
       damage: values.damage.trim(),
       damageType: values.damageType.trim(),
       notes: values.notes.trim(),
+      baseWeapon: (values.baseWeapon ?? "").trim(),
     });
     persistSheet({ ...sheet, attacks: [...(sheet.attacks ?? []), attack] });
   }
@@ -1303,6 +1376,7 @@ function CharacterSheetPage() {
         damage: values.damage.trim(),
         damageType: values.damageType.trim(),
         notes: values.notes.trim(),
+        baseWeapon: (values.baseWeapon ?? "").trim(),
       }),
     });
   }
@@ -1593,6 +1667,7 @@ function CharacterSheetPage() {
           <LevelUpWizard
             sheet={sheet}
             onComplete={handleLevelUpComplete}
+            setupTasks={setupTasks}
             onCancel={() => setIsLevelingUp(false)}
             isFinishing={isAddingLevelFeatures}
           />
@@ -2066,6 +2141,36 @@ function CharacterSheetPage() {
 
                 {isCompact && compactPanel === "skills" && skillsPanel}
 
+                {/* Saved numbers that don't match the sheet's scores any more. */}
+                {outOfDateCount > 0 && (
+                  <div className="character-sheet__setup" role="status">
+                    <p className="character-sheet__stray-title">
+                      {outOfDateCount === 1 ? "1 number is" : `${outOfDateCount} numbers are`} out of
+                      date
+                    </p>
+                    <ul className="character-sheet__setup-list">
+                      {outOfDate.armorClass && (
+                        <li>
+                          AC {outOfDate.armorClass.saved} → {outOfDate.armorClass.worked} (from your
+                          armor and Dexterity)
+                        </li>
+                      )}
+                      {outOfDate.attacks.map((item) => (
+                        <li key={item.index}>
+                          {item.name}: {formatModifier(item.saved.toHit)} / {item.saved.damage || "—"}{" "}
+                          → {formatModifier(item.worked.toHit)} / {item.worked.damage}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="character-sheet__setup-actions">
+                      <Button onClick={handleUpdateNumbers}>Update</Button>
+                      <Button variant="secondary" onClick={handleKeepNumbers}>
+                        Keep mine
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="character-sheet__tabbar">
                   <CharacterSheetTabs
                     activeTab={activeTab}
@@ -2146,6 +2251,7 @@ function CharacterSheetPage() {
                         (proficiency) => proficiency.name,
                       )}
                       proficiencyBonus={proficiencyBonus}
+                      fightingStyles={getFightingStyles(sheet.features)}
                     />
                   )}
 
@@ -2237,6 +2343,10 @@ function CharacterSheetPage() {
                       onFeaturesAddMany={handleFeaturesAddMany}
                       onFeaturesRemoveMany={handleFeaturesRemoveMany}
                       onFeatureChoose={handleFeatureChoose}
+                      optionalFeatures={getOptionalClassFeatures(sheet.class)}
+                      optionalFeaturesOn={sheet.optionalFeatures ?? {}}
+                      onOptionalFeatureSwitch={handleOptionalFeatureSwitch}
+                      isReplacedFeature={(name) => isReplacedByOption(sheet, name)}
                       featureEntries={currentEntries}
                       setupTasks={setupTasks}
                       background={sheet.background ?? null}

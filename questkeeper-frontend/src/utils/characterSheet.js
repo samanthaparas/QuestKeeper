@@ -484,7 +484,18 @@ export function getStartingArmorClass(dexModifier) {
 // AC from the armor and shield a character starts with. Body armor replaces
 // 10 + Dex; a shield adds its bonus; Barbarians and Monks use their own
 // unarmored formulas when they wear nothing.
-export function computeStartingArmorClass({ gear = [], scores, classId }) {
+// The Fighting Styles on the sheet that change numbers QuestKeeper works out:
+// "Fighting Style: Archery" (+2 to hit with ranged weapons) and "Fighting
+// Style: Defense" (+1 AC while wearing armor), from the feature names. Other
+// styles (and typed-in book ones) change nothing here.
+export function getFightingStyles(features = []) {
+  return (features ?? []).flatMap((feature) => {
+    const match = String(feature?.name ?? "").match(/fighting style:\s*(archery|defense)\b/i);
+    return match ? [match[1].toLowerCase()] : [];
+  });
+}
+
+export function computeStartingArmorClass({ gear = [], scores, classId, fightingStyles = [] }) {
   const mod = (ability) => getAbilityModifier(scores?.[ability] ?? 10);
   const dex = mod("dexterity");
 
@@ -503,7 +514,9 @@ export function computeStartingArmorClass({ gear = [], scores, classId }) {
     return (armorClass.base ?? 10) + Math.min(dex, cap);
   });
 
-  if (armorValues.length > 0) return Math.max(...armorValues) + shield;
+  // Defense: +1 while wearing armor (a shield alone doesn't count).
+  const defense = fightingStyles.includes("defense") ? 1 : 0;
+  if (armorValues.length > 0) return Math.max(...armorValues) + shield + defense;
 
   let unarmored = 10 + dex;
   if (classId === "barbarian") unarmored += mod("constitution");
@@ -567,6 +580,7 @@ export function getWeaponAttackMath({
   proficiencyNames = [],
   proficiencyBonus = 2,
   magicBonus = 0,
+  fightingStyles = [],
 }) {
   const strengthScore = scores?.strength ?? 10;
   const dexterityScore = scores?.dexterity ?? 10;
@@ -589,7 +603,9 @@ export function getWeaponAttackMath({
   const proficiencyKnown = proficiencyNames.length > 0;
   const proficient = isProficientWithWeapon(weapon, proficiencyNames);
   const bonus = Number(magicBonus || 0);
-  const toHit = abilityMod + (proficient ? proficiencyBonus : 0) + bonus;
+  // Archery: +2 to hit with ranged weapons (not damage).
+  const styleBonus = reason === "ranged" && fightingStyles.includes("archery") ? 2 : 0;
+  const toHit = abilityMod + (proficient ? proficiencyBonus : 0) + bonus + styleBonus;
   const dice = weapon.damage?.damage_dice ?? "";
 
   return {
@@ -603,6 +619,7 @@ export function getWeaponAttackMath({
     proficient,
     proficiencyBonus,
     magicBonus: bonus,
+    styleBonus,
     toHit,
     damage: dice ? `${dice}${formatBonus(abilityMod + bonus)}` : "",
   };
@@ -653,6 +670,10 @@ export function describeToHitMath(math) {
     lines.push(`• ${formatModifier(math.magicBonus)} because it's magic.`);
   }
 
+  if (math.styleBonus) {
+    lines.push(`• ${formatModifier(math.styleBonus)} from your Archery Fighting Style.`);
+  }
+
   lines.push(
     "If the total beats the target's Armor Class (AC), you hit. Change the number if your DM says otherwise.",
   );
@@ -686,6 +707,22 @@ export function splitMagicWeaponName(name) {
   };
 }
 
+// The SRD weapon an attack is made with, and any magic bonus in its name.
+// A renamed weapon ("Wisteria's Kiss") says what it is in baseWeapon
+// ("Longbow"); otherwise the name is used ("+1 Longbow" -> Longbow, +1).
+// weapon is null for anything QuestKeeper doesn't know (a homebrew weapon).
+export function attackWeaponFor(attack, weaponDetailsFor) {
+  const fromName = splitMagicWeaponName(attack?.name);
+  const base = String(attack?.baseWeapon ?? "").trim();
+  const fromBase = base ? splitMagicWeaponName(base) : null;
+  const weapon = weaponDetailsFor(fromBase ? fromBase.baseName : fromName.baseName);
+  const isWeapon = Boolean(weapon?.damage?.damage_dice && weapon.weapon_category);
+  return {
+    weapon: isWeapon ? weapon : null,
+    magicBonus: fromName.magicBonus || fromBase?.magicBonus || 0,
+  };
+}
+
 // Weapon attacks are saved as plain numbers (to hit +5, damage 1d8+3), so
 // they don't follow the character on their own. When Strength, Dexterity or
 // the proficiency bonus changes (an Ability Score Improvement, a new level),
@@ -699,15 +736,17 @@ export function refreshWeaponAttacks(before, after, weaponDetailsFor) {
     getAbilityModifier(sheet.abilityScores?.strength ?? 10),
     getAbilityModifier(sheet.abilityScores?.dexterity ?? 10),
     getProficiencyBonus(sheet.level),
+    getFightingStyles(sheet.features).sort().join("+"),
   ].join();
   if (modsOf(before) === modsOf(after)) return after;
 
   const proficiencyNames = (after.proficiencies ?? []).map((proficiency) => proficiency.name);
   let changed = false;
   const attacks = after.attacks.map((attack) => {
-    const { baseName, magicBonus } = splitMagicWeaponName(attack.name);
-    const weapon = weaponDetailsFor(baseName);
-    if (!weapon?.damage?.damage_dice || !weapon.weapon_category) return attack;
+    // Kept as the player has it ("Keep mine" on an Update notice).
+    if (attack.manual) return attack;
+    const { weapon, magicBonus } = attackWeaponFor(attack, weaponDetailsFor);
+    if (!weapon) return attack;
 
     // Tried both ways, because an inventory weapon can be marked proficient
     // on its own without being in the Proficiencies list.
@@ -719,6 +758,7 @@ export function refreshWeaponAttacks(before, after, weaponDetailsFor) {
           proficiencyNames: names,
           proficiencyBonus: getProficiencyBonus(sheet.level),
           magicBonus,
+          fightingStyles: getFightingStyles(sheet.features),
         });
       const old = math(before);
       if (Number(attack.toHit) !== old.toHit || attack.damage !== old.damage) continue;
@@ -732,6 +772,54 @@ export function refreshWeaponAttacks(before, after, weaponDetailsFor) {
   return changed ? { ...after, attacks } : after;
 }
 
+// Numbers saved on the sheet that no longer match what QuestKeeper works out
+// from its scores, level, gear and Fighting Style, so the sheet can offer to
+// update them. Nothing is changed here; the player decides. Older sheets can
+// have these from before the numbers followed level-ups. Attacks the player
+// chose to keep ("manual") and weapons QuestKeeper doesn't know are skipped.
+// workedArmorClass: the AC from worn armor (null when unknown or not on auto).
+export function getOutOfDateNumbers(sheet, weaponDetailsFor, workedArmorClass = null) {
+  const savedArmorClass = sheet?.combat?.armorClass;
+  const armorClass =
+    sheet?.acMode === "auto" && workedArmorClass !== null && workedArmorClass !== savedArmorClass
+      ? { saved: savedArmorClass, worked: workedArmorClass }
+      : null;
+
+  const proficiencyNames = (sheet?.proficiencies ?? []).map((proficiency) => proficiency.name);
+  const attacks = (sheet?.attacks ?? []).flatMap((attack) => {
+    if (attack.manual) return [];
+    const { weapon, magicBonus } = attackWeaponFor(attack, weaponDetailsFor);
+    if (!weapon) return [];
+    const mathWith = (names) =>
+      getWeaponAttackMath({
+        weapon,
+        scores: sheet.abilityScores,
+        proficiencyNames: names,
+        proficiencyBonus: getProficiencyBonus(sheet.level),
+        magicBonus,
+        fightingStyles: getFightingStyles(sheet.features),
+      });
+    // Either way counts as current: an inventory weapon can be marked
+    // proficient without being in the Proficiencies list.
+    const options = [mathWith(proficiencyNames), mathWith([...proficiencyNames, weapon.name])];
+    const matches = options.some(
+      (math) => math.toHit === Number(attack.toHit) && math.damage === attack.damage,
+    );
+    if (matches) return [];
+    const worked = options[0];
+    return [
+      {
+        index: attack.index,
+        name: attack.name,
+        saved: { toHit: Number(attack.toHit) || 0, damage: attack.damage },
+        worked: { toHit: worked.toHit, damage: worked.damage },
+      },
+    ];
+  });
+
+  return { armorClass, attacks };
+}
+
 // Turns the weapons a character starts with into rows for the Actions tab,
 // with the to-hit and damage worked out from their ability scores.
 export function buildStartingAttacks({
@@ -739,6 +827,7 @@ export function buildStartingAttacks({
   scores,
   proficiencyNames = [],
   proficiencyBonus = 2,
+  fightingStyles = [],
 }) {
   return gear
     .filter((item) => item.damage?.damage_dice && item.weapon_category)
@@ -748,6 +837,7 @@ export function buildStartingAttacks({
         scores,
         proficiencyNames,
         proficiencyBonus,
+        fightingStyles,
       });
 
       return createAttack({
@@ -931,13 +1021,35 @@ const SUBCLASS_FEATURE_CHOICE_LEVELS = {
   champion: [10],
 };
 
-export function hasLevelUpFeatureChoices(characterClass, level) {
-  const classLevels = CLASS_FEATURE_CHOICE_LEVELS[characterClass?.id] ?? [];
+// A Ranger's picks at 6, 10 and 14 are Favored Enemy and Natural Explorer
+// ones, so they're gone when Tasha's replacements are switched on.
+const REPLACEABLE_CHOICE_LEVELS = {
+  ranger: { favoredFoe: [6, 14], deftExplorer: [6, 10] },
+};
+
+export function hasLevelUpFeatureChoices(characterClass, level, optionalFeatures = null) {
+  const replaceable = REPLACEABLE_CHOICE_LEVELS[characterClass?.id];
+  if (replaceable) {
+    const fromOptions = Object.entries(replaceable).flatMap(([key, levels]) =>
+      optionalFeatures?.[key] ? [] : levels,
+    );
+    const replaceableLevels = new Set(Object.values(replaceable).flat());
+    const other = (CLASS_FEATURE_CHOICE_LEVELS[characterClass.id] ?? []).filter(
+      (choiceLevel) => !replaceableLevels.has(choiceLevel),
+    );
+    if (other.includes(level) || fromOptions.includes(level)) return true;
+  }
+  const classLevels = replaceable ? [] : (CLASS_FEATURE_CHOICE_LEVELS[characterClass?.id] ?? []);
   const subclassLevels = SUBCLASS_FEATURE_CHOICE_LEVELS[characterClass?.subclass?.id] ?? [];
   return classLevels.includes(level) || subclassLevels.includes(level);
 }
 
-export function getLevelUpStepKeys(targetLevel, characterClass, spellcasting = null) {
+export function getLevelUpStepKeys(
+  targetLevel,
+  characterClass,
+  spellcasting = null,
+  optionalFeatures = null,
+) {
   const steps = ["hitPoints"];
 
   if (getSubclassLevel(characterClass) === targetLevel) {
@@ -950,7 +1062,7 @@ export function getLevelUpStepKeys(targetLevel, characterClass, spellcasting = n
 
   // Fighting Style, Expertise and the like come before spells, so a Pact of
   // the Tome or a new Invocation is known when spells are picked.
-  if (hasLevelUpFeatureChoices(characterClass, targetLevel)) {
+  if (hasLevelUpFeatureChoices(characterClass, targetLevel, optionalFeatures)) {
     steps.push("features");
   }
 
@@ -1016,9 +1128,11 @@ export function applyAbilityScoreChoice(abilityScores, choice) {
 // One spell picked on level-up, in the shape the sheet stores. A book spell
 // has no SRD index, so it gets a made-up one (like Add Spell on the Spells
 // tab), and keeps its book link if it has a safe one.
-function toSpellEntry(choice) {
+function toSpellEntry(choice, acquiredAtLevel = null) {
   const link = getSafeSpellLink(choice.link);
   return {
+    // The level it was learned at, so the sheet knows where each spell came from.
+    ...(acquiredAtLevel ? { acquiredAtLevel } : {}),
     index: choice.index ?? crypto.randomUUID(),
     name: choice.name,
     level: choice.level,
@@ -1058,7 +1172,7 @@ export function getBookSpellChoice(draft, { isCantrip = false, maxSpellLevel = 0
 // Applies the spell step's choices: new cantrips, new spells, and an optional
 // swap ({ removeIndex, add }) that trades one known spell for another.
 // Older saved level-ups held a single { spellIndex, spellName, spellLevel }.
-export function applyLevelUpSpellChoices(spellcasting, characterClass, choices) {
+export function applyLevelUpSpellChoices(spellcasting, characterClass, choices, targetLevel = null) {
   const base = spellcasting ?? {
     type: getSpellcastingType(characterClass) ?? "known",
     cantripsKnown: [],
@@ -1085,8 +1199,8 @@ export function applyLevelUpSpellChoices(spellcasting, characterClass, choices) 
   }
 
   picks.forEach((choice) => {
-    if (choice.level === 0) cantripsKnown = [...cantripsKnown, toSpellEntry(choice)];
-    else spellsKnown = [...spellsKnown, toSpellEntry(choice)];
+    if (choice.level === 0) cantripsKnown = [...cantripsKnown, toSpellEntry(choice, targetLevel)];
+    else spellsKnown = [...spellsKnown, toSpellEntry(choice, targetLevel)];
   });
 
   return { ...base, cantripsKnown, spellsKnown };
@@ -1132,7 +1246,7 @@ export function finalizeLevelUp(sheet) {
     : sheet.class;
 
   const spellcastingAfterSpellStep = spellStep?.data
-    ? applyLevelUpSpellChoices(sheet.spellcasting, sheet.class, spellStep.data)
+    ? applyLevelUpSpellChoices(sheet.spellcasting, sheet.class, spellStep.data, pendingLevelUp.targetLevel)
     : sheet.spellcasting;
 
   const spellcasting = getSpellcastingType(characterClass)
@@ -1168,7 +1282,7 @@ export function finalizeLevelUp(sheet) {
       }
     : sheet.skillExpertise;
 
-  return {
+  const leveled = {
     ...sheet,
     level: pendingLevelUp.targetLevel,
     class: characterClass,
@@ -1200,6 +1314,8 @@ export function finalizeLevelUp(sheet) {
     },
     pendingLevelUp: null,
   };
+  // Switched-on optional features (Tasha's) grant their own things by level.
+  return applyOptionalFeatureLevel(leveled, pendingLevelUp.targetLevel);
 }
 
 export function buildLevelUpSummary(before, after) {
@@ -1606,7 +1722,9 @@ export function toggleSkillProficiency(skills, skillIndex) {
   return { ...(skills ?? {}), [skillIndex]: !skills?.[skillIndex] };
 }
 
-export function createAttack({ name, toHit, damage, damageType, notes }) {
+// baseWeapon: the SRD weapon a renamed one is ("Longbow" for "Wisteria's
+// Kiss"), so its numbers can still be worked out.
+export function createAttack({ name, toHit, damage, damageType, notes, baseWeapon = "" }) {
   return {
     index: crypto.randomUUID(),
     name,
@@ -1614,6 +1732,7 @@ export function createAttack({ name, toHit, damage, damageType, notes }) {
     damage: damage || "",
     damageType: damageType || "",
     notes: notes || "",
+    ...(baseWeapon ? { baseWeapon } : {}),
   };
 }
 
@@ -1875,4 +1994,266 @@ export function getInitials(name) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("");
+}
+
+// ---------------------------------------------------------------------------
+// Optional class features from Tasha's Cauldron of Everything (2014 rules).
+// A table chooses each one on its own: a Ranger can take Favored Foe and keep
+// Natural Explorer. They're off unless the player switches them on, and
+// QuestKeeper keeps only their names, the numbers they change and a link to
+// where they're written up, never the book's text.
+const TASHAS_RANGER_LINK = "https://dnd5e.wikidot.com/ranger";
+
+export const OPTIONAL_CLASS_FEATURES = {
+  ranger: [
+    {
+      key: "favoredFoe",
+      name: "Favored Foe",
+      replaces: "Favored Enemy",
+      link: TASHAS_RANGER_LINK,
+      grants: [
+        {
+          level: 1,
+          name: "Favored Foe",
+          // Extra damage on a marked target, by Ranger level.
+          damageByLevel: [[14, "1d8"], [6, "1d6"], [1, "1d4"]],
+          resource: { resetOn: "long", perProficiency: true },
+        },
+      ],
+    },
+    {
+      key: "deftExplorer",
+      name: "Deft Explorer",
+      replaces: "Natural Explorer",
+      link: TASHAS_RANGER_LINK,
+      grants: [
+        { level: 1, name: "Deft Explorer: Canny", expertise: 1, languages: 2 },
+        { level: 6, name: "Deft Explorer: Roving", speed: 5, note: "Climbing and swimming speed equal to your walking speed" },
+        { level: 10, name: "Deft Explorer: Tireless", resource: { resetOn: "long", perProficiency: true } },
+      ],
+    },
+    {
+      key: "primalAwareness",
+      name: "Primal Awareness",
+      replaces: "Primeval Awareness",
+      link: TASHAS_RANGER_LINK,
+      grants: [{ level: 3, name: "Primal Awareness" }],
+      // Always known; they don't count toward spells known.
+      spells: [
+        { level: 3, name: "Speak with Animals", spellLevel: 1 },
+        { level: 5, name: "Beast Sense", spellLevel: 2 },
+        { level: 9, name: "Speak with Plants", spellLevel: 3 },
+        { level: 13, name: "Locate Creature", spellLevel: 4 },
+        { level: 17, name: "Commune with Nature", spellLevel: 5 },
+      ],
+    },
+  ],
+};
+
+export function getOptionalClassFeatures(characterClass) {
+  return OPTIONAL_CLASS_FEATURES[characterClass?.id] ?? [];
+}
+
+const sameName = (a, b) => String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
+const startsWithName = (name, prefix) =>
+  String(name ?? "").trim().toLowerCase().startsWith(String(prefix).toLowerCase());
+
+// True when a switched-on option replaces this feature: Favored Foe replaces
+// every "Favored Enemy (n types)", so none of them are added or asked about.
+export function isReplacedByOption(sheet, featureName) {
+  return getOptionalClassFeatures(sheet?.class).some(
+    (option) => sheet?.optionalFeatures?.[option.key] && startsWithName(featureName, option.replaces),
+  );
+}
+
+// The Favored Foe die (or any grant's damage) at a level: "1d6" at 6.
+export function getGrantDamage(grant, level) {
+  return grant?.damageByLevel?.find(([from]) => level >= from)?.[1] ?? "";
+}
+
+// Adds one option's grants and spells for levels from..to (inclusive) to the
+// sheet: the features (name and link only), resources, speed, a languages
+// reminder and an Expertise pick. Used when switching an option on (levels
+// 1 to the current level) and on each level-up (just that level).
+function addOptionGains(sheet, option, from, to) {
+  let next = { ...sheet };
+  const have = (name) => (next.features ?? []).some((feature) => sameName(feature.name, name));
+  const proficiency = getProficiencyBonus(to);
+
+  option.grants
+    .filter((grant) => grant.level >= from && grant.level <= to && !have(grant.name))
+    .forEach((grant) => {
+      const choices = grant.expertise
+        ? [
+            {
+              key: "expertise_skill",
+              label: "Expertise skill",
+              choose: grant.expertise,
+              // Expertise needs proficiency; skills already doubled stay
+              // pickable so one set by hand can be given this source.
+              options: SKILLS.filter((skill) => next.skills?.[skill.index]).map((skill) => skill.index),
+              picked: [],
+              grantsExpertise: true,
+            },
+          ]
+        : null;
+      next.features = [
+        ...(next.features ?? []),
+        createFeat({ name: grant.name, description: "", choices, link: option.link }),
+      ];
+      if (grant.resource) {
+        next.resources = [
+          ...(next.resources ?? []),
+          {
+            ...createResource({ name: grant.name, max: proficiency, resetOn: grant.resource.resetOn }),
+            perProficiency: true,
+          },
+        ];
+      }
+      if (grant.speed) next.speed = (Number(next.speed) || 30) + grant.speed;
+      if (grant.languages) {
+        const reminder = `Choose ${grant.languages} more (${grant.name.replace(/^.*: /, "")})`;
+        next.languages = [String(next.languages ?? "").trim(), reminder].filter(Boolean).join("\n");
+      }
+    });
+
+  const spellsKnown = next.spellcasting?.spellsKnown ?? [];
+  const newSpells = (option.spells ?? [])
+    .filter((spell) => spell.level >= from && spell.level <= to)
+    .filter((spell) => !spellsKnown.some((known) => sameName(known.name, spell.name)))
+    .map((spell) => ({
+      index: crypto.randomUUID(),
+      name: spell.name,
+      level: spell.spellLevel,
+      notes: "",
+      components: "",
+      // Locked like a racial cantrip: shown as "From Primal Awareness", and
+      // never offered in a level-up swap.
+      locked: true,
+      grantedBy: option.name,
+      acquiredAtLevel: spell.level,
+    }));
+  if (newSpells.length > 0) {
+    const base = next.spellcasting ?? { type: "known", cantripsKnown: [], spellsKnown: [] };
+    next.spellcasting = { ...base, spellsKnown: [...(base.spellsKnown ?? []), ...newSpells] };
+  }
+  return next;
+}
+
+// What switching an option on or off would do, for the confirm message.
+export function describeOptionSwitch(sheet, key, turnOn) {
+  const option = getOptionalClassFeatures(sheet?.class).find((item) => item.key === key);
+  if (!option) return { remove: [], add: [] };
+  const level = sheet.level ?? 1;
+  if (turnOn) {
+    return {
+      remove: (sheet.features ?? [])
+        .filter((feature) => startsWithName(feature.name, option.replaces))
+        .map((feature) => feature.name),
+      add: [
+        ...option.grants.filter((grant) => grant.level <= level).map((grant) => grant.name),
+        ...(option.spells ?? []).filter((spell) => spell.level <= level).map((spell) => `${spell.name} (spell)`),
+      ],
+    };
+  }
+  const grantNames = option.grants.map((grant) => grant.name);
+  return {
+    remove: [
+      ...(sheet.features ?? []).filter((feature) => grantNames.some((name) => sameName(feature.name, name))).map((feature) => feature.name),
+      ...(sheet.spellcasting?.spellsKnown ?? [])
+        .filter((spell) => spell.grantedBy === option.name)
+        .map((spell) => `${spell.name} (spell)`),
+    ],
+    add: [],
+  };
+}
+
+// Switches an option on (the features it replaces come off, its own go on
+// up to the current level) or off (its features, spells, resources and speed
+// come off; the original features go back with "Add from my class and
+// race"). The sheet page asks the player first.
+export function switchOptionalFeature(sheet, key, turnOn) {
+  const option = getOptionalClassFeatures(sheet?.class).find((item) => item.key === key);
+  if (!option) return sheet;
+  const optionalFeatures = { ...(sheet.optionalFeatures ?? {}), [key]: turnOn };
+
+  if (turnOn) {
+    const kept = {
+      ...sheet,
+      optionalFeatures,
+      features: (sheet.features ?? []).filter((feature) => !startsWithName(feature.name, option.replaces)),
+    };
+    return addOptionGains(kept, option, 1, sheet.level ?? 1);
+  }
+
+  const grantNames = option.grants.map((grant) => grant.name);
+  const isGrant = (name) => grantNames.some((grantName) => sameName(name, grantName));
+  const hadSpeed = option.grants
+    .filter((grant) => grant.speed && (sheet.features ?? []).some((feature) => sameName(feature.name, grant.name)))
+    .reduce((total, grant) => total + grant.speed, 0);
+  return {
+    ...sheet,
+    optionalFeatures,
+    features: (sheet.features ?? []).filter((feature) => !isGrant(feature.name)),
+    resources: (sheet.resources ?? []).filter((resource) => !isGrant(resource.name)),
+    speed: hadSpeed ? (Number(sheet.speed) || 30) - hadSpeed : sheet.speed,
+    ...(sheet.spellcasting
+      ? {
+          spellcasting: {
+            ...sheet.spellcasting,
+            spellsKnown: (sheet.spellcasting.spellsKnown ?? []).filter((spell) => spell.grantedBy !== option.name),
+          },
+        }
+      : {}),
+  };
+}
+
+// On a level-up: what each switched-on option grants at exactly this level,
+// and resources that grow with proficiency (Favored Foe's uses) catch up.
+export function applyOptionalFeatureLevel(sheet, level) {
+  let next = sheet;
+  getOptionalClassFeatures(sheet?.class)
+    .filter((option) => sheet.optionalFeatures?.[option.key])
+    .forEach((option) => {
+      next = addOptionGains(next, option, level, level);
+    });
+  const proficiency = getProficiencyBonus(level);
+  if ((next.resources ?? []).some((resource) => resource.perProficiency && resource.max !== proficiency)) {
+    next = {
+      ...next,
+      resources: next.resources.map((resource) =>
+        resource.perProficiency && resource.max !== proficiency
+          ? { ...resource, max: proficiency, current: Math.min(proficiency, resource.current + (proficiency - resource.max)) }
+          : resource,
+      ),
+    };
+  }
+  return next;
+}
+
+// A pick on a feature that grants Expertise (Canny): the skill is doubled and
+// the feature is saved as where the Expertise came from, so it's never
+// guessed from the number. A skill doubled by hand before keeps its Expertise.
+export function applyExpertiseChoices(sheet, featureIndex, choices) {
+  const feature = (sheet.features ?? []).find((item) => item.index === featureIndex);
+  const grants = (choices ?? []).filter((choice) => choice.grantsExpertise);
+  if (!feature || grants.length === 0) return sheet;
+  const before = new Set(
+    (feature.choices ?? []).filter((choice) => choice.grantsExpertise).flatMap((choice) => choice.picked ?? []).filter(Boolean),
+  );
+  const after = new Set(grants.flatMap((choice) => choice.picked ?? []).filter(Boolean));
+  const skillExpertise = { ...(sheet.skillExpertise ?? {}) };
+  const expertiseSources = { ...(sheet.expertiseSources ?? {}) };
+  after.forEach((skill) => {
+    skillExpertise[skill] = true;
+    expertiseSources[skill] = feature.name;
+  });
+  // A changed pick: the old skill loses the Expertise this feature gave it.
+  before.forEach((skill) => {
+    if (!after.has(skill) && expertiseSources[skill] === feature.name) {
+      delete skillExpertise[skill];
+      delete expertiseSources[skill];
+    }
+  });
+  return { ...sheet, skillExpertise, expertiseSources };
 }

@@ -981,3 +981,97 @@ describe("level-up keeps the sheet's own numbers current", () => {
     expect(await screen.findByLabelText("Armor Class")).toHaveValue(15);
   });
 });
+
+describe("out-of-date numbers and optional class features", () => {
+  afterEach(() => {
+    getEquipment.mockResolvedValue([]);
+    getEquipmentDetails.mockResolvedValue(null);
+    vi.restoreAllMocks();
+  });
+
+  // Pippa's sheet as it was saved: levelled to 6 before AC and attacks
+  // followed level-ups, with Archery.
+  function stalePippa() {
+    getEquipment.mockResolvedValue([
+      { index: "leather-armor", name: "Leather Armor" },
+      { index: "longbow", name: "Longbow" },
+    ]);
+    getEquipmentDetails.mockImplementation((index) =>
+      Promise.resolve(
+        index === "leather-armor"
+          ? { index, name: "Leather Armor", armor_category: "Light", armor_class: { base: 11, dex_bonus: true } }
+          : {
+              index,
+              name: "Longbow",
+              weapon_category: "Martial",
+              weapon_range: "Ranged",
+              damage: { damage_dice: "1d8", damage_type: { name: "Piercing" } },
+              properties: [],
+            },
+      ),
+    );
+    const sheet = makeSheet({ level: 6 });
+    sheet.class = { id: "ranger", name: "Ranger", hitDie: 10 };
+    sheet.abilityScores = { ...sheet.abilityScores, dexterity: 18 };
+    sheet.acMode = "auto";
+    sheet.combat.armorClass = 14;
+    sheet.proficiencies = [{ index: "p1", name: "Martial Weapons" }];
+    sheet.features = [{ index: "f1", name: "Fighting Style: Archery", description: "" }];
+    sheet.equipment = [
+      { index: "i1", name: "Leather Armor", quantity: 1, equipped: true },
+      { index: "i2", name: "Longbow", quantity: 1 },
+    ];
+    sheet.attacks = [{ index: "a1", name: "Longbow", toHit: 5, damage: "1d8+3", damageType: "Piercing", notes: "" }];
+    return sheet;
+  }
+
+  it("offers to update stale AC and attack numbers, and changes them only when asked", async () => {
+    const user = userEvent.setup();
+    renderSheet(stalePippa());
+
+    const notice = await screen.findByText("2 numbers are out of date");
+    const box = notice.closest("[role='status']");
+    expect(within(box).getByText(/AC 14 → 15/)).toBeInTheDocument();
+    expect(within(box).getByText("Longbow: +5 / 1d8+3 → +9 / 1d8+4")).toBeInTheDocument();
+    expect(screen.getByLabelText("Armor Class")).toHaveValue(14);
+
+    await user.click(within(box).getByRole("button", { name: "Update" }));
+    expect(screen.getByLabelText("Armor Class")).toHaveValue(15);
+    expect(screen.queryByText(/out of date/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the player's numbers when they say so", async () => {
+    const user = userEvent.setup();
+    renderSheet(stalePippa());
+    const box = (await screen.findByText("2 numbers are out of date")).closest("[role='status']");
+    await user.click(within(box).getByRole("button", { name: "Keep mine" }));
+    expect(screen.queryByText(/out of date/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Armor Class")).toHaveValue(14);
+  });
+
+  it("switches a Ranger to Favored Foe only after the player confirms", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet({ level: 6 });
+    sheet.class = { id: "ranger", name: "Ranger", hitDie: 10 };
+    sheet.features = [
+      { index: "f1", name: "Favored Enemy (1 type)", description: "" },
+      { index: "f2", name: "Favored Enemy (2 types)", description: "" },
+    ];
+    renderSheet(sheet);
+    await user.click(await screen.findByRole("tab", { name: /Features/ }));
+
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false);
+    await user.click(screen.getByRole("button", { name: "Use Favored Foe" }));
+    expect(confirm.mock.calls[0][0]).toContain("Comes off: Favored Enemy (1 type), Favored Enemy (2 types)");
+    expect(screen.getByText("Favored Enemy (1 type)")).toBeInTheDocument();
+
+    confirm.mockReturnValueOnce(true);
+    await user.click(screen.getByRole("button", { name: "Use Favored Foe" }));
+    expect(screen.queryByText("Favored Enemy (1 type)")).not.toBeInTheDocument();
+    // Its row in the list (the panel's heading says it too).
+    expect(document.querySelector(".character-sheet__resource-name")?.textContent).toBe("Favored Foe");
+    // At level 6 the extra damage is a d6.
+    expect(screen.getByText("Extra damage: 1d6")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop using Favored Foe" })).toBeInTheDocument();
+  });
+});

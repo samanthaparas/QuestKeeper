@@ -640,3 +640,28 @@ describe("LevelUpWizard ability score step", () => {
     expect(container.querySelector(".level-up-wizard__feat-card")).toBeNull();
   });
 });
+
+describe("LevelUpWizard setup reminders", () => {
+  it("lists choices still open from earlier on the first step, without blocking", async () => {
+    render(
+      <MemoryRouter>
+        <LevelUpWizard
+          sheet={makeCharacter("fighter", "Fighter", 3)}
+          onComplete={vi.fn()}
+          onCancel={vi.fn()}
+          setupTasks={[
+            { key: "language:race", label: "Choose 1 more language (your race)" },
+            { key: "feature:1", label: "Choose the enemy type for Favored Enemy (1 type) (from level 1)" },
+          ]}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/Still open from earlier \(2\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Favored Enemy \(1 type\) \(from level 1\)/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Take Average/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    // Gone after the first step, and levelling went on.
+    expect(screen.queryByText(/Still open from earlier/)).toBeNull();
+    expect(await screen.findByText("Ability Score Improvement")).toBeInTheDocument();
+  });
+});

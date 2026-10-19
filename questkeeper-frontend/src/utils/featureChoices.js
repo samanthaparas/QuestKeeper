@@ -6,6 +6,7 @@
 // Nothing is ever picked for the player.
 
 import { normalizeItemName } from "./srdDetails";
+import { isReplacedByOption } from "./characterSheet";
 
 // "enemy_type_options" -> "Enemy type"
 function labelFromKey(key) {
@@ -166,7 +167,11 @@ function prerequisiteNote(prerequisites = [], entriesByKey) {
 export function getLevelUpFeatureChoices(entries, sheet, level) {
   const have = new Set((sheet.features ?? []).map((feature) => normalizeItemName(feature.name)));
   const entriesByKey = new Map(entries.map((entry) => [entry.key, entry]));
-  const ownEntries = entries.filter((entry) => !entry.otherSubclass && !entry.optionOf);
+  // Features a switched-on optional feature replaces (Favored Enemy, when the
+  // Ranger uses Tasha's Favored Foe) aren't asked about.
+  const ownEntries = entries.filter(
+    (entry) => !entry.otherSubclass && !entry.optionOf && !isReplacedByOption(sheet, entry.name),
+  );
 
   const atThisLevel = ownEntries.filter((entry) => entry.level === level);
   // A Warlock learns new invocations at levels with no new feature, so the

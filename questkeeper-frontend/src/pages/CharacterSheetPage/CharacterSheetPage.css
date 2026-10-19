@@ -2513,3 +2513,25 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
     background-color: var(--qk-surface-muted);
   }
 }
+
+/* "2 numbers are out of date": Update / Keep mine under the list. */
+.character-sheet__setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Features tab: Tasha's optional class features, each with its own switch. */
+.character-sheet__optional-features {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+}
+
+.character-sheet__optional-features li {
+  margin-bottom: 6px;
+}

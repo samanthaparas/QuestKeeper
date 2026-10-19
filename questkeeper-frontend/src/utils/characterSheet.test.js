@@ -66,6 +66,17 @@ import {
   createFeat,
   getLevelUpHitPointGain,
   refreshWeaponAttacks,
+  getFightingStyles,
+  attackWeaponFor,
+  getOutOfDateNumbers,
+  switchOptionalFeature,
+  describeOptionSwitch,
+  isReplacedByOption,
+  getGrantDamage,
+  getOptionalClassFeatures,
+  applyOptionalFeatureLevel,
+  applyExpertiseChoices,
+  hasLevelUpFeatureChoices,
   updateFeat,
   updateSpell,
   getSpellcastingAbility,
@@ -2480,5 +2491,242 @@ describe("numbers that follow a level-up", () => {
   it("leaves attacks alone when nothing they use changed", () => {
     const after = { ...before, abilityScores: { ...before.abilityScores, wisdom: 16 } };
     expect(refreshWeaponAttacks(before, after, weaponDetailsFor)).toBe(after);
+  });
+});
+
+describe("Fighting Styles and renamed weapons in the numbers", () => {
+  const longbow = {
+    name: "Longbow",
+    weapon_category: "Martial",
+    weapon_range: "Ranged",
+    damage: { damage_dice: "1d8", damage_type: { name: "Piercing" } },
+    properties: [],
+  };
+  const dagger = {
+    name: "Dagger",
+    weapon_category: "Simple",
+    weapon_range: "Melee",
+    damage: { damage_dice: "1d4" },
+    properties: [{ index: "finesse" }],
+  };
+  const details = { longbow, dagger };
+  const weaponDetailsFor = (name) => details[String(name).toLowerCase()] ?? null;
+  const archer = [{ name: "Fighting Style: Archery" }];
+
+  it("reads Archery and Defense from the feature names", () => {
+    expect(getFightingStyles([{ name: "Fighting Style: Archery" }, { name: "Fighting Style" }, { name: "Fighting Style: Blind Fighting" }])).toEqual(["archery"]);
+    expect(getFightingStyles([{ name: "Fighting Style: Defense" }])).toEqual(["defense"]);
+  });
+
+  it("adds Archery's +2 to ranged to-hit only", () => {
+    const scores = { strength: 12, dexterity: 18 };
+    const bow = getWeaponAttackMath({
+      weapon: longbow,
+      scores,
+      proficiencyNames: ["Martial Weapons"],
+      proficiencyBonus: 3,
+      fightingStyles: ["archery"],
+    });
+    // Pippa at level 6: +4 DEX, +3 proficiency, +2 Archery.
+    expect([bow.toHit, bow.damage]).toEqual([9, "1d8+4"]);
+    const knife = getWeaponAttackMath({
+      weapon: dagger,
+      scores,
+      proficiencyNames: ["Simple Weapons"],
+      proficiencyBonus: 3,
+      fightingStyles: ["archery"],
+    });
+    expect(knife.toHit).toBe(7);
+  });
+
+  it("adds Defense's +1 AC only while wearing armor", () => {
+    const leather = { armor_category: "Light", armor_class: { base: 11, dex_bonus: true } };
+    const shield = { armor_category: "Shield", armor_class: { base: 2 } };
+    const scores = { dexterity: 18 };
+    expect(computeStartingArmorClass({ gear: [leather], scores, fightingStyles: ["defense"] })).toBe(16);
+    expect(computeStartingArmorClass({ gear: [shield], scores, fightingStyles: ["defense"] })).toBe(16);
+    expect(computeStartingArmorClass({ gear: [shield], scores })).toBe(16);
+  });
+
+  it("works out a renamed weapon from its weapon type", () => {
+    expect(attackWeaponFor({ name: "Wisteria's Kiss", baseWeapon: "Longbow" }, weaponDetailsFor).weapon).toBe(longbow);
+    expect(attackWeaponFor({ name: "+1 Wisteria's Kiss", baseWeapon: "Longbow" }, weaponDetailsFor).magicBonus).toBe(1);
+    // A weapon QuestKeeper doesn't know is never worked out.
+    expect(attackWeaponFor({ name: "Wisteria's Kiss" }, weaponDetailsFor).weapon).toBeNull();
+  });
+
+  it("follows Archery being added, and leaves kept numbers alone", () => {
+    const before = {
+      level: 6,
+      abilityScores: { strength: 12, dexterity: 18 },
+      proficiencies: [{ name: "Martial Weapons" }],
+      features: [],
+      attacks: [
+        { index: "a", name: "Wisteria's Kiss", baseWeapon: "Longbow", toHit: 7, damage: "1d8+4" },
+        { index: "b", name: "Longbow", toHit: 7, damage: "1d8+4", manual: true },
+      ],
+    };
+    const after = refreshWeaponAttacks(before, { ...before, features: archer }, weaponDetailsFor);
+    expect(after.attacks[0]).toMatchObject({ toHit: 9, damage: "1d8+4" });
+    expect(after.attacks[1]).toMatchObject({ toHit: 7 });
+  });
+
+  it("lists saved numbers that are out of date, without changing them", () => {
+    // Pippa's sheet: levelled to 6 before the numbers followed level-ups.
+    const pippa = {
+      level: 6,
+      acMode: "auto",
+      combat: { armorClass: 14 },
+      abilityScores: { strength: 12, dexterity: 18 },
+      proficiencies: [{ name: "Martial Weapons" }, { name: "Simple Weapons" }],
+      features: archer,
+      attacks: [
+        { index: "a", name: "Longbow", toHit: 5, damage: "1d8+3" },
+        { index: "b", name: "Dagger", toHit: 7, damage: "1d4+4" },
+        { index: "c", name: "Night Terror Dagger", toHit: 5, damage: "1d4+3" },
+        { index: "d", name: "Longbow", toHit: 12, damage: "1d8+9", manual: true },
+      ],
+    };
+    const before = JSON.stringify(pippa);
+    expect(getOutOfDateNumbers(pippa, weaponDetailsFor, 15)).toEqual({
+      armorClass: { saved: 14, worked: 15 },
+      attacks: [
+        { index: "a", name: "Longbow", saved: { toHit: 5, damage: "1d8+3" }, worked: { toHit: 9, damage: "1d8+4" } },
+      ],
+    });
+    expect(JSON.stringify(pippa)).toBe(before);
+    // A typed-in AC (manual) is never questioned.
+    expect(getOutOfDateNumbers({ ...pippa, acMode: "manual" }, weaponDetailsFor, 15).armorClass).toBeNull();
+  });
+});
+
+describe("Tasha's optional Ranger features", () => {
+  const ranger = (extra = {}) => ({
+    level: 6,
+    class: { id: "ranger", name: "Ranger" },
+    speed: 30,
+    languages: "Common, Elvish",
+    skills: { stealth: true, perception: true },
+    skillExpertise: {},
+    resources: [],
+    features: [
+      { index: "1", name: "Favored Enemy (1 type)" },
+      { index: "2", name: "Favored Enemy (2 types)", choices: [{ key: "enemy_type_options", picked: ["fiends"] }] },
+      { index: "3", name: "Natural Explorer (1 terrain type)" },
+      { index: "4", name: "Natural Explorer (2 terrain types)" },
+      { index: "5", name: "Primeval Awareness" },
+      { index: "6", name: "Fighting Style: Archery" },
+    ],
+    spellcasting: { type: "known", cantripsKnown: [], spellsKnown: [{ index: "s1", name: "Goodberry", level: 1 }] },
+    ...extra,
+  });
+  const names = (sheet) => sheet.features.map((feature) => feature.name);
+
+  it("is only offered to classes that have them", () => {
+    expect(getOptionalClassFeatures({ id: "ranger" }).map((option) => option.key)).toEqual([
+      "favoredFoe",
+      "deftExplorer",
+      "primalAwareness",
+    ]);
+    expect(getOptionalClassFeatures({ id: "wizard" })).toEqual([]);
+  });
+
+  it("swaps Favored Enemy for Favored Foe, and nothing else", () => {
+    const sheet = ranger();
+    expect(describeOptionSwitch(sheet, "favoredFoe", true)).toEqual({
+      remove: ["Favored Enemy (1 type)", "Favored Enemy (2 types)"],
+      add: ["Favored Foe"],
+    });
+    const after = switchOptionalFeature(sheet, "favoredFoe", true);
+    expect(names(after)).toEqual([
+      "Natural Explorer (1 terrain type)",
+      "Natural Explorer (2 terrain types)",
+      "Primeval Awareness",
+      "Fighting Style: Archery",
+      "Favored Foe",
+    ]);
+    expect(after.features.at(-1)).toMatchObject({ description: "", link: "https://dnd5e.wikidot.com/ranger" });
+    // Uses equal to the proficiency bonus, per long rest.
+    expect(after.resources[0]).toMatchObject({ name: "Favored Foe", max: 3, resetOn: "long", perProficiency: true });
+    expect(isReplacedByOption(after, "Favored Enemy (3 types)")).toBe(true);
+    expect(isReplacedByOption(after, "Natural Explorer (3 terrain types)")).toBe(false);
+    const foe = getOptionalClassFeatures({ id: "ranger" })[0].grants[0];
+    expect([1, 5, 6, 13, 14].map((level) => getGrantDamage(foe, level))).toEqual(["1d4", "1d4", "1d6", "1d6", "1d8"]);
+  });
+
+  it("gives Deft Explorer's Canny and Roving at level 6, with a pick, languages and speed", () => {
+    const after = switchOptionalFeature(ranger(), "deftExplorer", true);
+    expect(names(after)).toContain("Deft Explorer: Canny");
+    expect(names(after)).toContain("Deft Explorer: Roving");
+    expect(names(after)).not.toContain("Deft Explorer: Tireless");
+    expect(names(after).some((name) => name.startsWith("Natural Explorer"))).toBe(false);
+    expect(after.speed).toBe(35);
+    expect(after.languages).toBe("Common, Elvish\nChoose 2 more (Canny)");
+    const canny = after.features.find((feature) => feature.name === "Deft Explorer: Canny");
+    expect(canny.choices[0]).toMatchObject({ choose: 1, options: ["perception", "stealth"], grantsExpertise: true });
+    // Nothing is doubled until the player picks.
+    expect(after.skillExpertise).toEqual({});
+  });
+
+  it("adds Primal Awareness spells that don't count and can't be swapped", () => {
+    const after = switchOptionalFeature(ranger(), "primalAwareness", true);
+    expect(names(after)).toContain("Primal Awareness");
+    expect(names(after)).not.toContain("Primeval Awareness");
+    const added = after.spellcasting.spellsKnown.filter((spell) => spell.grantedBy === "Primal Awareness");
+    expect(added.map((spell) => [spell.name, spell.level, spell.acquiredAtLevel])).toEqual([
+      ["Speak with Animals", 1, 3],
+      ["Beast Sense", 2, 5],
+    ]);
+    expect(added.every((spell) => !countsTowardSpellsKnown(spell) && spell.locked)).toBe(true);
+  });
+
+  it("switches back off cleanly", () => {
+    const on = switchOptionalFeature(switchOptionalFeature(ranger(), "deftExplorer", true), "primalAwareness", true);
+    const off = switchOptionalFeature(switchOptionalFeature(on, "deftExplorer", false), "primalAwareness", false);
+    expect(off.speed).toBe(30);
+    expect(names(off).some((name) => name.startsWith("Deft Explorer") || name === "Primal Awareness")).toBe(false);
+    expect(off.spellcasting.spellsKnown.map((spell) => spell.name)).toEqual(["Goodberry"]);
+    expect(off.optionalFeatures).toEqual({ deftExplorer: false, primalAwareness: false });
+  });
+
+  it("grants later pieces on level-up and grows uses with proficiency", () => {
+    let sheet = switchOptionalFeature(ranger({ level: 8 }), "favoredFoe", true);
+    sheet = switchOptionalFeature(sheet, "deftExplorer", true);
+    sheet = switchOptionalFeature(sheet, "primalAwareness", true);
+    const nine = applyOptionalFeatureLevel({ ...sheet, level: 9 }, 9);
+    expect(nine.resources.find((resource) => resource.name === "Favored Foe").max).toBe(4);
+    expect(nine.spellcasting.spellsKnown.map((spell) => spell.name)).toContain("Speak with Plants");
+    const ten = applyOptionalFeatureLevel({ ...nine, level: 10 }, 10);
+    expect(names(ten)).toContain("Deft Explorer: Tireless");
+    expect(ten.resources.map((resource) => resource.name)).toEqual(["Favored Foe", "Deft Explorer: Tireless"]);
+    // Nothing doubles up when the same level comes round twice.
+    expect(applyOptionalFeatureLevel(ten, 10).features).toHaveLength(ten.features.length);
+  });
+
+  it("drops the Ranger's level 6, 10 and 14 picks when both replacements are on", () => {
+    const ranger6 = { id: "ranger" };
+    expect(hasLevelUpFeatureChoices(ranger6, 6)).toBe(true);
+    expect(hasLevelUpFeatureChoices(ranger6, 6, { favoredFoe: true })).toBe(true);
+    expect(hasLevelUpFeatureChoices(ranger6, 6, { favoredFoe: true, deftExplorer: true })).toBe(false);
+    expect(hasLevelUpFeatureChoices(ranger6, 10, { deftExplorer: true })).toBe(false);
+    expect(hasLevelUpFeatureChoices(ranger6, 14, { favoredFoe: true })).toBe(false);
+    expect(hasLevelUpFeatureChoices(ranger6, 2, { favoredFoe: true, deftExplorer: true })).toBe(true);
+  });
+
+  it("doesn't ask for Favored Enemy on level-up once Favored Foe is on", () => {
+    const sheet = switchOptionalFeature(ranger({ level: 13 }), "favoredFoe", true);
+    const entries = [
+      { key: "feature:fe3", name: "Favored Enemy (3 types)", level: 14, choices: [{ key: "enemy_type_options", label: "Enemy type", choose: 1, options: ["undead"], picked: [] }] },
+    ];
+    expect(getLevelUpFeatureChoices(entries, sheet, 14)).toEqual([]);
+  });
+
+  it("records Canny as the source of its Expertise, keeping one set by hand", () => {
+    const sheet = switchOptionalFeature(ranger({ skillExpertise: { stealth: true } }), "deftExplorer", true);
+    const canny = sheet.features.find((feature) => feature.name === "Deft Explorer: Canny");
+    const pick = (skill) => canny.choices.map((choice) => ({ ...choice, picked: [skill] }));
+    const picked = applyExpertiseChoices(sheet, canny.index, pick("stealth"));
+    expect(picked.skillExpertise).toEqual({ stealth: true });
+    expect(picked.expertiseSources).toEqual({ stealth: "Deft Explorer: Canny" });
   });
 });

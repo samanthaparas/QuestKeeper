@@ -28,7 +28,7 @@ import {
   normalizeItemName,
 } from "../../utils/srdDetails";
 import Button from "../Button/Button";
-import { getSafeSpellLink } from "../../utils/characterSheet";
+import { getGrantDamage, getSafeSpellLink } from "../../utils/characterSheet";
 import { findStraySubclassFeatures, sourceFromEntry } from "../../utils/featureSources";
 import {
   choicesFor,
@@ -55,6 +55,12 @@ function CharacterSheetFeaturesTab({
   onFeaturesAddMany,
   onFeaturesRemoveMany = () => {},
   onFeatureChoose = () => {},
+  // Tasha's optional class features for this class, which are on, and
+  // whether a feature is one an option replaces.
+  optionalFeatures = [],
+  optionalFeaturesOn = {},
+  onOptionalFeatureSwitch = () => {},
+  isReplacedFeature = () => false,
   background = null,
   // From the sheet page, which loads them once (the tab loads its own if not).
   featureEntries = null,
@@ -209,11 +215,13 @@ function CharacterSheetFeaturesTab({
 
     loadFeatureEntries({ classId, subclassId, raceId, subraceId })
       .then((entries) => {
+        // Features an optional one replaces (Favored Enemy under Favored
+        // Foe) aren't offered.
         const choices = buildFeatureChoices(
           entries,
           level,
           features.map((feature) => feature.name),
-        );
+        ).filter((choice) => !isReplacedFeature(choice.name));
         setPicked(
           new Set(choices.filter((c) => c.defaultSelected).map((c) => c.key)),
         );
@@ -348,6 +356,39 @@ function CharacterSheetFeaturesTab({
           </div>
         )}
 
+        {/* Tasha's optional class features: each one is the player's (or
+            table's) choice, and nothing changes until they confirm. */}
+        {optionalFeatures.length > 0 && (
+          <div className="character-sheet__optional-features">
+            <p className="character-sheet__stray-title">Optional class features (Tasha&apos;s)</p>
+            <p className="character-sheet__empty-text">
+              Some tables swap these in for the original features. Ask your DM.
+              QuestKeeper keeps the names and numbers; the full text is in the book.
+            </p>
+            <ul className="character-sheet__setup-list">
+              {optionalFeatures.map((option) => {
+                const isOn = Boolean(optionalFeaturesOn[option.key]);
+                return (
+                  <li key={option.key}>
+                    <strong>{option.name}</strong>{" "}
+                    {isOn ? `(in use, instead of ${option.replaces})` : `instead of ${option.replaces}`}{" "}
+                    <a href={option.link} target="_blank" rel="noopener noreferrer">
+                      Read it
+                    </a>{" "}
+                    <Button
+                      variant="secondary"
+                      type="button"
+                      onClick={() => onOptionalFeatureSwitch(option.key, !isOn)}
+                    >
+                      {isOn ? `Stop using ${option.name}` : `Use ${option.name}`}
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
         <div className="character-sheet__feature-import">
           <Button
             variant="secondary"
@@ -457,9 +498,18 @@ function CharacterSheetFeaturesTab({
             const choices = choicesFor(feature, allEntries);
             // A book option picked on level-up links to where it's written up.
             const link = getSafeSpellLink(feature.link);
-            if (choices.length === 0 && !link) return null;
+            // An optional feature's numbers at this level (Favored Foe: 1d6).
+            const grant = optionalFeatures
+              .flatMap((option) => option.grants)
+              .find((item) => item.name.toLowerCase() === String(feature.name).toLowerCase());
+            const damage = getGrantDamage(grant, level);
+            const grantNote = [damage ? `Extra damage: ${damage}` : "", grant?.note ?? ""]
+              .filter(Boolean)
+              .join(" · ");
+            if (choices.length === 0 && !link && !grantNote) return null;
             return (
               <span className="character-sheet__feature-choices">
+                {grantNote && <span className="character-sheet__feature-choice-note">{grantNote}</span>}
                 {link && (
                   <a
                     className="character-sheet__spell-link"
