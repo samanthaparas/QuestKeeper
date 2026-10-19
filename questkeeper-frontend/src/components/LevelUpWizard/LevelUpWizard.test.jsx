@@ -620,3 +620,23 @@ describe("LevelUpWizard class choices step", () => {
     expect(await screen.findByText("Class choices: none made")).toBeInTheDocument();
   });
 });
+
+describe("LevelUpWizard ability score step", () => {
+  it("shows no empty feat box before a feat is picked", async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <LevelUpWizard
+          sheet={makeCharacter("fighter", "Fighter", 3)}
+          onComplete={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Take Average/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Take a Feat" }));
+
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
+    expect(container.querySelector(".level-up-wizard__feat-card")).toBeNull();
+  });
+});
