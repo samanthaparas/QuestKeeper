@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CompanionCard from "./CompanionCard";
+import { applySummonAction, getSummonInfo } from "../../utils/characterSheet";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
 
@@ -132,5 +133,79 @@ describe("CompanionCard", () => {
     expect(onSaveChange).toHaveBeenLastCalledWith("dexterity", "");
     await user.type(screen.getByLabelText("Victory's WIS save bonus"), "3");
     expect(onSaveChange).toHaveBeenLastCalledWith("wisdom", "3");
+  });
+
+  describe("following Summon Fey", () => {
+    const fable = {
+      name: "Fable",
+      armorClass: 15,
+      speed: 40,
+      hitPoints: { current: 30, max: 30 },
+      attacks: [{ id: "b1", name: "Bite", toHit: 6, damage: "2d6+6", damageType: "Piercing" }],
+    };
+    const sheetWith = (extra = {}) => ({
+      features: [{ name: "Fey Reinforcements" }],
+      spellcasting: { spellSlots: [{ level: 3, max: 3, current: 2 }, { level: 4, max: 1, current: 1 }] },
+      resources: [{ id: "fc", name: "Summon Fey (free cast)", max: 1, current: 1, freeCastFor: "Summon Fey" }],
+      companionMode: "creature",
+      companionCreature: fable,
+      ...extra,
+    });
+    const linked = () => applySummonAction(sheetWith(), "link", { template: "summonFey" });
+
+    it("shows no numbers while she isn't summoned, and offers the cast", async () => {
+      const onSummon = vi.fn();
+      const sheet = linked();
+      renderCard({ companion: sheet.companionCreature, summon: getSummonInfo(sheet, 7), onSummon });
+      expect(screen.getByText(/Not summoned/)).toBeInTheDocument();
+      expect(screen.queryByLabelText("Fable's current HP")).toBeNull();
+      expect(screen.queryByRole("list", { name: "Fable's ability scores" })).toBeNull();
+      expect(screen.getByText(/At level 3: AC 15, 30 HP, 1 attack a turn/)).toBeInTheDocument();
+
+      await userEvent.selectOptions(screen.getByLabelText("Mood"), "tricksy");
+      await userEvent.click(screen.getByRole("checkbox", { name: /No concentration, lasts 1 minute/ }));
+      await userEvent.click(screen.getByRole("button", { name: "Cast Summon Fey" }));
+      expect(onSummon).toHaveBeenCalledWith("cast", { slotLevel: 3, payWith: "free", mood: "tricksy", concentration: false });
+    });
+
+    it("can cast with a higher slot instead of the free cast", async () => {
+      const onSummon = vi.fn();
+      const sheet = linked();
+      renderCard({ companion: sheet.companionCreature, summon: getSummonInfo(sheet, 7), onSummon });
+      await userEvent.click(screen.getByRole("radio", { name: /Spell slot/ }));
+      await userEvent.selectOptions(screen.getByLabelText("Spell slot level"), "4");
+      expect(screen.getByText(/At level 4: AC 16, 40 HP, 2 attacks a turn/)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Cast Summon Fey" }));
+      expect(onSummon).toHaveBeenCalledWith("cast", expect.objectContaining({ slotLevel: 4, payWith: "slot", concentration: true }));
+    });
+
+    it("once summoned, uses the spell's numbers with her Bite name and separate force damage", async () => {
+      const onSummon = vi.fn();
+      const sheet = applySummonAction(linked(), "cast", { payWith: "free", mood: "mirthful" });
+      renderCard({ companion: sheet.companionCreature, summon: getSummonInfo(sheet, 7), onSummon });
+      expect(screen.getByText(/Summoned/)).toBeInTheDocument();
+      expect(screen.getByText("Mirthful:")).toBeInTheDocument();
+      expect(screen.getByLabelText("Fable's current HP")).toHaveValue(30);
+      expect(screen.getByText("Bite")).toBeInTheDocument();
+      // (Roll buttons are plain text outside a sheet with a roller.)
+      expect(screen.getByText("+7 to hit")).toBeInTheDocument();
+      expect(screen.getByText("1d6+6 piercing")).toBeInTheDocument();
+      expect(screen.getByText("1d6 force")).toBeInTheDocument();
+      // The saved attack list isn't shown while she follows the spell.
+      expect(screen.queryByRole("button", { name: "Edit attacks" })).toBeNull();
+
+      await userEvent.click(screen.getByRole("button", { name: "Dismiss Fable" }));
+      expect(onSummon).toHaveBeenCalledWith("dismiss");
+    });
+
+    it("is switched on and off under Edit stats; ordinary companions are unchanged", async () => {
+      const onSummon = vi.fn();
+      renderCard({ companion: fable, onSummon });
+      expect(screen.getByLabelText("Fable's current HP")).toHaveValue(30);
+      expect(screen.queryByRole("button", { name: "Use Summon Fey rules" })).toBeNull();
+      await userEvent.click(screen.getByRole("button", { name: "🔒 Edit stats" }));
+      await userEvent.click(screen.getByRole("button", { name: "Use Summon Fey rules" }));
+      expect(onSummon).toHaveBeenCalledWith("link", { template: "summonFey" });
+    });
   });
 });

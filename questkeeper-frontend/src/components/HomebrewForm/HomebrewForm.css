@@ -38,6 +38,30 @@
   gap: 12px 16px;
 }
 
+.homebrew-form__row--sub {
+  align-items: center;
+  margin: -4px 0 8px;
+}
+
+.homebrew-form__damage {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* The "when it applies" box sits in a top-to-bottom stack, where the usual
+   "grow to 200px" would make it 200px tall; here it's one line, full width. */
+.homebrew-form__damage .homebrew-form__input--grow {
+  flex: none;
+  width: 100%;
+}
+
+.homebrew-form__add--small {
+  font-size: 13px;
+}
+
 .homebrew-form__field {
   display: flex;
   flex: 1 1 220px;

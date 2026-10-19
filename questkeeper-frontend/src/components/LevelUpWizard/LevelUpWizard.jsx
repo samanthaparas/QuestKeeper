@@ -27,7 +27,11 @@ import {
   subclassSpellsToGrant,
 } from "../../utils/characterSheet";
 import { loadHomebrew } from "../../utils/homebrewCache";
-import { getSubclassBonusSpells } from "../../utils/homebrewMappers";
+import {
+  featureDamageAt,
+  getSubclassBonusSpells,
+  getSubclassFeatureDamage,
+} from "../../utils/homebrewMappers";
 
 import {
   getFeats,
@@ -581,9 +585,25 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
     );
     const spellNames = [
       ...grantedSpells.map((spell) => `${spell.name} (${spell.grantedBy})`),
-      ...subclassSpells.map((spell) => `${spell.name} (${leveledClass.subclass.name})`),
+      ...subclassSpells.map(
+        (spell) =>
+          `${spell.name} (${spell.source || leveledClass.subclass.name}${spell.freeCast ? ", 1 free cast per long rest" : ""})`,
+      ),
     ];
     if (spellNames.length) gains.push(`Spells you always know: ${spellNames.join(", ")}`);
+
+    // A homebrew feature whose extra damage grows at this level
+    // (Dreadful Strikes: 1d4 → 1d6).
+    getSubclassFeatureDamage(leveledClass?.subclass?.id, reviewLookups?.homebrew ?? []).forEach(
+      (feature) => {
+        const now = featureDamageAt(feature, targetLevel);
+        const before = featureDamageAt(feature, targetLevel - 1);
+        if (!now || feature.level >= targetLevel || now.dice === before?.dice) return;
+        gains.push(
+          `${feature.name} damage: ${before ? `${before.dice} → ` : ""}${now.dice}${now.type ? ` ${now.type}` : ""}`,
+        );
+      },
+    );
     return gains;
   }
 

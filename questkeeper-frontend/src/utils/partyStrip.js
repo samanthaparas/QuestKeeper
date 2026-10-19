@@ -5,6 +5,8 @@
 import {
   SKILLS,
   getEffectiveArmorClass,
+  getSummonTemplate,
+  isSummonPresent,
   getProficiencyBonus,
   getSkillModifier,
 } from "./characterSheet";
@@ -40,18 +42,24 @@ export function getHealthState(current, max) {
 
 // A tracked companion (a mount, a familiar) as a small line under its
 // character: name, picture, HP and AC. Null when there isn't one.
+//
+// A summoned companion (Summon Fey) only shows while it's summoned, with the
+// spell's HP and AC, never its saved numbers.
 export function toCompanionRow(sheet) {
   const creature = sheet.companionCreature;
   if (sheet.companionMode !== "creature" || !creature) return null;
-  const max = Math.max(0, creature.hitPoints?.max ?? 0);
-  const current = Math.max(0, creature.hitPoints?.current ?? 0);
+  const template = getSummonTemplate(creature);
+  if (template && !isSummonPresent(sheet)) return null;
+  const hp = template ? creature.summon.hitPoints : creature.hitPoints;
+  const max = Math.max(0, hp?.max ?? 0);
+  const current = Math.max(0, hp?.current ?? 0);
   return {
     name: creature.name || "Companion",
     portraitUrl: typeof creature.portraitUrl === "string" ? creature.portraitUrl : "",
     hp: { current, max },
     hpPercent: max > 0 ? Math.min(100, Math.round((current / max) * 100)) : 0,
     health: getHealthState(current, max),
-    armorClass: creature.armorClass ?? 10,
+    armorClass: template ? template.armorClass(creature.summon.slotLevel) : (creature.armorClass ?? 10),
   };
 }
 

@@ -159,6 +159,8 @@ export function NamedListField({
   items = [],
   onChange,
   withLevel = false,
+  // Subclass features: an optional "damage by level" list under each one.
+  withDamage = false,
   addLabel,
   namePlaceholder,
 }) {
@@ -209,6 +211,14 @@ export function NamedListField({
             value={item.description}
             onChange={(event) => update(index, { description: event.target.value })}
           />
+          {withDamage && (
+            <FeatureDamageField
+              idPrefix={`${idPrefix}-${index}`}
+              featureName={item.name || `${label} ${index + 1}`}
+              item={item}
+              onChange={(changes) => update(index, changes)}
+            />
+          )}
         </div>
       ))}
 
@@ -227,5 +237,80 @@ export function NamedListField({
         {addLabel}
       </button>
     </fieldset>
+  );
+}
+
+// Extra damage a feature does, growing with class level (1d4 psychic from
+// level 3, 1d6 from 11), and when it applies. The sheet shows the dice for
+// the character's level with a roll button; it's never added to attacks.
+function FeatureDamageField({ idPrefix, featureName, item, onChange }) {
+  const rows = item.damage ?? [];
+  function updateRow(index, changes) {
+    onChange({ damage: rows.map((row, i) => (i === index ? { ...row, ...changes } : row)) });
+  }
+  return (
+    <div className="homebrew-form__damage">
+      {rows.map((row, index) => (
+        <div className="homebrew-form__row homebrew-form__row--sub" key={index}>
+          <NumberField
+            id={`${idPrefix}-damage-${index}-level`}
+            label="From level"
+            min={1}
+            max={20}
+            value={row.level}
+            onChange={(level) => updateRow(index, { level })}
+          />
+          <input
+            className="homebrew-form__input"
+            aria-label={`${featureName} damage ${index + 1} dice`}
+            placeholder="Dice, e.g. 1d4"
+            maxLength={20}
+            value={row.dice ?? ""}
+            onChange={(event) => updateRow(index, { dice: event.target.value })}
+          />
+          <input
+            className="homebrew-form__input"
+            aria-label={`${featureName} damage ${index + 1} type`}
+            placeholder="Type, e.g. psychic"
+            maxLength={30}
+            value={row.type ?? ""}
+            onChange={(event) => updateRow(index, { type: event.target.value })}
+          />
+          <button
+            type="button"
+            className="homebrew-form__remove"
+            aria-label={`Remove ${featureName} damage ${index + 1}`}
+            onClick={() => onChange({ damage: rows.filter((_, i) => i !== index) })}
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+      {rows.length > 0 && (
+        <input
+          className="homebrew-form__input homebrew-form__input--grow"
+          aria-label={`${featureName} damage: when it applies`}
+          placeholder="When it applies, e.g. once per creature per turn (optional)"
+          maxLength={200}
+          value={item.damageNote ?? ""}
+          onChange={(event) => onChange({ damageNote: event.target.value })}
+        />
+      )}
+      <button
+        type="button"
+        className="homebrew-form__add homebrew-form__add--small"
+        aria-label={`${rows.length ? "Add a damage step to" : "Add extra damage to"} ${featureName}`}
+        onClick={() =>
+          onChange({
+            damage: [
+              ...rows,
+              { level: rows.at(-1)?.level ?? item.level ?? 1, dice: "", type: rows.at(-1)?.type ?? "" },
+            ],
+          })
+        }
+      >
+        {rows.length ? "Add a damage step" : "Add extra damage (optional)"}
+      </button>
+    </div>
   );
 }
