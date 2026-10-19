@@ -15,7 +15,43 @@ import {
   RESET_OPTIONS,
   describeMagicItem,
   describeReset,
+  formatModifier,
+  itemSpellNumbers,
 } from "../../utils/characterSheet";
+import RollButton from "../RollDock/RollButton";
+
+// "Save DC" or "Spell attack" in the editor: not used, the item's own
+// number, or the wielder's own (worked out from their spellcasting).
+function ItemNumberField({ label, mode, value, onMode, onValue, placeholder }) {
+  return (
+    <span className="character-sheet__item-number">
+      <label className="character-sheet__labeled-box">
+        <span>{label}</span>
+        <select
+          className="character-sheet__resource-form-select"
+          value={mode ?? ""}
+          onChange={(event) => onMode(event.target.value)}
+        >
+          <option value="">Not used</option>
+          <option value="fixed">Its own number</option>
+          <option value="mine">Use mine</option>
+        </select>
+      </label>
+      {mode === "fixed" && (
+        <label className="character-sheet__labeled-box character-sheet__labeled-box--dice">
+          <span>Number</span>
+          <input
+            className="character-sheet__resource-form-input"
+            type="number"
+            placeholder={placeholder}
+            value={value ?? ""}
+            onChange={(event) => onValue(event.target.value)}
+          />
+        </label>
+      )}
+    </span>
+  );
+}
 import UsePips, { MAX_PIPS } from "../UsePips/UsePips";
 import { RegainField } from "../CharacterSheetResourcesTab/CharacterSheetResourcesTab";
 
@@ -29,7 +65,12 @@ function MagicItemFields({ value, onChange, freeResources }) {
   const details = value ?? {};
   const set = (key, next) => onChange({ ...details, [key]: next });
   const hasAny = Boolean(
-    details.rarity || details.itemType || details.requiresAttunement || Number(details.chargesMax) > 0,
+    details.rarity ||
+      details.itemType ||
+      details.requiresAttunement ||
+      Number(details.chargesMax) > 0 ||
+      details.saveDcMode ||
+      details.attackMode,
   );
   return (
     <details className="character-sheet__magic-details" open={hasAny || undefined}>
@@ -85,6 +126,25 @@ function MagicItemFields({ value, onChange, freeResources }) {
             />
           </label>
         )}
+      </div>
+      {/* Its spells' save DC and attack: its own, or the wielder's. */}
+      <div className="character-sheet__extra-damage-row">
+        <ItemNumberField
+          label="Save DC"
+          mode={details.saveDcMode}
+          value={details.saveDcValue}
+          placeholder="15"
+          onMode={(next) => set("saveDcMode", next)}
+          onValue={(next) => set("saveDcValue", next)}
+        />
+        <ItemNumberField
+          label="Spell attack"
+          mode={details.attackMode}
+          value={details.attackValue}
+          placeholder="+7"
+          onMode={(next) => set("attackMode", next)}
+          onValue={(next) => set("attackValue", next)}
+        />
       </div>
       <div className="character-sheet__extra-damage-row">
         <label className="character-sheet__labeled-box character-sheet__labeled-box--dice">
@@ -227,6 +287,9 @@ function CharacterSheetInventoryTab({
   chargesFor = () => null,
   freeResources = [],
   onChargesChange = () => {},
+  // The character's own { saveDc, spellAttack } for "Use mine" items, or
+  // null when they don't cast spells.
+  mySpellNumbers = null,
   // An item's category: the one picked, or a guess (see getInventoryCategory).
   categoryOf = (item) => getInventoryCategory(item),
 }) {
@@ -351,6 +414,10 @@ function CharacterSheetInventoryTab({
                 chargesMax: charges ? String(charges.max) : "",
                 chargesResetOn: charges?.resetOn ?? "dawn",
                 chargesRegain: charges?.regain ?? "",
+                saveDcMode: item.saveDc === "mine" ? "mine" : typeof item.saveDc === "number" ? "fixed" : "",
+                saveDcValue: typeof item.saveDc === "number" ? String(item.saveDc) : "",
+                attackMode: item.spellAttack === "mine" ? "mine" : typeof item.spellAttack === "number" ? "fixed" : "",
+                attackValue: typeof item.spellAttack === "number" ? String(item.spellAttack) : "",
               };
             },
             render: ({ value, onChange }) => (
@@ -385,13 +452,29 @@ function CharacterSheetInventoryTab({
         primaryExtra={(item) => {
           const about = describeMagicItem(item);
           const charges = chargesFor(item);
-          if (!about && !charges) return null;
+          // Its spells' DC and attack, worked out now ("Use mine" follows
+          // the character), with the attack as a roll.
+          const numbers = itemSpellNumbers(item, mySpellNumbers);
+          const usesMineButNone = (item.saveDc === "mine" || item.spellAttack === "mine") && !mySpellNumbers;
+          const hasNumbers = numbers.saveDc !== null || numbers.spellAttack !== null || usesMineButNone;
+          if (!about && !charges && !hasNumbers) return null;
           return (
             <span className="character-sheet__item-meta">
               {about && (
                 <span>
                   {about}
                   {item.requiresAttunement ? (item.attuned ? " (attuned)" : " (not attuned yet)") : ""}
+                </span>
+              )}
+              {hasNumbers && (
+                <span className="character-sheet__item-charges">
+                  {numbers.saveDc !== null && <span className="character-sheet__item-charges-label">DC {numbers.saveDc}</span>}
+                  {numbers.spellAttack !== null && (
+                    <RollButton label={`${item.name} spell attack`} bonus={numbers.spellAttack}>
+                      {formatModifier(numbers.spellAttack)} to hit
+                    </RollButton>
+                  )}
+                  {usesMineButNone && <span>Uses your spellcasting (none set)</span>}
                 </span>
               )}
               {charges && (

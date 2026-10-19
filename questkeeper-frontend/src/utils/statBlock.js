@@ -1,10 +1,24 @@
 // A monster's or ally's stat block lives in the database as
-//   { attacks: [{ name, toHit, damage }], notes: "...", initiativeBonus: 2 }
-// and is only ever visible to the DM. These helpers keep the form state and the
-// saved shape in step.
+//   { attacks: [{ name, toHit, damage }], notes: "...", initiativeBonus: 2,
+//     saves: { dexterity: 2, wisdom: -1 } }
+// and is only ever visible to the DM (it's in combatant_secrets and the
+// Monster Library, which players can't read). These helpers keep the form
+// state and the saved shape in step. saves only holds the ones the DM typed.
+
+// The six saving throws, in the usual order, with their short names.
+export const SAVE_ABILITIES = [
+  ["strength", "STR"],
+  ["dexterity", "DEX"],
+  ["constitution", "CON"],
+  ["intelligence", "INT"],
+  ["wisdom", "WIS"],
+  ["charisma", "CHA"],
+];
+
+const emptySaves = () => Object.fromEntries(SAVE_ABILITIES.map(([key]) => [key, ""]));
 
 export function emptyStatBlock() {
-  return { attacks: [], notes: "", initiativeBonus: "" };
+  return { attacks: [], notes: "", initiativeBonus: "", saves: emptySaves() };
 }
 
 // Turns whatever is saved (possibly empty or partial) into form-friendly values.
@@ -22,7 +36,21 @@ export function readStatBlock(raw) {
       raw?.initiativeBonus === undefined || raw?.initiativeBonus === null
         ? ""
         : String(raw.initiativeBonus),
+    saves: Object.fromEntries(
+      SAVE_ABILITIES.map(([key]) => {
+        const value = raw?.saves?.[key];
+        return [key, typeof value === "number" ? String(value) : ""];
+      }),
+    ),
   };
+}
+
+// The saves a monster has, as [{ key, short, bonus }], only the ones typed.
+export function savesOf(statBlock) {
+  return SAVE_ABILITIES.flatMap(([key, short]) => {
+    const value = statBlock?.saves?.[key];
+    return typeof value === "number" ? [{ key, short, bonus: value }] : [];
+  });
 }
 
 // Cleans form values for saving: drops attacks with no name, turns to-hit into a number.
@@ -37,10 +65,20 @@ export function cleanStatBlock(form) {
 
   const initiativeBonus = Number(form?.initiativeBonus) || 0;
 
+  // Only the saves typed in (a blank box isn't +0, it's "not given").
+  const saves = Object.fromEntries(
+    SAVE_ABILITIES.flatMap(([key]) => {
+      const text = String(form?.saves?.[key] ?? "").trim();
+      const number = Math.round(Number(text));
+      return text !== "" && Number.isFinite(number) ? [[key, Math.max(-5, Math.min(20, number))]] : [];
+    }),
+  );
+
   return {
     attacks,
     notes: String(form?.notes ?? "").trim(),
     ...(initiativeBonus ? { initiativeBonus } : {}),
+    ...(Object.keys(saves).length > 0 ? { saves } : {}),
   };
 }
 

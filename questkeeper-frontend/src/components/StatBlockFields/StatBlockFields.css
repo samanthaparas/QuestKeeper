@@ -84,3 +84,24 @@
 .stat-block-fields__row {
   align-items: flex-end;
 }
+
+/* Six small save boxes in one row (they wrap on a phone). */
+.stat-block-fields__saves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: flex-end;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.stat-block-fields__saves legend {
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 0;
+}
+
+.stat-block-fields__saves .stat-block-fields__number {
+  width: 64px;
+}

@@ -154,30 +154,31 @@ function PartyStrip({ rows, onSelect, selectedId }) {
             </ul>
           )}
 
-          {/* Their companion (a mount, a familiar), on its own line below. */}
-          {row.companion && (
+          {/* Their companions (a mount, a familiar, a summon), each on its own line below. */}
+          {(row.companions ?? (row.companion ? [row.companion] : [])).map((companion, index) => (
             <div
-              className={`party-strip__companion party-strip__companion--${row.companion.health}`}
-              aria-label={`${row.name}'s companion, ${row.companion.name}`}
+              key={`${companion.name}-${index}`}
+              className={`party-strip__companion party-strip__companion--${companion.health}`}
+              aria-label={`${row.name}'s companion, ${companion.name}`}
             >
               <span className="party-strip__companion-portrait" aria-hidden="true">
-                {row.companion.portraitUrl ? <img src={row.companion.portraitUrl} alt="" /> : "🐾"}
+                {companion.portraitUrl ? <img src={companion.portraitUrl} alt="" /> : "🐾"}
               </span>
-              <span className="party-strip__companion-name">{row.companion.name}</span>
+              <span className="party-strip__companion-name">{companion.name}</span>
               <span className="party-strip__hp-text">
-                <span className="party-strip__label">HP</span> {row.companion.hp.current}/{row.companion.hp.max}
-                {HEALTH_LABELS[row.companion.health] && (
-                  <strong className="party-strip__health"> · {HEALTH_LABELS[row.companion.health]}</strong>
+                <span className="party-strip__label">HP</span> {companion.hp.current}/{companion.hp.max}
+                {HEALTH_LABELS[companion.health] && (
+                  <strong className="party-strip__health"> · {HEALTH_LABELS[companion.health]}</strong>
                 )}
               </span>
               <span className="party-strip__bar party-strip__companion-bar" aria-hidden="true">
-                <span className="party-strip__bar-fill" style={{ width: `${row.companion.hpPercent}%` }} />
+                <span className="party-strip__bar-fill" style={{ width: `${companion.hpPercent}%` }} />
               </span>
               <span className="party-strip__ac">
-                <span className="party-strip__label">AC</span> {row.companion.armorClass}
+                <span className="party-strip__label">AC</span> {companion.armorClass}
               </span>
             </div>
-          )}
+          ))}
         </li>
       ))}
     </ul>

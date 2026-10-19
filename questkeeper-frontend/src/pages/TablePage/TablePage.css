@@ -910,3 +910,44 @@
   color: var(--qk-danger);
   font-size: 14px;
 }
+
+/* DM only: "Saves: DEX +2 WIS -1" as small roll buttons, and the last roll. */
+.table-page__saves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.table-page__saves-label {
+  color: var(--qk-text-muted);
+  font-weight: 700;
+}
+
+.table-page__save-button {
+  min-height: 28px;
+  padding: 2px 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-page__save-button:hover {
+  border-color: var(--qk-terracotta);
+  color: var(--qk-terracotta);
+}
+
+.table-page__save-button:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+.table-page__save-result {
+  color: var(--qk-text);
+}

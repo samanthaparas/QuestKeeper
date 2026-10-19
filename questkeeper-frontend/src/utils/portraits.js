@@ -1,14 +1,17 @@
 import { supabase } from "./supabaseClient";
 
 const BUCKET = "character-portraits";
-const MAX_FILE_SIZE = 2 * 1024 * 1024;
+// 5 MB, the same as pictures in messages: phone photos are often over 2 MB.
+// (The character-portraits storage bucket in Supabase must allow at least
+// this much too; see its "Restrict file upload size" setting.)
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 export function validatePortraitFile(file) {
   if (!file.type.startsWith("image/")) {
     return "Please choose an image file.";
   }
   if (file.size > MAX_FILE_SIZE) {
-    return "Images must be smaller than 2MB.";
+    return "Images must be smaller than 5 MB.";
   }
   return null;
 }

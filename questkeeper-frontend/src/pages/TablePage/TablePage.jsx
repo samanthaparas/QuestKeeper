@@ -38,7 +38,7 @@ import {
   setShareParty,
   startCombat,
 } from "../../utils/tableStore";
-import { isSameTemplate, pieceNames, readStatBlock, recentEventsFor } from "../../utils/statBlock";
+import { isSameTemplate, pieceNames, readStatBlock, recentEventsFor, savesOf } from "../../utils/statBlock";
 import {
   NEW_ENCOUNTER_MESSAGE,
   getDmPrepSteps,
@@ -47,7 +47,7 @@ import {
   hasActiveNudge,
   nudgeMessage,
 } from "../../utils/tableGuidance";
-import { getAbilityModifier, getInitials } from "../../utils/characterSheet";
+import { formatModifier, getAbilityModifier, getInitials, rollDie } from "../../utils/characterSheet";
 import { toPartyRow } from "../../utils/partyStrip";
 import { shouldReduceMotion } from "../../utils/motionPreference";
 import Button from "../../components/Button/Button";
@@ -236,6 +236,41 @@ const ICON_PATHS = {
   remove: "M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13M10 11v6M14 11v6",
 };
 
+// The DM's save buttons for a monster or ally: one per save the DM typed
+// ("DEX +2"). A tap rolls it and shows the result here only, on the DM's
+// screen: it isn't sent to the table, so the bonus never reaches players.
+function MonsterSaves({ name, statBlock }) {
+  const saves = savesOf(statBlock);
+  const [last, setLast] = useState(null);
+  if (saves.length === 0) return null;
+  function roll(save) {
+    const d20 = rollDie(20);
+    setLast({ short: save.short, d20, bonus: save.bonus, total: d20 + save.bonus });
+  }
+  return (
+    <span className="table-page__saves">
+      <span className="table-page__saves-label">Saves:</span>
+      {saves.map((save) => (
+        <button
+          key={save.key}
+          type="button"
+          className="table-page__save-button"
+          aria-label={`Roll ${name}'s ${save.short} save, ${formatModifier(save.bonus)}`}
+          onClick={() => roll(save)}
+        >
+          {save.short} {formatModifier(save.bonus)}
+        </button>
+      ))}
+      {last && (
+        <span className="table-page__save-result" role="status">
+          {last.short} save: <b>{last.total}</b> (d20 {last.d20} {formatModifier(last.bonus)})
+          {last.d20 === 20 ? " · natural 20" : last.d20 === 1 ? " · natural 1" : ""}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function IconButton({ icon, label, onClick, pressed }) {
   return (
     <button
@@ -421,6 +456,9 @@ function CombatantRow({
                   )}
                 </span>
               )}
+
+              {/* DM only: its saving throws, each a roll that stays on this screen. */}
+              {isNpc && isDm && hp && <MonsterSaves name={combatant.name} statBlock={hp.stat_block} />}
 
               {/* DM only: what to do on this turn, so it's clear the monster
                   hasn't acted yet (its history below may be from earlier). */}

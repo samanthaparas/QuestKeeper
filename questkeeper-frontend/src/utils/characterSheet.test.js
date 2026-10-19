@@ -143,7 +143,15 @@ import {
   removeEquipmentKeepingAttacks,
   cleanMagicDetails,
   describeMagicItem,
+  itemSpellNumbers,
+  getCompanions,
+  saveCompanions,
+  updateCompanion,
+  addCompanion,
+  removeCompanion,
+  companionView,
 } from "./characterSheet";
+import { toCompanionRows } from "./partyStrip";
 import { featuresForNewLevel } from "./srdDetails";
 
 describe("getAbilityModifier", () => {
@@ -3923,5 +3931,170 @@ describe("attunement details", () => {
     expect(describeMagicItem({ name: "Rope" })).toBe("");
     // "By" only counts when attunement is required; unknown rarities are dropped.
     expect(cleanMagicDetails({ attunementBy: "a druid", rarity: "Mythic" })).toMatchObject({ attunementBy: undefined, rarity: undefined });
+  });
+});
+
+// --- An item's own save DC and spell attack ---------------------------------------
+describe("items with their own save DC and spell attack", () => {
+  const mine = { saveDc: 15, spellAttack: 7 };
+
+  it("saves a fixed number, 'use mine', or nothing", () => {
+    expect(cleanMagicDetails({ saveDcMode: "fixed", saveDcValue: "15", attackMode: "mine" })).toMatchObject({ saveDc: 15, spellAttack: "mine" });
+    expect(cleanMagicDetails({ saveDcMode: "fixed", saveDcValue: "" })).toMatchObject({ saveDc: undefined });
+    expect(cleanMagicDetails({ saveDcMode: "fixed", saveDcValue: "99", attackMode: "fixed", attackValue: "-9" })).toMatchObject({ saveDc: 30, spellAttack: -5 });
+    expect(cleanMagicDetails({ saveDcMode: "", saveDcValue: "15" })).toMatchObject({ saveDc: undefined, spellAttack: undefined });
+  });
+
+  it("works out 'use mine' from the character, live, and fixed ones as typed", () => {
+    expect(itemSpellNumbers({ saveDc: 13, spellAttack: 5 }, mine)).toEqual({ saveDc: 13, spellAttack: 5 });
+    expect(itemSpellNumbers({ saveDc: "mine", spellAttack: "mine" }, mine)).toEqual({ saveDc: 15, spellAttack: 7 });
+    // A level-up raises the character's numbers, and a "use mine" item follows.
+    expect(itemSpellNumbers({ saveDc: "mine" }, { saveDc: 16, spellAttack: 8 }).saveDc).toBe(16);
+  });
+
+  it("shows nothing made-up when the character doesn't cast spells, and leaves plain items alone", () => {
+    expect(itemSpellNumbers({ saveDc: "mine", spellAttack: 4 }, null)).toEqual({ saveDc: null, spellAttack: 4 });
+    expect(itemSpellNumbers({ name: "Rope" }, mine)).toEqual({ saveDc: null, spellAttack: null });
+  });
+});
+
+// --- Several companions ---------------------------------------------------------------
+describe("several companions", () => {
+  const pet = (id, name, extra = {}) => ({
+    id,
+    name,
+    armorClass: 12,
+    speed: 40,
+    hitPoints: { current: 5, max: 20 },
+    abilityScores: {},
+    attacks: [{ id: `${id}-bite`, name: "Bite", toHit: 4, damage: "1d6+2", damageType: "Piercing" }],
+    ...extra,
+  });
+  const ranger = (extra = {}) => ({
+    name: "QA Ranger",
+    level: 11,
+    class: { id: "ranger", subclass: { name: "Fey Wanderer" } },
+    abilityScores: { wisdom: 14 },
+    features: [{ index: "fr", name: "Fey Reinforcements" }],
+    spellcasting: {
+      type: "known",
+      cantripsKnown: [],
+      spellsKnown: [],
+      spellSlots: [
+        { level: 1, max: 4, current: 4 },
+        { level: 2, max: 3, current: 3 },
+        { level: 3, max: 3, current: 3 },
+      ],
+    },
+    resources: [{ id: "fc", name: "Summon Fey (free cast)", max: 1, current: 1, resetOn: "long", freeCastFor: "Summon Fey" }],
+    combat: { hitPoints: { current: 50, max: 90, temporary: 0 }, hitDice: { total: 11, remaining: 5, die: 10 } },
+    concentration: null,
+    ...extra,
+  });
+  // Two Summon Fey companions ready to cast, and a horse.
+  const withThree = () =>
+    saveCompanions(ranger(), [
+      pet("horse", "Ash"),
+      { ...pet("fey1", "Spritey"), summon: undefined },
+      { ...pet("fey2", "Thistle"), summon: undefined },
+    ]);
+  const link = (sheet, id) => updateCompanion(sheet, id, (view) => applySummonAction(view, "link", { template: "summonFey" }));
+  const cast = (sheet, id, payload) => updateCompanion(sheet, id, (view) => applySummonAction(view, "cast", payload));
+  const present = (sheet, id) => isSummonPresent(companionView(sheet, getCompanions(sheet).find((c) => c.id === id)));
+
+  it("reads an older sheet's single companion as the first of the list, losing nothing", () => {
+    const old = ranger({ companionMode: "creature", companionCreature: pet(undefined, "Ash") });
+    const [first] = getCompanions(old);
+    expect(first).toMatchObject({ id: "companion-1", name: "Ash", attacks: [expect.objectContaining({ name: "Bite" })] });
+    expect(getCompanions(ranger())).toEqual([]);
+    expect(getCompanions(ranger({ companionMode: "text", companionCreature: pet("x", "Hidden") }))).toEqual([]);
+  });
+
+  it("adds and changes each companion on its own, and keeps the first in the old place", () => {
+    let sheet = addCompanion(addCompanion(ranger()));
+    expect(getCompanions(sheet)).toHaveLength(2);
+    const [a, b] = getCompanions(sheet);
+    expect(a.id).not.toBe(b.id);
+    sheet = updateCompanion(sheet, b.id, (view) => ({ ...view, companionCreature: { ...view.companionCreature, name: "Second" } }));
+    expect(getCompanions(sheet).map((c) => c.name)).toEqual(["", "Second"]);
+    expect(sheet.companionCreature.id).toBe(a.id);
+    expect(sheet.companionMode).toBe("creature");
+  });
+
+  it("removes one companion and keeps the others; removing the last clears the old field", () => {
+    let sheet = withThree();
+    sheet = removeCompanion(sheet, "fey1");
+    expect(getCompanions(sheet).map((c) => c.name)).toEqual(["Ash", "Thistle"]);
+    sheet = removeCompanion(removeCompanion(sheet, "horse"), "fey2");
+    expect(getCompanions(sheet)).toEqual([]);
+    expect(sheet.companionCreature).toBeUndefined();
+  });
+
+  it("lets two Summon Feys be out at once: one on concentration, one without", () => {
+    let sheet = link(link(withThree(), "fey1"), "fey2");
+    sheet = cast(sheet, "fey1", { payWith: "slot", slotLevel: 3, concentration: true });
+    expect(sheet.concentration).toEqual({ spell: "Summon Fey", companionId: "fey1" });
+    // Fey Reinforcements: the second without concentration, for a minute.
+    sheet = cast(sheet, "fey2", { payWith: "free", concentration: false });
+    expect(present(sheet, "fey1")).toBe(true);
+    expect(present(sheet, "fey2")).toBe(true);
+    expect(sheet.concentration).toEqual({ spell: "Summon Fey", companionId: "fey1" });
+  });
+
+  it("ends only the summon that needed the concentration when it's dropped", () => {
+    let sheet = link(link(withThree(), "fey1"), "fey2");
+    sheet = cast(sheet, "fey1", { payWith: "slot", slotLevel: 3, concentration: true });
+    sheet = cast(sheet, "fey2", { payWith: "free", concentration: false });
+    sheet = withSummonEnded({ ...sheet, concentration: null });
+    expect(present(sheet, "fey1")).toBe(false);
+    expect(present(sheet, "fey2")).toBe(true);
+  });
+
+  it("casting a second summon with concentration ends the first one's", () => {
+    let sheet = link(link(withThree(), "fey1"), "fey2");
+    sheet = cast(sheet, "fey1", { payWith: "slot", slotLevel: 3, concentration: true });
+    sheet = cast(sheet, "fey2", { payWith: "slot", slotLevel: 3, concentration: true });
+    sheet = withSummonEnded(sheet);
+    expect(sheet.concentration).toEqual({ spell: "Summon Fey", companionId: "fey2" });
+    expect(present(sheet, "fey1")).toBe(false);
+    expect(present(sheet, "fey2")).toBe(true);
+  });
+
+  it("counts down each 1-minute summon and says which spells ran out", () => {
+    let sheet = link(withThree(), "fey2");
+    sheet = cast(sheet, "fey2", { payWith: "free", concentration: false });
+    const { sheet: ticked, ended, endedSpells } = tickSummonRounds(sheet, 100);
+    expect(ended).toBe(true);
+    expect(endedSpells).toEqual(["Summon Fey"]);
+    expect(present(ticked, "fey2")).toBe(false);
+  });
+
+  it("heals every ordinary companion on a long rest and ends every summon", () => {
+    let sheet = link(withThree(), "fey1");
+    sheet = cast(sheet, "fey1", { payWith: "slot", slotLevel: 3, concentration: true });
+    const rested = applyRest(sheet, "long");
+    const [horse, fey1, fey2] = getCompanions(rested);
+    expect(horse.hitPoints.current).toBe(20);
+    expect(fey2.hitPoints.current).toBe(20);
+    expect(fey1.summon.active).toBe(false);
+    expect(rested.concentration).toBeNull();
+  });
+
+  it("removing a summoned companion ends its summon and its concentration", () => {
+    let sheet = link(withThree(), "fey1");
+    sheet = cast(sheet, "fey1", { payWith: "slot", slotLevel: 3, concentration: true });
+    const removed = removeCompanion(sheet, "fey1");
+    expect(removed.concentration).toBeNull();
+    expect(getCompanions(removed).map((c) => c.id)).toEqual(["horse", "fey2"]);
+  });
+
+  it("puts every companion in the party strip (a summon only while it's up)", () => {
+    let sheet = link(withThree(), "fey1");
+    expect(toCompanionRows(sheet).map((row) => row.name)).toEqual(["Ash", "Thistle"]);
+    sheet = cast(sheet, "fey1", { payWith: "slot", slotLevel: 3, concentration: true });
+    expect(toCompanionRows(sheet).map((row) => row.name)).toEqual(["Ash", "Spritey", "Thistle"]);
+    // The party strip's server data before its update: only the old field.
+    const oldData = { companionMode: "creature", companionCreature: sheet.companionCreature, concentration: sheet.concentration };
+    expect(toCompanionRows(oldData).map((row) => row.name)).toEqual(["Ash"]);
   });
 });

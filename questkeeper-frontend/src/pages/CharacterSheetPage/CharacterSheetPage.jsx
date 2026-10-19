@@ -35,7 +35,6 @@ import {
   itemChargesFor,
   unlinkedResources,
   cleanMagicDetails,
-  createCompanionCreature,
   createCompanionAbilityScores,
   EMPTY_DEATH_SAVES,
   applyDeathSave,
@@ -87,10 +86,17 @@ import {
   applyInitiativeUpdate,
   applyFreeCastsSplit,
   applySummonAction,
+  getCompanions,
+  companionView,
+  updateCompanion,
+  addCompanion,
+  removeCompanion,
+  saveCompanions,
   getInventoryCategory,
   getSummonInfo,
   getSummonTemplate,
   getSpellAttackModifier,
+  getSpellSaveDC,
   isSummonPresent,
   tickSummonRounds,
   withSummonEnded,
@@ -311,7 +317,10 @@ function CharacterSheetPage() {
     Boolean(sheet?.conditions?.some((condition) => typeof condition.rounds === "number")) ||
     typeof sheet?.concentration?.rounds === "number" ||
     // A summon cast for 1 minute (no concentration) counts down too.
-    (isSummonPresent(sheet) && typeof sheet.companionCreature.summon.rounds === "number");
+    getCompanions(sheet).some(
+      (creature) =>
+        isSummonPresent(companionView(sheet, creature)) && typeof creature.summon.rounds === "number",
+    );
   // Out of step with the fight: one of this character's turns ended, or it's a
   // new fight or a different table, which just resets the count.
   const roundOutOfStep =
@@ -338,7 +347,7 @@ function CharacterSheetPage() {
       }
 
       const summonTick = tickSummonRounds(sheet, elapsedRounds);
-      if (summonTick.ended) names.push(getSummonTemplate(sheet.companionCreature).spell);
+      names.push(...summonTick.endedSpells);
 
       persistSheet({
         ...summonTick.sheet,
@@ -1114,92 +1123,83 @@ function CharacterSheetPage() {
     });
   }
 
+  // " Spritey is gone (Summon Fey ended)." for each summon that was up.
+  function summonsEndedNote(before) {
+    return getCompanions(before)
+      .filter((creature) => isSummonPresent(companionView(before, creature)))
+      .map((creature) => ` ${creature.name || "Your summon"} is gone (${getSummonTemplate(creature).spell} ended).`)
+      .join("");
+  }
+
   function handleNotesChange(value) {
     persistSheet({ ...sheet, notes: value });
   }
 
-  // "+ Add a companion" on the Actions tab. A companion added before keeps
-  // everything it had; a freeform companion's old text comes along as notes.
+  // "+ Add a companion" on the Actions tab: another card each time. A
+  // companion saved before (even one set aside as text notes) comes back
+  // first, with everything it had.
   function handleCompanionAdd() {
-    persistSheet({
-      ...sheet,
-      companionMode: "creature",
-      companionCreature: sheet.companionCreature ?? createCompanionCreature(),
-    });
+    const existing = getCompanions(sheet);
+    if (existing.length === 0 && sheet.companionCreature) {
+      persistSheet(saveCompanions(sheet, [{ ...sheet.companionCreature, id: sheet.companionCreature.id ?? "companion-1" }]));
+      return;
+    }
+    persistSheet(addCompanion(sheet));
   }
 
-  function handleCompanionCreatureChange(field, value) {
+  // Removes one companion (its card asks first). A summon of its ends.
+  function handleCompanionRemove(id) {
+    persistSheet(removeCompanion(sheet, id));
+  }
+
+  // Changes one companion: change(creature) gives the new creature.
+  function changeCompanion(id, change) {
+    persistSheet(
+      updateCompanion(sheet, id, (view) => ({ ...view, companionCreature: change(view.companionCreature) })),
+    );
+  }
+
+  function handleCompanionCreatureChange(id, field, value) {
     const numeric = field === "name" ? value : Number(value);
     if (field !== "name" && Number.isNaN(numeric)) return;
-
-    persistSheet({
-      ...sheet,
-      companionCreature: { ...sheet.companionCreature, [field]: numeric },
-    });
+    changeCompanion(id, (creature) => ({ ...creature, [field]: numeric }));
   }
 
-  function handleCompanionCreatureHpChange(field, value) {
+  function handleCompanionCreatureHpChange(id, field, value) {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) return;
-
-    persistSheet({
-      ...sheet,
-      companionCreature: {
-        ...sheet.companionCreature,
-        hitPoints: { ...sheet.companionCreature.hitPoints, [field]: numeric },
-      },
-    });
+    changeCompanion(id, (creature) => ({ ...creature, hitPoints: { ...creature.hitPoints, [field]: numeric } }));
   }
 
-  // One of the companion's six ability scores, typed on the Story tab.
-  function handleCompanionAbilityChange(ability, value) {
+  // One of a companion's six ability scores.
+  function handleCompanionAbilityChange(id, ability, value) {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) return;
-
-    persistSheet({
-      ...sheet,
-      companionCreature: {
-        ...sheet.companionCreature,
-        abilityScores: {
-          ...createCompanionAbilityScores(sheet.companionCreature.abilityScores),
-          [ability]: numeric,
-        },
-      },
-    });
+    changeCompanion(id, (creature) => ({
+      ...creature,
+      abilityScores: { ...createCompanionAbilityScores(creature.abilityScores), [ability]: numeric },
+    }));
   }
 
   // A companion's saving throw bonus, typed while editing its stats. An empty
   // box goes back to the plain ability modifier.
-  function handleCompanionSaveChange(ability, value) {
-    const savingThrows = { ...sheet.companionCreature.savingThrows };
-    if (value === "") {
-      delete savingThrows[ability];
-    } else {
-      const numeric = Number(value);
-      if (Number.isNaN(numeric)) return;
-      savingThrows[ability] = numeric;
-    }
-
-    persistSheet({
-      ...sheet,
-      companionCreature: { ...sheet.companionCreature, savingThrows },
+  function handleCompanionSaveChange(id, ability, value) {
+    if (value !== "" && Number.isNaN(Number(value))) return;
+    changeCompanion(id, (creature) => {
+      const savingThrows = { ...creature.savingThrows };
+      if (value === "") delete savingThrows[ability];
+      else savingThrows[ability] = Number(value);
+      return { ...creature, savingThrows };
     });
   }
 
-  function handleCompanionPortraitUpload(url) {
-    persistSheet({
-      ...sheet,
-      companionCreature: { ...sheet.companionCreature, portraitUrl: url },
-    });
+  function handleCompanionPortraitUpload(id, url) {
+    changeCompanion(id, (creature) => ({ ...creature, portraitUrl: url }));
   }
 
-  // The companion's attacks (Bite, Talons), rolled from the Actions tab.
-  function setCompanionAttacks(change) {
-    const creature = sheet.companionCreature ?? createCompanionCreature();
-    persistSheet({
-      ...sheet,
-      companionCreature: { ...creature, attacks: change(creature.attacks ?? []) },
-    });
+  // A companion's attacks (Bite, Talons), rolled from the Actions tab.
+  function setCompanionAttacks(id, change) {
+    changeCompanion(id, (creature) => ({ ...creature, attacks: change(creature.attacks ?? []) }));
   }
 
   const cleanCompanionAttack = (values) => ({
@@ -1210,30 +1210,31 @@ function CharacterSheetPage() {
     notes: (values.notes ?? "").trim(),
   });
 
-  function handleCompanionAttackAdd(values) {
-    setCompanionAttacks((attacks) => [
-      ...attacks,
-      { id: crypto.randomUUID(), ...cleanCompanionAttack(values) },
-    ]);
+  function handleCompanionAttackAdd(id, values) {
+    setCompanionAttacks(id, (attacks) => [...attacks, { id: crypto.randomUUID(), ...cleanCompanionAttack(values) }]);
   }
 
-  function handleCompanionAttackUpdate(id, values) {
-    setCompanionAttacks((attacks) =>
-      attacks.map((attack) => (attack.id === id ? { ...attack, ...cleanCompanionAttack(values) } : attack)),
+  function handleCompanionAttackUpdate(id, attackId, values) {
+    setCompanionAttacks(id, (attacks) =>
+      attacks.map((attack) => (attack.id === attackId ? { ...attack, ...cleanCompanionAttack(values) } : attack)),
     );
   }
 
-  function handleCompanionAttackRemove(id) {
-    setCompanionAttacks((attacks) => attacks.filter((attack) => attack.id !== id));
+  function handleCompanionAttackRemove(id, attackId) {
+    setCompanionAttacks(id, (attacks) => attacks.filter((attack) => attack.id !== attackId));
   }
 
-  // The companion's bulleted notes. Saving the list replaces the old
-  // single block of text, which has already been turned into bullets.
-  function handleCompanionNotesChange(noteList) {
+  // A companion's bulleted notes. The first companion's old single block of
+  // text (sheet.companion) has already been turned into bullets, so saving
+  // its list clears that.
+  function handleCompanionNotesChange(id, noteList) {
+    const isFirst = getCompanions(sheet)[0]?.id === id;
     persistSheet({
-      ...sheet,
-      companion: "",
-      companionCreature: { ...sheet.companionCreature, notes: "", noteList },
+      ...updateCompanion(sheet, id, (view) => ({
+        ...view,
+        companionCreature: { ...view.companionCreature, notes: "", noteList },
+      })),
+      ...(isFirst ? { companion: "" } : {}),
     });
   }
 
@@ -1683,14 +1684,12 @@ function CharacterSheetPage() {
     // Spells like Elemental Weapon (up to an hour) end with the rest.
     const { sheet: rested, ended: endedEffects } = endEffectsForRest(applyRest(sheet, "long"), "long");
     // A summoned companion isn't healed by the rest: its spell ends instead.
-    const isSummon = Boolean(getSummonTemplate(sheet.companionCreature));
-    const companionName =
-      sheet.companionMode === "creature" && sheet.companionCreature && !isSummon
-        ? sheet.companionCreature.name || "your companion"
-        : null;
-    const summonEnded = isSummonPresent(sheet)
-      ? ` ${sheet.companionCreature.name || "Your summon"} is gone (${getSummonTemplate(sheet.companionCreature).spell} ended).`
-      : "";
+    // Healed companions ("Victory's too") and summons that ended.
+    const healedNames = getCompanions(sheet)
+      .filter((creature) => !getSummonTemplate(creature))
+      .map((creature) => creature.name || "your companion");
+    const companionName = healedNames.length > 0 ? healedNames.join(" and ") : null;
+    const summonEnded = summonsEndedNote(sheet);
     const regained =
       getHitDiceRemaining(rested.combat.hitDice) -
       getHitDiceRemaining(sheet.combat.hitDice);
@@ -1717,9 +1716,7 @@ function CharacterSheetPage() {
       ? ` Tireless: exhaustion ${summary.exhaustion.from} → ${summary.exhaustion.to}.`
       : "";
     // A short rest (an hour or more) outlasts a summon too.
-    const summonNote = isSummonPresent(sheet)
-      ? ` ${sheet.companionCreature.name || "Your summon"} is gone (${getSummonTemplate(sheet.companionCreature).spell} ended).`
-      : "";
+    const summonNote = summonsEndedNote(sheet);
     setRestMessage(
       (summary.rolls.length > 0
         ? `Short rest done. Rolled ${summary.rolls.join(" + ")} (${formatModifier(
@@ -2822,43 +2819,53 @@ function CharacterSheetPage() {
                   {/* The companion's whole card (stats, attacks, notes) lives
                       here; with no companion, a line offers to add one. */}
                   {activeTab === "actions" &&
-                    (sheet.companionMode === "creature" && sheet.companionCreature ? (
-                      <CompanionCard
-                        companion={sheet.companionCreature}
-                        notes={getCompanionNotes(sheet.companionCreature, sheet.companion)}
-                        userId={user.id}
-                        characterId={sheet.id}
-                        onPortraitUpload={handleCompanionPortraitUpload}
-                        onFieldChange={handleCompanionCreatureChange}
-                        onHpChange={handleCompanionCreatureHpChange}
-                        onAbilityChange={handleCompanionAbilityChange}
-                        onSaveChange={handleCompanionSaveChange}
-                        onNotesChange={handleCompanionNotesChange}
-                        onAttackAdd={handleCompanionAttackAdd}
-                        onAttackUpdate={handleCompanionAttackUpdate}
-                        onAttackRemove={handleCompanionAttackRemove}
-                        // A companion that follows a summon spell (Fable and
-                        // Summon Fey); null for an ordinary one.
-                        summon={getSummonInfo(
-                          sheet,
-                          spellcastingAbility
-                            ? getSpellAttackModifier(sheet.abilityScores[spellcastingAbility] ?? 10, proficiencyBonus)
-                            : proficiencyBonus,
-                        )}
-                        onSummon={(action, payload) => persistSheet(applySummonAction(sheet, action, payload))}
-                      />
-                    ) : (
-                      <p className="companion-card__add">
-                        <Button variant="secondary" onClick={handleCompanionAdd}>
-                          + Add a companion
-                        </Button>
-                        <span>
-                          {sheet.companion?.trim()
-                            ? "Your companion notes will come along as bullet points."
-                            : "A mount, familiar or animal friend, with its own HP, stats and attacks."}
-                        </span>
-                      </p>
-                    ))}
+                    (
+                      <>
+                        {/* One card per companion (a mount, a familiar, a summon). */}
+                        {getCompanions(sheet).map((creature, index) => (
+                          <CompanionCard
+                            key={creature.id}
+                            companion={creature}
+                            notes={getCompanionNotes(creature, index === 0 ? sheet.companion : "")}
+                            userId={user.id}
+                            characterId={sheet.id}
+                            onPortraitUpload={(url) => handleCompanionPortraitUpload(creature.id, url)}
+                            onFieldChange={(field, value) => handleCompanionCreatureChange(creature.id, field, value)}
+                            onHpChange={(field, value) => handleCompanionCreatureHpChange(creature.id, field, value)}
+                            onAbilityChange={(ability, value) => handleCompanionAbilityChange(creature.id, ability, value)}
+                            onSaveChange={(ability, value) => handleCompanionSaveChange(creature.id, ability, value)}
+                            onNotesChange={(noteList) => handleCompanionNotesChange(creature.id, noteList)}
+                            onAttackAdd={(values) => handleCompanionAttackAdd(creature.id, values)}
+                            onAttackUpdate={(attackId, values) => handleCompanionAttackUpdate(creature.id, attackId, values)}
+                            onAttackRemove={(attackId) => handleCompanionAttackRemove(creature.id, attackId)}
+                            onRemove={() => handleCompanionRemove(creature.id)}
+                            // A companion that follows a summon spell (Fable and
+                            // Summon Fey); null for an ordinary one.
+                            summon={getSummonInfo(
+                              companionView(sheet, creature),
+                              spellcastingAbility
+                                ? getSpellAttackModifier(sheet.abilityScores[spellcastingAbility] ?? 10, proficiencyBonus)
+                                : proficiencyBonus,
+                            )}
+                            onSummon={(action, payload) =>
+                              persistSheet(
+                                updateCompanion(sheet, creature.id, (view) => applySummonAction(view, action, payload)),
+                              )
+                            }
+                          />
+                        ))}
+                        <p className="companion-card__add">
+                          <Button variant="secondary" onClick={handleCompanionAdd}>
+                            {getCompanions(sheet).length > 0 ? "+ Add another companion" : "+ Add a companion"}
+                          </Button>
+                          <span>
+                            {getCompanions(sheet).length === 0 && sheet.companion?.trim()
+                              ? "Your companion notes will come along as bullet points."
+                              : "A mount, familiar, animal friend or summon, with its own HP, stats and attacks."}
+                          </span>
+                        </p>
+                      </>
+                    )}
 
                   {activeTab === "spells" && hasSpellcasting && (
                     <CharacterSheetSpellsTab
@@ -2916,6 +2923,17 @@ function CharacterSheetPage() {
                       onEquipToggle={handleEquipToggle}
                       isWeapon={(item) => isWeaponItem(item, gearDetailsFor(item))}
                       chargesFor={(item) => itemChargesFor(sheet, item)}
+                      mySpellNumbers={
+                        spellcastingAbility
+                          ? {
+                              saveDc: getSpellSaveDC(sheet.abilityScores[spellcastingAbility] ?? 10, proficiencyBonus),
+                              spellAttack: getSpellAttackModifier(
+                                sheet.abilityScores[spellcastingAbility] ?? 10,
+                                proficiencyBonus,
+                              ),
+                            }
+                          : null
+                      }
                       freeResources={unlinkedResources(sheet)}
                       onChargesChange={handleResourceCurrentChange}
                       onWeaponEquipToggle={handleWeaponEquipToggle}
