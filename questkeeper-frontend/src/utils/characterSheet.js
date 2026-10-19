@@ -1574,14 +1574,107 @@ export function createPendingLevelUp(targetLevel, stepKeys) {
   };
 }
 
-export function createResource({ name, max, resetOn, notes }) {
+// resetOn says when it refills:
+//   "short"   on a short or long rest
+//   "long"    on a long rest (the default, and what older resources have)
+//   "dawn"    at dawn, which the player marks with the New dawn button
+//             (never a rest, never the computer's clock). regain is how
+//             many come back: a number ("1"), dice ("1d3", "1d6+4"), or ""
+//             for all of them. A magic item's charges, usually.
+//   "manual"  never by itself: the player sets it
+// itemIndex: the inventory item whose charges these are (optional).
+export const RESET_ON = ["short", "long", "dawn", "manual"];
+
+// When a resource refills, for the editor's choice. Dawn is for magic
+// items' charges; "By hand" never refills by itself.
+export const RESET_OPTIONS = [
+  { value: "long", label: "Long Rest" },
+  { value: "short", label: "Short Rest" },
+  { value: "dawn", label: "Daily at dawn" },
+  { value: "manual", label: "By hand only" },
+];
+
+
+export function createResource({ name, max, resetOn, notes, regain = "", itemIndex = null }) {
+  const reset = RESET_ON.includes(resetOn) ? resetOn : "long";
   return {
     id: crypto.randomUUID(),
     name,
     max,
     current: max,
-    resetOn, // "short" | "long"
+    resetOn: reset,
+    ...(reset === "dawn" && cleanRegain(regain) ? { regain: cleanRegain(regain) } : {}),
+    ...(itemIndex ? { itemIndex } : {}),
     notes: notes || "",
+  };
+}
+
+// "1d6 + 4" -> "1d6+4"; a plain number or NdM(+/-K). Anything else is "",
+// which means "all of them".
+export function cleanRegain(text) {
+  const cleaned = String(text ?? "").replace(/\s+/g, "").toLowerCase();
+  return /^(\d{1,3}|\d{1,2}d\d{1,3}([+-]\d{1,3})?)$/.test(cleaned) ? cleaned : "";
+}
+
+// How many charges come back at dawn: { amount, text } where text says how
+// it was worked out ("1d3 [2] = 2"). An empty regain brings back all of
+// them. Rolls with the app's own dice.
+export function rollRegain(resource) {
+  const regain = cleanRegain(resource?.regain);
+  const missing = Math.max(0, (Number(resource?.max) || 0) - (Number(resource?.current) || 0));
+  if (!regain) return { amount: missing, text: "all" };
+  const flat = regain.match(/^(\d+)$/);
+  if (flat) return { amount: Number(flat[1]), text: flat[1] };
+  const [, count, sides, bonus] = regain.match(/^(\d+)d(\d+)([+-]\d+)?$/);
+  const rolls = Array.from({ length: Number(count) }, () => rollDie(Number(sides)));
+  const amount = Math.max(0, rolls.reduce((sum, roll) => sum + roll, 0) + Number(bonus ?? 0));
+  return { amount, text: `${count}d${sides} [${rolls.join(", ")}]${bonus ?? ""} = ${amount}` };
+}
+
+// Words for when a resource refills ("Long Rest", "Dawn (+1d3)").
+export function describeReset(resource) {
+  if (resource?.resetOn === "short") return "Short Rest";
+  if (resource?.resetOn === "dawn") return `Dawn (+${cleanRegain(resource.regain) || "all"})`;
+  if (resource?.resetOn === "manual") return "By hand";
+  return "Long Rest";
+}
+
+// A new dawn: every resource that refills at dawn regains its charges
+// (never past its maximum), and nothing else changes. The player marks
+// dawn on purpose, so it's never guessed from a rest or the clock. The day
+// is counted, and the charges from before are kept for one Undo, so an
+// accidental second tap can be taken back.
+// Returns { sheet, results: [{ id, name, gained, text, current, max }] }.
+export function applyDawn(sheet) {
+  const results = [];
+  const before = {};
+  const resources = (sheet?.resources ?? []).map((resource) => {
+    if (resource.resetOn !== "dawn") return resource;
+    const max = Number(resource.max) || 0;
+    const current = Number(resource.current) || 0;
+    before[resource.id] = current;
+    const { amount, text } = rollRegain(resource);
+    const next = Math.min(max, current + amount);
+    results.push({ id: resource.id, name: resource.name, gained: next - current, text, current: next, max });
+    return { ...resource, current: next };
+  });
+  if (results.length === 0) return { sheet, results };
+  const day = (Number(sheet.day) || 1) + 1;
+  return { sheet: { ...sheet, resources, day, lastDawn: { day, before } }, results };
+}
+
+// Undoes the last New dawn (an accidental tap): charges go back to what
+// they were, and the day count goes back one. Only once per dawn.
+export function undoDawn(sheet) {
+  const last = sheet?.lastDawn;
+  if (!last) return sheet;
+  return {
+    ...sheet,
+    day: Math.max(1, (Number(sheet.day) || 1) - 1),
+    lastDawn: null,
+    resources: (sheet.resources ?? []).map((resource) =>
+      last.before?.[resource.id] !== undefined ? { ...resource, current: last.before[resource.id] } : resource,
+    ),
   };
 }
 
@@ -1983,7 +2076,10 @@ export function getGrantRollDice(grant, abilityScores) {
 }
 
 export function applyRest(sheet, restType) {
+  // Dawn and by-hand resources never refill from a rest (dawn is marked
+  // on its own, with New dawn).
   const resources = (sheet.resources ?? []).map((resource) => {
+    if (resource.resetOn === "dawn" || resource.resetOn === "manual") return resource;
     const shouldReset = restType === "long" || resource.resetOn === "short";
     return shouldReset ? { ...resource, current: resource.max } : resource;
   });
@@ -2458,11 +2554,132 @@ export function shareAttackFacts(sheet, attackIndex, weaponDetailsFor = () => nu
   return syncLinkedAttacks(next, item.index, item, weaponDetailsFor, { skipAttack: attackIndex });
 }
 
-// Removing an inventory item never removes attack setup: its attacks are
-// unlinked and stay on the Actions tab as standalone attacks.
+// Removing an inventory item never removes what's set up from it: its
+// attacks stay on the Actions tab and its charges stay on the Resources tab,
+// each unlinked.
 export function removeEquipmentKeepingAttacks(sheet, itemIndex) {
   const unlinked = linkedAttacksFor(sheet, itemIndex).reduce((next, attack) => unlinkAttack(next, attack.index), sheet);
-  return { ...unlinked, equipment: removeEquipmentItem(unlinked.equipment, itemIndex) };
+  return {
+    ...unlinked,
+    equipment: removeEquipmentItem(unlinked.equipment, itemIndex),
+    ...(unlinked.resources ? { resources: unlinkItemResources(unlinked.resources, itemIndex) } : {}),
+  };
+}
+
+// --- An item's charges --------------------------------------------------------------
+//
+// A magic item's charges (a wand's 3) are an ordinary resource with
+// itemIndex set to the item. There's only ever one copy: the Inventory row
+// and the Resources tab both show and change that same resource. Items with
+// no charges have no resource and are unchanged.
+
+const unlinkItemResources = (resources, itemIndex) =>
+  resources.map((resource) => {
+    if (resource.itemIndex !== itemIndex) return resource;
+    const copy = { ...resource };
+    delete copy.itemIndex;
+    return copy;
+  });
+
+// The resource holding this item's charges, or null.
+export const itemChargesFor = (sheet, item) =>
+  (sheet?.resources ?? []).find((resource) => item?.index && resource.itemIndex === item.index) ?? null;
+
+// Resources not tied to any item, which an item could take over (keeping
+// the charges already used).
+export const unlinkedResources = (sheet) => (sheet?.resources ?? []).filter((resource) => !resource.itemIndex);
+
+// Sets up an item's charges from the item editor:
+//   charges: { max, resetOn, regain, linkResourceId }
+//   - linkResourceId: take over an existing resource (its charges left and
+//     its settings stay as they are)
+//   - max of 0 or blank: the item has no charges. A resource it had is
+//     unlinked, never deleted (it stays on the Resources tab).
+//   - otherwise the linked resource is created or updated; charges left are
+//     kept (only cut down to a lower maximum).
+// before: the item as it was, so a resource named after it follows a rename.
+export function setItemCharges(sheet, item, charges = {}, before = null) {
+  const resources = sheet?.resources ?? [];
+  const existing = itemChargesFor(sheet, item);
+  if (charges.linkResourceId) {
+    const chosen = resources.find((resource) => resource.id === charges.linkResourceId && !resource.itemIndex);
+    if (!chosen) return sheet;
+    const freed = existing ? unlinkItemResources(resources, item.index) : resources;
+    return {
+      ...sheet,
+      resources: freed.map((resource) => (resource.id === chosen.id ? { ...resource, itemIndex: item.index } : resource)),
+    };
+  }
+  const max = Math.floor(Number(charges.max) || 0);
+  if (max < 1) {
+    return existing ? { ...sheet, resources: unlinkItemResources(resources, item.index) } : sheet;
+  }
+  const resetOn = RESET_ON.includes(charges.resetOn) ? charges.resetOn : "dawn";
+  const regain = resetOn === "dawn" ? cleanRegain(charges.regain) : "";
+  if (!existing) {
+    const created = createResource({ name: item.name, max, resetOn, regain, itemIndex: item.index });
+    return { ...sheet, resources: [...resources, created] };
+  }
+  const renamed = before && existing.name === before.name ? item.name : existing.name;
+  return {
+    ...sheet,
+    resources: resources.map((resource) => {
+      if (resource.id !== existing.id) return resource;
+      const next = { ...resource, name: renamed, max, resetOn, current: Math.min(Number(resource.current) || 0, max) };
+      if (regain) next.regain = regain;
+      else delete next.regain;
+      return next;
+    }),
+  };
+}
+
+// --- Magic item details ----------------------------------------------------------------
+//
+// Optional facts on an inventory item, all from the item editor's "Magic
+// item details": rarity, itemType, requiresAttunement and attunementBy
+// ("a ranger or druid"). Requiring attunement is separate from being
+// attuned (the ★, item.attuned): an item's description saying "requires
+// attunement" changes neither, and adding an item never attunes it.
+
+export const ITEM_RARITIES = ["", "Common", "Uncommon", "Rare", "Very rare", "Legendary", "Artifact"];
+export const ITEM_TYPES = [
+  "",
+  "Wondrous item",
+  "Wand",
+  "Staff",
+  "Rod",
+  "Ring",
+  "Armor",
+  "Weapon",
+  "Potion",
+  "Scroll",
+];
+
+// The item's magic details tidied for saving: blank ones are left off, so
+// a plain item (rope, torches) stays exactly as it was.
+export function cleanMagicDetails(values = {}) {
+  const rarity = ITEM_RARITIES.includes(values.rarity) ? values.rarity : "";
+  const itemType = String(values.itemType ?? "").trim().slice(0, 40);
+  const requiresAttunement = Boolean(values.requiresAttunement);
+  const attunementBy = requiresAttunement ? String(values.attunementBy ?? "").trim().slice(0, 60) : "";
+  return {
+    rarity: rarity || undefined,
+    itemType: itemType || undefined,
+    requiresAttunement: requiresAttunement || undefined,
+    attunementBy: attunementBy || undefined,
+  };
+}
+
+// One short line about an item: "Rare wand · Requires attunement by a
+// ranger". Empty for a plain item.
+export function describeMagicItem(item) {
+  const kind = [item?.rarity, item?.itemType ? (item?.rarity ? item.itemType.toLowerCase() : item.itemType) : ""]
+    .filter(Boolean)
+    .join(" ");
+  const attunement = item?.requiresAttunement
+    ? `Requires attunement${item.attunementBy ? ` by ${item.attunementBy}` : ""}`
+    : "";
+  return [kind, attunement].filter(Boolean).join(" · ");
 }
 
 // Clicking a skill's badge steps through: not proficient -> proficient ->

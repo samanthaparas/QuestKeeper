@@ -1,9 +1,31 @@
 import UsePips, { MAX_PIPS } from "../UsePips/UsePips";
 import EditableItemList from "../EditableItemList/EditableItemList";
+import Button from "../Button/Button";
+import { RESET_OPTIONS, describeReset } from "../../utils/characterSheet";
+
+// The regain box, shown only for "Daily at dawn": a number, dice like
+// 1d3 or 1d6+4, or blank for all of them.
+export function RegainField({ value, onChange, resetOn }) {
+  if (resetOn !== "dawn") return null;
+  return (
+    <label className="character-sheet__labeled-box character-sheet__regain-field">
+      <span>Regains at dawn</span>
+      <input
+        className="character-sheet__resource-form-input"
+        placeholder="1d3 (blank: all)"
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  );
+}
 
 // Ways to order the resources, and which ones to show. The default keeps
 // the order they were added.
-const restLabel = (resource) => (resource.resetOn === "short" ? "Short rest" : "Long rest");
+// (Sorted Z to A, this puts them in the order they come back: short rest,
+// long rest, daily at dawn, by hand.)
+const REST_LABELS = { short: "Short rest", dawn: "Daily at dawn", manual: "By hand" };
+const restLabel = (resource) => REST_LABELS[resource.resetOn] ?? "Long rest";
 const RESOURCE_SORTS = [
   { key: "added", label: "Order added" },
   { key: "name", label: "Name (A–Z)", compare: () => 0 },
@@ -19,7 +41,13 @@ const RESOURCE_SORTS = [
 ];
 const RESOURCE_FILTERS = [
   { key: "short", label: "Short rest", match: (resource) => resource.resetOn === "short" },
-  { key: "long", label: "Long rest", match: (resource) => resource.resetOn !== "short" },
+  {
+    key: "long",
+    label: "Long rest",
+    match: (resource) => !["short", "dawn", "manual"].includes(resource.resetOn),
+  },
+  { key: "dawn", label: "Daily at dawn", match: (resource) => resource.resetOn === "dawn" },
+  { key: "manual", label: "By hand", match: (resource) => resource.resetOn === "manual" },
   { key: "ready", label: "Has uses left", match: (resource) => (Number(resource.current) || 0) > 0 },
   { key: "spent", label: "Used up", match: (resource) => (Number(resource.current) || 0) <= 0 },
   { key: "free", label: "Free spell casts", match: (resource) => Boolean(resource.freeCastFor) },
@@ -31,7 +59,34 @@ function CharacterSheetResourcesTab({
   onResourceAdd,
   onResourceUpdate,
   onResourceRemove,
+  // New dawn: recharges the daily resources once, on purpose (never from a
+  // rest or the clock). dawnNote: what the last dawn did, with Undo.
+  onDawn = () => {},
+  onUndoDawn = () => {},
+  dawnNote = null,
+  // The inventory item a resource holds the charges of (or null).
+  itemFor = () => null,
 }) {
+  const hasDawn = (resources ?? []).some((resource) => resource.resetOn === "dawn");
+  const dawnBar = hasDawn ? (
+    <div className="character-sheet__dawn-bar">
+      <Button variant="secondary" onClick={onDawn}>
+        🌅 New dawn
+      </Button>
+      <span className="character-sheet__dawn-help">
+        Daily items regain charges at dawn. Tap this when dawn comes in the game; resting doesn&apos;t do it.
+      </span>
+      {dawnNote && (
+        <p className="character-sheet__dawn-note" role="status">
+          {dawnNote.text}{" "}
+          <button type="button" className="character-sheet__lookup-retry" onClick={onUndoDawn}>
+            Undo
+          </button>
+        </p>
+      )}
+    </div>
+  ) : null;
+
   return (
     <EditableItemList
       title="Resources"
@@ -53,11 +108,18 @@ function CharacterSheetResourcesTab({
         {
           key: "resetOn",
           type: "select",
+          label: "Refills",
           defaultValue: "long",
-          options: [
-            { value: "long", label: "Long Rest" },
-            { value: "short", label: "Short Rest" },
-          ],
+          options: RESET_OPTIONS,
+        },
+        {
+          key: "regain",
+          type: "custom",
+          defaultValue: "",
+          fromItem: (item) => item.regain ?? "",
+          render: ({ value, onChange, values }) => (
+            <RegainField value={value} onChange={onChange} resetOn={values.resetOn} />
+          ),
         },
         {
           key: "notes",
@@ -65,7 +127,8 @@ function CharacterSheetResourcesTab({
           placeholder: "Notes (optional) - one line per bullet point",
         },
       ]}
-      emptyText="Track anything with limited uses, like Channel Divinity, Lay on Hands or Second Wind. Tap Add Resource, give it a name and how many uses you get, then tap a pip each time you use one. It refills on the rest you pick."
+      emptyText="Track anything with limited uses, like Channel Divinity, Lay on Hands, Second Wind or a wand's charges. Tap Add Resource, give it a name and how many uses you get, then tap a pip each time you use one. It refills on the rest you pick, at dawn, or only when you change it."
+      footer={dawnBar}
       addButtonLabel="Add Resource"
       onAdd={onResourceAdd}
       onUpdate={onResourceUpdate}
@@ -105,7 +168,14 @@ function CharacterSheetResourcesTab({
             </span>
           )}
           <span className="character-sheet__resource-reset">
-            {resource.resetOn === "short" ? "Short Rest" : "Long Rest"}
+            {describeReset(resource)}
+            {/* Charges of an inventory item: the same numbers show there. */}
+            {itemFor(resource) && (
+              <span className="character-sheet__resource-item" title={`The charges of ${itemFor(resource).name} in your inventory`}>
+                {" "}
+                · 🎒 {itemFor(resource).name}
+              </span>
+            )}
           </span>
         </>
       )}

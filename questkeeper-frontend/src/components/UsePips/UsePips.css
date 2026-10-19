@@ -9,7 +9,9 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 6px;
-  max-width: 190px;
+  /* As wide as one row of --pips-per-row pips (18px each, 6px apart), so
+     the rows come out even. */
+  max-width: calc(var(--pips-per-row, 8) * 24px - 6px);
 }
 
 /* A pip: a little gem. Lit is a filled terracotta gem; used is an empty

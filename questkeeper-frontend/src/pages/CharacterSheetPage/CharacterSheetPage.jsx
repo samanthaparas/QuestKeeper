@@ -28,6 +28,13 @@ import {
   formatModifier,
   buildLevelUpSummary,
   createResource,
+  cleanRegain,
+  applyDawn,
+  undoDawn,
+  setItemCharges,
+  itemChargesFor,
+  unlinkedResources,
+  cleanMagicDetails,
   createCompanionCreature,
   createCompanionAbilityScores,
   EMPTY_DEATH_SAVES,
@@ -252,6 +259,9 @@ function CharacterSheetPage() {
   // Armor or a shield being put on while another of its kind is worn:
   // { itemIndex, blockedBy }. The player can swap or cancel.
   const [pendingArmor, setPendingArmor] = useState(null);
+  // What the last New dawn did ("Wand of Conducting regained 2 (3/3)"),
+  // shown with an Undo until something else happens.
+  const [dawnNote, setDawnNote] = useState(null);
   function setSharpshooter(attackIndex, on) {
     setSharpshooterOn((previous) => {
       const next = new Set(previous);
@@ -1272,6 +1282,19 @@ function CharacterSheetPage() {
     return result.sheet;
   }
 
+  // The editor's "Magic item details" as the item's own fields (rarity,
+  // type, attunement), and its charges as a separate step (setItemCharges),
+  // since those live on the Resources tab.
+  const chargesFrom = (values) => {
+    const details = values.magicDetails ?? {};
+    return {
+      max: details.chargesMax,
+      resetOn: details.chargesResetOn ?? "dawn",
+      regain: details.chargesRegain,
+      linkResourceId: details.linkResourceId || null,
+    };
+  };
+
   function handleEquipmentAdd(values) {
     const item = {
       ...createEquipmentItem({
@@ -1281,8 +1304,11 @@ function CharacterSheetPage() {
         category: values.category,
       }),
       ...weaponFieldsFrom(values),
+      ...cleanMagicDetails(values.magicDetails),
     };
-    const next = { ...sheet, equipment: [...(sheet.equipment ?? []), item] };
+    // Never attuned on adding, even if it requires attunement.
+    let next = { ...sheet, equipment: [...(sheet.equipment ?? []), item] };
+    next = setItemCharges(next, item, chargesFrom(values));
     persistSheet(values.weapon?.wielded ? equipOrAsk(next, item.index) : next);
   }
 
@@ -1297,8 +1323,12 @@ function CharacterSheetPage() {
         // "Guess for me" clears a picked category.
         category: values.category || undefined,
         ...weaponFieldsFrom(values),
+        ...cleanMagicDetails(values.magicDetails),
       }),
     };
+    // Its charges (kept as they are unless the maximum went down).
+    const edited = next.equipment.find((item) => item.index === id);
+    if (edited) next = setItemCharges(next, edited, chargesFrom(values), before);
     // Its linked attacks follow the edit (customised numbers are kept).
     next = syncLinkedAttacks(next, id, before, weaponDetailsOrLoading);
     const wantWielded = Boolean(values.weapon?.wielded);
@@ -1385,6 +1415,7 @@ function CharacterSheetPage() {
       name: values.name.trim(),
       max: Number(values.max),
       resetOn: values.resetOn,
+      regain: values.regain,
       notes: values.notes.trim(),
     });
     persistSheet({
@@ -1396,13 +1427,33 @@ function CharacterSheetPage() {
   function handleResourceUpdate(id, values) {
     persistSheet({
       ...sheet,
+      // Charges left are kept (only cut down to a lower maximum).
       resources: updateResource(sheet.resources, id, {
         name: values.name.trim(),
         max: Number(values.max),
         resetOn: values.resetOn,
+        regain: values.resetOn === "dawn" ? cleanRegain(values.regain) || undefined : undefined,
         notes: values.notes.trim(),
       }),
     });
+  }
+
+  // New dawn: daily items regain their charges, once, with a note saying
+  // what each got and an Undo for an accidental tap.
+  function handleDawn() {
+    const { sheet: dawned, results } = applyDawn(sheet);
+    if (results.length === 0) return;
+    persistSheet(dawned);
+    setDawnNote({
+      text: `Dawn of day ${dawned.day}: ${results
+        .map((result) => `${result.name} regained ${result.gained} (${result.text}), now ${result.current}/${result.max}`)
+        .join("; ")}.`,
+    });
+  }
+
+  function handleUndoDawn() {
+    persistSheet(undoDawn(sheet));
+    setDawnNote(null);
   }
 
   function handleResourceRemove(id) {
@@ -2839,6 +2890,14 @@ function CharacterSheetPage() {
                       onResourceAdd={handleResourceAdd}
                       onResourceUpdate={handleResourceUpdate}
                       onResourceRemove={handleResourceRemove}
+                      onDawn={handleDawn}
+                      onUndoDawn={handleUndoDawn}
+                      dawnNote={sheet.lastDawn ? dawnNote : null}
+                      itemFor={(resource) =>
+                        resource.itemIndex
+                          ? ((sheet.equipment ?? []).find((item) => item.index === resource.itemIndex) ?? null)
+                          : null
+                      }
                     />
                   )}
 
@@ -2856,6 +2915,9 @@ function CharacterSheetPage() {
                       categoryOf={(item) => getInventoryCategory(item, gearDetailsFor(item))}
                       onEquipToggle={handleEquipToggle}
                       isWeapon={(item) => isWeaponItem(item, gearDetailsFor(item))}
+                      chargesFor={(item) => itemChargesFor(sheet, item)}
+                      freeResources={unlinkedResources(sheet)}
+                      onChargesChange={handleResourceCurrentChange}
                       onWeaponEquipToggle={handleWeaponEquipToggle}
                       linkedCountFor={(item) => linkedAttacksFor(sheet, item.index).length}
                       armorWarning={

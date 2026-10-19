@@ -10,7 +10,140 @@ import {
   isWeaponItem,
   MAGIC_OPTIONS,
   magicChoiceFor,
+  ITEM_RARITIES,
+  ITEM_TYPES,
+  RESET_OPTIONS,
+  describeMagicItem,
+  describeReset,
 } from "../../utils/characterSheet";
+import UsePips, { MAX_PIPS } from "../UsePips/UsePips";
+import { RegainField } from "../CharacterSheetResourcesTab/CharacterSheetResourcesTab";
+
+// "Magic item details" in the item editor, closed unless the item already
+// has some: rarity, type, whether it needs attunement (and by whom), and
+// charges. Charges can be new, or an existing resource taken over with the
+// uses already spent. A plain item (rope, torches) never needs to open it.
+// value: { rarity, itemType, requiresAttunement, attunementBy, chargesMax,
+// chargesResetOn, chargesRegain, linkResourceId }.
+function MagicItemFields({ value, onChange, freeResources }) {
+  const details = value ?? {};
+  const set = (key, next) => onChange({ ...details, [key]: next });
+  const hasAny = Boolean(
+    details.rarity || details.itemType || details.requiresAttunement || Number(details.chargesMax) > 0,
+  );
+  return (
+    <details className="character-sheet__magic-details" open={hasAny || undefined}>
+      <summary>Magic item details (optional)</summary>
+      <div className="character-sheet__extra-damage-row">
+        <label className="character-sheet__labeled-box">
+          <span>Rarity</span>
+          <select
+            className="character-sheet__resource-form-select"
+            value={details.rarity ?? ""}
+            onChange={(event) => set("rarity", event.target.value)}
+          >
+            {ITEM_RARITIES.map((rarity) => (
+              <option key={rarity} value={rarity}>
+                {rarity || "Not set"}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="character-sheet__labeled-box">
+          <span>Item type</span>
+          <input
+            className="character-sheet__resource-form-input"
+            list="magic-item-types"
+            placeholder="Wand"
+            value={details.itemType ?? ""}
+            onChange={(event) => set("itemType", event.target.value)}
+          />
+          <datalist id="magic-item-types">
+            {ITEM_TYPES.filter(Boolean).map((type) => (
+              <option key={type} value={type} />
+            ))}
+          </datalist>
+        </label>
+      </div>
+      <div className="character-sheet__extra-damage-row">
+        <label className="character-sheet__resource-form-check">
+          <input
+            type="checkbox"
+            checked={Boolean(details.requiresAttunement)}
+            onChange={(event) => set("requiresAttunement", event.target.checked)}
+          />
+          Requires attunement
+        </label>
+        {details.requiresAttunement && (
+          <label className="character-sheet__labeled-box">
+            <span>By (optional)</span>
+            <input
+              className="character-sheet__resource-form-input"
+              placeholder="a ranger or druid"
+              value={details.attunementBy ?? ""}
+              onChange={(event) => set("attunementBy", event.target.value)}
+            />
+          </label>
+        )}
+      </div>
+      <div className="character-sheet__extra-damage-row">
+        <label className="character-sheet__labeled-box character-sheet__labeled-box--dice">
+          <span>Charges</span>
+          <input
+            className="character-sheet__resource-form-input"
+            type="number"
+            min="0"
+            placeholder="0"
+            value={details.chargesMax ?? ""}
+            disabled={Boolean(details.linkResourceId)}
+            onChange={(event) => set("chargesMax", event.target.value)}
+          />
+        </label>
+        {Number(details.chargesMax) > 0 && !details.linkResourceId && (
+          <>
+            <label className="character-sheet__labeled-box">
+              <span>Recharge</span>
+              <select
+                className="character-sheet__resource-form-select"
+                value={details.chargesResetOn ?? "dawn"}
+                onChange={(event) => set("chargesResetOn", event.target.value)}
+              >
+                {RESET_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <RegainField
+              value={details.chargesRegain}
+              onChange={(next) => set("chargesRegain", next)}
+              resetOn={details.chargesResetOn ?? "dawn"}
+            />
+          </>
+        )}
+        {/* Already tracking it on the Resources tab? Take that one over. */}
+        {!(Number(details.chargesMax) > 0) && freeResources.length > 0 && (
+          <label className="character-sheet__labeled-box">
+            <span>Or use a resource you have</span>
+            <select
+              className="character-sheet__resource-form-select"
+              value={details.linkResourceId ?? ""}
+              onChange={(event) => set("linkResourceId", event.target.value)}
+            >
+              <option value="">None</option>
+              {freeResources.map((resource) => (
+                <option key={resource.id} value={resource.id}>
+                  {resource.name} ({resource.current}/{resource.max})
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+    </details>
+  );
+}
 import { ExtraDamageEditor } from "../CharacterSheetActionsTab/CharacterSheetActionsTab";
 
 // A weapon's setup in the item editor: what it is, its magic, extra damage,
@@ -88,6 +221,12 @@ function CharacterSheetInventoryTab({
   linkChoiceFor = () => null,
   // A warning shown above the list (wearing two armors or two shields).
   armorWarning = null,
+  // An item's charges: chargesFor(item) is its resource (or null),
+  // freeResources the resources no item has yet, onChargesChange(id, n)
+  // spends or restores them (the same resource the Resources tab shows).
+  chargesFor = () => null,
+  freeResources = [],
+  onChargesChange = () => {},
   // An item's category: the one picked, or a guess (see getInventoryCategory).
   categoryOf = (item) => getInventoryCategory(item),
 }) {
@@ -199,6 +338,26 @@ function CharacterSheetInventoryTab({
             render: (props) => <WeaponItemFields {...props} />,
           },
           {
+            key: "magicDetails",
+            type: "custom",
+            defaultValue: {},
+            fromItem: (item) => {
+              const charges = chargesFor(item);
+              return {
+                rarity: item.rarity ?? "",
+                itemType: item.itemType ?? "",
+                requiresAttunement: Boolean(item.requiresAttunement),
+                attunementBy: item.attunementBy ?? "",
+                chargesMax: charges ? String(charges.max) : "",
+                chargesResetOn: charges?.resetOn ?? "dawn",
+                chargesRegain: charges?.regain ?? "",
+              };
+            },
+            render: ({ value, onChange }) => (
+              <MagicItemFields value={value} onChange={onChange} freeResources={freeResources} />
+            ),
+          },
+          {
             key: "description",
             type: "textarea",
             placeholder: "Description (optional) - one line per bullet point",
@@ -221,6 +380,51 @@ function CharacterSheetInventoryTab({
             : null
         }
         rowPanel={(item) => linkChoiceFor(item)}
+        // Under the name: what kind of magic item it is, whether it needs
+        // attunement, and its charges to spend right here.
+        primaryExtra={(item) => {
+          const about = describeMagicItem(item);
+          const charges = chargesFor(item);
+          if (!about && !charges) return null;
+          return (
+            <span className="character-sheet__item-meta">
+              {about && (
+                <span>
+                  {about}
+                  {item.requiresAttunement ? (item.attuned ? " (attuned)" : " (not attuned yet)") : ""}
+                </span>
+              )}
+              {charges && (
+                <span className="character-sheet__item-charges">
+                  <span className="character-sheet__item-charges-label">Charges</span>
+                  {charges.max <= MAX_PIPS ? (
+                    <UsePips
+                      label={`${item.name} charges`}
+                      current={charges.current}
+                      max={charges.max}
+                      onChange={(next) => onChargesChange(charges.id, next)}
+                    />
+                  ) : (
+                    <span className="character-sheet__resource-count">
+                      <input
+                        type="number"
+                        className="character-sheet__resource-input"
+                        aria-label={`${item.name} charges left`}
+                        value={charges.current}
+                        min={0}
+                        max={charges.max}
+                        onChange={(event) => onChargesChange(charges.id, event.target.value)}
+                      />
+                      {" / "}
+                      {charges.max}
+                    </span>
+                  )}
+                  <span className="character-sheet__damage-type">{describeReset(charges)}</span>
+                </span>
+              )}
+            </span>
+          );
+        }}
         isNameClickable={(item) =>
           equipmentLookup.findMatches(item.name).length > 0
         }

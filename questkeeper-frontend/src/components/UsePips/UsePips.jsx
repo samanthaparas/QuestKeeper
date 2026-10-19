@@ -20,7 +20,14 @@ function UsePips({ label, current, max, onChange, compact = false }) {
 
   return (
     <div className={`use-pips${compact ? " use-pips--compact" : ""}`}>
-      <div className="use-pips__row" role="group" aria-label={`${label}: ${left} of ${max} left`}>
+      <div
+        className="use-pips__row"
+        role="group"
+        aria-label={`${label}: ${left} of ${max} left`}
+        // Up to 8 fit on one line; more split into even rows (10 as 5 and
+        // 5, 12 as 6 and 6), never 8 and a leftover 2.
+        style={{ "--pips-per-row": max <= 8 ? max : Math.ceil(max / Math.ceil(max / 8)) }}
+      >
         {Array.from({ length: max }, (_, index) => {
           const lit = index < left;
           // Only pips that just changed move: newly lit ones light up in
