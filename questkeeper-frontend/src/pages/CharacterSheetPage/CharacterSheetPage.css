@@ -2717,3 +2717,16 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   gap: 8px;
   margin-top: 10px;
 }
+
+/* "Something new to look at": a small red dot on the Features tab and on the
+   Tasha's options line, until the options are opened. */
+.character-sheet__new-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background-color: var(--qk-danger);
+  box-shadow: 0 0 0 2px var(--qk-surface);
+  vertical-align: middle;
+}

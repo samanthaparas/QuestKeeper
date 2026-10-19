@@ -16,7 +16,16 @@ const CHARACTER_SHEET_TABS = [
 ];
 
 // badges: { features: 2 } puts a small count on a tab (here, setup choices left).
-function CharacterSheetTabs({ activeTab, onSelect, hasSpellcasting, hasTable = false, badges = {} }) {
+// dots: { features: true } puts a small red dot on a tab: something new to
+// look at there (an optional class feature the character can use now).
+function CharacterSheetTabs({
+  activeTab,
+  onSelect,
+  hasSpellcasting,
+  hasTable = false,
+  badges = {},
+  dots = {},
+}) {
   const tabs = CHARACTER_SHEET_TABS.filter((tab) => !tab.casterOnly || hasSpellcasting).map((tab) => ({
     ...tab,
     label: hasTable && tab.tableLabel ? tab.tableLabel : tab.label,
@@ -36,8 +45,15 @@ function CharacterSheetTabs({ activeTab, onSelect, hasSpellcasting, hasTable = f
           aria-selected={activeTab === tab.key}
           // With a count on it, the tab says what the count means.
           aria-label={
-            badges[tab.key] > 0
-              ? `${tab.label} (${badges[tab.key]} ${badges[tab.key] === 1 ? "choice" : "choices"} left)`
+            badges[tab.key] > 0 || dots[tab.key]
+              ? `${tab.label} (${[
+                  badges[tab.key] > 0
+                    ? `${badges[tab.key]} ${badges[tab.key] === 1 ? "choice" : "choices"} left`
+                    : "",
+                  dots[tab.key] ? "something new" : "",
+                ]
+                  .filter(Boolean)
+                  .join(", ")})`
               : undefined
           }
           className={`character-sheet-tabs__tab${
@@ -51,6 +67,7 @@ function CharacterSheetTabs({ activeTab, onSelect, hasSpellcasting, hasTable = f
               {badges[tab.key]}
             </span>
           )}
+          {dots[tab.key] && <span className="character-sheet__new-dot" aria-hidden="true" />}
         </button>
       ))}
     </div>
