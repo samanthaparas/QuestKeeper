@@ -3,6 +3,7 @@ import {
   emptyStatBlock,
   readStatBlock,
   cleanStatBlock,
+  savesOf,
   numberedNames,
   pieceNames,
   isSameTemplate,
@@ -13,7 +14,7 @@ import {
 
 describe("readStatBlock", () => {
   it("handles an empty or missing stat block", () => {
-    expect(readStatBlock(undefined)).toEqual({ attacks: [], notes: "", initiativeBonus: "" });
+    expect(readStatBlock(undefined)).toEqual({ attacks: [], notes: "", initiativeBonus: "", saves: { strength: "", dexterity: "", constitution: "", intelligence: "", wisdom: "", charisma: "" } });
     expect(readStatBlock({})).toEqual(emptyStatBlock());
   });
 
@@ -27,6 +28,7 @@ describe("readStatBlock", () => {
       attacks: [{ name: "Claw", toHit: "4", damage: "1d6+2" }],
       notes: "Fast",
       initiativeBonus: "",
+      saves: { strength: "", dexterity: "", constitution: "", intelligence: "", wisdom: "", charisma: "" },
     });
   });
 
@@ -169,5 +171,31 @@ describe("isSameTemplate", () => {
     expect(
       isSameTemplate(saved, { ...same, statBlock: { notes: "Bigger", attacks: [] } }),
     ).toBe(false);
+  });
+});
+
+describe("saving throws in a stat block", () => {
+  it("keeps only the saves the DM typed, and blank isn't +0", () => {
+    const form = { ...emptyStatBlock(), saves: { ...emptyStatBlock().saves, dexterity: "2", wisdom: "-1", charisma: "" } };
+    expect(cleanStatBlock(form).saves).toEqual({ dexterity: 2, wisdom: -1 });
+    expect(cleanStatBlock(emptyStatBlock()).saves).toBeUndefined();
+    expect(cleanStatBlock({ ...form, saves: { strength: "99" } }).saves).toEqual({ strength: 20 });
+  });
+
+  it("reads saved saves back into the boxes and lists them for the DM's roll buttons", () => {
+    const saved = { attacks: [], notes: "", saves: { dexterity: 2, wisdom: -1 } };
+    expect(readStatBlock(saved).saves).toMatchObject({ dexterity: "2", wisdom: "-1", strength: "" });
+    expect(savesOf(saved)).toEqual([
+      { key: "dexterity", short: "DEX", bonus: 2 },
+      { key: "wisdom", short: "WIS", bonus: -1 },
+    ]);
+    expect(savesOf({ attacks: [] })).toEqual([]);
+  });
+
+  it("treats a library entry with the same saves as the same monster, and different saves as different", () => {
+    const entry = { kind: "monster", name: "Goblin", maxHp: 7, armorClass: 15, statBlock: { attacks: [], notes: "", saves: { dexterity: 2 } } };
+    const template = { kind: "monster", name: "Goblin", max_hp: 7, armor_class: 15, stat_block: { attacks: [], notes: "", saves: { dexterity: 2 } } };
+    expect(isSameTemplate(template, entry)).toBe(true);
+    expect(isSameTemplate({ ...template, stat_block: { attacks: [], notes: "", saves: { dexterity: 3 } } }, entry)).toBe(false);
   });
 });

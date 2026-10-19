@@ -923,6 +923,17 @@
   font-weight: 400;
 }
 
+/* "Save DC: Its own number [15]" in the item editor: the choice and its
+   number stay together when the row wraps. */
+.character-sheet__item-number {
+  display: flex;
+  flex: 1 1 220px;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  min-width: 0;
+}
+
 .character-sheet__item-charges {
   display: inline-flex;
   flex-wrap: wrap;

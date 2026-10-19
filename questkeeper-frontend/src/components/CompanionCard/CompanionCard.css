@@ -349,3 +349,46 @@
   color: var(--qk-text-muted);
   font-size: 13px;
 }
+
+/* "Remove companion" under Edit stats, then its one-line "are you sure". */
+.companion-card__remove {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.companion-card__remove-link {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.companion-card__remove-link:hover {
+  color: var(--qk-danger, var(--qk-terracotta));
+}
+
+.companion-card__remove-link:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 3px;
+}
+
+.companion-card__remove-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+}
+
+.companion-card__remove-confirm .qk-button {
+  min-height: 36px;
+  padding: 4px 14px;
+  font-size: 14px;
+}

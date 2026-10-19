@@ -333,8 +333,12 @@ function CompanionCard({
   // From getSummonInfo: null for an ordinary companion.
   summon = null,
   onSummon = () => {},
+  // Removes this companion (a character can have several). Only offered
+  // while its stats are unlocked, and it asks once first.
+  onRemove = null,
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const name = companion.name || "Companion";
   // A summon away (not cast) has no numbers to show; one that's here uses
   // the spell's, which can't be typed over.
@@ -451,6 +455,29 @@ function CompanionCard({
       </div>
 
       {isEditing && <SummonLink name={name} companion={companion} summon={summon} onSummon={onSummon} />}
+
+      {/* Remove: behind Edit stats, with one "are you sure". */}
+      {isEditing && onRemove && (
+        <div className="companion-card__remove">
+          {confirmingRemove ? (
+            <span className="companion-card__remove-confirm" role="group" aria-label={`Remove ${name}?`}>
+              <span>
+                Remove {name}? Its stats, attacks and notes go with it{isSummon && summon.present ? ", and the summon ends" : ""}.
+              </span>
+              <Button variant="secondary" onClick={onRemove}>
+                Remove {name}
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirmingRemove(false)}>
+                Keep
+              </Button>
+            </span>
+          ) : (
+            <button type="button" className="companion-card__remove-link" onClick={() => setConfirmingRemove(true)}>
+              Remove companion
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Keyed on the cast, so a new cast starts the panel's choices fresh. */}
       {isSummon && <SummonPanel key={String(summon.present)} name={name} summon={summon} onSummon={onSummon} />}

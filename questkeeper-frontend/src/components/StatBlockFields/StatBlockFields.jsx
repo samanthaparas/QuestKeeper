@@ -1,4 +1,5 @@
 import Button from "../Button/Button";
+import { SAVE_ABILITIES } from "../../utils/statBlock";
 import "./StatBlockFields.css";
 
 // Edits a stat block: a list of attacks (name, to-hit bonus, damage dice) and
@@ -35,6 +36,28 @@ function StatBlockFields({ value, onChange, idPrefix = "stat" }) {
           Added to the d20 when you roll this monster's initiative (usually its Dex modifier).
         </span>
       </label>
+
+      {/* Saving throws: optional, only the ones typed are kept. Only the
+          DM ever sees them, like everything in a stat block. */}
+      <fieldset className="stat-block-fields__saves">
+        <legend className="stat-block-fields__caption">Saving throws (optional)</legend>
+        {SAVE_ABILITIES.map(([key, short]) => (
+          <label className="stat-block-fields__labeled" key={key}>
+            <span className="stat-block-fields__caption">{short}</span>
+            <input
+              className="stat-block-fields__number"
+              type="number"
+              aria-label={`${short} save bonus`}
+              placeholder="+0"
+              value={value.saves?.[key] ?? ""}
+              onChange={(event) =>
+                onChange({ ...value, saves: { ...(value.saves ?? {}), [key]: event.target.value } })
+              }
+            />
+          </label>
+        ))}
+        <span className="stat-block-fields__hint">Leave blank any you don&apos;t know. Only you can see these.</span>
+      </fieldset>
 
       {value.attacks.length === 0 && (
         <p className="stat-block-fields__hint">

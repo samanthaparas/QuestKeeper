@@ -1678,8 +1678,77 @@ export function undoDawn(sheet) {
   };
 }
 
+// --- Several companions ----------------------------------------------------------------
+//
+// A character can have several companions (a mount, a familiar, two Summon
+// Feys). They're kept in sheet.companions, each with an id. Sheets from
+// before kept one in sheet.companionCreature; it's read as the first of the
+// list, so nothing is lost. The first one is also still saved there, so
+// anything that reads only the old field (the party strip, until its
+// database update is run) keeps showing it.
+//
+// Each companion's rules (its card, a summon's cast, HP, timers) work on one
+// companion at a time: they get the sheet with that companion as
+// companionCreature (companionView), and updateCompanion puts it back.
+
+const FIRST_COMPANION_ID = "companion-1";
+
+export function getCompanions(sheet) {
+  if (Array.isArray(sheet?.companions)) return sheet.companions;
+  if (sheet?.companionMode === "creature" && sheet?.companionCreature) {
+    return [{ ...sheet.companionCreature, id: sheet.companionCreature.id ?? FIRST_COMPANION_ID }];
+  }
+  return [];
+}
+
+// The sheet as one companion's rules see it.
+export const companionView = (sheet, creature) => ({ ...sheet, companionMode: "creature", companionCreature: creature });
+
+// Saves the list, mirroring the first into the old field (see above).
+export function saveCompanions(sheet, companions) {
+  const next = { ...sheet, companions };
+  if (companions.length > 0) {
+    next.companionMode = "creature";
+    next.companionCreature = companions[0];
+  } else {
+    delete next.companionCreature;
+    if (next.companionMode === "creature") delete next.companionMode;
+  }
+  return next;
+}
+
+// Runs change(view) for one companion: it may change the companion and the
+// rest of the sheet (a summon spends a slot, starts concentration). The
+// companion keeps its id and its place in the list.
+export function updateCompanion(sheet, id, change) {
+  const companions = getCompanions(sheet);
+  const position = companions.findIndex((creature) => creature.id === id);
+  if (position === -1) return sheet;
+  const changed = change(companionView(sheet, companions[position]));
+  if (changed === null || changed === undefined) return sheet;
+  const own = { ...changed.companionCreature, id };
+  const list = companions.map((creature, i) => (i === position ? own : creature));
+  return saveCompanions(changed, list);
+}
+
+// "+ Add a companion": another card, empty. The first one on an older sheet
+// keeps everything it had.
+export function addCompanion(sheet) {
+  return saveCompanions(sheet, [...getCompanions(sheet), createCompanionCreature()]);
+}
+
+// Removes one companion (asked first, on its card). A summon of its that
+// was up ends first, so a concentration held for it is dropped too.
+export function removeCompanion(sheet, id) {
+  const creature = getCompanions(sheet).find((item) => item.id === id);
+  if (!creature) return sheet;
+  const ended = getSummonTemplate(creature) ? updateCompanion(sheet, id, endSummon) : sheet;
+  return saveCompanions(ended, getCompanions(ended).filter((item) => item.id !== id));
+}
+
 export function createCompanionCreature() {
   return {
+    id: crypto.randomUUID(),
     name: "",
     armorClass: 10,
     speed: 30,
@@ -1810,6 +1879,16 @@ function concentratingOnSpell(sheet, spell) {
   return sameName(sheet?.concentration?.spell ?? "", spell);
 }
 
+// Is the character's concentration holding up this companion's summon? It
+// names the companion it's for (concentration.companionId), so with two
+// Summon Feys out, only the one cast with concentration counts. Older
+// sheets saved no id; then the spell's name is enough, as before.
+function holdsConcentrationFor(sheet, creature, spell) {
+  if (!concentratingOnSpell(sheet, spell)) return false;
+  const holder = sheet?.concentration?.companionId;
+  return !holder || !creature?.id || holder === creature.id;
+}
+
 // Physically there right now? Only while the spell is up: cast and not
 // dismissed, the concentration (when it needs it) still held, and the
 // 1-minute version's rounds not run out. A saved companion that isn't
@@ -1818,7 +1897,7 @@ export function isSummonPresent(sheet) {
   const creature = sheet?.companionCreature;
   const template = getSummonTemplate(creature);
   if (!template || !creature.summon.active) return false;
-  if (creature.summon.concentration) return concentratingOnSpell(sheet, template.spell);
+  if (creature.summon.concentration) return holdsConcentrationFor(sheet, creature, template.spell);
   return typeof creature.summon.rounds !== "number" || creature.summon.rounds > 0;
 }
 
@@ -1854,7 +1933,7 @@ export function getSummonInfo(sheet, spellAttack = 0) {
     // Another spell being concentrated on, which casting with
     // concentration would end.
     otherConcentration:
-      sheet.concentration?.spell && !concentratingOnSpell(sheet, template.spell)
+      sheet.concentration?.spell && !holdsConcentrationFor(sheet, creature, template.spell)
         ? sheet.concentration.spell
         : "",
   };
@@ -1868,7 +1947,7 @@ function endSummon(sheet) {
   return {
     ...sheet,
     concentration:
-      creature.summon.active && creature.summon.concentration && concentratingOnSpell(sheet, template.spell)
+      creature.summon.active && creature.summon.concentration && holdsConcentrationFor(sheet, creature, template.spell)
         ? null
         : (sheet.concentration ?? null),
     companionCreature: {
@@ -1967,8 +2046,12 @@ export function applySummonAction(sheet, action, payload = {}) {
     const maxHp = template.hitPoints(level);
     return {
       ...next,
-      // Concentrating on it ends any other concentration, as casting does.
-      concentration: concentration ? { spell: template.spell } : (next.concentration ?? null),
+      // Concentrating on it ends any other concentration, as casting does
+      // (another companion's summon too). It names this companion, so a
+      // second summon without concentration doesn't count as held by it.
+      concentration: concentration
+        ? { spell: template.spell, ...(creature.id ? { companionId: creature.id } : {}) }
+        : (next.concentration ?? null),
       companionCreature: {
         ...next.companionCreature,
         summon: {
@@ -2006,16 +2089,44 @@ export function spendSpellCasting(sheet, { spell, level, payWith = "slot" }) {
 // Tidies a summon that has ended some other way (concentration broken by a
 // failed save or 0 HP, or the 1-minute version running out), so it's never
 // left marked as there. Run as the sheet saves.
-export function withSummonEnded(sheet) {
+function withOneSummonEnded(sheet) {
   const creature = sheet?.companionCreature;
   if (!getSummonTemplate(creature) || !creature.summon.active || isSummonPresent(sheet)) return sheet;
   return endSummon(sheet);
 }
 
+// For every companion (a character can have several). Returns the same
+// sheet when nothing ended, so it's cheap to run on every save.
+export function withSummonEnded(sheet) {
+  const companions = getCompanions(sheet);
+  const ending = companions.filter((creature) => {
+    const view = companionView(sheet, creature);
+    return withOneSummonEnded(view) !== view;
+  });
+  if (ending.length === 0) return sheet;
+  return ending.reduce((next, creature) => updateCompanion(next, creature.id, withOneSummonEnded), sheet);
+}
+
 // The 1-minute version loses a round at the end of each of the character's
 // own turns (like a timed concentration spell). Returns the sheet and
 // whether it ran out.
+// Every companion's 1-minute summon ticks. Returns { sheet, ended (any
+// ran out), endedSpells: the spells that ran out }.
 export function tickSummonRounds(sheet, rounds) {
+  let next = sheet;
+  const endedSpells = [];
+  getCompanions(sheet).forEach((creature) => {
+    let result = null;
+    next = updateCompanion(next, creature.id, (view) => {
+      result = tickOneSummon(view, rounds);
+      return result.sheet;
+    });
+    if (result?.ended) endedSpells.push(getSummonTemplate(creature).spell);
+  });
+  return { sheet: next, ended: endedSpells.length > 0, endedSpells };
+}
+
+function tickOneSummon(sheet, rounds) {
   const creature = sheet?.companionCreature;
   const summon = creature?.summon;
   if (!getSummonTemplate(creature) || !summon.active || summon.concentration || typeof summon.rounds !== "number" || rounds <= 0) {
@@ -2120,28 +2231,39 @@ export function applyRest(sheet, restType) {
         }
       : sheet.combat.hitDice;
 
-  // A long rest heals the companion (a mount, a familiar) to full too; it
+  // A long rest heals each companion (a mount, a familiar) to full too; it
   // rests along with its character. A summoned one (Summon Fey) isn't healed
-  // or brought back: no summon lasts through a rest, so it ends instead.
-  const companionCreature = getSummonTemplate(sheet.companionCreature)
-    ? endSummon(sheet).companionCreature
-    : restType === "long" && sheet.companionCreature?.hitPoints
-      ? {
-          ...sheet.companionCreature,
-          hitPoints: {
-            ...sheet.companionCreature.hitPoints,
-            current: sheet.companionCreature.hitPoints.max ?? sheet.companionCreature.hitPoints.current,
+  // or brought back: no summon lasts through a rest, so it ends instead
+  // (and a concentration it needed ends with it).
+  const restedCompanions = getCompanions(sheet).reduce(
+    (next, creature) =>
+      updateCompanion(next, creature.id, (view) => {
+        const own = view.companionCreature;
+        if (getSummonTemplate(own)) return endSummon(view);
+        if (restType !== "long" || !own.hitPoints) return view;
+        return {
+          ...view,
+          companionCreature: {
+            ...own,
+            hitPoints: { ...own.hitPoints, current: own.hitPoints.max ?? own.hitPoints.current },
           },
-        }
-      : sheet.companionCreature;
+        };
+      }),
+    sheet,
+  );
 
   return {
     ...sheet,
     resources,
     spellcasting,
-    ...(companionCreature ? { companionCreature } : {}),
-    // A rest outlasts the summon, so a concentration it needed ends too.
-    ...(getSummonTemplate(sheet.companionCreature) ? { concentration: endSummon(sheet).concentration } : {}),
+    ...(restedCompanions !== sheet
+      ? {
+          companions: restedCompanions.companions,
+          companionCreature: restedCompanions.companionCreature,
+          // A rest outlasts the summon, so a concentration it needed ends too.
+          concentration: restedCompanions.concentration ?? null,
+        }
+      : {}),
     // A long rest takes away one level of exhaustion, and so does a short
     // rest for a Ranger with Deft Explorer's Tireless.
     ...((restType === "long" || (restType === "short" && hasTireless(sheet))) && sheet.conditions
@@ -2655,6 +2777,26 @@ export const ITEM_TYPES = [
   "Scroll",
 ];
 
+// An item's own spell save DC or spell attack bonus (a wand that says "save
+// DC 15"), from the editor: mode "" (not used), "fixed" with a number, or
+// "mine" (the wielder's own, worked out live, so it follows level-ups).
+// Saved as a number, "mine", or left off.
+function cleanItemNumber(mode, value, { min, max }) {
+  if (mode === "mine") return "mine";
+  if (mode !== "fixed") return undefined;
+  const number = Math.round(Number(value));
+  return Number.isFinite(number) && String(value ?? "").trim() !== "" ? Math.max(min, Math.min(max, number)) : undefined;
+}
+
+// The DC and spell attack an item uses: { saveDc, spellAttack }, each a
+// number or null (not used). mine: the character's own { saveDc,
+// spellAttack }, or null when they don't cast spells; then a "use mine"
+// item shows nothing rather than a made-up number.
+export function itemSpellNumbers(item, mine = null) {
+  const pick = (value, own) => (value === "mine" ? (own ?? null) : typeof value === "number" ? value : null);
+  return { saveDc: pick(item?.saveDc, mine?.saveDc), spellAttack: pick(item?.spellAttack, mine?.spellAttack) };
+}
+
 // The item's magic details tidied for saving: blank ones are left off, so
 // a plain item (rope, torches) stays exactly as it was.
 export function cleanMagicDetails(values = {}) {
@@ -2667,6 +2809,8 @@ export function cleanMagicDetails(values = {}) {
     itemType: itemType || undefined,
     requiresAttunement: requiresAttunement || undefined,
     attunementBy: attunementBy || undefined,
+    saveDc: cleanItemNumber(values.saveDcMode, values.saveDcValue, { min: 1, max: 30 }),
+    spellAttack: cleanItemNumber(values.attackMode, values.attackValue, { min: -5, max: 20 }),
   };
 }
 

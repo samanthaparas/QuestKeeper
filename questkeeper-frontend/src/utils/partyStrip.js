@@ -3,6 +3,8 @@
 // players get from get_party_strip, which has the same shape minus the rest.
 
 import {
+  companionView,
+  getCompanions,
   SKILLS,
   getEffectiveArmorClass,
   getSummonTemplate,
@@ -64,6 +66,14 @@ export function toCompanionRow(sheet) {
   };
 }
 
+// All of a character's companions as strip lines (a summon only while it's
+// up). Reads the list, or an older sheet's single companion.
+export function toCompanionRows(sheet) {
+  return getCompanions(sheet)
+    .map((creature) => toCompanionRow(companionView(sheet, creature)))
+    .filter(Boolean);
+}
+
 export function toPartyRow(sheet, { withPassives = false } = {}) {
   const hp = sheet.combat?.hitPoints ?? {};
   const max = Math.max(0, hp.max ?? 0);
@@ -88,7 +98,10 @@ export function toPartyRow(sheet, { withPassives = false } = {}) {
     // The spell's rounds left when it has a timer, else null.
     concentrationRounds:
       typeof sheet.concentration?.rounds === "number" ? sheet.concentration.rounds : null,
-    companion: toCompanionRow(sheet),
+    // Every companion, each on its own line (the first is kept as
+    // `companion` too, for anything that shows just one).
+    companions: toCompanionRows(sheet),
+    companion: toCompanionRows(sheet)[0] ?? null,
     // Spells changing their attacks ("Elemental Weapon (fire) on Darling
     // Deceiver"). Only full sheets have these, so in practice it's the DM's
     // strip; players' mini sheets don't carry them.
