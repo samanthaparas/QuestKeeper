@@ -77,6 +77,10 @@ import {
   applyOptionalFeatureLevel,
   applyExpertiseChoices,
   hasLevelUpFeatureChoices,
+  addSubclassSpells,
+  subclassSpellsToGrant,
+  subclassSpellsCountedByHand,
+  markSpellsGrantedBy,
   updateFeat,
   updateSpell,
   getSpellcastingAbility,
@@ -97,6 +101,9 @@ import {
   optionIndexesFromSrd,
   resolveLevelUpFeatureChoices,
 } from "./featureChoices";
+import { getSetupTasks } from "./setupTasks";
+import { cleanHomebrewData, getSubclassBonusSpells, toHomebrewSubclass } from "./homebrewMappers";
+import { featuresForNewLevel } from "./srdDetails";
 
 describe("getAbilityModifier", () => {
   it("matches the 5e modifier table", () => {
@@ -2728,5 +2735,231 @@ describe("Tasha's optional Ranger features", () => {
     const picked = applyExpertiseChoices(sheet, canny.index, pick("stealth"));
     expect(picked.skillExpertise).toEqual({ stealth: true });
     expect(picked.expertiseSources).toEqual({ stealth: "Deft Explorer: Canny" });
+  });
+});
+
+// A sheet built like Pippa's at level 6: original 2014 Ranger features, a
+// homebrew Fey Wanderer, four Ranger spells and Stealth Expertise set by hand.
+// (Made up for the tests; her real sheet is never touched.)
+const FEY_WANDERER = {
+  id: "fw1",
+  category: "subclass",
+  name: "Fey Wanderer",
+  data: {
+    parentClass: "ranger",
+    features: [
+      { name: "Dreadful Strikes", level: 3, description: "" },
+      { name: "Beguiling Twist", level: 7, description: "" },
+    ],
+    spells: [
+      { name: "Charm Person", level: 3, spellLevel: 1 },
+      { name: "Misty Step", level: 5, spellLevel: 2 },
+      { name: "Dispel Magic", level: 9, spellLevel: 3 },
+      { name: "Dimension Door", level: 13, spellLevel: 4 },
+      { name: "Mislead", level: 17, spellLevel: 5 },
+    ],
+  },
+};
+
+function pippaLike() {
+  const spell = (name, level) => ({ index: name, name, level, notes: "", components: "" });
+  return {
+    level: 6,
+    class: { id: "ranger", name: "Ranger", hitDie: 10, subclass: { id: "hb_fw1", name: "Fey Wanderer" } },
+    abilityScores: { strength: 12, dexterity: 18, constitution: 13, intelligence: 12, wisdom: 14, charisma: 13 },
+    speed: 30,
+    languages: "Common, Elvish\nChoose 1 more (your race)",
+    skills: { stealth: true, perception: true, insight: true, survival: true },
+    skillExpertise: { stealth: true },
+    combat: {
+      hitPoints: { max: 57, current: 57, temporary: 0 },
+      hitDice: { total: 6, remaining: 6, die: 10 },
+      hpHistory: [],
+    },
+    equipment: [{ index: "e1", name: "Leather Armor", equipped: true }],
+    attacks: [{ index: "a1", name: "Wisteria's Kiss", baseWeapon: "Longbow", toHit: 9, damage: "1d8+4" }],
+    resources: [],
+    feats: [],
+    features: [
+      { index: "f1", name: "Favored Enemy (1 type)", choices: [{ key: "enemy_type_options", label: "Enemy type", choose: 1, options: ["fiends"], picked: [] }] },
+      { index: "f2", name: "Natural Explorer (1 terrain type)", choices: [{ key: "terrain_type_options", label: "Terrain type", choose: 1, options: ["forest"], picked: [] }] },
+      { index: "f3", name: "Fighting Style: Archery" },
+      { index: "f4", name: "Primeval Awareness" },
+      { index: "f5", name: "Dreadful Strikes" },
+      { index: "f6", name: "Favored Enemy (2 types)", choices: [{ key: "enemy_type_options", label: "Enemy type", choose: 1, options: ["fiends"], picked: ["fiends"] }] },
+      { index: "f7", name: "Natural Explorer (2 terrain types)", choices: [{ key: "terrain_type_options", label: "Terrain type", choose: 1, options: ["mountain"], picked: ["mountain"] }] },
+    ],
+    spellcasting: {
+      type: "known",
+      cantripsKnown: [],
+      spellsKnown: [
+        spell("Absorb Elements", 1),
+        spell("Ensnaring Strike", 1),
+        spell("Goodberry", 1),
+        spell("Pass without Trace", 2),
+      ],
+    },
+  };
+}
+
+const counted = (sheet) => sheet.spellcasting.spellsKnown.filter(countsTowardSpellsKnown).map((spell) => spell.name);
+
+describe("homebrew subclass bonus spells", () => {
+  it("are saved with the subclass as names and levels only", () => {
+    const data = cleanHomebrewData("subclass", {
+      ...FEY_WANDERER.data,
+      spells: [{ name: "  Misty Step ", level: 5, spellLevel: 2, desc: "book text" }, { name: "", level: 3 }],
+    });
+    expect(data.spells).toEqual([{ name: "Misty Step", level: 5, spellLevel: 2 }]);
+    // Older subclasses without any still load.
+    expect(cleanHomebrewData("subclass", { parentClass: "ranger", features: [] }).spells).toEqual([]);
+    expect(toHomebrewSubclass(FEY_WANDERER).bonus_spells).toHaveLength(5);
+  });
+
+  it("gives an existing level 6 character the ones they've passed, once, outside spells known", () => {
+    const sheet = pippaLike();
+    const bonus = getSubclassBonusSpells("hb_fw1", [FEY_WANDERER]);
+    expect(subclassSpellsToGrant(sheet, bonus).map((spell) => spell.name)).toEqual(["Charm Person", "Misty Step"]);
+    const after = addSubclassSpells(sheet, bonus, 6, "Fey Wanderer");
+    const added = after.spellcasting.spellsKnown.filter((spell) => spell.grantedBy === "Fey Wanderer");
+    expect(added.map((spell) => [spell.name, spell.level, spell.acquiredAtLevel, spell.locked])).toEqual([
+      ["Charm Person", 1, 3, true],
+      ["Misty Step", 2, 5, true],
+    ]);
+    // Her four Ranger spells are untouched and still the only ones counted.
+    expect(counted(after)).toEqual(["Absorb Elements", "Ensnaring Strike", "Goodberry", "Pass without Trace"]);
+    // Adding again changes nothing.
+    expect(addSubclassSpells(after, bonus, 6, "Fey Wanderer")).toBe(after);
+  });
+
+  it("never doubles a spell typed in by hand, and offers to mark it instead", () => {
+    const sheet = pippaLike();
+    sheet.spellcasting.spellsKnown.push({ index: "cp", name: "charm person", level: 1 });
+    const bonus = getSubclassBonusSpells("hb_fw1", [FEY_WANDERER]);
+    const after = addSubclassSpells(sheet, bonus, 6, "Fey Wanderer");
+    expect(after.spellcasting.spellsKnown.filter((spell) => /charm person/i.test(spell.name))).toHaveLength(1);
+    expect(subclassSpellsCountedByHand(after, bonus).map((spell) => spell.index)).toEqual(["cp"]);
+    const marked = markSpellsGrantedBy(after, ["cp"], "Fey Wanderer");
+    expect(counted(marked)).not.toContain("charm person");
+  });
+
+  it("aren't given for SRD or book subclasses", () => {
+    expect(getSubclassBonusSpells("hunter", [FEY_WANDERER])).toEqual([]);
+    expect(getSubclassBonusSpells("hb_other", [FEY_WANDERER])).toEqual([]);
+  });
+});
+
+describe("switching an existing level 6 Ranger to Tasha's options", () => {
+  function switched() {
+    let sheet = pippaLike();
+    for (const key of ["favoredFoe", "deftExplorer", "primalAwareness"]) {
+      sheet = switchOptionalFeature(sheet, key, true);
+    }
+    return sheet;
+  }
+
+  it("keeps HP, gear, attacks and unrelated features, and removes only what's replaced", () => {
+    const before = pippaLike();
+    const after = switched();
+    expect(after.combat).toEqual(before.combat);
+    expect(after.equipment).toEqual(before.equipment);
+    expect(after.attacks).toEqual(before.attacks);
+    const names = after.features.map((feature) => feature.name);
+    expect(names).toEqual([
+      "Fighting Style: Archery",
+      "Dreadful Strikes",
+      "Favored Foe",
+      "Deft Explorer: Canny",
+      "Deft Explorer: Roving",
+      "Primal Awareness",
+    ]);
+    expect(after.speed).toBe(35);
+  });
+
+  it("adds Primal Awareness's level 3 and 5 spells outside spells known", () => {
+    const after = switched();
+    expect(after.spellcasting.spellsKnown.filter((spell) => spell.grantedBy === "Primal Awareness").map((spell) => spell.name)).toEqual([
+      "Speak with Animals",
+      "Beast Sense",
+    ]);
+    expect(counted(after)).toHaveLength(4);
+  });
+
+  it("drops the old Favored Enemy and Natural Explorer reminders, keeps the racial language, and asks for Canny", () => {
+    const labels = getSetupTasks(switched()).map((task) => task.label);
+    expect(labels.some((label) => /Favored Enemy|Natural Explorer/.test(label))).toBe(false);
+    expect(labels).toContain("Choose 1 more language (your race)");
+    expect(labels).toContain("Choose 2 more languages (Canny)");
+    expect(labels).toContain("Choose the expertise skill for Deft Explorer: Canny");
+  });
+
+  it("gives Canny's Expertise to Stealth without doubling it, and records the source", () => {
+    const sheet = switched();
+    const canny = sheet.features.find((feature) => feature.name === "Deft Explorer: Canny");
+    expect(canny.choices[0].options).toEqual(["insight", "perception", "stealth", "survival"]);
+    const after = applyExpertiseChoices(sheet, canny.index, canny.choices.map((choice) => ({ ...choice, picked: ["stealth"] })));
+    expect(after.skillExpertise).toEqual({ stealth: true });
+    expect(after.expertiseSources).toEqual({ stealth: "Deft Explorer: Canny" });
+  });
+});
+
+describe("a level 6 to 7 Fey Wanderer Ranger using Tasha's options", () => {
+  function atSix() {
+    let sheet = pippaLike();
+    for (const key of ["favoredFoe", "deftExplorer", "primalAwareness"]) {
+      sheet = switchOptionalFeature(sheet, key, true);
+    }
+    return addSubclassSpells(sheet, FEY_WANDERER.data.spells, 6, "Fey Wanderer");
+  }
+
+  it("asks only for HP and one new Ranger spell", () => {
+    const sheet = atSix();
+    expect(getLevelUpStepKeys(7, sheet.class, sheet.spellcasting, sheet.optionalFeatures)).toEqual([
+      "hitPoints",
+      "spells",
+    ]);
+    expect(getLevelUpSpellPlan(sheet.class, sheet.spellcasting, 7)).toMatchObject({ cantrips: 0, spells: 1 });
+  });
+
+  it("adds 1d10 average + CON, keeps +3 proficiency, Favored Foe and the bonus spells", () => {
+    const sheet = atSix();
+    const after = finalizeLevelUp({
+      ...sheet,
+      pendingLevelUp: {
+        targetLevel: 7,
+        steps: [
+          { key: "hitPoints", data: { amount: 6 } },
+          { key: "spells", data: { cantrips: [], spells: [{ index: "silence", name: "Silence", level: 2 }], swap: null } },
+        ],
+      },
+    });
+    expect(after.combat.hitPoints.max).toBe(64); // 57 + 6 + 1 CON
+    expect(getProficiencyBonus(after.level)).toBe(3);
+    expect(counted(after)).toEqual(["Absorb Elements", "Ensnaring Strike", "Goodberry", "Pass without Trace", "Silence"]);
+    const names = after.features.map((feature) => feature.name);
+    expect(names.filter((name) => /Favored Enemy|Natural Explorer/.test(name))).toEqual([]);
+    expect(names).toEqual(expect.arrayContaining(["Favored Foe", "Deft Explorer: Canny", "Deft Explorer: Roving", "Primal Awareness"]));
+    expect(after.resources.find((resource) => resource.name === "Favored Foe").max).toBe(3);
+    // Nothing new from the options at 7, and no bonus spell is doubled.
+    expect(after.features).toHaveLength(sheet.features.length);
+    expect(after.spellcasting.spellsKnown.filter((spell) => spell.name === "Misty Step")).toHaveLength(1);
+  });
+
+  it("gets Beguiling Twist from the homebrew subclass's features", () => {
+    const subclass = toHomebrewSubclass(FEY_WANDERER);
+    const entries = subclass.features.map((feature) => ({
+      key: `feature:${feature.index}`,
+      name: feature.name,
+      level: feature.level,
+      order: 3,
+      description: "",
+      choices: [],
+      optionOf: null,
+      otherSubclass: false,
+    }));
+    const sheet = atSix();
+    expect(featuresForNewLevel(entries, 7, sheet.features.map((feature) => feature.name)).map((entry) => entry.name)).toEqual([
+      "Beguiling Twist",
+    ]);
   });
 });

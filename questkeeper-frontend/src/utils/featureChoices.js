@@ -199,9 +199,22 @@ export function getLevelUpFeatureChoices(entries, sheet, level) {
           .map((option) => ({ value: option, label: formatOption(option) }));
         // Every option already picked on earlier levels: nothing to ask.
         if (options.length === 0) return [];
+        // "Favored Enemy (2 types)" adds one more to the earlier ones, so the
+        // label says that, and lists what the character already has.
+        const baseName = entry.name.replace(/\s*\([^)]*\)\s*$/, "");
+        const existing = (sheet.features ?? [])
+          .filter((feature) => feature.name.startsWith(baseName))
+          .flatMap((feature) =>
+            (feature.choices ?? []).filter((item) => item.key === choice.key).flatMap((item) => item.picked ?? []),
+          )
+          .filter(Boolean)
+          .map(formatOption);
+        const isMore = (sheet.features ?? []).some((feature) => feature.name.startsWith(baseName));
+        const count = choice.choose === 1 ? "one" : String(choice.choose);
         return [{
           key: `${entry.key}|${choice.key}`,
-          title: `${entry.name}: ${choice.label.toLowerCase()}`,
+          title: `${baseName}: choose ${count}${isMore ? " more" : ""} ${choice.label.toLowerCase()}`,
+          hint: isMore ? `You have: ${existing.length ? existing.join(", ") : "none picked yet"}` : "",
           kind: "list",
           choiceKey: choice.key,
           choose: Math.min(choice.choose, options.length),

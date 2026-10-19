@@ -2257,3 +2257,75 @@ export function applyExpertiseChoices(sheet, featureIndex, choices) {
   });
   return { ...sheet, skillExpertise, expertiseSources };
 }
+
+// ---------------------------------------------------------------------------
+// A subclass's bonus spells (from the player's homebrew subclass: Fey
+// Wanderer Magic's Charm Person at 3, Misty Step at 5...). They're always
+// known, never count toward spells known and can't be swapped out.
+// bonusSpells: [{ name, level (class level), spellLevel }].
+
+const knownSpellNamed = (sheet, name) =>
+  [...(sheet?.spellcasting?.cantripsKnown ?? []), ...(sheet?.spellcasting?.spellsKnown ?? [])].find(
+    (spell) => sameName(spell.name, name),
+  );
+
+// The bonus spells due by `level` that aren't on the sheet in any form.
+// One already there (typed by hand, or added before) is never doubled.
+export function subclassSpellsToGrant(sheet, bonusSpells = [], level = sheet?.level ?? 1) {
+  return (bonusSpells ?? []).filter(
+    (spell) => spell.level <= level && !knownSpellNamed(sheet, spell.name),
+  );
+}
+
+// Bonus spells already on the sheet as regular spells (added by hand before
+// this existed), which wrongly count toward spells known. Only changed if
+// the player says so.
+export function subclassSpellsCountedByHand(sheet, bonusSpells = [], level = sheet?.level ?? 1) {
+  return (bonusSpells ?? [])
+    .filter((spell) => spell.level <= level)
+    .map((spell) => knownSpellNamed(sheet, spell.name))
+    .filter((spell) => spell && countsTowardSpellsKnown(spell));
+}
+
+// Adds the due bonus spells, each saying where it came from.
+export function addSubclassSpells(sheet, bonusSpells, level, source) {
+  const due = subclassSpellsToGrant(sheet, bonusSpells, level);
+  if (due.length === 0) return sheet;
+  const base = sheet.spellcasting ?? { type: "known", cantripsKnown: [], spellsKnown: [] };
+  const entries = due.map((spell) => ({
+    index: crypto.randomUUID(),
+    name: spell.name,
+    level: spell.spellLevel,
+    notes: "",
+    components: "",
+    locked: true,
+    grantedBy: source,
+    acquiredAtLevel: spell.level,
+  }));
+  return {
+    ...sheet,
+    spellcasting: {
+      ...base,
+      cantripsKnown: [...(base.cantripsKnown ?? []), ...entries.filter((spell) => spell.level === 0)],
+      spellsKnown: [...(base.spellsKnown ?? []), ...entries.filter((spell) => spell.level > 0)],
+    },
+  };
+}
+
+// "Mark as from Fey Wanderer": the hand-added copies stop counting toward
+// spells known, and are locked like the ones QuestKeeper adds.
+export function markSpellsGrantedBy(sheet, spellIndexes, source) {
+  const marking = new Set(spellIndexes);
+  const mark = (list) =>
+    (list ?? []).map((spell) =>
+      marking.has(spell.index) ? { ...spell, locked: true, grantedBy: source } : spell,
+    );
+  return {
+    ...sheet,
+    spellcasting: {
+      ...sheet.spellcasting,
+      cantripsKnown: mark(sheet.spellcasting?.cantripsKnown),
+      spellsKnown: mark(sheet.spellcasting?.spellsKnown),
+    },
+  };
+}

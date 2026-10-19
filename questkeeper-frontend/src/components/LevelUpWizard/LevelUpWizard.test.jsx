@@ -596,7 +596,7 @@ describe("LevelUpWizard class choices step", () => {
       onComplete,
     );
 
-    const pick = await screen.findByLabelText("Favored Enemy (2 types): enemy type");
+    const pick = await screen.findByLabelText("Favored Enemy: choose one enemy type");
     await userEvent.selectOptions(pick, "__skip__");
     expect(screen.getByText(/This feature won't be added/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -663,5 +663,81 @@ describe("LevelUpWizard setup reminders", () => {
     // Gone after the first step, and levelling went on.
     expect(screen.queryByText(/Still open from earlier/)).toBeNull();
     expect(await screen.findByText("Ability Score Improvement")).toBeInTheDocument();
+  });
+});
+
+describe("LevelUpWizard Back, review and spell preview", () => {
+  it("goes back without losing the HP roll or choices, and applies them once", async () => {
+    const onComplete = vi.fn();
+    getClassFeatures.mockResolvedValue([]);
+    const sheet = makeCharacter("fighter", "Fighter", 3);
+    render(
+      <MemoryRouter>
+        <LevelUpWizard sheet={sheet} onComplete={onComplete} onCancel={vi.fn()} />
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Take Average/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(await screen.findByRole("button", { name: "+2 to One Ability" }));
+    await userEvent.selectOptions(screen.getByRole("combobox"), "strength");
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(await screen.findByText("Review Level 4")).toBeInTheDocument();
+
+    // Back to the ability step: +2 Strength is still picked.
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("combobox")).toHaveValue("strength");
+    // Back to HP: the average is still taken, and there's no Back on step 1.
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByText(/Took average of/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
+
+    // Forward again and finish: everything is applied once.
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Confirm & Finish/ }));
+    const finished = onComplete.mock.calls[0][0];
+    expect(finished.level).toBe(4);
+    expect(finished.abilityScores.strength).toBe(sheet.abilityScores.strength + 2);
+    expect(finished.combat.hitPoints.max).toBe(sheet.combat.hitPoints.max + 6 + 1);
+    expect(finished.combat.hpHistory).toHaveLength(1);
+  });
+
+  it("lists what the new level brings on its own, apart from the player's choices", async () => {
+    await reachSpellStep(
+      makeRanger(4, [
+        { index: "hunters-mark", name: "Hunter's Mark", level: 1 },
+        { index: "cure-wounds", name: "Cure Wounds", level: 1 },
+        { index: "goodberry", name: "Goodberry", level: 1 },
+      ]),
+    );
+    await userEvent.selectOptions(await screen.findByLabelText("New spell"), "pass-without-trace");
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(await screen.findByText("Your choices")).toBeInTheDocument();
+    expect(screen.getByText("Comes with level 5")).toBeInTheDocument();
+    expect(await screen.findByText("Proficiency bonus: +2 → +3")).toBeInTheDocument();
+    expect(screen.getByText(/Spell slots: .*level 2: 0 → 2/)).toBeInTheDocument();
+  });
+
+  it("previews a spell's level, school, concentration and components", async () => {
+    await reachSpellStep(makeRanger(1, []));
+    getSpellDetails.mockImplementation((index) =>
+      Promise.resolve({
+        index,
+        name: "Hunter's Mark",
+        level: 1,
+        school: { name: "Divination" },
+        concentration: true,
+        components: ["V"],
+        desc: ["Mark a creature."],
+        casting_time: "1 bonus action",
+        range: "90 feet",
+        duration: "Concentration, up to 1 hour",
+      }),
+    );
+    await userEvent.selectOptions(await screen.findByLabelText("New spell 1"), "hunters-mark");
+    expect(await screen.findByText("Level 1 · Divination · Concentration")).toBeInTheDocument();
+    expect(screen.getByText(/Components:/).parentElement).toHaveTextContent("Components: V");
+    expect(screen.getByText("Mark a creature.")).toBeInTheDocument();
   });
 });
