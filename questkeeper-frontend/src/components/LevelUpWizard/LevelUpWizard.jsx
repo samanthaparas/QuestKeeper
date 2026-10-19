@@ -20,6 +20,7 @@ import {
   countsTowardSpellsKnown,
   getBookSpellChoice,
   getSafeSpellLink,
+  getLevelUpHitPointGain,
 } from "../../utils/characterSheet";
 
 import {
@@ -431,8 +432,13 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
 
   function describeStepChoice(step) {
     if (step.key === "hitPoints") {
-      const total = Math.max(1, step.data.amount + conModifier);
-      return `Hit Points: +${total} (${step.data.amount} rolled/taken + ${conModifier} CON)`;
+      // Uses the CON after this level's Ability Score Improvement, the same
+      // way the sheet works it out when the level-up finishes.
+      const gain = getLevelUpHitPointGain(sheet, pendingLevelUp.steps);
+      const earlier = gain.earlierLevels
+        ? `, +${gain.earlierLevels} for earlier levels from the higher CON`
+        : "";
+      return `Hit Points: +${gain.total} (${step.data.amount} rolled/taken + ${gain.conModifier} CON${earlier})`;
     }
 
     if (step.key === "abilityOrFeat") {
