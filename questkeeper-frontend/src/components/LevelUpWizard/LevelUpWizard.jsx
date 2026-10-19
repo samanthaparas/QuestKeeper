@@ -39,6 +39,7 @@ import HomebrewDialog from "../HomebrewDialog/HomebrewDialog";
 import { loadFeatureEntries, mapSubclassToPanel } from "../../utils/srdDetails";
 import {
   BOOK_OPTION,
+  SKIP_OPTION,
   formatOption,
   getLevelUpFeatureChoices,
   resolveLevelUpFeatureChoices,
@@ -463,6 +464,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
       if (data.expertise?.length) {
         withPicks.push(`Expertise: ${data.expertise.map(formatOption).join(", ")}`);
       }
+      (data.skipped ?? []).forEach((name) => withPicks.push(`${name}: skipped`));
       return withPicks.length ? `Class choices: ${withPicks.join(" · ")}` : "Class choices: none made";
     }
 
@@ -490,7 +492,11 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
       ...sheet,
       pendingLevelUp: { ...pendingLevelUp, status: "complete" },
     });
-    onComplete(finished);
+    // Features skipped in Class Choices, so the sheet doesn't add them anyway
+    // when it fills in the new level's features.
+    const skippedFeatures =
+      pendingLevelUp.steps.find((step) => step.key === "features")?.data?.skipped ?? [];
+    onComplete(finished, { skippedFeatures });
   }
 
   return (
@@ -944,7 +950,9 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
                 const value = slots[slot] ?? "";
                 // An option picked in another box of this choice isn't offered again.
                 const takenHere = new Set(
-                  slots.filter((pick, i) => i !== slot && pick && pick !== BOOK_OPTION),
+                  slots.filter(
+                    (pick, i) => i !== slot && pick && pick !== BOOK_OPTION && pick !== SKIP_OPTION,
+                  ),
                 );
                 const draftKey = `${group.key}#${slot}`;
                 const picked = group.optionEntries?.[value];
@@ -955,6 +963,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
                     value={value}
                     options={group.options.filter((option) => !takenHere.has(option.value))}
                     allowBook={group.kind === "option"}
+                    allowSkip={group.kind === "list"}
                     bookPrefix={group.bookPrefix}
                     bookDraft={featureBookDrafts[draftKey]}
                     onBookDraftChange={(draft) => setFeatureBookDraft(draftKey, draft)}
@@ -969,7 +978,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
           <Button
             disabled={!featureGroups || (!featureError && !resolvedFeatureChoices)}
             onClick={() =>
-              completeStep(resolvedFeatureChoices ?? { features: [], expertise: [] })
+              completeStep(resolvedFeatureChoices ?? { features: [], expertise: [], skipped: [] })
             }
           >
             Next
@@ -1303,6 +1312,7 @@ function FeaturePickSelect({
   value,
   options,
   allowBook,
+  allowSkip,
   bookPrefix,
   bookDraft,
   onBookDraftChange,
@@ -1330,6 +1340,9 @@ function FeaturePickSelect({
             </option>
           ))}
           {allowBook && <option value={BOOK_OPTION}>Book option instead (type it in)</option>}
+          {allowSkip && (
+            <option value={SKIP_OPTION}>Skip: my table uses a book replacement</option>
+          )}
         </select>
       </label>
 
@@ -1339,6 +1352,14 @@ function FeaturePickSelect({
             <p key={index}>{line}</p>
           ))}
         </div>
+      )}
+
+      {value === SKIP_OPTION && (
+        <p className="level-up-wizard__book-spell-hint">
+          This feature won&apos;t be added. If your table uses a book version
+          instead (like Tasha&apos;s Favored Foe or Deft Explorer), add it on the
+          Features tab with Add Feature.
+        </p>
       )}
 
       {value === BOOK_OPTION && (

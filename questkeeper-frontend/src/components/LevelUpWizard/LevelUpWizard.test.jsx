@@ -324,6 +324,20 @@ describe("LevelUpWizard spell step", () => {
 
 // Class Choices: fake SRD features, shaped like the SRD API's answers.
 const fakeFeatures = {
+  "favored-enemy-2-types": {
+    index: "favored-enemy-2-types",
+    name: "Favored Enemy (2 types)",
+    level: 6,
+    class: { name: "Ranger" },
+    desc: ["Choose one more favored enemy."],
+    feature_specific: {
+      enemy_type_options: {
+        choose: 1,
+        type: "string",
+        from: { options: ["undead", "fey"] },
+      },
+    },
+  },
   "paladin-fighting-style": {
     index: "paladin-fighting-style",
     name: "Fighting Style",
@@ -563,6 +577,40 @@ describe("LevelUpWizard class choices step", () => {
       "Eldritch Invocation: Thirsting Blade (needs Pact Of The Blade)",
       "Book option instead (type it in)",
     ]);
+  });
+
+  it("lets a Ranger skip Favored Enemy when the table uses a book replacement", async () => {
+    const onComplete = vi.fn();
+    getClassSpells.mockResolvedValue(rangerSpells);
+    await reachClassChoices(
+      {
+        ...makeRanger(5, [
+          { index: "hunters-mark", name: "Hunter's Mark", level: 1 },
+          { index: "cure-wounds", name: "Cure Wounds", level: 1 },
+          { index: "goodberry", name: "Goodberry", level: 1 },
+          { index: "fog-cloud", name: "Fog Cloud", level: 1 },
+        ]),
+        features: [],
+      },
+      ["favored-enemy-2-types"],
+      onComplete,
+    );
+
+    const pick = await screen.findByLabelText("Favored Enemy (2 types): enemy type");
+    await userEvent.selectOptions(pick, "__skip__");
+    expect(screen.getByText(/This feature won't be added/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    // The spell step (a swap is optional), then the review.
+    await screen.findByRole("heading", { name: "Spells" });
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(
+      await screen.findByText("Class choices: Favored Enemy (2 types): skipped"),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Confirm & Finish/ }));
+    const [finished, extra] = onComplete.mock.calls[0];
+    expect(finished.features).toEqual([]);
+    expect(extra).toEqual({ skippedFeatures: ["Favored Enemy (2 types)"] });
   });
 
   it("lets the player go on if the choices can't be loaded", async () => {

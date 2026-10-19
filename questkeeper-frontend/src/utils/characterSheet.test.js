@@ -77,6 +77,7 @@ import {
 } from "./characterSheet";
 import {
   BOOK_OPTION,
+  SKIP_OPTION,
   expertiseFromSrd,
   getInvocationsKnown,
   getLevelUpFeatureChoices,
@@ -2309,6 +2310,7 @@ describe("feature choices on level-up", () => {
         { name: "Fighting Style: Archery", description: "+2 to ranged attack rolls.", source: archery.owner },
       ],
       expertise: [],
+      skipped: [],
     });
 
     const book = (draft) =>
@@ -2323,6 +2325,7 @@ describe("feature choices on level-up", () => {
         { name: "Fighting Style: Blind Fighting", description: "", source: null, link: "https://example.com/bf" },
       ],
       expertise: [],
+      skipped: [],
     });
   });
 
@@ -2340,6 +2343,17 @@ describe("feature choices on level-up", () => {
     expect(
       resolveLevelUpFeatureChoices(groups, { [groups[0].key]: ["fey"] }, {}, already, { safeLink, sourceOf }),
     ).toBeNull();
+  });
+
+  it("leaves a skipped Favored Enemy off, for tables using Tasha's Favored Foe", () => {
+    const sheet = ranger(5);
+    const groups = getLevelUpFeatureChoices([favoredEnemy], sheet, 6);
+    expect(
+      resolveLevelUpFeatureChoices(groups, { [groups[0].key]: [SKIP_OPTION] }, {}, sheet, {
+        safeLink,
+        sourceOf,
+      }),
+    ).toEqual({ features: [], expertise: [], skipped: ["Favored Enemy (2 types)"] });
   });
 
   it("puts the picks on the sheet when the level-up finishes", () => {
