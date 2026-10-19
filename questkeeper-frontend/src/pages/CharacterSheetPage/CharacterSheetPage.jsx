@@ -2560,7 +2560,11 @@ function CharacterSheetPage() {
         }}
         onDetailChange={handleDetailChange}
       />
-      <RollDock />
+      {/* Nothing is rolled while levelling up (or on the summary after), so
+          the roll bar steps aside there instead of covering the buttons.
+          Its settings (advantage, real dice, sharing) live on the sheet and
+          are kept. */}
+      {!isLevelingUp && !levelUpSummary && <RollDock />}
     </main>
   );
 
