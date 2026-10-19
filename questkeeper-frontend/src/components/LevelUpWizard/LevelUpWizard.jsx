@@ -53,7 +53,9 @@ import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 // themselves, for spells from books that aren't in the SRD list.
 const BOOK_PICK = "__book__";
 
-function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
+// setupTasks: choices still open from earlier (a level 1 Favored Enemy, a
+// language), listed so they aren't mixed up with this level's new ones.
+function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setupTasks = [] }) {
   const targetLevel = sheet.level + 1;
   const hitDie = sheet.class?.hitDie ?? 8;
   const conModifier = getAbilityModifier(sheet.abilityScores.constitution);
@@ -61,7 +63,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
   const [pendingLevelUp, setPendingLevelUp] = useState(() =>
     createPendingLevelUp(
       targetLevel,
-      getLevelUpStepKeys(targetLevel, sheet.class, sheet.spellcasting),
+      getLevelUpStepKeys(targetLevel, sheet.class, sheet.spellcasting, sheet.optionalFeatures),
     ),
   );
   const [stepIndex, setStepIndex] = useState(0);
@@ -547,6 +549,22 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
           </span>
         ))}
       </div>
+
+      {/* Shown on the first step only. Levelling up is fine; these are
+          finished on the Features tab whenever the player likes. */}
+      {stepIndex === 0 && setupTasks.length > 0 && (
+        <div className="level-up-wizard__setup-note" role="status">
+          <p>
+            Still open from earlier ({setupTasks.length}). You can level up now and
+            finish {setupTasks.length === 1 ? "it" : "them"} on the Features tab:
+          </p>
+          <ul>
+            {setupTasks.map((task) => (
+              <li key={task.key}>{task.label}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {currentStep?.key === "hitPoints" && (
         <div className="level-up-wizard__step">

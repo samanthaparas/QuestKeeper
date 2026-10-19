@@ -30,6 +30,7 @@ function CharacterSheetActionsTab({
   abilityScores,
   proficiencyNames = [],
   proficiencyBonus = 2,
+  fightingStyles = [],
 }) {
   const [allWeapons, setAllWeapons] = useState([]);
   const [addingWeapon, setAddingWeapon] = useState(null);
@@ -63,6 +64,7 @@ function CharacterSheetActionsTab({
           proficiencyNames,
           proficiencyBonus,
           magicBonus,
+          fightingStyles,
         });
 
         return {
@@ -95,6 +97,7 @@ function CharacterSheetActionsTab({
             ? [...proficiencyNames, details.name]
             : proficiencyNames,
           proficiencyBonus,
+          fightingStyles,
         });
         if (attack) onAttackAdd(attack);
       })
@@ -155,6 +158,17 @@ function CharacterSheetActionsTab({
             label: "Weapon",
             placeholder: "Weapon name (e.g. Night Terror Longsword)",
             datalistId: "weapon-name-suggestions",
+            datalistOptions: allWeapons.map((weapon) => weapon.name),
+            getAutofill: getWeaponAutofill,
+          },
+          // A renamed weapon ("Wisteria's Kiss") keeps working like the
+          // weapon it is, so its numbers fill in and stay current.
+          {
+            key: "baseWeapon",
+            type: "text",
+            label: "Weapon type",
+            placeholder: "Weapon type, if you renamed it (e.g. Longbow)",
+            datalistId: "weapon-type-suggestions",
             datalistOptions: allWeapons.map((weapon) => weapon.name),
             getAutofill: getWeaponAutofill,
           },

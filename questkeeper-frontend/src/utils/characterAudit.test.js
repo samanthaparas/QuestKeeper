@@ -233,7 +233,7 @@ describe("Character setup list (TEST 13 and 15)", () => {
 
     expect(getSetupTasks(pippa, entries).map((task) => task.label)).toEqual([
       "Choose 1 more language (your race)",
-      "Choose for Favored Enemy (1 type)",
+      "Choose the enemy type for Favored Enemy (1 type)",
       "Add False Identity (your background)",
     ]);
     expect(JSON.stringify(pippa)).toBe(before);

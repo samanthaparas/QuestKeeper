@@ -7,7 +7,7 @@
 // Typing an AC switches to manual (acMode "manual"); older sheets have no
 // acMode and stay manual until the player equips something.
 
-import { computeStartingArmorClass } from "./characterSheet";
+import { computeStartingArmorClass, getFightingStyles } from "./characterSheet";
 
 const ARMOR_CATEGORIES = ["Light", "Medium", "Heavy", "Shield"];
 
@@ -96,6 +96,7 @@ export function computeWornArmorClass(sheet, detailsFor) {
     gear: details.filter(isArmorDetails),
     scores: sheet.abilityScores,
     classId: sheet.class?.id,
+    fightingStyles: getFightingStyles(sheet.features),
   });
 }
 

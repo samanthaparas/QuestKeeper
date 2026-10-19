@@ -352,3 +352,23 @@
   outline: 2px solid var(--qk-focus);
   outline-offset: 2px;
 }
+
+/* "Still open from earlier": setup choices left from before this level. */
+.level-up-wizard__setup-note {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-left: 4px solid var(--qk-warning);
+  background-color: var(--qk-surface-muted);
+  border-radius: 0 var(--qk-radius-small) var(--qk-radius-small) 0;
+  font-size: 14px;
+  color: var(--qk-text);
+}
+
+.level-up-wizard__setup-note p {
+  margin: 0 0 6px;
+}
+
+.level-up-wizard__setup-note ul {
+  margin: 0;
+  padding-left: 20px;
+}
