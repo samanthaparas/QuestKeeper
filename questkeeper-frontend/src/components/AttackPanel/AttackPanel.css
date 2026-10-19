@@ -76,9 +76,11 @@
   font-size: 14px;
 }
 
+/* The damage step: the note, the tick boxes, Roll damage and real dice,
+   close together so it reads as one short list. */
 .attack-panel__damage {
   display: grid;
-  gap: var(--qk-space-3);
+  gap: 8px;
 }
 
 .attack-panel__error {
@@ -101,7 +103,7 @@
 /* Typing the numbers on real damage dice. */
 .attack-panel__dice {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .attack-panel__dice-label {
@@ -125,17 +127,23 @@
 /* "Add extra damage": a smite or sneak attack on top of the weapon. */
 .attack-panel__extra {
   display: grid;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 2px;
 }
 
+/* Tick-box rows: 32px tall, still an easy tap with the label included. */
 .attack-panel__extra-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
+  min-height: 32px;
   font-size: 14px;
   cursor: pointer;
+}
+
+/* Two groups of tick boxes in a row (Dreadful Strikes, then Add extra
+   damage) sit together like one list. */
+.attack-panel__extra + .attack-panel__extra {
+  margin-top: -6px;
 }
 
 /* An on-hit feature: its tick box, then a short note on how often it can
@@ -172,4 +180,40 @@
   color: var(--qk-terracotta);
   font-size: 14px;
   font-weight: 700;
+}
+
+/* "Cancel attack" under an unfinished attack, then its one-line question. */
+.attack-panel__cancel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.attack-panel__cancel .qk-button {
+  min-height: 36px;
+  padding: 4px 14px;
+  font-size: 14px;
+}
+
+.attack-panel__cancel-link {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.attack-panel__cancel-link:hover {
+  color: var(--qk-terracotta);
+}
+
+.attack-panel__cancel-link:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 3px;
 }

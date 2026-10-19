@@ -2,13 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AttackPanel from "./AttackPanel";
-import { attackRoll, dealDamage } from "../../utils/tableStore";
+import { attackRoll, cancelAttack, dealDamage } from "../../utils/tableStore";
 import { installFakeStorage } from "../../test/fakeStorage";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
 
 vi.mock("../../utils/tableStore", () => ({
   attackRoll: vi.fn(),
+  cancelAttack: vi.fn().mockResolvedValue(undefined),
   dealDamage: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -451,6 +452,70 @@ describe("AttackPanel", () => {
         { amount: 3, type: "fire", source: "Elemental Weapon" },
         { amount: 4, type: "psychic", source: "Dreadful Strikes" },
       ]);
+    });
+  });
+
+  // --- Cancelling an unfinished attack ---------------------------------------------
+  describe("Cancel attack", () => {
+    const hitOnKobold = (overrides = {}) =>
+      makeCombat({ attack_state: "hit", attack_target: "c-kobold", attack_name: "Dagger", attacks_this_turn: 1, ...overrides });
+
+    it("lets the target change freely before the roll, then locks it once rolled", () => {
+      const { rerender } = render(<AttackPanel attack={dagger} combat={makeCombat()} onClose={vi.fn()} />);
+      expect(screen.getByLabelText("Target")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Cancel attack" })).not.toBeInTheDocument();
+
+      rerender(<AttackPanel attack={dagger} combat={hitOnKobold()} onClose={vi.fn()} />);
+      expect(screen.queryByLabelText("Target")).not.toBeInTheDocument();
+      expect(screen.getByText("Target: Kobold (locked for this attack).")).toBeInTheDocument();
+    });
+
+    it("asks once, and Keep it changes nothing", async () => {
+      render(<AttackPanel attack={dagger} combat={hitOnKobold()} onClose={vi.fn()} />);
+      await userEvent.click(screen.getByRole("button", { name: "Cancel attack" }));
+      expect(screen.getByText(/Cancel the attack on Kobold\? No damage is dealt, and it still counts as an attack this turn\./)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Keep it" }));
+      expect(cancelAttack).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "Roll damage" })).toBeInTheDocument();
+    });
+
+    it("cancels on Yes: no damage, back to the weapons, and Dreadful Strikes isn't used", async () => {
+      const onClose = vi.fn();
+      const onOnHitDealt = vi.fn();
+      const combat = hitOnKobold();
+      const dreadful = { key: "dreadful strikes", name: "Dreadful Strikes", dice: "1d6", type: "psychic", limit: "oncePerTargetPerTurn", note: "", eligibility: { status: "ok" } };
+      render(<AttackPanel attack={dagger} combat={combat} onClose={onClose} onHitFeatures={[dreadful]} onOnHitDealt={onOnHitDealt} />);
+
+      await userEvent.click(screen.getByRole("checkbox", { name: "Dreadful Strikes: +1d6 psychic" }));
+      await userEvent.click(screen.getByRole("button", { name: "Cancel attack" }));
+      await userEvent.click(screen.getByRole("button", { name: "Yes, cancel it" }));
+      expect(cancelAttack).toHaveBeenCalledWith("t1");
+      expect(dealDamage).not.toHaveBeenCalled();
+      expect(onOnHitDealt).not.toHaveBeenCalled();
+      expect(combat.refresh).toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    it("can cancel while waiting for the DM's call", () => {
+      render(<AttackPanel attack={dagger} combat={hitOnKobold({ attack_state: "awaiting_dm" })} onClose={vi.fn()} />);
+      expect(screen.getByRole("button", { name: "Cancel attack" })).toBeInTheDocument();
+    });
+
+    it("won't finish another weapon's attack with this weapon's dice", () => {
+      render(<AttackPanel attack={dagger} combat={hitOnKobold({ attack_name: "Longbow" })} onClose={vi.fn()} />);
+      expect(screen.getByText("Your attack with Longbow on Kobold isn't finished. Finish it with Longbow, or cancel it first.")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Roll damage" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Cancel attack" })).toBeInTheDocument();
+    });
+
+    it("shows the server's reason if it can't cancel, and stays open", async () => {
+      cancelAttack.mockRejectedValueOnce(new Error("It is not your turn"));
+      const onClose = vi.fn();
+      render(<AttackPanel attack={dagger} combat={hitOnKobold()} onClose={onClose} />);
+      await userEvent.click(screen.getByRole("button", { name: "Cancel attack" }));
+      await userEvent.click(screen.getByRole("button", { name: "Yes, cancel it" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("It is not your turn");
+      expect(onClose).not.toHaveBeenCalled();
     });
   });
 });

@@ -205,6 +205,19 @@ export async function dealDamage(tableId, amount, parts = null) {
   );
 }
 
+// Lets go of an attack that was rolled but not finished (a hit waiting for
+// damage, or a roll waiting for the DM's call). It still counts toward
+// attacks this turn, and nothing is undone. Needs 20261019_cancel_attack.sql;
+// until that's run, it says so in plain words.
+export async function cancelAttack(tableId) {
+  const { error } = await supabase.rpc("cancel_attack", { p_table_id: tableId });
+  if (!error) return;
+  if (error.code === "PGRST202") {
+    throw new Error("Cancelling attacks isn't set up yet: the DM's database needs the cancel_attack update.");
+  }
+  throw error;
+}
+
 export async function dmResolveAttack(attackerId, hit) {
   unwrap(
     await supabase.rpc("dm_resolve_attack", {
