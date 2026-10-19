@@ -1592,6 +1592,19 @@ export function setTemporaryHp(hitPoints, value) {
   return { ...hitPoints, temporary: Math.max(0, value) };
 }
 
+// Deft Explorer's Tireless (Tasha's): a short rest removes a level of
+// exhaustion, like a long rest does.
+function hasTireless(sheet) {
+  return (sheet.features ?? []).some((feature) => sameName(feature.name, "Deft Explorer: Tireless"));
+}
+
+// A grant's tap-to-roll dice with the character's own modifier: "1d8+2".
+export function getGrantRollDice(grant, abilityScores) {
+  if (!grant?.roll) return "";
+  const modifier = getAbilityModifier(abilityScores?.[grant.roll.ability] ?? 10);
+  return `${grant.roll.dice}${modifier < 0 ? modifier : `+${modifier}`}`;
+}
+
 export function applyRest(sheet, restType) {
   const resources = (sheet.resources ?? []).map((resource) => {
     const shouldReset = restType === "long" || resource.resetOn === "short";
@@ -1652,8 +1665,9 @@ export function applyRest(sheet, restType) {
     resources,
     spellcasting,
     ...(companionCreature ? { companionCreature } : {}),
-    // A long rest also takes away one level of exhaustion.
-    ...(restType === "long" && sheet.conditions
+    // A long rest takes away one level of exhaustion, and so does a short
+    // rest for a Ranger with Deft Explorer's Tireless.
+    ...((restType === "long" || (restType === "short" && hasTireless(sheet))) && sheet.conditions
       ? { conditions: afterLongRest(sheet.conditions) }
       : {}),
     combat: {
@@ -1715,8 +1729,20 @@ export function takeShortRest(sheet, rolls = []) {
       hpBefore: before,
       hpAfter: hitPoints.current,
       hitDiceLeft: remaining - used.length,
+      // Tireless: one level of exhaustion off ({ from, to }), or null.
+      exhaustion: exhaustionChange(sheet.conditions, rested.conditions),
     },
   };
+}
+
+// The exhaustion level before and after (0 when there's none), or null if
+// it didn't change.
+function exhaustionChange(before = [], after = []) {
+  const level = (conditions) =>
+    (conditions ?? []).find((condition) => condition.key === "exhaustion")?.level ?? 0;
+  const from = level(before);
+  const to = level(after);
+  return from === to ? null : { from, to };
 }
 
 export function createEquipmentItem({ name, quantity, description }) {
@@ -2081,7 +2107,28 @@ export const OPTIONAL_CLASS_FEATURES = {
       grants: [
         { level: 1, name: "Deft Explorer: Canny", expertise: 1, languages: 2 },
         { level: 6, name: "Deft Explorer: Roving", speed: 5, note: "Climbing and swimming speed equal to your walking speed" },
-        { level: 10, name: "Deft Explorer: Tireless", resource: { resetOn: "long", perProficiency: true } },
+        {
+          level: 10,
+          name: "Deft Explorer: Tireless",
+          resource: { resetOn: "long", perProficiency: true },
+          note: "Action: gain 1d8 + Wisdom modifier temporary HP. A short rest removes 1 level of exhaustion",
+          // A tap-to-roll for the temporary HP, with this character's Wisdom.
+          roll: { label: "Tireless temporary HP", dice: "1d8", ability: "wisdom" },
+        },
+      ],
+    },
+    {
+      key: "naturesVeil",
+      name: "Nature's Veil",
+      replaces: "Hide in Plain Sight",
+      link: TASHAS_RANGER_LINK,
+      grants: [
+        {
+          level: 10,
+          name: "Nature's Veil",
+          note: "Bonus action: invisible until the start of your next turn",
+          resource: { resetOn: "long", perProficiency: true },
+        },
       ],
     },
     {

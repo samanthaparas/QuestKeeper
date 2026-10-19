@@ -1378,3 +1378,54 @@ describe("Primal Awareness free casts on an older sheet", () => {
     expect(screen.queryByText("Primal Awareness free casts")).toBeNull();
   });
 });
+
+describe("Deft Explorer: Tireless on the sheet", () => {
+  function tirelessRanger() {
+    const sheet = makeSheet({ level: 10 });
+    sheet.class = { id: "ranger", name: "Ranger", hitDie: 10 };
+    sheet.abilityScores = { ...sheet.abilityScores, wisdom: 14 }; // +2
+    sheet.combat.hitPoints = { max: 82, current: 82, temporary: 3 };
+    sheet.features = [{ index: "t", name: "Deft Explorer: Tireless", description: "" }];
+    return sheet;
+  }
+
+  it("rolls 1d8 + Wisdom and lets the player use it as temporary HP or keep theirs", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // d8 -> 5, +2 = 7
+    const user = userEvent.setup();
+    renderSheet(tirelessRanger());
+    await user.click(await screen.findByRole("tab", { name: /Features/ }));
+    await user.click(screen.getByRole("button", { name: "Roll Tireless temporary HP, 1d8+2" }));
+
+    const offer = (await screen.findByText("Tireless: 7 temporary HP")).closest("[role='status']");
+    expect(offer).toHaveTextContent("Temporary HP doesn't stack, so choose one. You have 3 now.");
+    await user.click(within(offer).getByRole("button", { name: "Use 7" }));
+    expect(screen.getByLabelText("Temporary HP")).toHaveValue(7);
+    // Regular and max HP stay as they were.
+    expect(screen.getByLabelText("Current HP")).toHaveValue(82);
+    expect(screen.getByLabelText("Max HP")).toHaveValue(82);
+    expect(screen.queryByText(/Tireless: 7 temporary HP/)).toBeNull();
+    vi.restoreAllMocks();
+  });
+
+  it("can keep the temporary HP the character already has", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const user = userEvent.setup();
+    renderSheet(tirelessRanger());
+    await user.click(await screen.findByRole("tab", { name: /Features/ }));
+    await user.click(screen.getByRole("button", { name: "Roll Tireless temporary HP, 1d8+2" }));
+    await user.click(await screen.findByRole("button", { name: "Keep 3" }));
+    expect(screen.getByLabelText("Temporary HP")).toHaveValue(3);
+    vi.restoreAllMocks();
+  });
+
+  it("says when a short rest takes a level of exhaustion off", async () => {
+    const user = userEvent.setup();
+    const sheet = tirelessRanger();
+    sheet.conditions = [{ key: "exhaustion", level: 2 }];
+    sheet.combat.hitDice = { total: 10, remaining: 0, die: 10 };
+    renderSheet(sheet);
+    await user.click(await screen.findByRole("button", { name: "Short Rest" }));
+    await user.click(screen.getByRole("button", { name: "Rest without spending" }));
+    expect(await screen.findByText(/Tireless: exhaustion 2 → 1\./)).toBeInTheDocument();
+  });
+});

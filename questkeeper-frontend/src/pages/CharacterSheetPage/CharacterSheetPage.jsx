@@ -205,6 +205,21 @@ function CharacterSheetPage() {
   // character's table.
   const roller = useSheetRolls(sheet?.id, sheet?.name);
 
+  // A Tireless roll (Deft Explorer) waiting for the player to choose whether
+  // it becomes their temporary HP. Kept here, not read from the roll card,
+  // because the card fades after a few seconds. Regular and max HP are never
+  // touched.
+  const [tempHpOffer, setTempHpOffer] = useState(null);
+  // Only a new roll (a new id) can make a new offer.
+  const [offerSeenRollId, setOfferSeenRollId] = useState(null);
+  const lastRollForOffer = roller?.lastRoll;
+  if (lastRollForOffer?.id && lastRollForOffer.id !== offerSeenRollId) {
+    setOfferSeenRollId(lastRollForOffer.id);
+    if (lastRollForOffer.kind === "damage" && lastRollForOffer.label === "Tireless temporary HP") {
+      setTempHpOffer({ id: lastRollForOffer.id, total: lastRollForOffer.total });
+    }
+  }
+
   // Timed conditions ("Poisoned for 3 rounds") and a timed concentration spell
   // lose a round at the end of each of this character's own turns, and end at
   // 0. The sheet remembers how many of its turns it has counted (roundSeen),
@@ -902,6 +917,19 @@ function CharacterSheetPage() {
     });
   }
 
+  // Temporary HP doesn't stack (2014 rules): the player picks the new
+  // amount or keeps what they have.
+  function handleUseTempHpOffer() {
+    persistSheet({
+      ...sheet,
+      combat: {
+        ...sheet.combat,
+        hitPoints: setTemporaryHp(sheet.combat.hitPoints, tempHpOffer.total),
+      },
+    });
+    setTempHpOffer(null);
+  }
+
   function handleTempHpChange(value) {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) return;
@@ -1401,8 +1429,12 @@ function CharacterSheetPage() {
     const { sheet: rested, summary } = takeShortRest(sheet, rolls);
     persistSheet(rested);
     setShowShortRest(false);
+    // Tireless (Deft Explorer) takes a level of exhaustion off a short rest.
+    const exhaustionNote = summary.exhaustion
+      ? ` Tireless: exhaustion ${summary.exhaustion.from} → ${summary.exhaustion.to}.`
+      : "";
     setRestMessage(
-      summary.rolls.length > 0
+      (summary.rolls.length > 0
         ? `Short rest done. Rolled ${summary.rolls.join(" + ")} (${formatModifier(
             summary.con,
           )} CON each) and healed ${summary.healed} HP: ${summary.hpBefore} → ${
@@ -1410,7 +1442,7 @@ function CharacterSheetPage() {
           }. ${summary.hitDiceLeft} Hit ${
             summary.hitDiceLeft === 1 ? "Die" : "Dice"
           } left. Short-rest abilities are refilled.`
-        : "Short rest done. Short-rest abilities are refilled.",
+        : "Short rest done. Short-rest abilities are refilled.") + exhaustionNote,
     );
   }
 
@@ -1893,6 +1925,7 @@ function CharacterSheetPage() {
                       type="number"
                       className="character-sheet__vital-input"
                       value={combat.hitPoints.temporary ?? 0}
+                      aria-label="Temporary HP"
                       onChange={(e) => handleTempHpChange(e.target.value)}
                       min={0}
                     />
@@ -2264,6 +2297,27 @@ function CharacterSheetPage() {
                   </div>
                 )}
 
+                {/* Tireless rolled: use it as temporary HP, or keep the current. */}
+                {tempHpOffer && (
+                  <div className="character-sheet__setup" role="status">
+                    <p className="character-sheet__stray-title">
+                      Tireless: {tempHpOffer.total} temporary HP
+                    </p>
+                    <p className="character-sheet__empty-text">
+                      Temporary HP doesn&apos;t stack, so choose one. You have{" "}
+                      {combat.hitPoints?.temporary ?? 0} now.
+                    </p>
+                    <div className="character-sheet__setup-actions">
+                      <Button onClick={handleUseTempHpOffer}>Use {tempHpOffer.total}</Button>
+                      <Button variant="secondary" onClick={() => setTempHpOffer(null)}>
+                        {(combat.hitPoints?.temporary ?? 0) > 0
+                          ? `Keep ${combat.hitPoints.temporary}`
+                          : "Not now"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Subclass bonus spells not on the sheet, or counted by mistake. */}
                 {(missingBonusSpells.length > 0 || handCountedBonusSpells.length > 0) && (
                   <div className="character-sheet__setup" role="status">
@@ -2475,6 +2529,7 @@ function CharacterSheetPage() {
                       optionalFeaturesOn={sheet.optionalFeatures ?? {}}
                       onOptionalFeatureSwitch={handleOptionalFeatureSwitch}
                       isReplacedFeature={(name) => isReplacedByOption(sheet, name)}
+                      abilityScores={sheet.abilityScores}
                       featureEntries={currentEntries}
                       setupTasks={setupTasks}
                       background={sheet.background ?? null}
