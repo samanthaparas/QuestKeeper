@@ -2083,15 +2083,24 @@ export const OPTIONAL_CLASS_FEATURES = {
       name: "Primal Awareness",
       replaces: "Primeval Awareness",
       link: TASHAS_RANGER_LINK,
-      grants: [{ level: 3, name: "Primal Awareness" }],
-      // Always known; they don't count toward spells known.
-      spells: [
-        { level: 3, name: "Speak with Animals", spellLevel: 1 },
-        { level: 5, name: "Beast Sense", spellLevel: 2 },
-        { level: 9, name: "Speak with Plants", spellLevel: 3 },
-        { level: 13, name: "Locate Creature", spellLevel: 4 },
-        { level: 17, name: "Commune with Nature", spellLevel: 5 },
+      grants: [
+        {
+          level: 3,
+          name: "Primal Awareness",
+          note: "Each of its spells can be cast once per long rest without a slot",
+        },
       ],
+      // Always known; they don't count toward spells known. Components are
+      // given so book spells like Beast Sense (not in the SRD) aren't blank.
+      spells: [
+        { level: 3, name: "Speak with Animals", spellLevel: 1, components: "V, S" },
+        { level: 5, name: "Beast Sense", spellLevel: 2, components: "S" },
+        { level: 9, name: "Speak with Plants", spellLevel: 3, components: "V, S" },
+        { level: 13, name: "Locate Creature", spellLevel: 4, components: "V, S, M" },
+        { level: 17, name: "Commune with Nature", spellLevel: 5, components: "V, S" },
+      ],
+      // A free cast of each spell per long rest, tracked as one pool.
+      freeCasts: "Primal Awareness free casts",
     },
   ],
 };
@@ -2183,7 +2192,7 @@ function addOptionGains(sheet, option, from, to) {
       name: spell.name,
       level: spell.spellLevel,
       notes: "",
-      components: "",
+      components: spell.components ?? "",
       // Locked like a racial cantrip: shown as "From Primal Awareness", and
       // never offered in a level-up swap.
       locked: true,
@@ -2194,7 +2203,24 @@ function addOptionGains(sheet, option, from, to) {
     const base = next.spellcasting ?? { type: "known", cantripsKnown: [], spellsKnown: [] };
     next.spellcasting = { ...base, spellsKnown: [...(base.spellsKnown ?? []), ...newSpells] };
   }
-  return next;
+  return syncFreeCasts(next, option);
+}
+
+// Primal Awareness: one free cast per spell it gave, so the pool's size
+// follows how many of its spells the sheet has. Uses already spent stay spent.
+function syncFreeCasts(sheet, option) {
+  if (!option.freeCasts) return sheet;
+  const count = (sheet.spellcasting?.spellsKnown ?? []).filter((spell) => spell.grantedBy === option.name).length;
+  const existing = (sheet.resources ?? []).find((resource) => resource.name === option.freeCasts);
+  if (count === 0 || existing?.max === count) return sheet;
+  const resources = existing
+    ? sheet.resources.map((resource) =>
+        resource === existing
+          ? { ...resource, max: count, current: Math.min(count, resource.current + (count - resource.max)) }
+          : resource,
+      )
+    : [...(sheet.resources ?? []), createResource({ name: option.freeCasts, max: count, resetOn: "long" })];
+  return { ...sheet, resources };
 }
 
 // What switching an option on or off would do, for the confirm message.
@@ -2253,7 +2279,9 @@ export function switchOptionalFeature(sheet, key, turnOn) {
     ...withoutStraySpeed(sheet),
     optionalFeatures,
     features: (sheet.features ?? []).filter((feature) => !isGrant(feature.name)),
-    resources: (sheet.resources ?? []).filter((resource) => !isGrant(resource.name)),
+    resources: (sheet.resources ?? []).filter(
+      (resource) => !isGrant(resource.name) && resource.name !== option.freeCasts,
+    ),
     ...(hadSpeed
       ? { combat: { ...sheet.combat, speed: (Number(sheet.combat?.speed) || 30) - hadSpeed } }
       : {}),

@@ -2695,3 +2695,25 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   font-size: 13px;
   white-space: nowrap;
 }
+
+/* Editing an item in place: the form sits where its row was, framed so it's
+   clear which one is being changed, with Save and Cancel right below. */
+.character-sheet__inline-edit {
+  list-style: none;
+  padding: 12px 14px;
+  border: 1px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+}
+
+.character-sheet__attack-form--inline {
+  margin: 0;
+}
+
+.character-sheet__inline-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}

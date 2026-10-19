@@ -224,7 +224,9 @@ function EditableItemList({
     }, {});
     setValues(nextValues);
     setEditingId(getItemId(item));
-    setIsAdding(true);
+    // Editing happens in the item's own row (see renderForm), so the
+    // add form at the top stays closed.
+    setIsAdding(false);
   }
 
   function getLabel(item) {
@@ -259,6 +261,58 @@ function EditableItemList({
       }
       return next;
     });
+  }
+
+  // The add/edit form. inline: it's editing one item and sits in that
+  // item's row, with its own Save and Cancel, so nobody has to scroll up.
+  function renderForm({ inline = false } = {}) {
+    return (
+      <form
+        id={inline ? undefined : formId}
+        className={`character-sheet__attack-form${inline ? " character-sheet__attack-form--inline" : ""}`}
+        onSubmit={handleSubmit}
+      >
+        <div className="character-sheet__resource-form">
+          {formFields.map((field) => (
+            <EditableItemField
+              key={field.key}
+              field={field}
+              value={values[field.key]}
+              onChange={(value) => handleFieldChange(field.key, value)}
+            />
+          ))}
+        </div>
+
+        {formFields
+          .map((field) => field.getHint?.(values))
+          .filter(Boolean)
+          .map((hint) => (
+            <FieldHint key={hint} text={hint} />
+          ))}
+
+        {textareaField && (
+          <textarea
+            className="character-sheet__textarea"
+            placeholder={textareaField.placeholder}
+            value={values[textareaField.key]}
+            onChange={(e) =>
+              handleFieldChange(textareaField.key, e.target.value)
+            }
+            rows={3}
+          />
+        )}
+
+        {/* Editing in place: Save and Cancel sit right under the fields. */}
+        {inline && (
+          <div className="character-sheet__inline-form-actions">
+            <Button variant="secondary" onClick={resetForm}>
+              Cancel
+            </Button>
+            <Button type="submit">Save Changes</Button>
+          </div>
+        )}
+      </form>
+    );
   }
 
   function renderPrimaryCell(item, id, notes) {
@@ -332,51 +386,23 @@ function EditableItemList({
           )}
           {isAdding ? (
             <Button type="submit" form={formId}>
-              {editingId ? "Save Changes" : addButtonLabel}
+              {addButtonLabel}
             </Button>
           ) : (
-            <Button onClick={() => setIsAdding(true)}>{addButtonLabel}</Button>
+            <Button
+              onClick={() => {
+                resetForm();
+                setIsAdding(true);
+              }}
+            >
+              {addButtonLabel}
+            </Button>
           )}
         </div>
       </div>
 
-      {isAdding && (
-        <form
-          id={formId}
-          className="character-sheet__attack-form"
-          onSubmit={handleSubmit}
-        >
-          <div className="character-sheet__resource-form">
-            {formFields.map((field) => (
-              <EditableItemField
-                key={field.key}
-                field={field}
-                value={values[field.key]}
-                onChange={(value) => handleFieldChange(field.key, value)}
-              />
-            ))}
-          </div>
-
-          {formFields
-            .map((field) => field.getHint?.(values))
-            .filter(Boolean)
-            .map((hint) => (
-              <FieldHint key={hint} text={hint} />
-            ))}
-
-          {textareaField && (
-            <textarea
-              className="character-sheet__textarea"
-              placeholder={textareaField.placeholder}
-              value={values[textareaField.key]}
-              onChange={(e) =>
-                handleFieldChange(textareaField.key, e.target.value)
-              }
-              rows={3}
-            />
-          )}
-        </form>
-      )}
+      {/* Adding a new one: the form opens at the top, by the Add button. */}
+      {isAdding && renderForm()}
 
       {items.length === 0 ? (
         <p className="character-sheet__empty-prompt">{emptyText}</p>
@@ -394,6 +420,14 @@ function EditableItemList({
             const notes = textareaField ? item[textareaField.key] : "";
 
             const panel = rowPanel ? rowPanel(item) : null;
+            // Being edited: the form takes this row's place.
+            if (id === editingId) {
+              return (
+                <div className="character-sheet__inline-edit" key={id}>
+                  {renderForm({ inline: true })}
+                </div>
+              );
+            }
             return (
               <Fragment key={id}>
               <div
@@ -440,6 +474,15 @@ function EditableItemList({
             const id = getItemId(item);
             const notes = textareaField ? item[textareaField.key] : "";
 
+            // Being edited: the form takes this row's place.
+            if (id === editingId) {
+              return (
+                <li className="character-sheet__inline-edit" key={id}>
+                  {renderForm({ inline: true })}
+                </li>
+              );
+            }
+
             return (
               <li className="character-sheet__resource-row" key={id}>
                 {leadingContent && leadingContent(item)}
@@ -452,15 +495,21 @@ function EditableItemList({
                 {showRowButtons && (
                   <span className="character-sheet__attacks-actions">
                     {isLocked?.(item) ? (
-                      onToggleLock && (
-                        <button
-                          type="button"
-                          className="character-sheet__resource-remove"
-                          onClick={() => handleUnlockClick(item)}
-                        >
-                          Unlock
-                        </button>
-                      )
+                      // Locked: no trash, but its details can still be
+                      // corrected (a feature's spell with missing components)
+                      // without unlocking or losing where it came from.
+                      <>
+                        {onToggleLock && (
+                          <button
+                            type="button"
+                            className="character-sheet__resource-remove"
+                            onClick={() => handleUnlockClick(item)}
+                          >
+                            Unlock
+                          </button>
+                        )}
+                        <IconButton kind="edit" label={`Edit ${getLabel(item)}`} onClick={() => handleEdit(item)} />
+                      </>
                     ) : (
                       <>
                         {onToggleLock && (

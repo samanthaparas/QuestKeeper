@@ -11,11 +11,13 @@ import {
   getSpellAttackModifier,
   getSpellSlots,
   formatModifier,
-  describeSpellLock,
   getSafeSpellLink,
 } from "../../utils/characterSheet";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
-import { spellsMissingComponents } from "../../utils/spellComponents";
+import {
+  spellsMissingComponents,
+  spellsNeedingTypedComponents,
+} from "../../utils/spellComponents";
 
 // "1st", "2nd", "3rd", "4th"... for the slot chips.
 function ordinal(level) {
@@ -70,6 +72,11 @@ function CharacterSheetSpellsTab({
   const findSrdIndex = (name) =>
     allSpells.find((spell) => spell.name.toLowerCase() === String(name).trim().toLowerCase())?.index ?? null;
   const missingComponents = spellsMissingComponents(spellcasting, findSrdIndex).length;
+  // Book spells the SRD can't fill (Beast Sense): named, so the player knows
+  // to type them. Only once the SRD list has loaded, so SRD spells aren't
+  // listed by mistake while it loads.
+  const typeComponents =
+    allSpells.length > 0 ? spellsNeedingTypedComponents(spellcasting, findSrdIndex) : [];
   const [isFilling, setIsFilling] = useState(false);
 
   async function fillComponents() {
@@ -243,6 +250,12 @@ function CharacterSheetSpellsTab({
           </button>
         </p>
       )}
+      {typeComponents.length > 0 && (
+        <p className="character-sheet__fill-components">
+          Not in the SRD, so type their components with Edit spells:{" "}
+          {typeComponents.map((spell) => spell.name).join(", ")}.
+        </p>
+      )}
 
       <EditableItemList
         title="Spells"
@@ -337,10 +350,12 @@ function CharacterSheetSpellsTab({
           <>
             {/* Where a spell came from always shows; a plain lock only
                 matters while editing. */}
-            {spell.locked && (spell.grantedBy || isEditingSpells) && (
-              <span className="character-sheet__lock-tag">
-                {spell.grantedBy ? describeSpellLock(spell) : `🔒 ${describeSpellLock(spell)}`}
-              </span>
+            {spell.grantedBy ? (
+              // Where it came from shows whether or not it's locked.
+              <span className="character-sheet__lock-tag">From {spell.grantedBy}</span>
+            ) : (
+              spell.locked &&
+              isEditingSpells && <span className="character-sheet__lock-tag">🔒 Locked</span>
             )}
             {spell.bonusSpell && (
               <span
