@@ -24,6 +24,8 @@ import QuizPage from "./pages/QuizPage/QuizPage";
 import BackLink from "./components/BackLink/BackLink";
 import AuthPage from "./pages/AuthPage/AuthPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
+import SampleCharacterPage from "./pages/Samples/SampleCharacterPage";
+import SampleTablePage from "./pages/Samples/SampleTablePage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import { getPageTitle } from "./utils/pageTitle";
 
@@ -192,6 +194,9 @@ function App() {
         <Route path="/login" element={<AuthPage />} />
         <Route path="/guide" element={<Guide />} />
         <Route path="/quiz" element={<QuizPage />} />
+        {/* Read-only, made-up previews to look at before signing up. */}
+        <Route path="/sample/character" element={<SampleCharacterPage />} />
+        <Route path="/sample/table" element={<SampleTablePage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

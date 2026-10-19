@@ -78,7 +78,7 @@ describe("QuizPage", () => {
     await answerFirst(5);
     await userEvent.click(screen.getByRole("button", { name: "See my results" }));
 
-    await userEvent.click(screen.getAllByRole("button", { name: "Use this build" })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: /^Use this build: .+/ })[0]);
     const landed = screen.getByTestId("landed").textContent;
     expect(landed).toMatch(/^\/characters\/new /);
     expect(landed).toMatch(/"quizBuild":"[a-z-]+"/);

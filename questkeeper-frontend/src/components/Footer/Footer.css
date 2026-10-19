@@ -17,11 +17,12 @@
   font-size: 16px;
 }
 
+/* No extra fading: the muted colour is already as light as text can be and
+   still read easily (4.5:1). */
 .footer__copyright {
   color: var(--qk-text-muted);
   font-size: 14px;
   margin-top: 16px;
-  opacity: 0.75;
 }
 
 .footer__feedback {

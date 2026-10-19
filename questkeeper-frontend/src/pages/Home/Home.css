@@ -1,23 +1,50 @@
+/* Spacing is kept modest so the useful destinations (search, paths,
+   categories) aren't pushed down by empty space. */
 .home {
-  padding-top: 40px;
+  padding-top: 28px;
   padding-bottom: 40px;
 }
 
 .home__hero {
+  /* Lets the illustration sit beside the words (see .home__hero-art). */
+  position: relative;
   max-width: var(--qk-reading-width);
   margin: 0 auto;
   padding: 0 32px;
   text-align: center;
 }
 
+/* The hero illustration only shows when there's room for it beside the
+   reading column. It's placed outside the flow, so the hero is exactly as
+   tall as before and search doesn't move; at 200% zoom or on smaller
+   screens it's simply left out. */
+.home__hero-art {
+  display: none;
+}
+
+/* From 1280px there's a comfortable gap between the words and the art. */
+@media (min-width: 1280px) {
+  .home__hero-art {
+    display: block;
+    position: absolute;
+    top: 4px;
+    left: calc(100% - 8px);
+    width: 220px;
+    height: 220px;
+    object-fit: contain;
+    pointer-events: none;
+  }
+}
+
 .home__eyebrow {
   display: block;
-  color: var(--qk-terracotta);
+  /* The darker accent: small text needs 4.5:1 against the page. */
+  color: var(--qk-terracotta-hover);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .home__title {
@@ -26,14 +53,14 @@
   font-size: 48px;
   line-height: 1.1;
   font-weight: 600;
-  margin: 0 0 16px;
+  margin: 0 0 12px;
 }
 
 .home__subtitle {
   color: var(--qk-text-muted);
   font-size: 18px;
   line-height: 1.5;
-  margin: 0 0 32px;
+  margin: 0 0 20px;
 }
 
 .home__suggestions {
@@ -63,7 +90,8 @@
   cursor: pointer;
   transition:
     border-color 0.15s ease,
-    background-color 0.15s ease;
+    background-color 0.15s ease,
+    transform 0.1s ease;
 }
 
 .home__suggestion-chip:hover {
@@ -76,11 +104,149 @@
   outline-offset: 2px;
 }
 
+/* The one main next step (the quiz), with what to expect. */
+
+.home__start {
+  margin: 0 0 24px;
+}
+
+.home__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 28px;
+  border: 2px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-on-accent);
+  font-size: 18px;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.home__cta:hover {
+  background-color: var(--qk-terracotta-hover);
+  border-color: var(--qk-terracotta-hover);
+}
+
+.home__cta:focus-visible,
+.home__meaning-button:focus-visible,
+.home__continue-button:focus-visible,
+.home__continue-dismiss:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 3px;
+}
+
+/* When something else is the main step (your character), the quiz stays
+   but steps back to an outlined button. */
+.home__cta--quiet {
+  background-color: transparent;
+  color: var(--qk-text);
+}
+
+.home__cta--quiet:hover {
+  background-color: var(--qk-terracotta-soft);
+}
+
+.home__cta-note {
+  margin: 8px auto 0;
+  max-width: 520px;
+  color: var(--qk-text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* Search by name, then search by meaning. */
+
+.home__lookup {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.home__lookup .home__suggestions {
+  justify-content: flex-start;
+  width: min(100%, 760px);
+  margin: 4px auto 0;
+}
+
+/* Search by meaning: a smaller second option right under name search,
+   lined up with it, rather than a panel of its own. A thin rule marks where
+   the name search's own hints end. */
+.home__meaning {
+  width: min(100%, 760px);
+  margin: 14px auto 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--qk-border);
+}
+
+.home__meaning-title {
+  margin: 0 0 2px;
+  color: var(--qk-text);
+  /* Body font, so it reads as part of the search, not a new section. */
+  font-family: var(--qk-font-body);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.home__meaning-text,
+.home__meaning-tip {
+  margin: 0 0 8px;
+  color: var(--qk-text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* The example button and the keyboard tip share a row when there's room. */
+.home__meaning-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.home__meaning-tip {
+  margin: 0;
+  font-size: 14px;
+}
+
+.home__meaning-tip kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--qk-border);
+  border-radius: 4px;
+  font: inherit;
+}
+
+.home__meaning-button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-control);
+  background-color: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.home__meaning-button:hover {
+  background-color: var(--qk-terracotta-soft);
+}
+
 /* Continue Character */
 
 .home__continue {
   max-width: var(--qk-content-width);
-  margin: 48px auto 0;
+  margin: 32px auto 0;
   padding: 0 32px;
 }
 
@@ -118,7 +284,9 @@
   padding: 4px 12px;
   border-radius: 999px;
   background-color: var(--qk-moss-soft);
-  color: var(--qk-moss);
+  /* Main text colour: the moss green on its own soft green is only 4.18:1
+     in the light theme, under the 4.5:1 small text needs. */
+  color: var(--qk-text);
   font-size: 13px;
   font-weight: 600;
 }
@@ -134,80 +302,140 @@
   color: var(--qk-surface);
   text-decoration: none;
   font-weight: 700;
+  transition:
+    background-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+/* The "Pick up where you left off" note goes first; your character's
+   button then steps back so there's one main step. */
+.home__continue-button--quiet {
+  border: 2px solid var(--qk-terracotta);
+  background-color: transparent;
+  color: var(--qk-text);
+}
+
+button.home__continue-button {
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.home__continue-dismiss {
+  display: block;
+  min-height: 44px;
+  margin: 8px auto 0;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--qk-text-muted);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.home__continue-dismiss:hover {
+  color: var(--qk-text);
 }
 
 .home__continue-button:hover {
   background-color: var(--qk-terracotta-hover);
 }
 
-/* Beginner Path */
+/* The outlined version keeps its readable text colour on hover. */
+.home__continue-button--quiet:hover {
+  background-color: var(--qk-terracotta-soft);
+}
 
-.home__beginner-path {
+/* Three paths in: discover, play, run */
+
+.home__paths {
   max-width: var(--qk-content-width);
-  margin: 64px auto 0;
+  margin: 44px auto 0;
   padding: 0 32px;
+}
+
+.home__paths-title {
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  margin: 0 0 16px;
+}
+
+.home__paths-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
-.home__beginner-step {
-  display: block;
+.home__path {
   padding: 24px 20px;
   background-color: var(--qk-surface);
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-card);
-  text-decoration: none;
-  color: inherit;
-  transition:
-    transform 0.15s ease,
-    border-color 0.15s ease;
 }
 
-.home__beginner-step:hover {
-  transform: translateY(-4px);
-  border-color: var(--qk-terracotta);
-}
-
-.home__beginner-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background-color: var(--qk-terracotta-soft);
-  color: var(--qk-terracotta-hover);
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-
-.home__beginner-step h3 {
+.home__path h3 {
   color: var(--qk-text);
   font-family: var(--qk-font-display);
-  font-size: 18px;
+  font-size: 20px;
   margin: 0 0 8px;
 }
 
-.home__beginner-step p {
+.home__path p {
+  color: var(--qk-text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 0 0 12px;
+}
+
+.home__path ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each link is a comfortable tap target, underlined so it reads as a link. */
+.home__path a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: var(--qk-terracotta-hover);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+/* A thicker underline under the pointer, so it's clear which link is next. */
+.home__path a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.home__path a:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.home__paths-note {
+  margin: 12px 0 0;
   color: var(--qk-text-muted);
   font-size: 14px;
-  line-height: 1.5;
-  margin: 0;
 }
 
 /* Browse Categories */
 
 .home__categories {
   max-width: var(--qk-content-width);
-  margin: 64px auto 0;
+  margin: 44px auto 0;
   padding: 0 32px;
 }
 
 .home__categories-title {
   color: var(--qk-text);
   font-family: var(--qk-font-display);
-  margin-bottom: 16px;
+  margin: 0 0 16px;
 }
 
 .home__categories-grid {
@@ -221,10 +449,68 @@
   text-decoration: none;
   color: inherit;
   display: block;
+  border-radius: var(--qk-radius-card);
+}
+
+/* Pointing at a category warms its border and deepens its shadow. */
+.category-link:hover .category-card {
+  border-color: var(--qk-terracotta);
+  box-shadow: 0 6px 16px var(--qk-shadow);
+}
+
+/* Keyboard focus is just as clear, without needing any movement: a full
+   focus ring around the card plus the same warm border. */
+.category-link:focus-visible {
+  outline: none;
+}
+
+.category-link:focus-visible .category-card {
+  border-color: var(--qk-terracotta);
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 3px;
+}
+
+/* Pressed: the card settles back onto the page, so the click is felt. */
+.category-link:active .category-card {
+  border-color: var(--qk-terracotta-hover);
+  box-shadow: 0 2px 6px var(--qk-shadow);
+}
+
+/* Movement that acknowledges an action. It's skipped when the device asks
+   for reduced motion, and when Settings > Reduce motion is on (index.css
+   switches off the transitions; the :not() here also drops the lift and
+   press themselves). Only transform moves, so nothing around it shifts. */
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-motion="reduce"]) .category-link:hover .category-card,
+  html:not([data-motion="reduce"]) .category-link:focus-visible .category-card {
+    transform: translateY(-2px);
+  }
+
+  html:not([data-motion="reduce"]) .category-link:active .category-card {
+    transform: none;
+  }
+
+  /* The artwork comes forward a little inside its card, one smooth step
+     with no wobble, so the card feels picked up rather than performing. */
+  html:not([data-motion="reduce"]) .category-link:hover .category-card__art,
+  html:not([data-motion="reduce"]) .category-link:focus-visible .category-card__art {
+    transform: translateY(-2px) scale(1.06);
+  }
+
+  html:not([data-motion="reduce"]) .home__cta:active,
+  html:not([data-motion="reduce"]) .home__meaning-button:active,
+  html:not([data-motion="reduce"]) .home__continue-button:active {
+    transform: translateY(1px);
+  }
+
+  /* Same small press as the filter buttons on the browse pages. */
+  html:not([data-motion="reduce"]) .home__suggestion-chip:active {
+    transform: scale(0.96);
+  }
 }
 
 @media (max-width: 900px) {
-  .home__beginner-path {
+  .home__paths-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -246,5 +532,16 @@
 @media (max-width: 480px) {
   .home__title {
     font-size: 30px;
+  }
+
+  /* Phones stack everything, so the gaps between sections can be a little
+     smaller without anything feeling crowded. */
+  .home__continue {
+    margin-top: 24px;
+  }
+
+  .home__paths,
+  .home__categories {
+    margin-top: 36px;
   }
 }

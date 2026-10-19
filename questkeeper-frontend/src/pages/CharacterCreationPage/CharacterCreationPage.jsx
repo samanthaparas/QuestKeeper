@@ -10,7 +10,7 @@ import {
 import { collectSkills, loadRaceSkillGrants, missingRacePicks } from "../../utils/skillGrants";
 import { sourceFromEntry } from "../../utils/featureSources";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   getRaces,
   getClasses,
@@ -143,9 +143,12 @@ function CharacterCreationPage() {
   // "Use this build" from the character quiz: the build being filled in,
   // and whether it's loading or failed to.
   const [quizBuild, setQuizBuild] = useState(null);
-  const [quizStatus, setQuizStatus] = useState(() =>
-    location.state?.quizBuild ? "loading" : "idle",
-  );
+  // A build that no longer exists (an old saved link, a renamed build) says
+  // so instead of "loading" forever.
+  const [quizStatus, setQuizStatus] = useState(() => {
+    if (!location.state?.quizBuild) return "idle";
+    return findQuizBuild(location.state.quizBuild) ? "loading" : "unknown";
+  });
 
   // Fills in everything the build decides, the same way each picker would,
   // and spreads the standard array over its two main abilities (confirmed on
@@ -246,11 +249,12 @@ function CharacterCreationPage() {
 
   // "Use this build" from the quiz: fill in the build once it has loaded.
   useEffect(() => {
-    const build = findQuizBuild(location.state?.quizBuild);
+    if (!location.state?.quizBuild) return undefined;
+    // Forget the request (known or not), so a refresh doesn't repeat it.
+    navigate(".", { replace: true, state: null });
+    const build = findQuizBuild(location.state.quizBuild);
     if (!build) return undefined;
     let ignore = false;
-    // Forget the request, so a refresh doesn't fill it in again.
-    navigate(".", { replace: true, state: null });
 
     loadQuizBuild(build)
       .then((loaded) => {
@@ -641,6 +645,17 @@ function CharacterCreationPage() {
             <div className="character-creation__quiz-banner" role="alert">
               Couldn&apos;t load that build right now. Pick your options as
               usual, or try the quiz again later.
+            </div>
+          )}
+          {quizStatus === "unknown" && (
+            <div className="character-creation__quiz-banner" role="status">
+              <span>
+                That quiz build isn&apos;t available any more, so nothing was filled in. Pick your options
+                as usual, or <Link to="/quiz">take the quiz again</Link>.
+              </span>
+              <Button variant="secondary" type="button" onClick={() => setQuizStatus("idle")}>
+                Got it
+              </Button>
             </div>
           )}
           {quizStatus === "applied" && quizBuild && (

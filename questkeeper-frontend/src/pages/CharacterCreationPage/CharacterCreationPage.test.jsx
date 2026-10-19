@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import CharacterCreationPage from "./CharacterCreationPage";
 import { loadQuizBuild } from "../../utils/quizBuild";
@@ -88,6 +89,17 @@ describe("character creation from the quiz", () => {
     loadQuizBuild.mockRejectedValue(new Error("offline"));
     renderFromQuiz({ quizBuild: "iron-guardian", name: "Bram" });
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load that build");
+  });
+
+  it("says so, instead of loading forever, when the build no longer exists", async () => {
+    loadQuizBuild.mockClear();
+    renderFromQuiz({ quizBuild: "not-a-real-build" });
+    expect(screen.getByRole("status")).toHaveTextContent("That quiz build isn't available any more");
+    expect(screen.queryByText(/Filling in your build/)).toBeNull();
+    expect(loadQuizBuild).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: "take the quiz again" })).toHaveAttribute("href", "/quiz");
+    await userEvent.click(screen.getByRole("button", { name: "Got it" }));
+    expect(screen.queryByText(/isn't available any more/)).toBeNull();
   });
 
   it("offers the quiz on the name step", () => {

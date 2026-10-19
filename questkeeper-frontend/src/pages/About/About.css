@@ -24,6 +24,54 @@
   margin: 0;
 }
 
+/* What it does today, and the short pitch. */
+.about__section {
+  max-width: var(--qk-reading-width);
+  margin: var(--qk-space-7) auto 0;
+  color: var(--qk-text);
+  line-height: 1.6;
+}
+
+.about__section-title {
+  margin: 0 0 var(--qk-space-3);
+  font-family: var(--qk-font-display);
+  font-size: 26px;
+}
+
+.about__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.about__card {
+  padding: 18px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.about__card h3 {
+  margin: 0 0 6px;
+  font-family: var(--qk-font-display);
+  font-size: 19px;
+}
+
+.about__card p {
+  margin: 0;
+  color: var(--qk-text-muted);
+}
+
+.about__try {
+  margin-top: var(--qk-space-4);
+}
+
+.about__section a,
+.about__try a {
+  color: var(--qk-terracotta-hover);
+  font-weight: 700;
+}
+
 .about__credits {
   max-width: var(--qk-reading-width);
   margin: var(--qk-space-7) auto 0;
@@ -74,5 +122,15 @@
 
   .about__intro {
     font-size: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .about {
+    padding: 28px 16px;
+  }
+
+  .about__title {
+    font-size: 34px;
   }
 }

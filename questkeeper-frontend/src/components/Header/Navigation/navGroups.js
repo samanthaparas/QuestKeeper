@@ -52,7 +52,7 @@ export const NAV_GROUPS = [
     items: [
       { to: "/guide", label: "Guide", hint: "New to D&D? Start here", icon: getUiIcon("search-reference") },
       { to: "/quiz", label: "Character Quiz", hint: "Not sure what to play? Find a hero", icon: getSpellEffectIcon("divination") },
-      { to: "/about", label: "About", hint: "Sources and credits", icon: bookIcon },
+      { to: "/about", label: "About", hint: "What QuestKeeper does, sources and credits", icon: bookIcon },
     ],
   },
 ];
