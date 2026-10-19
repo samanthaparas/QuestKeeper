@@ -67,10 +67,18 @@ import {
   setTypedInitiative,
   applyInitiativeUpdate,
   applyFreeCastsSplit,
+  applySummonAction,
+  getSummonInfo,
+  getSummonTemplate,
+  getSpellAttackModifier,
+  isSummonPresent,
+  tickSummonRounds,
+  withSummonEnded,
   getNewOptionalFeatures,
   markOptionalFeaturesSeen,
   splitMagicWeaponName,
   addSubclassSpells,
+  subclassFreeCastsToAdd,
   subclassSpellsToGrant,
   subclassSpellsCountedByHand,
   markSpellsGrantedBy,
@@ -85,7 +93,7 @@ import Button from "../../components/Button/Button";
 import { getFeatureSubclassId, sourceFromEntry } from "../../utils/featureSources";
 import { getSetupTasks } from "../../utils/setupTasks";
 import { loadHomebrew } from "../../utils/homebrewCache";
-import { getSubclassBonusSpells } from "../../utils/homebrewMappers";
+import { getSubclassBonusSpells, getSubclassFeatureDamage } from "../../utils/homebrewMappers";
 import { describePicks } from "../../utils/featureChoices";
 import { RETRY_DELAYS } from "../../hooks/useSrdEquipmentLookup";
 import { fillMissingComponents } from "../../utils/spellComponents";
@@ -241,7 +249,9 @@ function CharacterSheetPage() {
   // A concentration spell can be timed the same way ("Bless, 10 rounds").
   const hasTimers =
     Boolean(sheet?.conditions?.some((condition) => typeof condition.rounds === "number")) ||
-    typeof sheet?.concentration?.rounds === "number";
+    typeof sheet?.concentration?.rounds === "number" ||
+    // A summon cast for 1 minute (no concentration) counts down too.
+    (isSummonPresent(sheet) && typeof sheet.companionCreature.summon.rounds === "number");
   // Out of step with the fight: one of this character's turns ended, or it's a
   // new fight or a different table, which just resets the count.
   const roundOutOfStep =
@@ -267,9 +277,13 @@ function CharacterSheetPage() {
         }
       }
 
+      const summonTick = tickSummonRounds(sheet, elapsedRounds);
+      if (summonTick.ended) names.push(getSummonTemplate(sheet.companionCreature).spell);
+
       persistSheet({
-        ...sheet,
+        ...summonTick.sheet,
         conditions,
+        // (Only the 1-minute version ticks, and it never holds concentration.)
         concentration,
         roundSeen: { tableId: fightTableId, turns: fightTurns },
       });
@@ -595,14 +609,24 @@ function CharacterSheetPage() {
   const bonusSpells = getSubclassBonusSpells(sheet.class?.subclass?.id, homebrewList);
   const missingBonusSpells = subclassSpellsToGrant(sheet, bonusSpells);
   const handCountedBonusSpells = subclassSpellsCountedByHand(sheet, bonusSpells);
+  // Spells on the sheet whose free cast (once per long rest, no slot) isn't
+  // tracked yet, e.g. the subclass was edited to say so after they arrived.
+  const missingFreeCasts = subclassFreeCastsToAdd(sheet, bonusSpells);
+  const bonusSpellSource = (name) =>
+    bonusSpells.find((spell) => spell.name.toLowerCase() === name.toLowerCase())?.source ||
+    subclassName;
 
   function handleAddBonusSpells() {
     persistSheet(addSubclassSpells(sheet, bonusSpells, sheet.level ?? 1, subclassName));
   }
 
+  // Each one is marked with where it comes from: its feature, or the subclass.
   function handleMarkBonusSpells() {
     persistSheet(
-      markSpellsGrantedBy(sheet, handCountedBonusSpells.map((spell) => spell.index), subclassName),
+      handCountedBonusSpells.reduce(
+        (next, spell) => markSpellsGrantedBy(next, [spell.index], bonusSpellSource(spell.name)),
+        sheet,
+      ),
     );
   }
 
@@ -647,7 +671,9 @@ function CharacterSheetPage() {
 
     // On auto AC, worn armor and Dexterity set the AC (see armorClass.js), and
     // auto-filled weapon attacks follow new scores (see refreshWeaponAttacks).
-    const updated = withCurrentNumbers(sheet, next);
+    // A summoned companion whose spell has ended (concentration broken, the
+    // minute run out) is marked as gone, never left looking present.
+    const updated = withSummonEnded(withCurrentNumbers(sheet, next));
     setSheet(updated);
     pendingUpdateRef.current = updated;
 
@@ -1413,10 +1439,15 @@ function CharacterSheetPage() {
 
   function handleLongRest() {
     const rested = applyRest(sheet, "long");
+    // A summoned companion isn't healed by the rest: its spell ends instead.
+    const isSummon = Boolean(getSummonTemplate(sheet.companionCreature));
     const companionName =
-      sheet.companionMode === "creature" && sheet.companionCreature
+      sheet.companionMode === "creature" && sheet.companionCreature && !isSummon
         ? sheet.companionCreature.name || "your companion"
         : null;
+    const summonEnded = isSummonPresent(sheet)
+      ? ` ${sheet.companionCreature.name || "Your summon"} is gone (${getSummonTemplate(sheet.companionCreature).spell} ended).`
+      : "";
     const regained =
       getHitDiceRemaining(rested.combat.hitDice) -
       getHitDiceRemaining(sheet.combat.hitDice);
@@ -1427,7 +1458,7 @@ function CharacterSheetPage() {
         regained > 0
           ? `, you got ${regained} Hit ${regained === 1 ? "Die" : "Dice"} back,`
           : ""
-      } and spell slots and abilities are refilled.`,
+      } and spell slots and abilities are refilled.${summonEnded}`,
     );
   }
 
@@ -1439,6 +1470,10 @@ function CharacterSheetPage() {
     const exhaustionNote = summary.exhaustion
       ? ` Tireless: exhaustion ${summary.exhaustion.from} → ${summary.exhaustion.to}.`
       : "";
+    // A short rest (an hour or more) outlasts a summon too.
+    const summonNote = isSummonPresent(sheet)
+      ? ` ${sheet.companionCreature.name || "Your summon"} is gone (${getSummonTemplate(sheet.companionCreature).spell} ended).`
+      : "";
     setRestMessage(
       (summary.rolls.length > 0
         ? `Short rest done. Rolled ${summary.rolls.join(" + ")} (${formatModifier(
@@ -1448,7 +1483,9 @@ function CharacterSheetPage() {
           }. ${summary.hitDiceLeft} Hit ${
             summary.hitDiceLeft === 1 ? "Die" : "Dice"
           } left. Short-rest abilities are refilled.`
-        : "Short rest done. Short-rest abilities are refilled.") + exhaustionNote,
+        : "Short rest done. Short-rest abilities are refilled.") +
+        exhaustionNote +
+        summonNote,
     );
   }
 
@@ -2325,7 +2362,9 @@ function CharacterSheetPage() {
                 )}
 
                 {/* Subclass bonus spells not on the sheet, or counted by mistake. */}
-                {(missingBonusSpells.length > 0 || handCountedBonusSpells.length > 0) && (
+                {(missingBonusSpells.length > 0 ||
+                  handCountedBonusSpells.length > 0 ||
+                  missingFreeCasts.length > 0) && (
                   <div className="character-sheet__setup" role="status">
                     <p className="character-sheet__stray-title">
                       {subclassName} spells to sort out
@@ -2343,11 +2382,17 @@ function CharacterSheetPage() {
                           {handCountedBonusSpells.map((spell) => spell.name).join(", ")}
                         </li>
                       )}
+                      {missingFreeCasts.length > 0 && (
+                        <li>
+                          Free cast not tracked yet:{" "}
+                          {missingFreeCasts.map((spell) => spell.name).join(", ")}
+                        </li>
+                      )}
                     </ul>
                     <div className="character-sheet__setup-actions">
-                      {missingBonusSpells.length > 0 && (
+                      {(missingBonusSpells.length > 0 || missingFreeCasts.length > 0) && (
                         <Button onClick={handleAddBonusSpells}>
-                          Add {missingBonusSpells.length === 1 ? "it" : "them"}
+                          Add {missingBonusSpells.length + missingFreeCasts.length === 1 ? "it" : "them"}
                         </Button>
                       )}
                       {handCountedBonusSpells.length > 0 && (
@@ -2462,6 +2507,15 @@ function CharacterSheetPage() {
                         onAttackAdd={handleCompanionAttackAdd}
                         onAttackUpdate={handleCompanionAttackUpdate}
                         onAttackRemove={handleCompanionAttackRemove}
+                        // A companion that follows a summon spell (Fable and
+                        // Summon Fey); null for an ordinary one.
+                        summon={getSummonInfo(
+                          sheet,
+                          spellcastingAbility
+                            ? getSpellAttackModifier(sheet.abilityScores[spellcastingAbility] ?? 10, proficiencyBonus)
+                            : proficiencyBonus,
+                        )}
+                        onSummon={(action, payload) => persistSheet(applySummonAction(sheet, action, payload))}
                       />
                     ) : (
                       <p className="companion-card__add">
@@ -2537,6 +2591,7 @@ function CharacterSheetPage() {
                       onOptionalFeatureSwitch={handleOptionalFeatureSwitch}
                       isReplacedFeature={(name) => isReplacedByOption(sheet, name)}
                       abilityScores={sheet.abilityScores}
+                      homebrewFeatureDamage={getSubclassFeatureDamage(sheet.class?.subclass?.id, homebrewList)}
                       newOptionalCount={newOptionalFeatures.length}
                       onOptionalFeaturesSeen={() => persistSheet(markOptionalFeaturesSeen(sheet))}
                       featureEntries={currentEntries}

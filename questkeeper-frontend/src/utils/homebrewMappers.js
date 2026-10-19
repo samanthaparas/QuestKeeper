@@ -166,12 +166,60 @@ function cleanNamedList(items, { max, withLevel = false }) {
 // A subclass's bonus spells (like a domain's or Fey Wanderer Magic's): the
 // spell's name, the class level it comes at and the spell's own level. Only
 // names and numbers; no spell text is stored.
+// A subclass feature's extra damage that grows with class level (Dreadful
+// Strikes: 1d4 psychic from 3, 1d6 from 11), and a one-line note on when it
+// applies. Both optional; a feature without them saves as before. Dice must
+// look like "1d4" or "2d6+1", so the roll button can always roll them.
+const DICE_PATTERN = /^\d{1,2}d\d{1,3}([+-]\d{1,3})?$/i;
+
+function cleanFeatureDamage(rows) {
+  return (rows ?? [])
+    .map((row) => ({
+      level: wholeNumber(row?.level, 1, 20, 1),
+      dice: text(row?.dice, 20).replace(/\s+/g, "").toLowerCase(),
+      type: text(row?.type, 30),
+    }))
+    .filter((row) => DICE_PATTERN.test(row.dice))
+    .slice(0, 10)
+    .sort((a, b) => a.level - b.level);
+}
+
+function cleanSubclassFeatures(items) {
+  return (items ?? [])
+    .map((item) => {
+      const [feature] = cleanNamedList([item], { max: 1, withLevel: true });
+      if (!feature) return null;
+      const damage = cleanFeatureDamage(item.damage);
+      const damageNote = text(item.damageNote, 200);
+      return {
+        ...feature,
+        ...(damage.length ? { damage } : {}),
+        ...(damage.length && damageNote ? { damageNote } : {}),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 30)
+    .sort((a, b) => a.level - b.level);
+}
+
+// The damage a feature does at a class level: the last step reached, or
+// null before the first one.
+export function featureDamageAt(feature, level) {
+  return [...(feature?.damage ?? [])].reverse().find((row) => level >= row.level) ?? null;
+}
+
 function cleanBonusSpells(items) {
   return (items ?? [])
     .map((item) => ({
       name: text(item?.name, 80),
       level: wholeNumber(item?.level, 1, 20, 3),
       spellLevel: wholeNumber(item?.spellLevel, 0, 9, 1),
+      // Optional: the feature that gives it ("Fey Reinforcements"), shown
+      // as "From ..." instead of the subclass name, and whether it can be
+      // cast once per long rest without a slot. Left off when unset, so
+      // older subclasses save exactly as before.
+      ...(text(item?.source, 80) ? { source: text(item?.source, 80) } : {}),
+      ...(item?.freeCast === true ? { freeCast: true } : {}),
     }))
     .filter((item) => item.name)
     .slice(0, 20)
@@ -278,9 +326,7 @@ function cleanCategoryData(category, data) {
           ? data.parentClass
           : "",
       parentClassName: text(data.parentClassName, 80),
-      features: cleanNamedList(data.features, { max: 30, withLevel: true }).sort(
-        (a, b) => a.level - b.level,
-      ),
+      features: cleanSubclassFeatures(data.features),
       // Older subclasses have none; the list starts empty.
       spells: cleanBonusSpells(data.spells),
     };
@@ -511,6 +557,18 @@ export function getSubclassBonusSpells(subclassId, entries = []) {
     (item) => item.category === "subclass" && toHomebrewIndex(item.id) === subclassId,
   );
   return entry ? cleanHomebrewData("subclass", entry.data).spells : [];
+}
+
+// The features of the character's homebrew subclass that do extra damage,
+// for the Features tab's damage line and roll button.
+export function getSubclassFeatureDamage(subclassId, entries = []) {
+  if (!subclassId || !isHomebrewId(subclassId)) return [];
+  const entry = (entries ?? []).find(
+    (item) => item.category === "subclass" && toHomebrewIndex(item.id) === subclassId,
+  );
+  return entry
+    ? cleanHomebrewData("subclass", entry.data).features.filter((feature) => feature.damage)
+    : [];
 }
 
 export function getHomebrewSubclassRefs(entries, classIndex) {

@@ -1558,6 +1558,299 @@ export function createCompanionAbilityScores(saved = {}) {
   return Object.fromEntries(ABILITY_SCORES.map((ability) => [ability, saved?.[ability] ?? 10]));
 }
 
+// --- Summoned companions --------------------------------------------------------
+// A saved companion (its name, picture, personality and notes) can follow a
+// summon spell's rules instead of fixed numbers: Fable the fey spirit is
+// cast with Summon Fey, so her AC, HP and attacks come from the spell level,
+// she's only there while the spell lasts, and a long rest doesn't bring her
+// back. Her own saved numbers stay underneath, untouched, for if the player
+// stops using the spell's rules.
+//
+// Summon Fey (Tasha's Cauldron of Everything) isn't in the SRD, so only its
+// numbers, the mood names and short summaries in our own words are kept
+// here; the book has the full wording.
+export const SUMMON_TEMPLATES = {
+  summonFey: {
+    key: "summonFey",
+    spell: "Summon Fey",
+    creature: "Fey Spirit",
+    baseLevel: 3,
+    speed: 40,
+    abilityScores: {
+      strength: 13,
+      dexterity: 16,
+      constitution: 14,
+      intelligence: 14,
+      wisdom: 11,
+      charisma: 16,
+    },
+    armorClass: (level) => 12 + level,
+    hitPoints: (level) => 30 + 10 * (level - 3),
+    attackCount: (level) => Math.floor(level / 2),
+    attackName: "Shortsword",
+    // Piercing and force are rolled and shown apart, never merged.
+    damage: (level) => ({ dice: `1d6+${3 + level}`, type: "Piercing" }),
+    extraDamage: { dice: "1d6", type: "Force" },
+    // Concentration, up to 1 hour. A feature can let the caster skip
+    // concentration, and then it lasts 1 minute (10 rounds).
+    noConcentrationFeature: "Fey Reinforcements",
+    shortRounds: 10,
+    moods: [
+      { key: "fuming", name: "Fuming", note: "After Fey Step: advantage on its next attack roll this turn." },
+      {
+        key: "mirthful",
+        name: "Mirthful",
+        note: "After Fey Step: one creature within 10 ft makes a Wisdom save against your spell save DC or is charmed by you and the spirit for 1 minute (ends if it takes damage).",
+      },
+      {
+        key: "tricksy",
+        name: "Tricksy",
+        note: "After Fey Step: magical darkness fills a 10-foot cube within 5 ft of it until the end of its next turn.",
+      },
+    ],
+    notes: [
+      "Fey Step (bonus action): teleports up to 30 ft to a space it can see, then its mood's effect happens.",
+      "Takes its turn right after yours and follows your spoken commands; with none, it takes the Dodge action.",
+      "Can't be charmed. Darkvision 60 ft. Speaks Sylvan and understands your languages.",
+      "Disappears at 0 HP or when the spell ends.",
+    ],
+  },
+};
+
+export function getSummonTemplate(creature) {
+  return SUMMON_TEMPLATES[creature?.summon?.template] ?? null;
+}
+
+// The numbers for a spell level. spellAttack is the caster's spell attack
+// modifier, which the attack uses as its to-hit.
+export function getSummonStats(template, slotLevel, spellAttack = 0) {
+  const level = Math.max(template.baseLevel, Math.min(9, Number(slotLevel) || template.baseLevel));
+  const damage = template.damage(level);
+  return {
+    level,
+    armorClass: template.armorClass(level),
+    maxHp: template.hitPoints(level),
+    speed: template.speed,
+    abilityScores: template.abilityScores,
+    attackCount: template.attackCount(level),
+    toHit: spellAttack,
+    damage: damage.dice,
+    damageType: damage.type,
+    extraDamage: template.extraDamage.dice,
+    extraDamageType: template.extraDamage.type,
+  };
+}
+
+function concentratingOnSpell(sheet, spell) {
+  return sameName(sheet?.concentration?.spell ?? "", spell);
+}
+
+// Physically there right now? Only while the spell is up: cast and not
+// dismissed, the concentration (when it needs it) still held, and the
+// 1-minute version's rounds not run out. A saved companion that isn't
+// summoned is never treated as present.
+export function isSummonPresent(sheet) {
+  const creature = sheet?.companionCreature;
+  const template = getSummonTemplate(creature);
+  if (!template || !creature.summon.active) return false;
+  if (creature.summon.concentration) return concentratingOnSpell(sheet, template.spell);
+  return typeof creature.summon.rounds !== "number" || creature.summon.rounds > 0;
+}
+
+// Everything the companion card needs about a linked summon, or null for an
+// ordinary companion.
+export function getSummonInfo(sheet, spellAttack = 0) {
+  const creature = sheet?.companionCreature;
+  const template = getSummonTemplate(creature);
+  if (!template) return null;
+  const state = creature.summon;
+  const present = isSummonPresent(sheet);
+  const slots = getSpellSlots(sheet.spellcasting).filter(
+    (slot) => slot.level >= template.baseLevel && slot.max > 0,
+  );
+  const freeCast = (sheet.resources ?? []).find((resource) =>
+    sameName(resource.freeCastFor ?? "", template.spell),
+  );
+  return {
+    template,
+    present,
+    slotLevel: state.slotLevel ?? template.baseLevel,
+    mood: template.moods.find((mood) => mood.key === state.mood) ?? null,
+    concentration: Boolean(state.concentration),
+    roundsLeft: !state.concentration && typeof state.rounds === "number" ? state.rounds : null,
+    hp: present ? (state.hitPoints ?? null) : null,
+    stats: getSummonStats(template, state.slotLevel, spellAttack),
+    attackName: state.attackName || template.attackName,
+    slots: slots.map((slot) => ({ level: slot.level, current: slot.current, max: slot.max })),
+    freeCast: freeCast ? { id: freeCast.id, current: freeCast.current } : null,
+    canSkipConcentration: (sheet.features ?? []).some((feature) =>
+      sameName(feature.name, template.noConcentrationFeature ?? ""),
+    ),
+    // Another spell being concentrated on, which casting with
+    // concentration would end.
+    otherConcentration:
+      sheet.concentration?.spell && !concentratingOnSpell(sheet, template.spell)
+        ? sheet.concentration.spell
+        : "",
+  };
+}
+
+// Ends the summon: it's gone, and a concentration it needed is dropped too.
+function endSummon(sheet) {
+  const creature = sheet.companionCreature;
+  const template = getSummonTemplate(creature);
+  if (!template) return sheet;
+  return {
+    ...sheet,
+    concentration:
+      creature.summon.active && creature.summon.concentration && concentratingOnSpell(sheet, template.spell)
+        ? null
+        : (sheet.concentration ?? null),
+    companionCreature: {
+      ...creature,
+      summon: { ...creature.summon, active: false, rounds: null, hitPoints: null },
+    },
+  };
+}
+
+// The summon's changes, from the companion card:
+// - link { template, attackName }: follow a spell's rules (not summoned yet).
+//   The attack keeps the companion's own name for it ("Bite").
+// - unlink: back to the saved numbers.
+// - cast { slotLevel, payWith: "free" | "slot", mood, concentration }
+// - dismiss
+// - hp { value }: at 0 the spirit disappears.
+// - attackName { name }
+export function applySummonAction(sheet, action, payload = {}) {
+  const creature = sheet.companionCreature;
+  if (action === "link") {
+    const template = SUMMON_TEMPLATES[payload.template];
+    if (!creature || !template) return sheet;
+    return {
+      ...sheet,
+      companionCreature: {
+        ...creature,
+        summon: {
+          template: template.key,
+          active: false,
+          slotLevel: template.baseLevel,
+          mood: template.moods[0].key,
+          concentration: true,
+          rounds: null,
+          hitPoints: null,
+          attackName: (payload.attackName ?? creature.attacks?.[0]?.name ?? "").trim() || template.attackName,
+        },
+      },
+    };
+  }
+
+  const template = getSummonTemplate(creature);
+  if (!template) return sheet;
+  const summon = creature.summon;
+
+  if (action === "unlink") {
+    const ended = endSummon(sheet);
+    const saved = { ...ended.companionCreature };
+    delete saved.summon;
+    return { ...ended, companionCreature: saved };
+  }
+
+  if (action === "dismiss") return endSummon(sheet);
+
+  if (action === "attackName") {
+    return {
+      ...sheet,
+      companionCreature: {
+        ...creature,
+        summon: { ...summon, attackName: String(payload.name ?? "").slice(0, 80) },
+      },
+    };
+  }
+
+  if (action === "hp") {
+    // An emptied box (mid-retype) changes nothing; a typed 0 ends it.
+    if (!isSummonPresent(sheet) || String(payload.value ?? "").trim() === "") return sheet;
+    const max = summon.hitPoints?.max ?? template.hitPoints(summon.slotLevel);
+    const value = Math.max(0, Math.min(max, Math.round(Number(payload.value) || 0)));
+    if (value === 0) return endSummon(sheet);
+    return {
+      ...sheet,
+      companionCreature: { ...creature, summon: { ...summon, hitPoints: { current: value, max } } },
+    };
+  }
+
+  if (action === "cast") {
+    // The free cast is at the spell's own level; a slot casts at its level.
+    const payWith = payload.payWith === "free" ? "free" : "slot";
+    const level =
+      payWith === "free"
+        ? template.baseLevel
+        : Math.max(template.baseLevel, Math.min(9, Number(payload.slotLevel) || template.baseLevel));
+    let next = isSummonPresent(sheet) ? endSummon(sheet) : sheet;
+
+    if (payWith === "free") {
+      const resource = (next.resources ?? []).find((item) => sameName(item.freeCastFor ?? "", template.spell));
+      if (!resource || resource.current <= 0) return sheet;
+      next = { ...next, resources: setResourceCurrent(next.resources, resource.id, resource.current - 1) };
+    } else {
+      const slot = getSpellSlots(next.spellcasting).find((item) => item.level === level);
+      if (!slot || slot.current <= 0) return sheet;
+      next = { ...next, spellcasting: setSpellSlot(next.spellcasting, level, "current", slot.current - 1) };
+    }
+
+    const canSkip = (next.features ?? []).some((feature) =>
+      sameName(feature.name, template.noConcentrationFeature ?? ""),
+    );
+    const concentration = payload.concentration !== false || !canSkip;
+    const mood = template.moods.some((item) => item.key === payload.mood) ? payload.mood : template.moods[0].key;
+    const maxHp = template.hitPoints(level);
+    return {
+      ...next,
+      // Concentrating on it ends any other concentration, as casting does.
+      concentration: concentration ? { spell: template.spell } : (next.concentration ?? null),
+      companionCreature: {
+        ...next.companionCreature,
+        summon: {
+          ...next.companionCreature.summon,
+          active: true,
+          slotLevel: level,
+          mood,
+          concentration,
+          rounds: concentration ? null : template.shortRounds,
+          hitPoints: { current: maxHp, max: maxHp },
+        },
+      },
+    };
+  }
+
+  return sheet;
+}
+
+// Tidies a summon that has ended some other way (concentration broken by a
+// failed save or 0 HP, or the 1-minute version running out), so it's never
+// left marked as there. Run as the sheet saves.
+export function withSummonEnded(sheet) {
+  const creature = sheet?.companionCreature;
+  if (!getSummonTemplate(creature) || !creature.summon.active || isSummonPresent(sheet)) return sheet;
+  return endSummon(sheet);
+}
+
+// The 1-minute version loses a round at the end of each of the character's
+// own turns (like a timed concentration spell). Returns the sheet and
+// whether it ran out.
+export function tickSummonRounds(sheet, rounds) {
+  const creature = sheet?.companionCreature;
+  const summon = creature?.summon;
+  if (!getSummonTemplate(creature) || !summon.active || summon.concentration || typeof summon.rounds !== "number" || rounds <= 0) {
+    return { sheet, ended: false };
+  }
+  const left = summon.rounds - rounds;
+  if (left > 0) {
+    return { sheet: { ...sheet, companionCreature: { ...creature, summon: { ...summon, rounds: left } } }, ended: false };
+  }
+  return { sheet: endSummon(sheet), ended: true };
+}
+
 export function setResourceCurrent(resources, id, value) {
   return (resources ?? []).map((resource) =>
     resource.id === id
@@ -1648,9 +1941,11 @@ export function applyRest(sheet, restType) {
       : sheet.combat.hitDice;
 
   // A long rest heals the companion (a mount, a familiar) to full too; it
-  // rests along with its character.
-  const companionCreature =
-    restType === "long" && sheet.companionCreature?.hitPoints
+  // rests along with its character. A summoned one (Summon Fey) isn't healed
+  // or brought back: no summon lasts through a rest, so it ends instead.
+  const companionCreature = getSummonTemplate(sheet.companionCreature)
+    ? endSummon(sheet).companionCreature
+    : restType === "long" && sheet.companionCreature?.hitPoints
       ? {
           ...sheet.companionCreature,
           hitPoints: {
@@ -1665,6 +1960,8 @@ export function applyRest(sheet, restType) {
     resources,
     spellcasting,
     ...(companionCreature ? { companionCreature } : {}),
+    // A rest outlasts the summon, so a concentration it needed ends too.
+    ...(getSummonTemplate(sheet.companionCreature) ? { concentration: endSummon(sheet).concentration } : {}),
     // A long rest takes away one level of exhaustion, and so does a short
     // rest for a Ranger with Deft Explorer's Tireless.
     ...((restType === "long" || (restType === "short" && hasTireless(sheet))) && sheet.conditions
@@ -2500,10 +2797,12 @@ export function subclassSpellsCountedByHand(sheet, bonusSpells = [], level = she
     .filter((spell) => spell && countsTowardSpellsKnown(spell));
 }
 
-// Adds the due bonus spells, each saying where it came from.
+// Adds the due bonus spells, each saying where it came from: the feature
+// named on the homebrew spell ("Fey Reinforcements") or else the subclass.
+// Ones marked as a free cast also get their own 1/1 long-rest resource.
 export function addSubclassSpells(sheet, bonusSpells, level, source) {
   const due = subclassSpellsToGrant(sheet, bonusSpells, level);
-  if (due.length === 0) return sheet;
+  if (due.length === 0) return addSubclassFreeCasts(sheet, bonusSpells, level, source);
   const base = sheet.spellcasting ?? { type: "known", cantripsKnown: [], spellsKnown: [] };
   const entries = due.map((spell) => ({
     index: crypto.randomUUID(),
@@ -2512,17 +2811,56 @@ export function addSubclassSpells(sheet, bonusSpells, level, source) {
     notes: "",
     components: "",
     locked: true,
-    grantedBy: source,
+    grantedBy: spell.source || source,
     acquiredAtLevel: spell.level,
   }));
-  return {
-    ...sheet,
-    spellcasting: {
-      ...base,
-      cantripsKnown: [...(base.cantripsKnown ?? []), ...entries.filter((spell) => spell.level === 0)],
-      spellsKnown: [...(base.spellsKnown ?? []), ...entries.filter((spell) => spell.level > 0)],
+  return addSubclassFreeCasts(
+    {
+      ...sheet,
+      spellcasting: {
+        ...base,
+        cantripsKnown: [...(base.cantripsKnown ?? []), ...entries.filter((spell) => spell.level === 0)],
+        spellsKnown: [...(base.spellsKnown ?? []), ...entries.filter((spell) => spell.level > 0)],
+      },
     },
-  };
+    bonusSpells,
+    level,
+    source,
+  );
+}
+
+// The free casts that bonus spells due by `level` give but the sheet doesn't
+// track yet (the spell was added before the subclass said so). Only for
+// spells that are on the sheet; never twice.
+export function subclassFreeCastsToAdd(sheet, bonusSpells = [], level = sheet?.level ?? 1) {
+  const tracked = new Set(
+    (sheet?.resources ?? [])
+      .filter((resource) => resource.freeCastFor)
+      .map((resource) => resource.freeCastFor.toLowerCase()),
+  );
+  return (bonusSpells ?? []).filter(
+    (spell) =>
+      spell.freeCast &&
+      spell.level <= level &&
+      knownSpellNamed(sheet, spell.name) &&
+      !tracked.has(spell.name.toLowerCase()),
+  );
+}
+
+export function addSubclassFreeCasts(sheet, bonusSpells, level, source) {
+  const due = subclassFreeCastsToAdd(sheet, bonusSpells, level);
+  if (due.length === 0) return sheet;
+  const added = due.map((spell) => ({
+    ...createResource({
+      name: freeCastName(spell.name),
+      max: 1,
+      resetOn: "long",
+      notes: "Cast it once without using a spell slot; back after a long rest.",
+    }),
+    freeCastFor: spell.name,
+    grantedBy: spell.source || source,
+  }));
+  return { ...sheet, resources: [...(sheet.resources ?? []), ...added] };
 }
 
 // "Mark as from Fey Wanderer": the hand-added copies stop counting toward

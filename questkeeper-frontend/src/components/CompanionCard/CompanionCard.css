@@ -274,3 +274,78 @@
   color: var(--qk-text-muted);
   font-size: 14px;
 }
+
+/* A companion that follows a summon spell: the Summon panel (cast it, or
+   what's up while it's here), its one attack, and the switch under
+   "Edit stats". */
+.companion-card__summon {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 10px 12px;
+  border: 1px dashed var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-background);
+}
+
+.companion-card__summon-line,
+.companion-card__summon-note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.companion-card__summon-note {
+  color: var(--qk-text-muted);
+}
+
+.companion-card__summon-notes {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.companion-card__summon-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.companion-card__summon-choice {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.companion-card__summon-attack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 14px;
+}
+
+.companion-card__summon-attack-name {
+  font-weight: 700;
+}
+
+.companion-card__summon-attack-count {
+  color: var(--qk-text-muted);
+  font-weight: 400;
+}
+
+.companion-card__summon-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.companion-card__summon-hint {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}

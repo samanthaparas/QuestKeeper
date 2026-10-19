@@ -6,6 +6,13 @@ import userEvent from "@testing-library/user-event";
 // CI has no Supabase settings, so give it a stand-in.
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
 
+// The player's homebrew list (no entries unless a test gives some).
+vi.mock("../../utils/homebrewCache", () => ({
+  loadHomebrew: vi.fn().mockResolvedValue([]),
+  refreshHomebrew: vi.fn(),
+  primeHomebrew: vi.fn(),
+}));
+
 // Fake API answers: a Rogue with the SRD Thief and Tome of Heroes' Cat Burglar.
 vi.mock("../../utils/api", () => ({
   getFeats: vi.fn().mockResolvedValue([]),
@@ -70,6 +77,7 @@ vi.mock("../../utils/api", () => ({
 
 import { MemoryRouter } from "react-router-dom";
 import LevelUpWizard from "./LevelUpWizard";
+import { loadHomebrew } from "../../utils/homebrewCache";
 import {
   getFeats,
   getClassFeatures,
@@ -766,5 +774,60 @@ describe("LevelUpWizard feats for a 2014 character", () => {
     expect(names).toEqual(["Choose a feat", "Grappler (2014 SRD)", "Sharpshooter (my version) (Homebrew)"]);
     expect(screen.getByText(/make it as homebrew on the Feats page/)).toBeInTheDocument();
     getFeats.mockResolvedValue([]);
+  });
+});
+
+describe("LevelUpWizard review: a homebrew subclass at level 11", () => {
+  // A Fey Wanderer like Pippa's, with the two level 11 changes filled in.
+  const feyWanderer = {
+    id: "fw1",
+    category: "subclass",
+    name: "Fey Wanderer",
+    data: {
+      parentClass: "ranger",
+      features: [
+        {
+          name: "Dreadful Strikes",
+          level: 3,
+          description: "",
+          damage: [
+            { level: 3, dice: "1d4", type: "psychic" },
+            { level: 11, dice: "1d6", type: "psychic" },
+          ],
+        },
+        { name: "Fey Reinforcements", level: 11, description: "" },
+      ],
+      spells: [{ name: "Summon Fey", level: 11, spellLevel: 3, source: "Fey Reinforcements", freeCast: true }],
+    },
+  };
+
+  async function reviewLevel(level) {
+    loadHomebrew.mockResolvedValue([feyWanderer]);
+    // A full list for the old level (5 at 9, 6 at 10), so only one is new.
+    const known = Array.from({ length: level - 5 }, (_, i) => ({ index: `k${i}`, name: `Known ${i}`, level: 1 }));
+    const sheet = makeRanger(level - 1, known);
+    sheet.class = { ...sheet.class, subclass: { id: "hb_fw1", name: "Fey Wanderer" } };
+    await reachSpellStep(sheet);
+    const pick = screen.queryByLabelText("New spell");
+    if (pick) await userEvent.selectOptions(pick, "pass-without-trace");
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByText("Comes with level " + level);
+  }
+
+  it("says Dreadful Strikes goes from 1d4 to 1d6, and Summon Fey comes from Fey Reinforcements", async () => {
+    await reviewLevel(11);
+    expect(await screen.findByText("Dreadful Strikes damage: 1d4 → 1d6 psychic")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Summon Fey \(Fey Reinforcements, 1 free cast per long rest\)/),
+    ).toBeInTheDocument();
+    loadHomebrew.mockResolvedValue([]);
+  });
+
+  it("says nothing about the damage on a level where it doesn't change", async () => {
+    await reviewLevel(10);
+    await screen.findByText("Your choices");
+    expect(screen.queryByText(/Dreadful Strikes damage/)).toBeNull();
+    expect(screen.queryByText(/Summon Fey/)).toBeNull();
+    loadHomebrew.mockResolvedValue([]);
   });
 });

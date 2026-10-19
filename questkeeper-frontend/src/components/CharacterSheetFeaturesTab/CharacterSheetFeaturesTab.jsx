@@ -29,6 +29,7 @@ import {
 } from "../../utils/srdDetails";
 import Button from "../Button/Button";
 import { getGrantDamage, getGrantRollDice, getSafeSpellLink } from "../../utils/characterSheet";
+import { featureDamageAt } from "../../utils/homebrewMappers";
 import RollButton from "../RollDock/RollButton";
 import { findStraySubclassFeatures, sourceFromEntry } from "../../utils/featureSources";
 import {
@@ -68,6 +69,9 @@ function CharacterSheetFeaturesTab({
   onOptionalFeaturesSeen = () => {},
   // For a feature's own tap-to-roll (Tireless: 1d8 + Wisdom).
   abilityScores = {},
+  // Homebrew subclass features with extra damage by level (Dreadful
+  // Strikes), from the player's homebrew list.
+  homebrewFeatureDamage = [],
   background = null,
   // From the sheet page, which loads them once (the tab loads its own if not).
   featureEntries = null,
@@ -536,7 +540,21 @@ function CharacterSheetFeaturesTab({
               .flatMap((option) => option.grants)
               .find((item) => item.name.toLowerCase() === String(feature.name).toLowerCase());
             const damage = getGrantDamage(grant, level);
-            const grantNote = [damage ? `Extra damage: ${damage}` : "", grant?.note ?? ""]
+            // A homebrew feature's damage at this level (Dreadful Strikes:
+            // 1d6 psychic at 11), with its own roll. It's a separate roll
+            // on purpose: the player adds it when it applies.
+            const homebrew = homebrewFeatureDamage.find(
+              (item) => item.name.toLowerCase() === String(feature.name).toLowerCase(),
+            );
+            const homebrewDamage = featureDamageAt(homebrew, level);
+            const grantNote = [
+              damage ? `Extra damage: ${damage}` : "",
+              grant?.note ?? "",
+              homebrewDamage
+                ? `Extra damage: ${homebrewDamage.dice}${homebrewDamage.type ? ` ${homebrewDamage.type}` : ""}`
+                : "",
+              homebrewDamage ? (homebrew.damageNote ?? "") : "",
+            ]
               .filter(Boolean)
               .join(" · ");
             // Tireless: roll its temporary HP with this character's Wisdom.
@@ -545,6 +563,15 @@ function CharacterSheetFeaturesTab({
             return (
               <span className="character-sheet__feature-choices">
                 {grantNote && <span className="character-sheet__feature-choice-note">{grantNote}</span>}
+                {homebrewDamage && (
+                  <RollButton
+                    label={`${feature.name} damage${homebrewDamage.type ? ` (${homebrewDamage.type})` : ""}`}
+                    damage={homebrewDamage.dice}
+                    className="character-sheet__feature-roll"
+                  >
+                    🎲 {homebrewDamage.dice}
+                  </RollButton>
+                )}
                 {rollDice && (
                   <RollButton
                     label={grant.roll.label}

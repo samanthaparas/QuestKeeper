@@ -112,7 +112,24 @@ import {
   resolveLevelUpFeatureChoices,
 } from "./featureChoices";
 import { getSetupTasks } from "./setupTasks";
-import { cleanHomebrewData, getSubclassBonusSpells, toHomebrewSubclass } from "./homebrewMappers";
+import {
+  cleanHomebrewData,
+  featureDamageAt,
+  getSubclassBonusSpells,
+  getSubclassFeatureDamage,
+  toHomebrewSubclass,
+} from "./homebrewMappers";
+import {
+  applySummonAction,
+  getSummonInfo,
+  getSummonStats,
+  isSummonPresent,
+  SUMMON_TEMPLATES,
+  subclassFreeCastsToAdd,
+  tickSummonRounds,
+  withSummonEnded,
+} from "./characterSheet";
+import { toCompanionRow } from "./partyStrip";
 import { featuresForNewLevel } from "./srdDetails";
 
 describe("getAbilityModifier", () => {
@@ -3404,5 +3421,301 @@ describe("new optional features to look at (the red dot)", () => {
   it("doesn't flag an option already switched on, or switched back off", () => {
     expect(keys(ranger(10, { optionalFeatures: { favoredFoe: true, deftExplorer: false, primalAwareness: true, naturesVeil: false } }))).toEqual([]);
     expect(getNewOptionalFeatures({ level: 10, class: { id: "wizard" }, features: [] })).toEqual([]);
+  });
+});
+
+// --- Level 11 Fey Wanderer: Fey Reinforcements, Dreadful Strikes, Fable ---
+
+const FEY_REINFORCED = {
+  ...FEY_WANDERER,
+  data: {
+    ...FEY_WANDERER.data,
+    features: [
+      {
+        name: "Dreadful Strikes",
+        level: 3,
+        description: "",
+        damage: [
+          { level: 11, dice: "1d6", type: "psychic" },
+          { level: 3, dice: "1d4", type: "psychic" },
+        ],
+        damageNote: "Once per creature per turn",
+      },
+      { name: "Beguiling Twist", level: 7, description: "" },
+      { name: "Fey Reinforcements", level: 11, description: "" },
+    ],
+    spells: [
+      ...FEY_WANDERER.data.spells,
+      { name: "Summon Fey", level: 11, spellLevel: 3, source: "Fey Reinforcements", freeCast: true },
+    ],
+  },
+};
+
+describe("homebrew bonus spells from a feature, with a free cast", () => {
+  it("keeps the feature and free cast when saved, and leaves older spells exactly as they were", () => {
+    const data = cleanHomebrewData("subclass", FEY_REINFORCED.data);
+    expect(data.spells.find((spell) => spell.name === "Summon Fey")).toEqual({
+      name: "Summon Fey",
+      level: 11,
+      spellLevel: 3,
+      source: "Fey Reinforcements",
+      freeCast: true,
+    });
+    expect(data.spells[0]).toEqual({ name: "Charm Person", level: 3, spellLevel: 1 });
+  });
+
+  it("adds Summon Fey at 11 from Fey Reinforcements, outside spells known, with 1 free cast a long rest", () => {
+    const sheet = { ...pippaLike(), level: 11 };
+    const bonus = getSubclassBonusSpells("hb_fw1", [FEY_REINFORCED]);
+    const after = addSubclassSpells(sheet, bonus, 11, "Fey Wanderer");
+    const summon = after.spellcasting.spellsKnown.find((spell) => spell.name === "Summon Fey");
+    expect(summon).toMatchObject({ level: 3, locked: true, grantedBy: "Fey Reinforcements", acquiredAtLevel: 11 });
+    expect(counted(after)).toEqual(["Absorb Elements", "Ensnaring Strike", "Goodberry", "Pass without Trace"]);
+    const free = after.resources.filter((resource) => resource.freeCastFor);
+    expect(free).toEqual([
+      expect.objectContaining({ name: "Summon Fey (free cast)", max: 1, current: 1, resetOn: "long", grantedBy: "Fey Reinforcements" }),
+    ]);
+    // The other bonus spells still say Fey Wanderer, and nothing is added twice.
+    expect(after.spellcasting.spellsKnown.find((spell) => spell.name === "Dispel Magic").grantedBy).toBe("Fey Wanderer");
+    expect(addSubclassSpells(after, bonus, 11, "Fey Wanderer")).toBe(after);
+  });
+
+  it("isn't due before level 11", () => {
+    const bonus = getSubclassBonusSpells("hb_fw1", [FEY_REINFORCED]);
+    const after = addSubclassSpells({ ...pippaLike(), level: 10 }, bonus, 10, "Fey Wanderer");
+    expect(after.spellcasting.spellsKnown.some((spell) => spell.name === "Summon Fey")).toBe(false);
+    expect(after.resources).toEqual([]);
+  });
+
+  it("offers the free cast for a spell already on the sheet, once", () => {
+    const sheet = { ...pippaLike(), level: 11 };
+    sheet.spellcasting.spellsKnown.push({ index: "sf", name: "Summon Fey", level: 3, locked: true, grantedBy: "Fey Wanderer" });
+    const bonus = getSubclassBonusSpells("hb_fw1", [FEY_REINFORCED]);
+    expect(subclassFreeCastsToAdd(sheet, bonus).map((spell) => spell.name)).toEqual(["Summon Fey"]);
+    const after = addSubclassSpells(sheet, bonus, 11, "Fey Wanderer");
+    expect(after.resources.map((resource) => resource.name)).toEqual(["Summon Fey (free cast)"]);
+    expect(subclassFreeCastsToAdd(after, bonus)).toEqual([]);
+  });
+});
+
+describe("homebrew feature damage by level", () => {
+  it("keeps valid dice in level order, drops bad ones, and leaves plain features as before", () => {
+    const data = cleanHomebrewData("subclass", {
+      parentClass: "ranger",
+      features: [
+        { name: "Dreadful Strikes", level: 3, description: "", damage: [{ level: 11, dice: "1 d6", type: "psychic" }, { level: 3, dice: "1d4", type: "psychic" }, { level: 5, dice: "lots" }] },
+        { name: "Plain", level: 7, description: "" },
+      ],
+    });
+    expect(data.features[0].damage).toEqual([
+      { level: 3, dice: "1d4", type: "psychic" },
+      { level: 11, dice: "1d6", type: "psychic" },
+    ]);
+    expect(data.features[1]).toEqual({ name: "Plain", level: 7, description: "" });
+  });
+
+  it("gives 1d4 at levels 3 to 10 and 1d6 from 11", () => {
+    const [strikes] = getSubclassFeatureDamage("hb_fw1", [FEY_REINFORCED]);
+    expect(strikes.name).toBe("Dreadful Strikes");
+    expect(strikes.damageNote).toBe("Once per creature per turn");
+    expect(featureDamageAt(strikes, 2)).toBeNull();
+    expect(featureDamageAt(strikes, 3).dice).toBe("1d4");
+    expect(featureDamageAt(strikes, 10).dice).toBe("1d4");
+    expect(featureDamageAt(strikes, 11)).toEqual({ level: 11, dice: "1d6", type: "psychic" });
+    // SRD and book subclasses have none.
+    expect(getSubclassFeatureDamage("hunter", [FEY_REINFORCED])).toEqual([]);
+  });
+});
+
+describe("a companion summoned with Summon Fey", () => {
+  const fable = () => ({
+    name: "Fable",
+    portraitUrl: "fable.png",
+    armorClass: 15,
+    speed: 40,
+    hitPoints: { current: 30, max: 30 },
+    abilityScores: { strength: 13, dexterity: 16, constitution: 14, intelligence: 14, wisdom: 11, charisma: 16 },
+    attacks: [{ id: "b1", name: "Bite", toHit: 6, damage: "2d6+6", damageType: "Piercing" }],
+    noteList: [{ id: "n1", text: "Loves riddles" }],
+  });
+  const ranger11 = () => ({
+    ...pippaLike(),
+    level: 11,
+    features: [...pippaLike().features, { index: "fr", name: "Fey Reinforcements" }],
+    spellcasting: {
+      type: "known",
+      cantripsKnown: [],
+      spellsKnown: [],
+      spellSlots: [
+        { level: 1, max: 4, current: 4 },
+        { level: 2, max: 3, current: 3 },
+        { level: 3, max: 3, current: 3 },
+        { level: 4, max: 0, current: 0 },
+      ],
+    },
+    resources: [{ id: "fc", name: "Summon Fey (free cast)", max: 1, current: 1, resetOn: "long", freeCastFor: "Summon Fey" }],
+    companionMode: "creature",
+    companionCreature: fable(),
+  });
+  const linked = () => applySummonAction(ranger11(), "link", { template: "summonFey" });
+
+  it("works out AC, HP, attacks and damage from the spell level", () => {
+    const template = SUMMON_TEMPLATES.summonFey;
+    expect(getSummonStats(template, 3, 7)).toMatchObject({
+      armorClass: 15, maxHp: 30, attackCount: 1, toHit: 7, damage: "1d6+6", damageType: "Piercing", extraDamage: "1d6", extraDamageType: "Force",
+    });
+    expect(getSummonStats(template, 4, 7)).toMatchObject({ armorClass: 16, maxHp: 40, attackCount: 2, damage: "1d6+7" });
+    expect(getSummonStats(template, 6, 7)).toMatchObject({ armorClass: 18, maxHp: 60, attackCount: 3 });
+  });
+
+  it("links without touching the saved companion, and keeps her Bite name", () => {
+    const sheet = linked();
+    const { summon, ...saved } = sheet.companionCreature;
+    expect(saved).toEqual(fable());
+    expect(summon).toMatchObject({ template: "summonFey", active: false, attackName: "Bite" });
+    expect(isSummonPresent(sheet)).toBe(false);
+    const info = getSummonInfo(sheet, 7);
+    expect(info.present).toBe(false);
+    expect(info.attackName).toBe("Bite");
+    expect(info.canSkipConcentration).toBe(true);
+    // Ordinary companions get no summon info.
+    expect(getSummonInfo(ranger11(), 7)).toBeNull();
+  });
+
+  it("casts with the free cast at level 3 and concentration, using no slot", () => {
+    const sheet = applySummonAction(linked(), "cast", { payWith: "free", mood: "mirthful", concentration: true });
+    expect(isSummonPresent(sheet)).toBe(true);
+    expect(sheet.resources[0].current).toBe(0);
+    expect(sheet.spellcasting.spellSlots.find((slot) => slot.level === 3).current).toBe(3);
+    expect(sheet.concentration).toEqual({ spell: "Summon Fey" });
+    expect(sheet.companionCreature.summon).toMatchObject({ slotLevel: 3, mood: "mirthful", concentration: true, hitPoints: { current: 30, max: 30 } });
+    expect(getSummonInfo(sheet, 7).mood.name).toBe("Mirthful");
+    // No free cast left: a second free cast does nothing.
+    const dismissed = applySummonAction(sheet, "dismiss");
+    expect(applySummonAction(dismissed, "cast", { payWith: "free" })).toBe(dismissed);
+  });
+
+  it("casts with a slot, tracked apart from the free cast, and without concentration for 1 minute", () => {
+    const sheet = applySummonAction(linked(), "cast", { payWith: "slot", slotLevel: 3, mood: "tricksy", concentration: false });
+    expect(sheet.resources[0].current).toBe(1);
+    expect(sheet.spellcasting.spellSlots.find((slot) => slot.level === 3).current).toBe(2);
+    expect(sheet.concentration ?? null).toBeNull();
+    expect(sheet.companionCreature.summon).toMatchObject({ concentration: false, rounds: 10 });
+    // Ten of her turns later it's gone.
+    const later = tickSummonRounds(sheet, 4);
+    expect(later.ended).toBe(false);
+    expect(later.sheet.companionCreature.summon.rounds).toBe(6);
+    const end = tickSummonRounds(later.sheet, 6);
+    expect(end.ended).toBe(true);
+    expect(isSummonPresent(end.sheet)).toBe(false);
+  });
+
+  it("needs concentration when the character has no feature that skips it", () => {
+    const base = linked();
+    base.features = base.features.filter((feature) => feature.name !== "Fey Reinforcements");
+    const sheet = applySummonAction(base, "cast", { payWith: "slot", slotLevel: 3, concentration: false });
+    expect(sheet.companionCreature.summon.concentration).toBe(true);
+    expect(sheet.concentration).toEqual({ spell: "Summon Fey" });
+  });
+
+  it("ends when concentration breaks, at 0 HP, or when dismissed", () => {
+    const cast = applySummonAction(linked(), "cast", { payWith: "free" });
+    // Concentration dropped some other way (a failed save).
+    const broken = withSummonEnded({ ...cast, concentration: null });
+    expect(broken.companionCreature.summon.active).toBe(false);
+    // Damage down to 0.
+    const hurt = applySummonAction(cast, "hp", { value: 12 });
+    expect(hurt.companionCreature.summon.hitPoints).toEqual({ current: 12, max: 30 });
+    expect(applySummonAction(hurt, "hp", { value: "" })).toBe(hurt);
+    const down = applySummonAction(hurt, "hp", { value: 0 });
+    expect(isSummonPresent(down)).toBe(false);
+    expect(down.concentration).toBeNull();
+    // Dismissed: concentration on it ends, other concentration is left alone.
+    expect(applySummonAction(cast, "dismiss").concentration).toBeNull();
+    const notSummoned = { ...linked(), concentration: { spell: "Hunter's Mark" } };
+    expect(applySummonAction(notSummoned, "dismiss").concentration).toEqual({ spell: "Hunter's Mark" });
+  });
+
+  it("ends other concentration when cast with concentration", () => {
+    const sheet = { ...linked(), concentration: { spell: "Hunter's Mark" } };
+    expect(getSummonInfo(sheet, 7).otherConcentration).toBe("Hunter's Mark");
+    expect(applySummonAction(sheet, "cast", { payWith: "free" }).concentration).toEqual({ spell: "Summon Fey" });
+  });
+
+  it("isn't healed or brought back by a long rest, but an ordinary companion still is", () => {
+    const cast = applySummonAction(linked(), "cast", { payWith: "free" });
+    const rested = applyRest(cast, "long");
+    expect(isSummonPresent(rested)).toBe(false);
+    expect(rested.concentration).toBeNull();
+    expect(rested.resources[0].current).toBe(1);
+    // An inactive summon stays inactive.
+    expect(isSummonPresent(applyRest(linked(), "long"))).toBe(false);
+    // Her saved numbers are left alone.
+    expect(rested.companionCreature.hitPoints).toEqual({ current: 30, max: 30 });
+
+    const wolf = { ...ranger11(), companionCreature: { ...fable(), hitPoints: { current: 3, max: 30 } } };
+    expect(applyRest(wolf, "long").companionCreature.hitPoints.current).toBe(30);
+  });
+
+  it("shows on the party strip only while summoned, with the spell's numbers", () => {
+    expect(toCompanionRow(linked())).toBeNull();
+    const cast = applySummonAction(linked(), "cast", { payWith: "slot", slotLevel: 3 });
+    expect(toCompanionRow(cast)).toMatchObject({ name: "Fable", hp: { current: 30, max: 30 }, armorClass: 15 });
+    expect(toCompanionRow(ranger11())).toMatchObject({ name: "Fable", armorClass: 15 });
+  });
+
+  it("scales AC, HP, attacks and piercing damage at every slot level, with force always 1d6", () => {
+    const rows = [3, 4, 5, 6, 7, 8, 9].map((level) => {
+      const stats = getSummonStats(SUMMON_TEMPLATES.summonFey, level, 7);
+      return [level, stats.armorClass, stats.maxHp, stats.attackCount, stats.toHit, stats.damage, stats.extraDamage];
+    });
+    expect(rows).toEqual([
+      [3, 15, 30, 1, 7, "1d6+6", "1d6"],
+      [4, 16, 40, 2, 7, "1d6+7", "1d6"],
+      [5, 17, 50, 2, 7, "1d6+8", "1d6"],
+      [6, 18, 60, 3, 7, "1d6+9", "1d6"],
+      [7, 19, 70, 3, 7, "1d6+10", "1d6"],
+      [8, 20, 80, 4, 7, "1d6+11", "1d6"],
+      [9, 21, 90, 4, 7, "1d6+12", "1d6"],
+    ]);
+    // Below the spell's level isn't possible; it counts as level 3.
+    expect(getSummonStats(SUMMON_TEMPLATES.summonFey, 1, 7).level).toBe(3);
+  });
+
+  it("uses the cast's own level: a slot at its level, the free cast always at 3", () => {
+    const base = linked();
+    base.spellcasting.spellSlots.push({ level: 5, max: 1, current: 1 });
+    const slot5 = applySummonAction(base, "cast", { payWith: "slot", slotLevel: 5 });
+    expect(slot5.companionCreature.summon).toMatchObject({ slotLevel: 5, hitPoints: { current: 50, max: 50 } });
+    expect(getSummonInfo(slot5, 7).stats).toMatchObject({ armorClass: 17, attackCount: 2, damage: "1d6+8" });
+    const free = applySummonAction(base, "cast", { payWith: "free", slotLevel: 5 });
+    expect(free.companionCreature.summon.slotLevel).toBe(3);
+    expect(free.spellcasting.spellSlots.find((item) => item.level === 5).current).toBe(1);
+    // No slot of that level left: nothing happens.
+    const spent = applySummonAction(slot5, "dismiss");
+    expect(applySummonAction(spent, "cast", { payWith: "slot", slotLevel: 5 })).toBe(spent);
+  });
+
+  it("follows concentration: present only while it's held on Summon Fey", () => {
+    const cast = applySummonAction(linked(), "cast", { payWith: "free" });
+    expect(isSummonPresent(cast)).toBe(true);
+    // Concentrating on another spell instead (casting it ends this one).
+    expect(isSummonPresent({ ...cast, concentration: { spell: "Hunter's Mark" } })).toBe(false);
+    // The 1-minute version doesn't care about concentration.
+    const minute = applySummonAction(linked(), "cast", { payWith: "slot", slotLevel: 3, concentration: false });
+    expect(isSummonPresent({ ...minute, concentration: { spell: "Hunter's Mark" } })).toBe(true);
+    // Recasting while she's here starts fresh: full HP, new level, still concentrating.
+    const hurt = applySummonAction(cast, "hp", { value: 5 });
+    const recast = applySummonAction(hurt, "cast", { payWith: "slot", slotLevel: 3 });
+    expect(recast.companionCreature.summon.hitPoints).toEqual({ current: 30, max: 30 });
+    expect(recast.concentration).toEqual({ spell: "Summon Fey" });
+    expect(isSummonPresent(recast)).toBe(true);
+  });
+
+  it("goes back to the saved numbers when unlinked", () => {
+    const cast = applySummonAction(linked(), "cast", { payWith: "free" });
+    const unlinked = applySummonAction(cast, "unlink");
+    expect(unlinked.companionCreature).toEqual(fable());
+    expect(unlinked.concentration).toBeNull();
   });
 });

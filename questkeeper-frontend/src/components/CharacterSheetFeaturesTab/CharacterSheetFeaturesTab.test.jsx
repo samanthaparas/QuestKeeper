@@ -164,3 +164,29 @@ describe("CharacterSheetFeaturesTab: choices and setup", () => {
     expect(screen.getByText("Choose 1 more language (your race)")).toBeInTheDocument();
   });
 });
+
+describe("CharacterSheetFeaturesTab: homebrew feature damage", () => {
+  const strikes = {
+    name: "Dreadful Strikes",
+    level: 3,
+    damage: [
+      { level: 3, dice: "1d4", type: "psychic" },
+      { level: 11, dice: "1d6", type: "psychic" },
+    ],
+    damageNote: "Once per creature per turn",
+  };
+  const features = [{ index: "ds", name: "Dreadful Strikes", description: "" }];
+
+  it("shows the dice for the character's level, with when it applies and a roll button", () => {
+    renderTab({ classId: "ranger", level: 10, features, homebrewFeatureDamage: [strikes] });
+    expect(screen.getByText("Extra damage: 1d4 psychic · Once per creature per turn")).toBeInTheDocument();
+    // Outside a sheet with a roller the roll button is just its text.
+    expect(screen.getByText("🎲 1d4")).toBeInTheDocument();
+  });
+
+  it("goes up to 1d6 at level 11", () => {
+    renderTab({ classId: "ranger", level: 11, features, homebrewFeatureDamage: [strikes] });
+    expect(screen.getByText("Extra damage: 1d6 psychic · Once per creature per turn")).toBeInTheDocument();
+    expect(screen.getByText("🎲 1d6")).toBeInTheDocument();
+  });
+});

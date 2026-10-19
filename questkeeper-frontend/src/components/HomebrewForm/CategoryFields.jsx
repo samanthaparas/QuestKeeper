@@ -1,6 +1,7 @@
 // The part of the homebrew form that changes with the category.
 // Each section edits `data` and hands the whole new object to onChange.
 
+import { Fragment } from "react";
 import {
   SIZES,
   CLASS_IDS,
@@ -567,6 +568,7 @@ function SubclassFields({ data, set, classOptions = [] }) {
         label="Features"
         items={data.features}
         withLevel
+        withDamage
         onChange={(features) => set({ features })}
         addLabel="Add a feature"
         namePlaceholder="Feature name"
@@ -589,43 +591,64 @@ function BonusSpellsField({ spells, onChange }) {
       <legend className="homebrew-form__label">Bonus spells (optional)</legend>
       <p className="homebrew-form__hint">
         Spells this subclass always gives. They&apos;re added to the sheet at the class
-        level you give, and don&apos;t count toward spells known.
+        level you give, and don&apos;t count toward spells known. If a feature gives one
+        (and lets you cast it once per long rest without a slot), say so under it.
       </p>
       {spells.map((spell, index) => (
-        <div className="homebrew-form__row" key={index}>
-          <input
-            className="homebrew-form__input homebrew-form__input--grow"
-            aria-label={`Bonus spell ${index + 1} name`}
-            placeholder="Spell name"
-            maxLength={80}
-            value={spell.name}
-            onChange={(event) => update(index, { name: event.target.value })}
-          />
-          <NumberField
-            id={`homebrew-bonus-spell-${index}-level`}
-            label="Class level"
-            min={1}
-            max={20}
-            value={spell.level}
-            onChange={(level) => update(index, { level })}
-          />
-          <NumberField
-            id={`homebrew-bonus-spell-${index}-spell-level`}
-            label="Spell level"
-            min={0}
-            max={9}
-            value={spell.spellLevel}
-            onChange={(spellLevel) => update(index, { spellLevel })}
-          />
-          <button
-            type="button"
-            className="homebrew-form__remove"
-            aria-label={`Remove ${spell.name || `bonus spell ${index + 1}`}`}
-            onClick={() => onChange(spells.filter((_, i) => i !== index))}
-          >
-            Remove
-          </button>
-        </div>
+        <Fragment key={index}>
+          <div className="homebrew-form__row">
+            <input
+              className="homebrew-form__input homebrew-form__input--grow"
+              aria-label={`Bonus spell ${index + 1} name`}
+              placeholder="Spell name"
+              maxLength={80}
+              value={spell.name}
+              onChange={(event) => update(index, { name: event.target.value })}
+            />
+            <NumberField
+              id={`homebrew-bonus-spell-${index}-level`}
+              label="Class level"
+              min={1}
+              max={20}
+              value={spell.level}
+              onChange={(level) => update(index, { level })}
+            />
+            <NumberField
+              id={`homebrew-bonus-spell-${index}-spell-level`}
+              label="Spell level"
+              min={0}
+              max={9}
+              value={spell.spellLevel}
+              onChange={(spellLevel) => update(index, { spellLevel })}
+            />
+            <button
+              type="button"
+              className="homebrew-form__remove"
+              aria-label={`Remove ${spell.name || `bonus spell ${index + 1}`}`}
+              onClick={() => onChange(spells.filter((_, i) => i !== index))}
+            >
+              Remove
+            </button>
+          </div>
+          <div className="homebrew-form__row homebrew-form__row--sub">
+            <input
+              className="homebrew-form__input homebrew-form__input--grow"
+              aria-label={`Bonus spell ${index + 1} comes from (optional)`}
+              placeholder="From a feature? e.g. Fey Reinforcements (optional)"
+              maxLength={80}
+              value={spell.source ?? ""}
+              onChange={(event) => update(index, { source: event.target.value })}
+            />
+            <label className="homebrew-form__check">
+              <input
+                type="checkbox"
+                checked={spell.freeCast === true}
+                onChange={(event) => update(index, { freeCast: event.target.checked })}
+              />
+              1 free cast per long rest
+            </label>
+          </div>
+        </Fragment>
       ))}
       <button
         type="button"

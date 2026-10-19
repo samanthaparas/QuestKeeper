@@ -45,3 +45,37 @@ describe("homebrew class form", () => {
     expect(within(preview).getByText("d10")).toBeInTheDocument();
   });
 });
+
+describe("homebrew subclass form", () => {
+  it("saves a feature's damage by level and a bonus spell's feature and free cast", async () => {
+    const onSave = vi.fn().mockResolvedValue();
+    render(
+      <MemoryRouter>
+        <HomebrewForm initialForm={emptyHomebrewForm("subclass")} onSave={onSave} onCancel={vi.fn()} />
+      </MemoryRouter>,
+    );
+    await userEvent.type(screen.getByLabelText("Name"), "Fey Wanderer");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: /class/i }), "ranger");
+
+    await userEvent.click(screen.getByRole("button", { name: "Add a feature" }));
+    await userEvent.type(screen.getByLabelText("Features 1 name"), "Dreadful Strikes");
+    await userEvent.click(screen.getByRole("button", { name: "Add extra damage to Dreadful Strikes" }));
+    await userEvent.type(screen.getByLabelText("Dreadful Strikes damage 1 dice"), "1d4");
+    await userEvent.type(screen.getByLabelText("Dreadful Strikes damage 1 type"), "psychic");
+    await userEvent.type(screen.getByLabelText("Dreadful Strikes damage: when it applies"), "Once per creature per turn");
+
+    await userEvent.click(screen.getByRole("button", { name: "Add a bonus spell" }));
+    await userEvent.type(screen.getByLabelText("Bonus spell 1 name"), "Summon Fey");
+    await userEvent.type(screen.getByLabelText("Bonus spell 1 comes from (optional)"), "Fey Reinforcements");
+    await userEvent.click(screen.getByRole("checkbox", { name: "1 free cast per long rest" }));
+
+    await userEvent.click(screen.getByRole("button", { name: /^Save/ }));
+    const { data } = onSave.mock.calls[0][0];
+    expect(data.features[0]).toMatchObject({
+      name: "Dreadful Strikes",
+      damage: [{ level: 3, dice: "1d4", type: "psychic" }],
+      damageNote: "Once per creature per turn",
+    });
+    expect(data.spells[0]).toMatchObject({ name: "Summon Fey", source: "Fey Reinforcements", freeCast: true });
+  });
+});
