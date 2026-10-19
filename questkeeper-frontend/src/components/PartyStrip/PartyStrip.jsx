@@ -110,6 +110,14 @@ function PartyStrip({ rows, onSelect, selectedId }) {
             </span>
           )}
 
+          {/* Spells changing their attacks, so the DM knows where the
+              extra damage comes from. */}
+          {row.effects?.map((effect) => (
+            <span className="party-strip__concentration" key={effect} title="Active spell effect">
+              ✨ {effect}
+            </span>
+          ))}
+
           {row.passives.length > 0 && (
             <span
               className="party-strip__passives"

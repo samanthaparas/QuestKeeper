@@ -2339,6 +2339,7 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
    attack you tapped), spanning the row's full width. */
 .character-sheet__row-panel {
   margin: 4px 0 12px;
+  list-style: none;
 }
 
 /* The ? Help button at the end of the tab row (screens with no side panel). */
@@ -2734,6 +2735,57 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   color: var(--qk-text-muted);
   font-size: 13px;
   white-space: nowrap;
+}
+
+/* Components between the level and the name, always the same width (wide
+   enough for "V, S, M"), so the names line up down the list. */
+.character-sheet__spell-components--slot {
+  flex: 0 0 4.6em;
+}
+
+/* Cast: the one action on a spell row, filled so it's clearly a button,
+   pushed to the far right. */
+.character-sheet__cast-button {
+  margin-left: auto;
+  min-height: 34px;
+  padding: 4px 14px;
+  border: 0;
+  border-radius: 999px;
+  background-color: var(--qk-terracotta);
+  color: var(--qk-on-accent, #fff);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgb(0 0 0 / 20%);
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.character-sheet__cast-button:hover {
+  background-color: var(--qk-terracotta-hover);
+  transform: translateY(-1px);
+}
+
+.character-sheet__cast-button:focus-visible {
+  outline: 3px solid var(--qk-terracotta-soft);
+  outline-offset: 2px;
+}
+
+.character-sheet__cast-button[aria-expanded="true"] {
+  background-color: transparent;
+  color: var(--qk-text);
+  box-shadow: inset 0 0 0 1px var(--qk-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .character-sheet__cast-button {
+    transition: none;
+  }
+
+  .character-sheet__cast-button:hover {
+    transform: none;
+  }
 }
 
 /* Editing an item in place: the form sits where its row was, framed so it's

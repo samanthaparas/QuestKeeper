@@ -178,7 +178,28 @@ export async function attackRoll({ tableId, targetId, attackName, natural, bonus
   );
 }
 
-export async function dealDamage(tableId, amount) {
+// parts: what each damage type dealt ([{ amount: 6, type: "piercing" },
+// { amount: 3, type: "fire" }]), so the table log can show it and damage
+// types are never lost. Left out (a total typed by hand), it's just the
+// total, as before.
+//
+// If the database hasn't been updated yet (20261019_typed_damage.sql not
+// run), it doesn't know the parts: the damage is then sent as a total only,
+// so attacks keep working whichever is updated first.
+export async function dealDamage(tableId, amount, parts = null) {
+  const cleanParts = (parts ?? [])
+    .filter((part) => Number.isInteger(part.amount) && part.amount >= 0)
+    .map((part) => ({ amount: part.amount, type: String(part.type ?? "").slice(0, 20) }));
+  if (cleanParts.length > 0) {
+    const { error } = await supabase.rpc("deal_damage", {
+      p_table_id: tableId,
+      p_amount: amount,
+      p_parts: cleanParts,
+    });
+    if (!error) return;
+    // PGRST202: no deal_damage that takes parts (the older database).
+    if (error.code !== "PGRST202") throw error;
+  }
   unwrap(
     await supabase.rpc("deal_damage", { p_table_id: tableId, p_amount: amount }),
   );

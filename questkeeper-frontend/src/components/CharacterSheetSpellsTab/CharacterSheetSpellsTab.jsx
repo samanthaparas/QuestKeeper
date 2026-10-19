@@ -3,6 +3,7 @@ import UsePips, { MAX_PIPS } from "../UsePips/UsePips";
 import RollButton from "../RollDock/RollButton";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
+import CastEffectPanel, { EffectStrip } from "../CastEffectPanel/CastEffectPanel";
 import { findSrdMatches, formatSpellDetails } from "../../utils/srdDetails";
 import { getSpells, getSpellDetails } from "../../utils/api";
 import {
@@ -98,7 +99,16 @@ function CharacterSheetSpellsTab({
   spellsStartAt = null,
   // Fills in V, S, M from the SRD for spells that have none.
   onFillComponents = null,
+  // Spells the sheet can cast for you (Elemental Weapon): castOptionsFor(name)
+  // gives the cast panel's choices (null for other spells), onCastEffect
+  // casts it, and activeEffects / onEndEffect show and end what's going.
+  castOptionsFor = () => null,
+  onCastEffect = () => "",
+  activeEffects = [],
+  onEndEffect = () => {},
 }) {
+  // The spell whose cast panel is open (by its index), or null.
+  const [castingIndex, setCastingIndex] = useState(null);
   const [allSpells, setAllSpells] = useState([]);
   const detailView = useSrdDetailView();
 
@@ -410,20 +420,47 @@ function CharacterSheetSpellsTab({
         // so in play each row is just level, name and what helps at the table.
         hasEditToggle
         editToggleLabel="Edit spells"
+        // Level, then components, each in a fixed-width slot, so every
+        // spell name starts at the same spot whether it's "V" or "V, S, M".
         leadingContent={(spell) => (
-          <span
-            className="character-sheet__spell-level-pill"
-            aria-label={spell.level === 0 ? "Cantrip" : `Level ${spell.level}`}
-          >
-            {spell.level === 0 ? "Cantrip" : `Lv ${spell.level}`}
-          </span>
+          <>
+            <span
+              className="character-sheet__spell-level-pill"
+              aria-label={spell.level === 0 ? "Cantrip" : `Level ${spell.level}`}
+            >
+              {spell.level === 0 ? "Cantrip" : `Lv ${spell.level}`}
+            </span>
+            <span className="character-sheet__spell-components character-sheet__spell-components--slot" title="Components">
+              {spell.components}
+            </span>
+          </>
         )}
         isNameClickable={(spell) =>
           findSrdMatches(spell.name, allSpells).length > 0
         }
         onNameClick={openSpellDetails}
+        // The cast panel opens right under the spell's row, and an active
+        // effect from it shows there too.
+        rowPanel={(spell) => {
+          const options = castingIndex === spell.index ? castOptionsFor(spell.name) : null;
+          const running = activeEffects.filter((effect) => effect.spell.toLowerCase() === spell.name.toLowerCase());
+          if (!options && running.length === 0) return null;
+          return (
+            <>
+              <EffectStrip effects={running} onEnd={onEndEffect} />
+              {options && (
+                <CastEffectPanel
+                  options={options}
+                  onCast={(choices) => onCastEffect(options.template.key, choices)}
+                  onClose={() => setCastingIndex(null)}
+                />
+              )}
+            </>
+          );
+        }}
         extraRowContent={(spell, { isEditMode: isEditingSpells } = {}) => (
           <>
+
             {/* Where a spell came from always shows; a plain lock only
                 matters while editing. */}
             {spell.grantedBy ? (
@@ -462,10 +499,19 @@ function CharacterSheetSpellsTab({
                 Ritual
               </span>
             )}
-            {spell.components && (
-              <span className="character-sheet__spell-components" title="Components">
-                {spell.components}
-              </span>
+            {/* Spells the sheet can cast for you: a filled Cast button,
+                last on the row so it sits at the far right. Always shown
+                (no hover needed), so it works on phones too. */}
+            {castOptionsFor(spell.name) && (
+              <button
+                type="button"
+                className="character-sheet__cast-button"
+                aria-expanded={castingIndex === spell.index}
+                aria-label={`Cast ${spell.name}`}
+                onClick={() => setCastingIndex((open) => (open === spell.index ? null : spell.index))}
+              >
+                {castingIndex === spell.index ? "Close" : "✨ Cast"}
+              </button>
             )}
           </>
         )}

@@ -1,0 +1,88 @@
+/* The cast panel under a spell (Elemental Weapon), and the "enchanted" strip
+   under a weapon on the Actions tab. */
+.cast-effect {
+  display: grid;
+  gap: var(--qk-space-3);
+  margin: var(--qk-space-2) 0 var(--qk-space-3);
+  padding: var(--qk-space-3) var(--qk-space-4);
+  border: 2px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.cast-effect__summary,
+.cast-effect__preview,
+.cast-effect__note,
+.cast-effect__warning {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.cast-effect__note {
+  color: var(--qk-text-muted);
+}
+
+.cast-effect__warning {
+  color: var(--qk-terracotta);
+  font-weight: 700;
+}
+
+.cast-effect__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qk-space-2) var(--qk-space-4);
+}
+
+.cast-effect__choice {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cast-effect__choice select {
+  min-height: 40px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-input-bg);
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 400;
+}
+
+.cast-effect__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--qk-space-2);
+}
+
+/* Under an enchanted weapon: what's on it, and End. Wraps on a phone. */
+.effect-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 2px 0 6px;
+  padding: 4px 10px;
+  border-left: 3px solid var(--qk-terracotta);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.effect-strip__end {
+  padding: 2px 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background: none;
+  color: var(--qk-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.effect-strip__duration {
+  color: var(--qk-text-muted);
+}

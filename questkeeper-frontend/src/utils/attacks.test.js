@@ -8,6 +8,9 @@ import {
   checkExtraDamage,
   rollDamageWithExtra,
   damageFromDiceWithExtra,
+  rollDamageParts,
+  damageFromDiceParts,
+  describeDealtParts,
 } from "./attacks";
 
 afterEach(() => {
@@ -194,3 +197,47 @@ describe("extra damage on top of a weapon", () => {
   });
 });
 
+describe("damage in typed parts (a weapon with Elemental Weapon)", () => {
+  const parts = [
+    { dice: "1d4+5", type: "piercing", source: "The Darling Deceiver" },
+    { dice: "1d4", type: "fire", source: "Elemental Weapon" },
+  ];
+
+  it("rolls each part on its own and keeps its type", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // every d4 -> 3
+    const result = rollDamageParts(parts);
+    expect(result.total).toBe(11);
+    expect(result.parts).toEqual([
+      { amount: 8, type: "piercing", source: "The Darling Deceiver" },
+      { amount: 3, type: "fire", source: "Elemental Weapon" },
+    ]);
+    expect(result.text).toBe("1d4 [3] +5 = 8 piercing | Elemental Weapon 1d4 [3] = 3 fire");
+    expect(describeDealtParts(result.parts)).toBe("8 piercing, 3 fire");
+    vi.restoreAllMocks();
+  });
+
+  it("doubles every part's dice on a critical hit, but not the flat bonus", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const result = rollDamageParts(parts, { crit: true });
+    expect(result.parts.map((part) => part.amount)).toEqual([11, 6]);
+    expect(result.total).toBe(17);
+    vi.restoreAllMocks();
+  });
+
+  it("takes real dice in order, the weapon's first, and says how many it needs", () => {
+    const result = damageFromDiceParts(parts, [4, 2]);
+    expect(result.parts.map((part) => [part.amount, part.type])).toEqual([
+      [9, "piercing"],
+      [2, "fire"],
+    ]);
+    expect(damageFromDiceParts(parts, [4, 2], { crit: true }).total).toBe(4 * 2 + 5 + 2 * 2);
+    expect(damageFromDiceParts(parts, [4]).error).toBe("1d4, then 1d4 need 2 numbers in all, and you typed 1.");
+    expect(damageFromDiceParts(parts, [5, 2]).error).toBe("A d4 only shows 1 to 4, not 5.");
+  });
+
+  it("handles a flat extra with no dice, and says when damage can't be read", () => {
+    const withRage = [parts[0], { dice: "+2", type: "", source: "Rage" }];
+    expect(damageFromDiceParts(withRage, [3]).total).toBe(10);
+    expect(rollDamageParts([{ dice: "special", type: "" }]).error).toMatch(/can't be read/);
+  });
+});

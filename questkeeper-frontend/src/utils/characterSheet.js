@@ -1788,17 +1788,13 @@ export function applySummonAction(sheet, action, payload = {}) {
       payWith === "free"
         ? template.baseLevel
         : Math.max(template.baseLevel, Math.min(9, Number(payload.slotLevel) || template.baseLevel));
-    let next = isSummonPresent(sheet) ? endSummon(sheet) : sheet;
-
-    if (payWith === "free") {
-      const resource = (next.resources ?? []).find((item) => sameName(item.freeCastFor ?? "", template.spell));
-      if (!resource || resource.current <= 0) return sheet;
-      next = { ...next, resources: setResourceCurrent(next.resources, resource.id, resource.current - 1) };
-    } else {
-      const slot = getSpellSlots(next.spellcasting).find((item) => item.level === level);
-      if (!slot || slot.current <= 0) return sheet;
-      next = { ...next, spellcasting: setSpellSlot(next.spellcasting, level, "current", slot.current - 1) };
-    }
+    const paid = spendSpellCasting(isSummonPresent(sheet) ? endSummon(sheet) : sheet, {
+      spell: template.spell,
+      level,
+      payWith,
+    });
+    if (!paid) return sheet;
+    const next = paid;
 
     const canSkip = (next.features ?? []).some((feature) =>
       sameName(feature.name, template.noConcentrationFeature ?? ""),
@@ -1826,6 +1822,22 @@ export function applySummonAction(sheet, action, payload = {}) {
   }
 
   return sheet;
+}
+
+// Pays for casting a spell: one slot of `level`, or (payWith "free") the
+// spell's own free cast ("Summon Fey (free cast)", from a feature). Returns
+// the sheet with it spent, or null when there's nothing left to pay with, so
+// a cast never happens for free by mistake. Shared by every spell the sheet
+// can cast for you (Summon Fey, Elemental Weapon).
+export function spendSpellCasting(sheet, { spell, level, payWith = "slot" }) {
+  if (payWith === "free") {
+    const resource = (sheet.resources ?? []).find((item) => sameName(item.freeCastFor ?? "", spell));
+    if (!resource || resource.current <= 0) return null;
+    return { ...sheet, resources: setResourceCurrent(sheet.resources, resource.id, resource.current - 1) };
+  }
+  const slot = getSpellSlots(sheet.spellcasting).find((item) => item.level === Number(level));
+  if (!slot || slot.current <= 0) return null;
+  return { ...sheet, spellcasting: setSpellSlot(sheet.spellcasting, slot.level, "current", slot.current - 1) };
 }
 
 // Tidies a summon that has ended some other way (concentration broken by a

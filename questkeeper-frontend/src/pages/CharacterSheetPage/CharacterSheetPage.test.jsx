@@ -4,8 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import CharacterSheetPage from "./CharacterSheetPage";
 import { RETRY_DELAYS } from "../../hooks/useSrdEquipmentLookup";
-import { getCharacter } from "../../utils/characterStore";
-import { listCharacterTables } from "../../utils/tableStore";
+import { getCharacter, saveCharacter } from "../../utils/characterStore";
+import { dealDamage, listCharacterTables } from "../../utils/tableStore";
 import { getEquipment, getEquipmentDetails } from "../../utils/api";
 import { createCharacterSheet } from "../../utils/characterSheet";
 import { installFakeStorage } from "../../test/fakeStorage";
@@ -36,6 +36,7 @@ vi.mock("../../hooks/useTableTurn", () => ({ useTableTurn: () => fakeTurn.value 
 vi.mock("../../utils/tableStore", async (importOriginal) => ({
   ...(await importOriginal()),
   resolveDamageRequest: vi.fn().mockResolvedValue(2),
+  dealDamage: vi.fn().mockResolvedValue(undefined),
   listCharacterTables: vi.fn().mockResolvedValue([]),
 }));
 
@@ -1478,7 +1479,8 @@ describe("sort and show on the sheet's lists", () => {
     const list = () => screen.getByRole("heading", { name: "Spells", level: 2 }).closest("section").querySelector("ul");
 
     // The default: by level, then A to Z.
-    expect(rowNames(list()).map((row) => row.replace(/^Lv \d/, ""))[0]).toMatch(/^Goodberry/);
+    // Each row starts with the level, then the components, then the name.
+    expect(rowNames(list())[0]).toMatch(/^Lv 1V, S, MGoodberry/);
     expect(screen.getAllByText("Conc", { selector: "span" })).toHaveLength(2);
     expect(screen.getByText("Ritual", { selector: "span" })).toBeInTheDocument();
 
@@ -1547,5 +1549,165 @@ describe("sort and show on the sheet's lists", () => {
     expect(screen.getByText("Beast Sense")).toBeInTheDocument();
     expect(screen.getByText("Conc", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByText("Ritual", { selector: "span" })).toBeInTheDocument();
+  });
+});
+
+describe("Elemental Weapon on the sheet", () => {
+  // A made-up level 11 Ranger (never Pippa's real sheet).
+  function makeRanger() {
+    const sheet = makeSheet({
+      class: { id: "ranger", name: "Ranger", spellcastingType: "known", spellcastingAbility: "wisdom" },
+    });
+    sheet.level = 11;
+    sheet.attacks = [
+      { index: "a1", name: "The Darling Deceiver", baseWeapon: "Dagger", toHit: 9, damage: "1d4+5", damageType: "Piercing", notes: "" },
+    ];
+    sheet.spellcasting = {
+      type: "known",
+      cantripsKnown: [],
+      spellsKnown: [{ index: "ew", name: "Elemental Weapon", level: 3, components: "V, S" }],
+      spellSlots: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => ({
+        level,
+        max: level <= 3 ? 3 : 0,
+        current: level <= 3 ? 3 : 0,
+      })),
+    };
+    return sheet;
+  }
+  const attackRow = () => screen.getByText("The Darling Deceiver").closest(".character-sheet__attacks-row");
+  const lastSaved = () => saveCharacter.mock.calls.at(-1)[0];
+
+  it("is cast from the Spells tab, enchants the weapon on Actions, and ends with concentration", async () => {
+    installFakeStorage();
+    saveCharacter.mockClear();
+    const user = userEvent.setup();
+    renderSheet(makeRanger());
+
+    await user.click(await screen.findByRole("tab", { name: "Spells" }));
+    await user.click(screen.getByRole("button", { name: "Cast Elemental Weapon" }));
+    await user.selectOptions(screen.getByLabelText("Damage type"), "Fire");
+    expect(screen.getByText(/\+10 to hit/).closest("p")).toHaveTextContent("+9 → +10 to hit · 1d4+5 piercing + 1d4 fire");
+    await user.click(screen.getByRole("button", { name: "Cast Elemental Weapon (level 3 slot)" }));
+
+    // The slot is spent and concentration is on it.
+    expect(screen.getByRole("group", { name: "Level 3 spell slots: 2 of 3 left" })).toBeInTheDocument();
+    expect(screen.getByText(/Concentrating/).closest(".concentration__badge")).toHaveTextContent("Elemental Weapon");
+    expect(
+      screen.getAllByRole("status").some((el) => /Elemental Weapon \(fire\) on The Darling Deceiver/.test(el.textContent)),
+    ).toBe(true);
+
+    // Actions: +10, the weapon's damage, and a separate 1d4 fire.
+    await user.click(screen.getByRole("tab", { name: "Actions" }));
+    expect(attackRow()).toHaveTextContent("✨ +10");
+    expect(attackRow()).toHaveTextContent("1d4+5 + 1d4 fire");
+
+    // Saved with the effect, and with the weapon's own numbers unchanged.
+    await vi.waitFor(() => expect(lastSaved().activeEffects).toHaveLength(1), { timeout: 2000 });
+    expect(lastSaved().attacks[0]).toMatchObject({ toHit: 9, damage: "1d4+5" });
+    expect(lastSaved().concentration).toEqual({ spell: "Elemental Weapon", effectId: lastSaved().activeEffects[0].id });
+
+    // Dropping concentration ends it: back to +9 and plain damage.
+    await user.click(screen.getByRole("button", { name: "Stop concentrating on Elemental Weapon" }));
+    expect(attackRow()).toHaveTextContent("+9");
+    expect(attackRow()).not.toHaveTextContent("fire");
+    await vi.waitFor(() => expect(lastSaved().activeEffects).toEqual([]), { timeout: 2000 });
+  });
+
+  it("is still there after a reload, and a long rest ends it", async () => {
+    installFakeStorage();
+    const user = userEvent.setup();
+    const sheet = makeRanger();
+    sheet.activeEffects = [
+      { id: "e1", key: "elementalWeapon", spell: "Elemental Weapon", slotLevel: 3, attackIndex: "a1", attackName: "The Darling Deceiver", damageType: "Cold", concentration: true },
+    ];
+    sheet.concentration = { spell: "Elemental Weapon", effectId: "e1" };
+    renderSheet(sheet);
+
+    await user.click(await screen.findByRole("tab", { name: "Actions" }));
+    expect(attackRow()).toHaveTextContent("✨ +10");
+    expect(attackRow()).toHaveTextContent("1d4 cold");
+
+    await user.click(screen.getByRole("button", { name: "Long Rest" }));
+    expect(screen.getByText(/Elemental Weapon ended\./)).toBeInTheDocument();
+    expect(attackRow()).toHaveTextContent("+9");
+    expect(document.querySelector(".concentration__badge")).toBeNull();
+  });
+
+  it("ends from the weapon's own End button", async () => {
+    installFakeStorage();
+    const user = userEvent.setup();
+    const sheet = makeRanger();
+    sheet.activeEffects = [
+      { id: "e1", key: "elementalWeapon", spell: "Elemental Weapon", slotLevel: 5, attackIndex: "a1", attackName: "The Darling Deceiver", damageType: "Thunder", concentration: true },
+    ];
+    sheet.concentration = { spell: "Elemental Weapon", effectId: "e1" };
+    renderSheet(sheet);
+
+    await user.click(await screen.findByRole("tab", { name: "Actions" }));
+    expect(attackRow()).toHaveTextContent("✨ +11");
+    expect(attackRow()).toHaveTextContent("2d4 thunder");
+    await user.click(screen.getByRole("button", { name: "End Elemental Weapon" }));
+    expect(attackRow()).toHaveTextContent("+9");
+    expect(document.querySelector(".concentration__badge")).toBeNull();
+  });
+
+  it("sends the fire damage separately when attacking a monster at the table", async () => {
+    installFakeStorage();
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // every d4 -> 3
+    const user = userEvent.setup();
+    const me = { id: "me", name: "Test", kind: "player", initiative: 15, attack_state: "hit", attack_crit: false };
+    fakeTurn.value = {
+      table: { id: "t1", name: "Test night", round: 1, current_combatant_id: "me" },
+      tableName: "Test night",
+      activeTables: [],
+      switchTable: () => {},
+      endTurn: () => {},
+      round: 1,
+      combatants: [{ id: "g", name: "Goblin", kind: "monster", status: "healthy" }, me],
+      now: null,
+      next: null,
+      upcoming: [],
+      myCombatant: me,
+      isMyTurn: true,
+      latestEvent: null,
+      damageRequests: [],
+      refresh: () => {},
+    };
+    const sheet = makeRanger();
+    sheet.activeEffects = [
+      { id: "e1", key: "elementalWeapon", spell: "Elemental Weapon", slotLevel: 3, attackIndex: "a1", attackName: "The Darling Deceiver", damageType: "Fire", concentration: true },
+    ];
+    sheet.concentration = { spell: "Elemental Weapon", effectId: "e1" };
+    renderSheet(sheet);
+
+    await user.click(await screen.findByRole("tab", { name: "Actions" }));
+    await user.click(screen.getByRole("button", { name: "Attack" }));
+    const panel = screen.getByRole("region", { name: "Attack with The Darling Deceiver" });
+    expect(within(panel).getByText("+10 to hit")).toBeInTheDocument();
+    await user.click(within(panel).getByRole("button", { name: "Roll damage" }));
+    await user.click(within(panel).getByRole("button", { name: "Deal 11 damage" }));
+    expect(dealDamage).toHaveBeenCalledWith("t1", 11, [
+      { amount: 8, type: "piercing", source: "The Darling Deceiver" },
+      { amount: 3, type: "fire", source: "Elemental Weapon" },
+    ]);
+    fakeTurn.value = null;
+    vi.restoreAllMocks();
+  });
+
+  it("puts the spell's components in a slot before its name, and Cast on the far right", async () => {
+    installFakeStorage();
+    const user = userEvent.setup();
+    renderSheet(makeRanger());
+    await user.click(await screen.findByRole("tab", { name: "Spells" }));
+    const row = screen.getByText("Elemental Weapon").closest("li");
+    const slot = row.querySelector(".character-sheet__spell-components--slot");
+    expect(slot).toHaveTextContent("V, S");
+    // Level pill, then components, then the name.
+    expect(row.querySelector(".character-sheet__spell-level-pill").nextElementSibling).toBe(slot);
+    const cast = within(row).getByRole("button", { name: "Cast Elemental Weapon" });
+    expect(cast).toHaveTextContent("✨ Cast");
+    await user.click(cast);
+    expect(cast).toHaveTextContent("Close");
+    expect(cast).toHaveAttribute("aria-expanded", "true");
   });
 });
