@@ -2619,3 +2619,26 @@ export function applyInitiativeUpdate(sheet, { keep = false } = {}) {
     combat: { initiativeBonus: bonus },
   });
 }
+
+// ---------------------------------------------------------------------------
+// "Something new to look at" for the Tasha's options: an option the
+// character could use now (they have the feature it replaces, or have
+// reached its level) that they haven't switched on or off, and haven't looked
+// at yet. Opening the options marks those as seen (optionalFeaturesSeen), so
+// the dot goes away whether or not they switch; one that becomes useful
+// later (Nature's Veil at level 10) shows the dot again then.
+export function getNewOptionalFeatures(sheet) {
+  const seen = new Set(sheet?.optionalFeaturesSeen ?? []);
+  return getOptionalClassFeatures(sheet?.class).filter((option) => {
+    if (sheet.optionalFeatures?.[option.key] !== undefined || seen.has(option.key)) return false;
+    const hasReplaced = (sheet.features ?? []).some((feature) => startsWithName(feature.name, option.replaces));
+    const reached = option.grants.some((grant) => grant.level <= (sheet.level ?? 1));
+    return hasReplaced || reached;
+  });
+}
+
+export function markOptionalFeaturesSeen(sheet) {
+  const fresh = getNewOptionalFeatures(sheet).map((option) => option.key);
+  if (fresh.length === 0) return sheet;
+  return { ...sheet, optionalFeaturesSeen: [...(sheet.optionalFeaturesSeen ?? []), ...fresh] };
+}

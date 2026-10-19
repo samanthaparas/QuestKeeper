@@ -67,6 +67,8 @@ import {
   setTypedInitiative,
   applyInitiativeUpdate,
   applyFreeCastsSplit,
+  getNewOptionalFeatures,
+  markOptionalFeaturesSeen,
   splitMagicWeaponName,
   addSubclassSpells,
   subclassSpellsToGrant,
@@ -567,6 +569,10 @@ function CharacterSheetPage() {
       withAutoArmorClass(refreshWeaponAttacks(before, next, weaponDetailsFor), gearDetailsFor),
     );
   }
+
+  // Tasha's options this character could use now and hasn't looked at: a red
+  // dot on the Features tab and the options line until they open it.
+  const newOptionalFeatures = getNewOptionalFeatures(sheet);
 
   // Saved numbers that are out of date (often from before they followed
   // level-ups). Only changed when the player taps Update.
@@ -2361,6 +2367,7 @@ function CharacterSheetPage() {
                     hasSpellcasting={hasSpellcasting}
                     // Setup choices still to make show as a count on Features.
                     badges={{ features: setupTasks.length }}
+                    dots={{ features: newOptionalFeatures.length > 0 }}
                   />
                   {/* No side panel on smaller screens: one Help button opens the
                       explanations (what the boxes mean, and the dice). */}
@@ -2530,6 +2537,8 @@ function CharacterSheetPage() {
                       onOptionalFeatureSwitch={handleOptionalFeatureSwitch}
                       isReplacedFeature={(name) => isReplacedByOption(sheet, name)}
                       abilityScores={sheet.abilityScores}
+                      newOptionalCount={newOptionalFeatures.length}
+                      onOptionalFeaturesSeen={() => persistSheet(markOptionalFeaturesSeen(sheet))}
                       featureEntries={currentEntries}
                       setupTasks={setupTasks}
                       background={sheet.background ?? null}

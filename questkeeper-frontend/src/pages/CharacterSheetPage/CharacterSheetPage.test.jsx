@@ -1429,3 +1429,25 @@ describe("Deft Explorer: Tireless on the sheet", () => {
     expect(await screen.findByText(/Tireless: exhaustion 2 → 1\./)).toBeInTheDocument();
   });
 });
+
+describe("red dot for a new optional class feature", () => {
+  it("shows on the Features tab and options line, and goes once the options are opened", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet({ level: 10 });
+    sheet.class = { id: "ranger", name: "Ranger", hitDie: 10 };
+    sheet.optionalFeatures = { favoredFoe: true, deftExplorer: true, primalAwareness: true };
+    sheet.features = [{ index: "h", name: "Hide in Plain Sight", description: "" }];
+    renderSheet(sheet);
+
+    const tab = await screen.findByRole("tab", { name: /^Features \(.*something new\)$/ });
+    await user.click(tab);
+    expect(screen.getByRole("img", { name: "1 new to look at" })).toBeInTheDocument();
+
+    // Open the options and leave Nature's Veil off: the dots still go.
+    await user.click(screen.getByText(/Optional class features \(Tasha's\)/));
+    expect(screen.queryByRole("img", { name: /new to look at/ })).toBeNull();
+    expect(screen.getByRole("tab", { name: /^Features/ }).getAttribute("aria-label") ?? "").not.toMatch(/something new/);
+    // Hide in Plain Sight is still there; nothing was switched.
+    expect(screen.getByText("Hide in Plain Sight")).toBeInTheDocument();
+  });
+});

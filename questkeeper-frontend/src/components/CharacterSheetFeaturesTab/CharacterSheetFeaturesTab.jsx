@@ -62,6 +62,10 @@ function CharacterSheetFeaturesTab({
   optionalFeaturesOn = {},
   onOptionalFeatureSwitch = () => {},
   isReplacedFeature = () => false,
+  // How many options are new to look at (a red dot), and what to call when
+  // the player opens the list (marks them seen).
+  newOptionalCount = 0,
+  onOptionalFeaturesSeen = () => {},
   // For a feature's own tap-to-roll (Tireless: 1d8 + Wisdom).
   abilityScores = {},
   background = null,
@@ -375,13 +379,27 @@ function CharacterSheetFeaturesTab({
               up the tab once decided; it says how many are in use, and a tap
               opens it onto its own full-width row. */}
           {optionalFeatures.length > 0 && (
-            <details className="character-sheet__optional-features">
+            <details
+              className="character-sheet__optional-features"
+              // Opening it counts as having looked, switched or not.
+              onToggle={(event) => {
+                if (event.currentTarget.open && newOptionalCount > 0) onOptionalFeaturesSeen();
+              }}
+            >
               <summary className="character-sheet__optional-features-toggle">
                 Optional class features (Tasha&apos;s) ·{" "}
                 {(() => {
                   const inUse = optionalFeatures.filter((option) => optionalFeaturesOn[option.key]).length;
                   return inUse > 0 ? `${inUse} in use` : "not using any";
                 })()}
+                {newOptionalCount > 0 && (
+                  <span
+                    className="character-sheet__new-dot"
+                    role="img"
+                    aria-label={`${newOptionalCount} new to look at`}
+                    title="New: an option you can use now. Open to have a look."
+                  />
+                )}
               </summary>
               <p className="character-sheet__empty-text">
                 Some tables swap these in for the original features. Ask your DM.

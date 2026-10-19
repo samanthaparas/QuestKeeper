@@ -88,6 +88,8 @@ import {
   applyInitiativeUpdate,
   getFreeCastsToSplit,
   getGrantRollDice,
+  getNewOptionalFeatures,
+  markOptionalFeaturesSeen,
   applyFreeCastsSplit,
   updateFeat,
   updateSpell,
@@ -3366,5 +3368,41 @@ describe("Deft Explorer: Tireless", () => {
     const { sheet, summary } = takeShortRest(rester([{ name: "Natural Explorer (1 terrain type)" }], 2));
     expect(sheet.conditions).toEqual([{ key: "exhaustion", level: 2 }]);
     expect(summary.exhaustion).toBeNull();
+  });
+});
+
+describe("new optional features to look at (the red dot)", () => {
+  const ranger = (level, extra = {}) => ({
+    level,
+    class: { id: "ranger", name: "Ranger" },
+    features: [],
+    ...extra,
+  });
+  const keys = (sheet) => getNewOptionalFeatures(sheet).map((option) => option.key);
+
+  it("shows Nature's Veil for a level 10 Ranger with Hide in Plain Sight who uses the other three", () => {
+    const pippa = ranger(10, {
+      features: [{ name: "Hide in Plain Sight" }],
+      optionalFeatures: { favoredFoe: true, deftExplorer: true, primalAwareness: true },
+    });
+    expect(keys(pippa)).toEqual(["naturesVeil"]);
+    // Opening the options marks it seen, without switching anything.
+    const seen = markOptionalFeaturesSeen(pippa);
+    expect(keys(seen)).toEqual([]);
+    expect(seen.optionalFeatures).toEqual(pippa.optionalFeatures);
+    expect(seen.features).toEqual(pippa.features);
+  });
+
+  it("only counts options a Ranger can use at their level, and brings Nature's Veil up at 10", () => {
+    const three = ranger(3);
+    expect(keys(three)).toEqual(["favoredFoe", "deftExplorer", "primalAwareness"]);
+    const looked = markOptionalFeaturesSeen(three);
+    expect(keys(looked)).toEqual([]);
+    expect(keys({ ...looked, level: 10 })).toEqual(["naturesVeil"]);
+  });
+
+  it("doesn't flag an option already switched on, or switched back off", () => {
+    expect(keys(ranger(10, { optionalFeatures: { favoredFoe: true, deftExplorer: false, primalAwareness: true, naturesVeil: false } }))).toEqual([]);
+    expect(getNewOptionalFeatures({ level: 10, class: { id: "wizard" }, features: [] })).toEqual([]);
   });
 });
