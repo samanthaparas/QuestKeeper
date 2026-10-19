@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CharacterSheetActionsTab from "./CharacterSheetActionsTab";
 import { getWeaponDetails } from "../../utils/api";
+import { installFakeStorage } from "../../test/fakeStorage";
 
 vi.mock("../../utils/api", () => ({
   getWeapons: vi.fn().mockResolvedValue([
@@ -207,5 +208,30 @@ describe("CharacterSheetActionsTab", () => {
     await userEvent.click(within(form).getByRole("button", { name: "Save Changes" }));
     expect(onAttackUpdate).toHaveBeenCalledWith("a2", expect.objectContaining({ name: "Dagger" }));
     expect(document.querySelector(".character-sheet__inline-edit")).toBeNull();
+  });
+
+  it("sorts attacks by to-hit or damage type, and shows one damage type", async () => {
+    installFakeStorage();
+    renderTab({
+      equipment: [],
+      attacks: [
+        { index: "a1", name: "Dagger", toHit: 7, damage: "1d4+4", damageType: "Piercing" },
+        { index: "a2", name: "Wisteria's Kiss", toHit: 9, damage: "1d8+4", damageType: "Piercing" },
+        { index: "a3", name: "Club", toHit: 3, damage: "1d4+1", damageType: "Bludgeoning" },
+      ],
+    });
+    const names = () =>
+      [...document.querySelectorAll(".character-sheet__attacks-row, .character-sheet__list-group")].map((row) =>
+        row.classList.contains("character-sheet__list-group") ? `# ${row.textContent}` : row.textContent.split("+")[0],
+      );
+
+    await userEvent.selectOptions(screen.getByLabelText("Sort Attacks"), "toHit");
+    expect(names()).toEqual(["Wisteria's Kiss", "Dagger", "Club"]);
+
+    await userEvent.selectOptions(screen.getByLabelText("Sort Attacks"), "type");
+    expect(names()).toEqual(["# Bludgeoning", "Club", "# Piercing", "Dagger", "Wisteria's Kiss"]);
+
+    await userEvent.selectOptions(screen.getByLabelText("Show Attacks"), "type:bludgeoning");
+    expect(names()).toEqual(["# Bludgeoning", "Club"]);
   });
 });

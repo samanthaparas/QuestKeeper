@@ -8,6 +8,7 @@ import { getCharacter } from "../../utils/characterStore";
 import { listCharacterTables } from "../../utils/tableStore";
 import { getEquipment, getEquipmentDetails } from "../../utils/api";
 import { createCharacterSheet } from "../../utils/characterSheet";
+import { installFakeStorage } from "../../test/fakeStorage";
 
 // --- Fakes for everything that would talk to the network ---
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -1449,5 +1450,102 @@ describe("red dot for a new optional class feature", () => {
     expect(screen.getByRole("tab", { name: /^Features/ }).getAttribute("aria-label") ?? "").not.toMatch(/something new/);
     // Hide in Plain Sight is still there; nothing was switched.
     expect(screen.getByText("Hide in Plain Sight")).toBeInTheDocument();
+  });
+});
+
+describe("sort and show on the sheet's lists", () => {
+  const rowNames = (list) =>
+    within(list)
+      .getAllByRole("listitem")
+      .map((row) => row.textContent);
+
+  it("sorts spells by school with headings, shows only concentration spells, and remembers the choice", async () => {
+    installFakeStorage();
+    const user = userEvent.setup();
+    const sheet = makeSheet({ class: { id: "ranger", name: "Ranger", spellcastingType: "known", spellcastingAbility: "wisdom" } });
+    sheet.spellcasting = {
+      type: "known",
+      cantripsKnown: [],
+      spellsKnown: [
+        { index: "s", name: "Silence", level: 2, components: "V, S", school: "Illusion", duration: "Up to 10 minutes", concentration: true, ritual: true, castingTime: "1 action" },
+        { index: "h", name: "Hunter's Mark", level: 1, components: "V", school: "Divination", duration: "Up to 1 hour", concentration: true, castingTime: "1 bonus action" },
+        { index: "g", name: "Goodberry", level: 1, components: "V, S, M", school: "Transmutation", duration: "Instantaneous", castingTime: "1 action" },
+      ],
+      spellSlots: [],
+    };
+    const { unmount } = renderSheet(sheet);
+    await user.click(await screen.findByRole("tab", { name: "Spells" }));
+    const list = () => screen.getByRole("heading", { name: "Spells", level: 2 }).closest("section").querySelector("ul");
+
+    // The default: by level, then A to Z.
+    expect(rowNames(list()).map((row) => row.replace(/^Lv \d/, ""))[0]).toMatch(/^Goodberry/);
+    expect(screen.getAllByText("Conc", { selector: "span" })).toHaveLength(2);
+    expect(screen.getByText("Ritual", { selector: "span" })).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Sort Spells"), "school");
+    expect(rowNames(list()).filter((row) => !row.startsWith("Lv"))).toEqual(["Divination", "Illusion", "Transmutation"]);
+
+    await user.selectOptions(screen.getByLabelText("Sort Spells"), "duration");
+    expect(rowNames(list()).filter((row) => !row.startsWith("Lv"))).toEqual(["Instantaneous", "10 minutes", "1 hour"]);
+
+    await user.selectOptions(screen.getByLabelText("Show Spells"), "concentration");
+    expect(screen.queryByText("Goodberry")).toBeNull();
+    expect(screen.getByText("2 of 3")).toBeInTheDocument();
+
+    // Still sorted by duration and filtered after coming back.
+    unmount();
+    renderSheet(sheet);
+    await user.click(await screen.findByRole("tab", { name: "Spells" }));
+    expect(screen.getByLabelText("Sort Spells")).toHaveValue("duration");
+    expect(screen.getByLabelText("Show Spells")).toHaveValue("concentration");
+  });
+
+  it("groups resources by the rest that refills them, and shows only used-up ones", async () => {
+    installFakeStorage();
+    const user = userEvent.setup();
+    const sheet = makeSheet();
+    sheet.resources = [
+      { id: "r1", name: "Favored Foe", max: 4, current: 0, resetOn: "long", notes: "" },
+      { id: "r2", name: "Second Wind", max: 1, current: 1, resetOn: "short", notes: "" },
+      { id: "r3", name: "Beast Sense (free cast)", max: 1, current: 1, resetOn: "long", freeCastFor: "Beast Sense", notes: "" },
+    ];
+    renderSheet(sheet);
+    await user.click(await screen.findByRole("tab", { name: "Resources" }));
+    const list = () => screen.getByRole("heading", { name: "Resources" }).closest("section").querySelector("ul");
+
+    await user.selectOptions(screen.getByLabelText("Sort Resources"), "rest");
+    const rows = rowNames(list());
+    expect(rows[0]).toBe("Short rest");
+    expect(rows[1]).toContain("Second Wind");
+    expect(rows[2]).toBe("Long rest");
+    expect(rows[3]).toContain("Beast Sense (free cast)");
+    expect(rows[4]).toContain("Favored Foe");
+
+    await user.selectOptions(screen.getByLabelText("Sort Resources"), "max");
+    expect(rowNames(list())[0]).toContain("Favored Foe");
+
+    await user.selectOptions(screen.getByLabelText("Show Resources"), "spent");
+    expect(rowNames(list())).toHaveLength(1);
+    await user.selectOptions(screen.getByLabelText("Show Resources"), "free");
+    expect(rowNames(list())[0]).toContain("Beast Sense");
+  });
+
+  it("adds a spell's school, duration, concentration and ritual from the form", async () => {
+    installFakeStorage();
+    const user = userEvent.setup();
+    const sheet = makeSheet({ class: { id: "ranger", name: "Ranger", spellcastingType: "known", spellcastingAbility: "wisdom" } });
+    sheet.spellcasting = { type: "known", cantripsKnown: [], spellsKnown: [], spellSlots: [] };
+    renderSheet(sheet);
+    await user.click(await screen.findByRole("tab", { name: "Spells" }));
+    await user.click(screen.getByRole("button", { name: "Add Spell" }));
+    await user.type(screen.getByPlaceholderText("Spell name (e.g. Bless)"), "Beast Sense");
+    await user.selectOptions(screen.getByDisplayValue("School"), "Divination");
+    await user.type(screen.getByPlaceholderText("Duration (e.g. 1 hour)"), "Up to 1 hour");
+    await user.click(screen.getByRole("checkbox", { name: "Concentration" }));
+    await user.click(screen.getByRole("checkbox", { name: "Ritual" }));
+    await user.click(screen.getAllByRole("button", { name: "Add Spell" }).at(-1));
+    expect(screen.getByText("Beast Sense")).toBeInTheDocument();
+    expect(screen.getByText("Conc", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText("Ritual", { selector: "span" })).toBeInTheDocument();
   });
 });

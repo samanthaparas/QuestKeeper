@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CharacterSheetFeaturesTab from "./CharacterSheetFeaturesTab";
+import { installFakeStorage } from "../../test/fakeStorage";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
 
@@ -188,5 +189,64 @@ describe("CharacterSheetFeaturesTab: homebrew feature damage", () => {
     renderTab({ classId: "ranger", level: 11, features, homebrewFeatureDamage: [strikes] });
     expect(screen.getByText("Extra damage: 1d6 psychic · Once per creature per turn")).toBeInTheDocument();
     expect(screen.getByText("🎲 1d6")).toBeInTheDocument();
+  });
+});
+
+describe("CharacterSheetFeaturesTab: sort and show", () => {
+  const features = [
+    { index: "f1", name: "Darkvision", description: "", source: { type: "race", id: "elf", level: 1 } },
+    { index: "f2", name: "Spellcasting", description: "", source: { type: "class", id: "ranger", level: 2 } },
+    { index: "f3", name: "Dreadful Strikes", description: "", source: { type: "subclass", id: "hb_fw1", level: 3 } },
+    { index: "f4", name: "Favored Foe", description: "" },
+    { index: "f5", name: "Lucky Charm", description: "" },
+  ];
+  const optionalFeatures = [{ key: "favoredFoe", grants: [{ name: "Favored Foe", level: 1 }] }];
+  const groupedRows = (title) =>
+    [...screen.getByRole("heading", { name: title }).closest("section").querySelectorAll("li")].map((row) =>
+      row.classList.contains("character-sheet__list-group") ? `# ${row.textContent}` : row.textContent.split("▸")[0],
+    );
+
+  it("groups features by where they're from, and sorts them by level", async () => {
+    installFakeStorage();
+    renderTab({ classId: "ranger", level: 5, features, optionalFeatures });
+    await userEvent.selectOptions(screen.getByLabelText("Sort Features"), "origin");
+    expect(groupedRows("Features")).toEqual([
+      "# Class",
+      "Spellcasting",
+      "# Subclass",
+      "Dreadful Strikes",
+      "# Tasha's option",
+      "Favored Foe",
+      "# Race",
+      "Darkvision",
+      "# Other",
+      "Lucky Charm",
+    ]);
+    await userEvent.selectOptions(screen.getByLabelText("Sort Features"), "level");
+    expect(groupedRows("Features").slice(0, 3)).toEqual(["Darkvision", "Spellcasting", "Dreadful Strikes"]);
+    await userEvent.selectOptions(screen.getByLabelText("Show Features"), "origin:Subclass");
+    expect(groupedRows("Features")).toEqual(["Dreadful Strikes"]);
+  });
+
+  it("groups proficiencies by kind, guessed from their names", async () => {
+    installFakeStorage();
+    renderTab({
+      proficiencies: [
+        { index: "p1", name: "Longbows" },
+        { index: "p2", name: "Light Armor" },
+        { index: "p3", name: "Thieves' Tools" },
+        { index: "p4", name: "Shields" },
+      ],
+    });
+    await userEvent.selectOptions(screen.getByLabelText("Sort Proficiencies"), "kind");
+    expect(groupedRows("Proficiencies")).toEqual([
+      "# Armor",
+      "Light Armor",
+      "Shields",
+      "# Weapons",
+      "Longbows",
+      "# Tools",
+      "Thieves' Tools",
+    ]);
   });
 });

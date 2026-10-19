@@ -1189,6 +1189,8 @@ function toSpellEntry(choice, acquiredAtLevel = null) {
     level: choice.level,
     notes: "",
     components: choice.components ?? "",
+    // School, duration and so on, when the wizard looked them up.
+    ...(choice.facts ?? {}),
     ...(link ? { link } : {}),
   };
 }
@@ -2042,15 +2044,54 @@ function exhaustionChange(before = [], after = []) {
   return from === to ? null : { from, to };
 }
 
-export function createEquipmentItem({ name, quantity, description }) {
+export function createEquipmentItem({ name, quantity, description, category = "" }) {
   return {
     index: crypto.randomUUID(),
     name,
     quantity: quantity && quantity > 0 ? quantity : 1,
     description: description || "",
     attuned: false,
+    // Only when the player picked one; otherwise it's guessed when shown.
+    ...(INVENTORY_KEYS.includes(category) ? { category } : {}),
   };
 }
+
+// --- Inventory categories --------------------------------------------------------
+// Each item can have a category, picked in Add/Edit item. Without one it's
+// guessed: from the SRD when the item is in it (a Longsword is a weapon),
+// else from words in its name (a potion or a croissant is a consumable).
+// The guess is never saved, so picking one always wins.
+export const INVENTORY_CATEGORIES = [
+  { key: "weapons", label: "Weapons" },
+  { key: "armor", label: "Armor & shields" },
+  { key: "worn", label: "Worn items" },
+  { key: "gear", label: "Gear & tools" },
+  { key: "consumables", label: "Consumables" },
+  { key: "treasure", label: "Treasure & keepsakes" },
+];
+const INVENTORY_KEYS = INVENTORY_CATEGORIES.map((category) => category.key);
+
+const CATEGORY_WORDS = [
+  ["consumables", /potion|elixir|philter|oil of|scroll|ration|food|bread|cheese|apple|pie\b|cake|croissant|pastry|cookie|candy|jerky|meat|fish|egg|wine|ale\b|beer|mead|tea\b|antitoxin|arrows?\b|bolts?\b|bullets?\b|needles\b|ammunition|torch(es)?\b|candles?\b/],
+  ["armor", /\barmou?r\b|shield|chain ?mail|chain shirt|breastplate|half plate|plate\b|scale mail|ring mail|splint|studded|hide\b|padded/],
+  ["weapons", /sword|\bbow\b|longbow|shortbow|crossbow|\baxe|dagger|mace|hammer|spear|staff|\bclub\b|dart|sling|whip|pike|halberd|lance|trident|flail|scimitar|rapier|javelin|glaive|maul|morningstar|sickle|blowgun/],
+  ["treasure", /\bgems?\b|jewel|ruby|diamond|emerald|sapphire|pearl|opal|amethyst|\bgold\b|\bcoins?\b|\bgp\b|\bsp\b|\bcp\b|locket|necklace|trinket|figurine|statuette|painting|keepsake|heirloom|token|letter\b|bracelet|earring|idol/],
+  ["worn", /cloak|boots|\bring\b|amulet|bracers|gloves|gauntlets|\bhat\b|helm|robe|clothes|outfit|belt|circlet|cape|mantle|goggles|mask|headband|periapt|brooch/],
+];
+
+export function getInventoryCategory(item, details = null) {
+  if (INVENTORY_KEYS.includes(item?.category)) return item.category;
+  if (details?.weapon_category || details?.equipment_category?.index === "weapon") return "weapons";
+  if (details?.armor_category || details?.equipment_category?.index === "armor") return "armor";
+  if (details?.gear_category?.index === "ammunition") return "consumables";
+  const name = String(item?.name ?? "").toLowerCase();
+  const found = CATEGORY_WORDS.find(([, words]) => words.test(name));
+  if (found) return found[0];
+  return "gear";
+}
+
+export const inventoryCategoryLabel = (key) =>
+  INVENTORY_CATEGORIES.find((category) => category.key === key)?.label ?? "Gear & tools";
 
 export function removeEquipmentItem(equipment, index) {
   return (equipment ?? []).filter((item) => item.index !== index);
@@ -2152,7 +2193,7 @@ export function updateFeat(feats, index, updates) {
 // name, with an optional link to where the book's text lives (never the text
 // itself). "bonusSpell" marks one that doesn't count toward spells known,
 // like a subclass's always-known spells.
-export function addManualSpell(sheet, { name, level, notes, components, bonusSpell, link }) {
+export function addManualSpell(sheet, { name, level, notes, components, bonusSpell, link, facts = {} }) {
   const base = sheet.spellcasting ?? {
     type: sheet.class?.spellcastingType ?? "known",
     cantripsKnown: [],
@@ -2166,6 +2207,8 @@ export function addManualSpell(sheet, { name, level, notes, components, bonusSpe
     level: numericLevel,
     notes: notes || "",
     components: components || "",
+    // School, casting time, duration, concentration, ritual (for sorting).
+    ...facts,
     ...(bonusSpell ? { bonusSpell: true } : {}),
     ...(link ? { link } : {}),
   };

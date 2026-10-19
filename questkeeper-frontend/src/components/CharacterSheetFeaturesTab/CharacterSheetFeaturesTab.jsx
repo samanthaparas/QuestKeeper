@@ -40,6 +40,52 @@ import {
   pickChoice,
 } from "../../utils/featureChoices";
 
+// --- Sort and Show for the three lists ---------------------------------------
+
+const NAME_SORT = { key: "name", label: "Name (A–Z)", compare: () => 0 };
+const ADDED_SORT = { key: "added", label: "Order added" };
+
+// Where a feature came from, for grouping. Features added before sources
+// were saved (or typed by hand) are "Other".
+const ORIGIN_ORDER = ["Class", "Subclass", "Tasha's option", "Race", "Background", "Feat", "Other"];
+function featureOrigin(feature, optionNames) {
+  const type = feature.source?.type;
+  if (type === "class") return "Class";
+  if (type === "subclass") return "Subclass";
+  if (type === "race" || type === "subrace") return "Race";
+  if (type === "background") return "Background";
+  if (type === "feat") return "Feat";
+  if (optionNames.has(String(feature.name ?? "").toLowerCase())) return "Tasha's option";
+  return "Other";
+}
+
+// A proficiency's kind, guessed from its name ("Light Armor", "Thieves'
+// Tools", "Longswords"), so the list can be grouped or filtered.
+const PROFICIENCY_KINDS = ["Armor", "Weapons", "Tools", "Saving throws", "Skills", "Other"];
+function proficiencyKind(item) {
+  const name = String(item.name ?? "").toLowerCase();
+  if (/saving throw/.test(name)) return "Saving throws";
+  if (/^skill/.test(name)) return "Skills";
+  if (/armor|shield/.test(name)) return "Armor";
+  if (/tools?\b|kit\b|supplies|instrument|set\b|utensils|vehicles?/.test(name)) return "Tools";
+  if (/weapon|sword|bow|axe|dagger|mace|hammer|spear|staff|club|dart|sling|whip|pike|halberd|lance|trident|flail|scimitar|rapier|javelin|net|glaive|maul|morningstar|sickle|quarterstaff|crossbow/.test(name)) {
+    return "Weapons";
+  }
+  return "Other";
+}
+const byKind = (kinds, kindOf) => (a, b) => kinds.indexOf(kindOf(a)) - kinds.indexOf(kindOf(b));
+
+const PROFICIENCY_SORTS = [
+  ADDED_SORT,
+  NAME_SORT,
+  { key: "kind", label: "Kind", compare: byKind(PROFICIENCY_KINDS, proficiencyKind), groupOf: proficiencyKind },
+];
+const PROFICIENCY_FILTERS = PROFICIENCY_KINDS.map((kind) => ({
+  key: `kind:${kind}`,
+  label: kind,
+  match: (item) => proficiencyKind(item) === kind,
+}));
+
 function loadFeatureDetails(match) {
   return match.source === "trait"
     ? getTraitDetails(match.index).then(formatTraitDetails)
@@ -150,6 +196,33 @@ function CharacterSheetFeaturesTab({
   );
   // Ticked to remove: everything listed, until the player unticks some.
   const strayChecked = strayPicked ?? new Set(strays.map(({ feature }) => feature.index));
+
+  // Features: by name, by the level they come at, or by where they came
+  // from; show one origin, or just the ones with a pick still to make.
+  const optionNames = new Set(
+    optionalFeatures.flatMap((option) => option.grants ?? []).map((grant) => grant.name.toLowerCase()),
+  );
+  const originOf = (feature) => featureOrigin(feature, optionNames);
+  const levelOf = (feature) => Number(feature.source?.level) || 99;
+  const featureSorts = [
+    ADDED_SORT,
+    NAME_SORT,
+    { key: "level", label: "Level gained", compare: (a, b) => levelOf(a) - levelOf(b) },
+    { key: "origin", label: "Where it's from", compare: byKind(ORIGIN_ORDER, originOf), groupOf: originOf },
+  ];
+  const featureFilters = [
+    ...ORIGIN_ORDER.map((origin) => ({
+      key: `origin:${origin}`,
+      label: origin,
+      match: (feature) => originOf(feature) === origin,
+    })),
+    {
+      key: "todo",
+      label: "Picks still to make",
+      match: (feature) =>
+        choicesFor(feature, allEntries).some((choice) => (choice.picked?.filter(Boolean).length ?? 0) < choice.choose),
+    },
+  ];
 
   function removeStrays() {
     const ids = strays
@@ -526,6 +599,9 @@ function CharacterSheetFeaturesTab({
             findFeatureMatches(feature.name).length > 0
           }
           onNameClick={openFeatureDetails}
+          viewKey="features"
+          sortOptions={featureSorts}
+          filterOptions={featureFilters}
           // "Favored Enemy (1 type): Undead" once the pick is made.
           formatPrimaryLabel={(feature) => {
             const picks = describePicks(choicesFor(feature, allEntries));
@@ -653,6 +729,8 @@ function CharacterSheetFeaturesTab({
           editToggleLabel="Edit feats"
           isNameClickable={(feat) => getFeatMatches(feat).length > 0}
           onNameClick={openFeatDetails}
+          viewKey="feats"
+          sortOptions={[ADDED_SORT, NAME_SORT]}
         />
       </section>
 
@@ -681,6 +759,9 @@ function CharacterSheetFeaturesTab({
           // The pencil and trash wait behind "Edit proficiencies", so rows stay calm in play.
           hasEditToggle
           editToggleLabel="Edit proficiencies"
+          viewKey="proficiencies"
+          sortOptions={PROFICIENCY_SORTS}
+          filterOptions={PROFICIENCY_FILTERS}
         />
       </section>
 
