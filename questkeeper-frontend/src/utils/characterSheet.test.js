@@ -64,6 +64,8 @@ import {
   createAttack,
   updateAttack,
   createFeat,
+  getLevelUpHitPointGain,
+  refreshWeaponAttacks,
   updateFeat,
   updateSpell,
   getSpellcastingAbility,
@@ -2397,5 +2399,86 @@ describe("feature choices on level-up", () => {
   it("only keeps a web link on a feature", () => {
     expect(createFeat({ name: "X", link: "javascript:alert(1)" }).link).toBeUndefined();
     expect(createFeat({ name: "X", link: "https://example.com" }).link).toBe("https://example.com");
+  });
+});
+
+describe("numbers that follow a level-up", () => {
+  const steps = (abilityChoice) => [
+    { key: "hitPoints", data: { amount: 6 } },
+    ...(abilityChoice ? [{ key: "abilityOrFeat", data: abilityChoice }] : []),
+  ];
+  const ranger = { level: 3, abilityScores: { constitution: 13, dexterity: 16, strength: 12 } };
+
+  it("adds the CON modifier to this level's HP", () => {
+    expect(getLevelUpHitPointGain(ranger, steps()).total).toBe(7); // 6 + 1
+  });
+
+  it("uses a raised CON modifier for this level and every earlier one", () => {
+    // CON 13 (+1) -> 15 (+2) at level 4: 6 + 2 for this level, +1 for each of 3 earlier levels.
+    expect(getLevelUpHitPointGain(ranger, steps({ type: "asi-one", ability: "constitution" }))).toEqual({
+      total: 11,
+      thisLevel: 8,
+      earlierLevels: 3,
+      conModifier: 2,
+    });
+    // A Dexterity increase doesn't touch HP.
+    expect(getLevelUpHitPointGain(ranger, steps({ type: "asi-one", ability: "dexterity" })).total).toBe(7);
+  });
+
+  it("gives the raised CON HP when the level-up finishes", () => {
+    const sheet = {
+      ...ranger,
+      class: { id: "ranger" },
+      feats: [],
+      combat: {
+        hitPoints: { max: 28, current: 20, temporary: 0 },
+        hitDice: { total: 3, remaining: 3, die: 10 },
+        hpHistory: [],
+      },
+      pendingLevelUp: { targetLevel: 4, steps: steps({ type: "asi-one", ability: "constitution" }) },
+    };
+    const after = finalizeLevelUp(sheet);
+    expect(after.combat.hitPoints.max).toBe(39);
+    expect(after.combat.hitPoints.current).toBe(31);
+  });
+
+  const longbow = {
+    name: "Longbow",
+    weapon_category: "Martial",
+    weapon_range: "Ranged",
+    damage: { damage_dice: "1d8", damage_type: { name: "Piercing" } },
+    properties: [],
+  };
+  const weaponDetailsFor = (name) => (name.toLowerCase() === "longbow" ? longbow : null);
+  const before = {
+    level: 3,
+    abilityScores: { strength: 12, dexterity: 16 },
+    proficiencies: [{ name: "Martial Weapons" }],
+    attacks: [
+      { index: "a", name: "Longbow", toHit: 5, damage: "1d8+3" },
+      { index: "b", name: "+1 Longbow", toHit: 6, damage: "1d8+4" },
+      { index: "c", name: "Longbow", toHit: 9, damage: "1d8+3" }, // typed by the player
+      { index: "d", name: "Night Terror Dagger", toHit: 5, damage: "1d4+3" }, // not an SRD weapon
+    ],
+  };
+
+  it("works auto-filled weapon attacks out again after a Dexterity increase", () => {
+    const after = refreshWeaponAttacks(before, { ...before, abilityScores: { strength: 12, dexterity: 18 } }, weaponDetailsFor);
+    expect(after.attacks.map((attack) => [attack.toHit, attack.damage])).toEqual([
+      [6, "1d8+4"],
+      [7, "1d8+5"],
+      [9, "1d8+3"],
+      [5, "1d4+3"],
+    ]);
+  });
+
+  it("follows a higher proficiency bonus at level 5", () => {
+    const after = refreshWeaponAttacks(before, { ...before, level: 5 }, weaponDetailsFor);
+    expect(after.attacks[0]).toMatchObject({ toHit: 6, damage: "1d8+3" });
+  });
+
+  it("leaves attacks alone when nothing they use changed", () => {
+    const after = { ...before, abilityScores: { ...before.abilityScores, wisdom: 16 } };
+    expect(refreshWeaponAttacks(before, after, weaponDetailsFor)).toBe(after);
   });
 });

@@ -686,6 +686,52 @@ export function splitMagicWeaponName(name) {
   };
 }
 
+// Weapon attacks are saved as plain numbers (to hit +5, damage 1d8+3), so
+// they don't follow the character on their own. When Strength, Dexterity or
+// the proficiency bonus changes (an Ability Score Improvement, a new level),
+// an attack whose numbers still match what QuestKeeper worked out from the
+// old scores is worked out again. One the player typed or changed doesn't
+// match, so it's left as it is. weaponDetailsFor(name): the weapon's SRD
+// details, or null when it isn't known (then the attack is left alone too).
+export function refreshWeaponAttacks(before, after, weaponDetailsFor) {
+  if (!before || !after?.attacks?.length) return after;
+  const modsOf = (sheet) => [
+    getAbilityModifier(sheet.abilityScores?.strength ?? 10),
+    getAbilityModifier(sheet.abilityScores?.dexterity ?? 10),
+    getProficiencyBonus(sheet.level),
+  ].join();
+  if (modsOf(before) === modsOf(after)) return after;
+
+  const proficiencyNames = (after.proficiencies ?? []).map((proficiency) => proficiency.name);
+  let changed = false;
+  const attacks = after.attacks.map((attack) => {
+    const { baseName, magicBonus } = splitMagicWeaponName(attack.name);
+    const weapon = weaponDetailsFor(baseName);
+    if (!weapon?.damage?.damage_dice || !weapon.weapon_category) return attack;
+
+    // Tried both ways, because an inventory weapon can be marked proficient
+    // on its own without being in the Proficiencies list.
+    for (const names of [proficiencyNames, [...proficiencyNames, weapon.name]]) {
+      const math = (sheet) =>
+        getWeaponAttackMath({
+          weapon,
+          scores: sheet.abilityScores,
+          proficiencyNames: names,
+          proficiencyBonus: getProficiencyBonus(sheet.level),
+          magicBonus,
+        });
+      const old = math(before);
+      if (Number(attack.toHit) !== old.toHit || attack.damage !== old.damage) continue;
+      const fresh = math(after);
+      if (fresh.toHit === old.toHit && fresh.damage === old.damage) return attack;
+      changed = true;
+      return { ...attack, toHit: fresh.toHit, damage: fresh.damage };
+    }
+    return attack;
+  });
+  return changed ? { ...after, attacks } : after;
+}
+
 // Turns the weapons a character starts with into rows for the Actions tab,
 // with the to-hit and damage worked out from their ability scores.
 export function buildStartingAttacks({
@@ -1046,11 +1092,27 @@ export function applyLevelUpSpellChoices(spellcasting, characterClass, choices) 
   return { ...base, cantripsKnown, spellsKnown };
 }
 
+// Hit points from a level-up: the roll (or average) plus the Constitution
+// modifier, at least 1. If this level's Ability Score Improvement raises the
+// CON modifier, the new modifier counts for this level, and the rules say it
+// counts for every earlier level too: +1 HP per earlier level for each +1.
+export function getLevelUpHitPointGain(sheet, steps = []) {
+  const hpStep = steps.find((step) => step.key === "hitPoints");
+  const abilityStep = steps.find((step) => step.key === "abilityOrFeat");
+  const oldModifier = getAbilityModifier(sheet.abilityScores.constitution);
+  const newScores = abilityStep?.data
+    ? applyAbilityScoreChoice(sheet.abilityScores, abilityStep.data)
+    : sheet.abilityScores;
+  const conModifier = getAbilityModifier(newScores.constitution);
+  const thisLevel = Math.max(1, (hpStep?.data?.amount ?? 0) + conModifier);
+  const earlierLevels = (conModifier - oldModifier) * (sheet.level ?? 0);
+  return { total: thisLevel + earlierLevels, thisLevel, earlierLevels, conModifier };
+}
+
 export function finalizeLevelUp(sheet) {
   const { pendingLevelUp } = sheet;
   if (!pendingLevelUp) return sheet;
 
-  const hpStep = pendingLevelUp.steps.find((s) => s.key === "hitPoints");
   const abilityStep = pendingLevelUp.steps.find(
     (s) => s.key === "abilityOrFeat",
   );
@@ -1059,8 +1121,7 @@ export function finalizeLevelUp(sheet) {
   const subclassStep = pendingLevelUp.steps.find((s) => s.key === "subclass");
   const featureStep = pendingLevelUp.steps.find((s) => s.key === "features");
 
-  const conModifier = getAbilityModifier(sheet.abilityScores.constitution);
-  const hpGained = Math.max(1, (hpStep?.data?.amount ?? 0) + conModifier);
+  const hpGained = getLevelUpHitPointGain(sheet, pendingLevelUp.steps).total;
 
   const abilityScores = abilityStep
     ? applyAbilityScoreChoice(sheet.abilityScores, abilityStep.data)

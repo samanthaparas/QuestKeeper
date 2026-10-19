@@ -59,6 +59,7 @@ import {
   getSpellSlots,
   setSpellSlot,
   getSpellsStartAt,
+  refreshWeaponAttacks,
 } from "../../utils/characterSheet";
 import LevelUpWizard from "../../components/LevelUpWizard/LevelUpWizard";
 import Button from "../../components/Button/Button";
@@ -441,10 +442,12 @@ function CharacterSheetPage() {
 
   async function handleLevelUpComplete(leveledSheet, { skippedFeatures = [] } = {}) {
     setIsAddingLevelFeatures(true);
-    const { sheet: updatedSheet, featuresFailed } = await withNewLevelFeatures(
+    const { sheet: withFeatures, featuresFailed } = await withNewLevelFeatures(
       leveledSheet,
       skippedFeatures,
     );
+    // A new Dexterity or proficiency bonus changes the AC and attacks too.
+    const updatedSheet = withCurrentNumbers(sheet, withFeatures);
     setIsAddingLevelFeatures(false);
     // Lists both the features picked in the wizard (a Fighting Style) and the
     // ones added for the new level.
@@ -492,6 +495,13 @@ function CharacterSheetPage() {
       .catch((err) => console.error("Failed to save character:", err));
   }
 
+  // The numbers saved on the sheet that come from its scores and level: the
+  // AC (when on auto) and auto-filled weapon attacks, worked out again.
+  function withCurrentNumbers(before, next) {
+    const weaponDetailsFor = (name) => gearDetails[normalizeItemName(name)] ?? null;
+    return withAutoArmorClass(refreshWeaponAttacks(before, next, weaponDetailsFor), gearDetailsFor);
+  }
+
   function persistSheet(next) {
     // Back above 0 HP (healing, a rest, a typed number): the death save
     // marks are wiped, ready for the next time.
@@ -502,8 +512,9 @@ function CharacterSheetPage() {
       setDeathSaveNote("");
     }
 
-    // On auto AC, worn armor and Dexterity set the AC (see armorClass.js).
-    const updated = withAutoArmorClass(next, gearDetailsFor);
+    // On auto AC, worn armor and Dexterity set the AC (see armorClass.js), and
+    // auto-filled weapon attacks follow new scores (see refreshWeaponAttacks).
+    const updated = withCurrentNumbers(sheet, next);
     setSheet(updated);
     pendingUpdateRef.current = updated;
 

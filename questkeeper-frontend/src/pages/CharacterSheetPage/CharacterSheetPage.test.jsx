@@ -65,6 +65,12 @@ vi.mock("../../utils/api", async (importOriginal) => ({
   getEquipment: vi.fn().mockResolvedValue([]),
   getEquipmentDetails: vi.fn().mockResolvedValue(null),
   getMagicItems: vi.fn().mockResolvedValue([]),
+  // Level-up look-ups: no feats or features in these tests.
+  getFeats: vi.fn().mockResolvedValue([]),
+  getClassFeatures: vi.fn().mockResolvedValue([]),
+  getSubclassFeatures: vi.fn().mockResolvedValue([]),
+  getRaceTraits: vi.fn().mockResolvedValue([]),
+  getSubraceTraits: vi.fn().mockResolvedValue([]),
 }));
 
 function makeSheet(overrides = {}) {
@@ -937,3 +943,41 @@ describe("armor look-up when the rules server is slow", () => {
   });
 });
 
+
+describe("level-up keeps the sheet's own numbers current", () => {
+  afterEach(() => {
+    getEquipment.mockResolvedValue([]);
+    getEquipmentDetails.mockResolvedValue(null);
+  });
+
+  it("raises an auto AC when an Ability Score Improvement raises Dexterity", async () => {
+    const user = userEvent.setup();
+    getEquipment.mockResolvedValue([{ index: "leather-armor", name: "Leather Armor" }]);
+    getEquipmentDetails.mockResolvedValue({
+      index: "leather-armor",
+      name: "Leather Armor",
+      armor_category: "Light",
+      armor_class: { base: 11, dex_bonus: true },
+    });
+    const sheet = makeSheet();
+    sheet.class = { id: "fighter", name: "Fighter", hitDie: 10 };
+    sheet.abilityScores = { ...sheet.abilityScores, dexterity: 16 };
+    sheet.acMode = "auto";
+    sheet.combat.armorClass = 14;
+    sheet.equipment = [{ index: "i1", name: "Leather Armor", quantity: 1, equipped: true }];
+    renderSheet(sheet);
+    expect(await screen.findByLabelText("Armor Class")).toHaveValue(14);
+
+    await user.click(screen.getByRole("button", { name: "Level Up" }));
+    await user.click(await screen.findByRole("button", { name: /Take Average/ }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(await screen.findByRole("button", { name: "+2 to One Ability" }));
+    await user.selectOptions(screen.getByRole("combobox"), "dexterity");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(await screen.findByRole("button", { name: /Confirm & Finish/ }));
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+
+    // Leather armor: 11 + DEX modifier, now +4.
+    expect(await screen.findByLabelText("Armor Class")).toHaveValue(15);
+  });
+});
