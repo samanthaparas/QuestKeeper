@@ -61,6 +61,8 @@ function EditableItemField({ field, value, onChange }) {
     return (
       <select
         className="character-sheet__resource-form-select"
+        aria-label={field.label ?? field.placeholder}
+        title={field.label ?? field.placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -184,6 +186,11 @@ function EditableItemList({
   // every other row.
   rowPanel = null,
   footer = null,
+  // Small controls shown under an item's name (see renderPrimaryCell).
+  primaryExtra = null,
+  // What Remove asks before removing (inventory weapons say their attacks
+  // stay); the plain "can't be undone" question if not given.
+  removeConfirmText = null,
   // Optional locking (used for spells): a locked row hides Edit and Remove
   // until it is unlocked, so it can't be changed by accident.
   isLocked = null,
@@ -208,7 +215,10 @@ function EditableItemList({
 }) {
   const primaryField = fields[0];
   const textareaField = fields.find((field) => field.type === "textarea");
-  const formFields = fields.filter((field) => field.type !== "textarea");
+  // A "custom" field draws its own editor (a weapon's extra damage rows, a
+  // preview) under the row of boxes: render({ value, onChange, values }).
+  const customFields = fields.filter((field) => field.type === "custom");
+  const formFields = fields.filter((field) => field.type !== "textarea" && field.type !== "custom");
   const formId = useId();
 
   const [isAdding, setIsAdding] = useState(false);
@@ -252,11 +262,13 @@ function EditableItemList({
   }
 
   function handleFieldChange(key, value) {
+    const nextValues = { ...values, [key]: value };
     setValues((prev) => ({ ...prev, [key]: value }));
 
     const field = fields.find((f) => f.key === key);
     if (field?.getAutofill) {
-      Promise.resolve(field.getAutofill(value)).then((autofill) => {
+      // The other boxes come too, so a weapon's magic bonus can be counted.
+      Promise.resolve(field.getAutofill(value, nextValues)).then((autofill) => {
         if (autofill) {
           setValues((prev) => ({ ...prev, ...autofill }));
         }
@@ -279,7 +291,8 @@ function EditableItemList({
 
   function handleEdit(item) {
     const nextValues = fields.reduce((acc, field) => {
-      if (field.type === "checkbox") acc[field.key] = Boolean(item[field.key]);
+      if (field.fromItem) acc[field.key] = field.fromItem(item);
+      else if (field.type === "checkbox") acc[field.key] = Boolean(item[field.key]);
       else acc[field.key] = item[field.key] != null ? String(item[field.key]) : "";
       return acc;
     }, {});
@@ -297,7 +310,8 @@ function EditableItemList({
   }
 
   function handleRemoveClick(item, id) {
-    if (window.confirm(`Remove "${getLabel(item)}"? This can't be undone.`)) {
+    const question = removeConfirmText?.(item) ?? `Remove "${getLabel(item)}"? This can't be undone.`;
+    if (window.confirm(question)) {
       onRemove(id);
     }
   }
@@ -334,14 +348,27 @@ function EditableItemList({
         onSubmit={handleSubmit}
       >
         <div className="character-sheet__resource-form">
-          {formFields.map((field) => (
-            <EditableItemField
-              key={field.key}
-              field={field}
-              value={values[field.key]}
-              onChange={(value) => handleFieldChange(field.key, value)}
-            />
-          ))}
+          {formFields.map((field) =>
+            // caption: a short label shown above the box, so the example
+            // inside can stay short and never gets cut off.
+            field.caption ? (
+              <label key={field.key} className="character-sheet__labeled-box">
+                <span>{field.caption}</span>
+                <EditableItemField
+                  field={field}
+                  value={values[field.key]}
+                  onChange={(value) => handleFieldChange(field.key, value)}
+                />
+              </label>
+            ) : (
+              <EditableItemField
+                key={field.key}
+                field={field}
+                value={values[field.key]}
+                onChange={(value) => handleFieldChange(field.key, value)}
+              />
+            ),
+          )}
         </div>
 
         {formFields
@@ -350,6 +377,16 @@ function EditableItemList({
           .map((hint) => (
             <FieldHint key={hint} text={hint} />
           ))}
+
+        {customFields.map((field) => (
+          <Fragment key={field.key}>
+            {field.render({
+              value: values[field.key],
+              values,
+              onChange: (value) => handleFieldChange(field.key, value),
+            })}
+          </Fragment>
+        ))}
 
         {textareaField && (
           <textarea
@@ -394,25 +431,26 @@ function EditableItemList({
           getLabel(item)
         )}
         {notes && (
-          <>
-            <button
-              type="button"
-              className="character-sheet__details-toggle"
-              onClick={() => toggleExpanded(id)}
-            >
-              {isExpanded ? "▾ Hide details" : "▸ Show details"}
-            </button>
-            {isExpanded && (
-              <ul className="character-sheet__attacks-notes-list">
-                {formatNotesLines(notes).map((line, i) => (
-                  // Rules words in the notes explain themselves on hover.
-                  <li key={i}>
-                    <RulesText text={line} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+          <button
+            type="button"
+            className="character-sheet__details-toggle"
+            onClick={() => toggleExpanded(id)}
+          >
+            {isExpanded ? "▾ Hide details" : "▸ Show details"}
+          </button>
+        )}
+        {/* A line of small controls under the name (an attack's
+            Sharpshooter and "How it adds up"), kept with the item. */}
+        {primaryExtra?.(item)}
+        {notes && isExpanded && (
+          <ul className="character-sheet__attacks-notes-list">
+            {formatNotesLines(notes).map((line, i) => (
+              // Rules words in the notes explain themselves on hover.
+              <li key={i}>
+                <RulesText text={line} />
+              </li>
+            ))}
+          </ul>
         )}
       </span>
     );

@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import {
+  armorSlot,
   computeWornArmorClass,
+  equipArmor,
+  findArmorConflicts,
   equipStartingArmor,
   isArmorDetails,
   magicArmorFor,
@@ -16,6 +19,8 @@ const GEAR = {
   "scale mail": { index: "scale-mail", armor_category: "Medium", armor_class: { base: 14, dex_bonus: true, max_bonus: 2 } },
   "chain mail": { index: "chain-mail", armor_category: "Heavy", armor_class: { base: 16, dex_bonus: false } },
   shield: { index: "shield", armor_category: "Shield", armor_class: { base: 2 } },
+  "studded leather armor": { index: "studded-leather-armor", armor_category: "Light", armor_class: { base: 12, dex_bonus: true } },
+  "spare shield": { index: "shield", armor_category: "Shield", armor_class: { base: 2 } },
   dagger: { index: "dagger", weapon_category: "Simple" },
 };
 const detailsFor = (item) => GEAR[item.name.toLowerCase()] ?? null;
@@ -129,5 +134,70 @@ describe("magic armor", () => {
     ]);
     // Scale mail 14 + 1, Dex +2 (the most medium armor allows), shield 2 + 2.
     expect(computeWornArmorClass(worn, magicDetailsFor)).toBe(21);
+  });
+});
+
+describe("one body armor and one shield at a time", () => {
+  const items = () => [
+    { index: "s", name: "Studded Leather Armor", equipped: true },
+    { index: "l", name: "Leather Armor" },
+    { index: "sh", name: "Shield" },
+    { index: "sh2", name: "Spare Shield" },
+    { index: "d", name: "Dagger", wielded: true },
+  ];
+
+  it("sorts armor into body and shield", () => {
+    expect(armorSlot(GEAR["leather armor"])).toBe("body");
+    expect(armorSlot(GEAR["chain mail"])).toBe("body");
+    expect(armorSlot(GEAR.shield)).toBe("shield");
+    expect(armorSlot(GEAR.dagger)).toBeNull();
+  });
+
+  it("won't put on a second armor, and says what's in the way", () => {
+    const sheet = pippa(items());
+    const result = equipArmor(sheet, "l", detailsFor);
+    expect(result.sheet).toBe(sheet);
+    expect(result.blockedBy.map((item) => item.name)).toEqual(["Studded Leather Armor"]);
+  });
+
+  it("swaps armor, keeping every item and updating the AC", () => {
+    const { sheet } = equipArmor(pippa(items()), "l", detailsFor, { swap: true });
+    expect(sheet.equipment).toHaveLength(5);
+    expect(sheet.equipment.filter((item) => item.equipped).map((item) => item.name)).toEqual(["Leather Armor"]);
+    // Leather 11 + Dex 3.
+    expect(computeWornArmorClass(sheet, detailsFor)).toBe(14);
+  });
+
+  it("lets one shield go with body armor, but not a second shield", () => {
+    let { sheet } = equipArmor(pippa(items()), "sh", detailsFor);
+    expect(sheet.equipment.filter((item) => item.equipped).map((item) => item.name)).toEqual(["Studded Leather Armor", "Shield"]);
+    // Studded 12 + Dex 3 + shield 2.
+    expect(computeWornArmorClass(sheet, detailsFor)).toBe(17);
+    expect(equipArmor(sheet, "sh2", detailsFor).blockedBy.map((item) => item.name)).toEqual(["Shield"]);
+    sheet = equipArmor(sheet, "sh2", detailsFor, { swap: true }).sheet;
+    expect(sheet.equipment.filter((item) => item.equipped).map((item) => item.name)).toEqual(["Studded Leather Armor", "Spare Shield"]);
+  });
+
+  it("puts armor on freely when nothing else of its kind is worn, and leaves weapons alone", () => {
+    const start = pippa(items().map((item) => ({ ...item, equipped: false })));
+    const { sheet, blockedBy } = equipArmor(start, "l", detailsFor);
+    expect(blockedBy).toBeUndefined();
+    expect(sheet.equipment.find((item) => item.index === "l").equipped).toBe(true);
+    expect(sheet.equipment.find((item) => item.index === "d").wielded).toBe(true);
+  });
+
+  it("finds two armors already worn on an older sheet, and which one the AC counts", () => {
+    const sheet = pippa([
+      { index: "l", name: "Leather Armor", equipped: true },
+      { index: "s", name: "Studded Leather Armor", equipped: true },
+      { index: "sh", name: "Shield", equipped: true },
+    ]);
+    const conflicts = findArmorConflicts(sheet, detailsFor);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0].slot).toBe("body");
+    expect(conflicts[0].counted.name).toBe("Studded Leather Armor");
+    // The AC itself is unchanged: the best armor plus the shield.
+    expect(computeWornArmorClass(sheet, detailsFor)).toBe(17);
+    expect(findArmorConflicts(pippa(items()), detailsFor)).toEqual([]);
   });
 });

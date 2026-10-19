@@ -11,6 +11,7 @@ import {
   rememberExtra,
 } from "../../utils/attacks";
 import { describeDamageParts } from "../../utils/combatEffects";
+import { SharpshooterToggle } from "../CharacterSheetActionsTab/CharacterSheetActionsTab";
 import { attackRoll, dealDamage } from "../../utils/tableStore";
 import Button from "../Button/Button";
 import ExtraDamagePicker from "../ExtraDamagePicker/ExtraDamagePicker";
@@ -32,7 +33,12 @@ const RESULT_TEXT = {
 // typed parts (1d4+5 piercing, 1d4 fire). Each part is rolled and sent
 // separately, so damage types are never merged. An attack without parts
 // (older callers) is one part: its own damage and type.
-function AttackPanel({ attack, combat, onClose }) {
+//
+// sharpshooter: { on, onChange(on) } when this attack can use Sharpshooter. It's
+// chosen before rolling to hit and can't change after, so the -5 and the +10
+// always go together. Extra damage with a condition ("vs undead") gets a
+// tick box at the damage step.
+function AttackPanel({ attack, combat, onClose, sharpshooter = null }) {
   const me = combat.myCombatant;
   const targets = combat.combatants.filter(
     (combatant) => combatant.kind === "monster" && combatant.status !== "down",
@@ -53,10 +59,15 @@ function AttackPanel({ attack, combat, onClose }) {
   const [extraText, setExtraText] = useState(() => readExtra().text);
   const [extraLabel, setExtraLabel] = useState(() => readExtra().label);
 
+  // Extra damage with a condition, switched on for this hit.
+  const [optionalOn, setOptionalOn] = useState(() => new Set());
   const bonus = Number(attack.toHit) || 0;
-  const attackParts = attack.damageParts ?? [
+  const optionalParts = attack.optionalParts ?? [];
+  const chosenOptional = optionalParts.filter((part) => optionalOn.has(part.key));
+  const savedParts = attack.damageParts ?? [
     { dice: attack.damage ?? "", type: String(attack.damageType ?? "").toLowerCase(), source: attack.name },
   ];
+  const attackParts = [...savedParts, ...chosenOptional];
   const weaponParts = parseDamage(attackParts[0]?.dice);
   const canRollDamage = weaponParts !== null;
   const hasFlatBonus = (weaponParts ?? []).some((part) => part.type === "flat");
@@ -112,9 +123,14 @@ function AttackPanel({ attack, combat, onClose }) {
         bonus,
       });
       setLastRoll({
-        summary: `Rolled ${natural} ${bonus >= 0 ? "+" : "-"} ${Math.abs(bonus)} = ${natural + bonus}.`,
+        summary: `Rolled ${natural} ${bonus >= 0 ? "+" : "-"} ${Math.abs(bonus)} = ${natural + bonus}${
+          sharpshooter?.on ? " (with Sharpshooter)" : ""
+        }.`,
         outcome,
       });
+      // Each attack chooses Sharpshooter afresh: after a miss the next
+      // attack (Extra Attack) starts with it off.
+      if (outcome === "miss" && sharpshooter?.on) sharpshooter.onChange(false);
       setPhysicalRoll("");
       combat.refresh();
     });
@@ -230,6 +246,18 @@ function AttackPanel({ attack, combat, onClose }) {
         </p>
       )}
 
+      {/* Sharpshooter: chosen before the roll, then shown as it was. */}
+      {sharpshooter &&
+        (!hasHit && !isAwaitingDm ? (
+          <SharpshooterToggle
+            on={sharpshooter.on}
+            onToggle={() => sharpshooter.onChange(!sharpshooter.on)}
+            disabled={isBusy}
+          />
+        ) : sharpshooter.on ? (
+          <p className="attack-panel__effects">🎯 Sharpshooter on this attack: -5 to hit, +10 damage.</p>
+        ) : null)}
+
       {error && (
         <p className="attack-panel__error" role="alert">
           {error}
@@ -307,6 +335,31 @@ function AttackPanel({ attack, combat, onClose }) {
               : ""}
             .
           </p>
+
+          {/* The weapon's extra damage that only applies sometimes. */}
+          {canRollDamage && optionalParts.length > 0 && (
+            <div className="attack-panel__extra">
+              {optionalParts.map((part) => (
+                <label className="attack-panel__extra-toggle" key={part.key}>
+                  <input
+                    type="checkbox"
+                    checked={optionalOn.has(part.key)}
+                    onChange={(event) =>
+                      changeExtra(() =>
+                        setOptionalOn((previous) => {
+                          const next = new Set(previous);
+                          if (event.target.checked) next.add(part.key);
+                          else next.delete(part.key);
+                          return next;
+                        }),
+                      )
+                    }
+                  />
+                  Add {part.dice} {part.type} ({part.condition})
+                </label>
+              ))}
+            </div>
+          )}
 
           {canRollDamage && (
             <div className="attack-panel__extra">

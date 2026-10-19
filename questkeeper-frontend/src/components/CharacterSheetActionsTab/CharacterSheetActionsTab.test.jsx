@@ -145,13 +145,13 @@ describe("CharacterSheetActionsTab", () => {
     renderTab({ equipment: [] });
 
     await user.click(screen.getByRole("button", { name: "Add Weapon" }));
-    await user.type(screen.getByPlaceholderText(/Weapon name/), "+1 Dagger");
+    await user.type(screen.getByLabelText("Weapon name"), "+1 Dagger");
 
     expect(
       await screen.findByText("When you attack, roll a d20 and add 6."),
     ).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("To Hit")).toHaveValue(6);
-    expect(screen.getByPlaceholderText(/Damage/)).toHaveValue("1d4+4");
+    expect(screen.getByLabelText("To hit")).toHaveValue(6);
+    expect(screen.getByLabelText("Damage")).toHaveValue("1d4+4");
   });
 
   it("keeps the full breakdown behind a toggle under the row of boxes", async () => {
@@ -160,7 +160,7 @@ describe("CharacterSheetActionsTab", () => {
     renderTab({ equipment: [] });
 
     await user.click(screen.getByRole("button", { name: "Add Weapon" }));
-    await user.type(screen.getByPlaceholderText(/Weapon name/), "+1 Dagger");
+    await user.type(screen.getByLabelText("Weapon name"), "+1 Dagger");
 
     const summary = await screen.findByText("How is this worked out?");
     const details = summary.closest("details");

@@ -416,8 +416,9 @@ it("labels each attack value so phones can show it without the header row", asyn
   expect([...row.querySelectorAll(".character-sheet__attacks-cell")].map((cell) => cell.dataset.label)).toEqual([
     "To Hit",
     "Damage",
-    "Type",
   ]);
+  // The type sits beside the damage it belongs to.
+  expect(row).toHaveTextContent("1d6+5 piercing");
 });
 
 it("switches inspiration on and off, since you only hold one", async () => {
@@ -1599,7 +1600,7 @@ describe("Elemental Weapon on the sheet", () => {
     // Actions: +10, the weapon's damage, and a separate 1d4 fire.
     await user.click(screen.getByRole("tab", { name: "Actions" }));
     expect(attackRow()).toHaveTextContent("✨ +10");
-    expect(attackRow()).toHaveTextContent("1d4+5 + 1d4 fire");
+    expect(attackRow()).toHaveTextContent("1d4+5 piercing · 1d4 fire");
 
     // Saved with the effect, and with the weapon's own numbers unchanged.
     await vi.waitFor(() => expect(lastSaved().activeEffects).toHaveLength(1), { timeout: 2000 });

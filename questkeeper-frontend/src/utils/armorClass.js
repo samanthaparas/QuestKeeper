@@ -125,3 +125,60 @@ export function equipStartingArmor(equipment = [], gear = [], { scores, classId 
     return wear ? { ...item, equipped: true } : item;
   });
 }
+
+// --- One body armor and one shield at a time --------------------------------------
+//
+// A character wears one body armor (light, medium or heavy) and at most one
+// shield. The AC above already copes with more (it counts the best body armor
+// and the first shield), but wearing two is a mistake, so equipping is
+// checked here. Only the "equipped" mark ever changes: nothing is removed
+// from the inventory.
+
+// Which slot an armor fills: "body", "shield", or null for anything else.
+export function armorSlot(details) {
+  if (details?.armor_category === "Shield") return "shield";
+  return ["Light", "Medium", "Heavy"].includes(details?.armor_category) ? "body" : null;
+}
+
+// The items already worn in the same slot as this one (not counting it).
+export function wornInSameSlot(sheet, item, detailsFor) {
+  const slot = armorSlot(detailsFor(item));
+  if (!slot) return [];
+  return (sheet?.equipment ?? []).filter(
+    (other) => other.index !== item.index && other.equipped && armorSlot(detailsFor(other)) === slot,
+  );
+}
+
+// Puts an armor or shield on. If something is already worn in its slot it
+// isn't equipped; { blockedBy: [items] } says what's in the way, so the
+// player can choose to swap. swap: take those off and put this on.
+// Returns { sheet } or { sheet, blockedBy } (then the sheet is unchanged).
+export function equipArmor(sheet, itemIndex, detailsFor, { swap = false } = {}) {
+  const item = (sheet?.equipment ?? []).find((entry) => entry.index === itemIndex);
+  if (!item) return { sheet };
+  const blockedBy = wornInSameSlot(sheet, item, detailsFor);
+  if (blockedBy.length > 0 && !swap) return { sheet, blockedBy };
+  const takeOff = new Set(blockedBy.map((other) => other.index));
+  return {
+    sheet: {
+      ...sheet,
+      equipment: sheet.equipment.map((entry) =>
+        entry.index === itemIndex ? { ...entry, equipped: true } : takeOff.has(entry.index) ? { ...entry, equipped: false } : entry,
+      ),
+    },
+  };
+}
+
+// Sheets saved before this check can wear two of a kind. Each conflict says
+// which slot, the items worn, and which one the AC counts now (the best body
+// armor; the first shield), so the player can take one off.
+export function findArmorConflicts(sheet, detailsFor) {
+  const worn = (sheet?.equipment ?? []).filter((item) => item.equipped);
+  return ["body", "shield"].flatMap((slot) => {
+    const items = worn.filter((item) => armorSlot(detailsFor(item)) === slot);
+    if (items.length < 2) return [];
+    const acWith = (item) => computeStartingArmorClass({ gear: [detailsFor(item)], scores: sheet.abilityScores });
+    const counted = slot === "body" ? [...items].sort((a, b) => acWith(b) - acWith(a))[0] : items[0];
+    return [{ slot, items, counted }];
+  });
+}
