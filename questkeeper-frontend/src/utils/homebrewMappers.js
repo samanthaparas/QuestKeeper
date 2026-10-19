@@ -163,6 +163,21 @@ function cleanNamedList(items, { max, withLevel = false }) {
     .slice(0, max);
 }
 
+// A subclass's bonus spells (like a domain's or Fey Wanderer Magic's): the
+// spell's name, the class level it comes at and the spell's own level. Only
+// names and numbers; no spell text is stored.
+function cleanBonusSpells(items) {
+  return (items ?? [])
+    .map((item) => ({
+      name: text(item?.name, 80),
+      level: wholeNumber(item?.level, 1, 20, 3),
+      spellLevel: wholeNumber(item?.spellLevel, 0, 9, 1),
+    }))
+    .filter((item) => item.name)
+    .slice(0, 20)
+    .sort((a, b) => a.level - b.level);
+}
+
 // A homebrew entry made by "Pick it now, add details later" in character
 // creation is only a name, a book and a link. This flag marks it as still
 // needing its details; saving it from the homebrew form clears the flag.
@@ -266,6 +281,8 @@ function cleanCategoryData(category, data) {
       features: cleanNamedList(data.features, { max: 30, withLevel: true }).sort(
         (a, b) => a.level - b.level,
       ),
+      // Older subclasses have none; the list starts empty.
+      spells: cleanBonusSpells(data.spells),
     };
   }
 
@@ -472,6 +489,9 @@ export function toHomebrewSubclass(entry, allEntries = []) {
       SUBCLASS_FLAVOR_BY_CLASS[data.parentClass] ?? (parent?.data?.subclassFlavor || "Subclass"),
     desc: toParagraphs(common.summary),
     spells: [],
+    // Granted by the subclass at those class levels, never counted toward
+    // spells known (see subclassSpellsToGrant).
+    bonus_spells: data.spells,
     features: data.features.map((feature) => ({
       index: `${common.index}.${slugify(feature.name)}-${feature.level}`,
       name: feature.name,
@@ -481,6 +501,16 @@ export function toHomebrewSubclass(entry, allEntries = []) {
       desc: toParagraphs(feature.description),
     })),
   };
+}
+
+// The bonus spells of the character's subclass, when it's one of the
+// player's homebrew subclasses (none for SRD and book subclasses).
+export function getSubclassBonusSpells(subclassId, entries = []) {
+  if (!subclassId || !isHomebrewId(subclassId)) return [];
+  const entry = (entries ?? []).find(
+    (item) => item.category === "subclass" && toHomebrewIndex(item.id) === subclassId,
+  );
+  return entry ? cleanHomebrewData("subclass", entry.data).spells : [];
 }
 
 export function getHomebrewSubclassRefs(entries, classIndex) {

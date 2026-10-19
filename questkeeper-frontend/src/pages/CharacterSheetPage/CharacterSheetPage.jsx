@@ -63,6 +63,10 @@ import {
   getFightingStyles,
   getOutOfDateNumbers,
   splitMagicWeaponName,
+  addSubclassSpells,
+  subclassSpellsToGrant,
+  subclassSpellsCountedByHand,
+  markSpellsGrantedBy,
   isReplacedByOption,
   applyExpertiseChoices,
   getOptionalClassFeatures,
@@ -74,6 +78,8 @@ import Button from "../../components/Button/Button";
 import { getFeatureSubclassId, sourceFromEntry } from "../../utils/featureSources";
 import { getSetupTasks } from "../../utils/setupTasks";
 import { loadHomebrew } from "../../utils/homebrewCache";
+import { getSubclassBonusSpells } from "../../utils/homebrewMappers";
+import { describePicks } from "../../utils/featureChoices";
 import { RETRY_DELAYS } from "../../hooks/useSrdEquipmentLookup";
 import { fillMissingComponents } from "../../utils/spellComponents";
 import {
@@ -441,6 +447,18 @@ function CharacterSheetPage() {
       );
     const lookup = attempt().catch(() => attempt());
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("slow")), 45000));
+    // The subclass's bonus spells (from the player's homebrew), up to the new
+    // level: any it gave at earlier levels that aren't on the sheet yet come
+    // too, and ones already there are left as they are. The list is read
+    // again, in case the subclass was made in this level-up.
+    const latestHomebrew = await loadHomebrew().catch(() => homebrewList);
+    const subclass = updatedSheet.class?.subclass;
+    updatedSheet = addSubclassSpells(
+      updatedSheet,
+      getSubclassBonusSpells(subclass?.id, latestHomebrew),
+      updatedSheet.level,
+      subclass?.name ?? "your subclass",
+    );
     try {
       const found = await Promise.race([lookup, timeout]);
       const added = found.map((entry) =>
@@ -474,7 +492,11 @@ function CharacterSheetPage() {
     const baseSummary = buildLevelUpSummary(sheet, updatedSheet);
     const summary = {
       ...baseSummary,
-      addedFeatures: baseSummary.newFeatures.map((feature) => feature.name),
+      // With what was picked: "Favored Enemy (2 types): Fiends".
+      addedFeatures: baseSummary.newFeatures.map((feature) => {
+        const picks = describePicks(feature.choices ?? []);
+        return picks ? `${feature.name}: ${picks}` : feature.name;
+      }),
       featuresFailed,
     };
     setSheet(updatedSheet);
@@ -530,6 +552,24 @@ function CharacterSheetPage() {
     sheet.acMode === "auto" ? computeWornArmorClass(sheet, gearDetailsFor) : null,
   );
   const outOfDateCount = (outOfDate.armorClass ? 1 : 0) + outOfDate.attacks.length;
+
+  // Bonus spells the homebrew subclass gives that the sheet doesn't have yet
+  // (a character who passed those levels before bonus spells existed), and
+  // ones typed in by hand that still count toward spells known.
+  const subclassName = sheet.class?.subclass?.name ?? "your subclass";
+  const bonusSpells = getSubclassBonusSpells(sheet.class?.subclass?.id, homebrewList);
+  const missingBonusSpells = subclassSpellsToGrant(sheet, bonusSpells);
+  const handCountedBonusSpells = subclassSpellsCountedByHand(sheet, bonusSpells);
+
+  function handleAddBonusSpells() {
+    persistSheet(addSubclassSpells(sheet, bonusSpells, sheet.level ?? 1, subclassName));
+  }
+
+  function handleMarkBonusSpells() {
+    persistSheet(
+      markSpellsGrantedBy(sheet, handCountedBonusSpells.map((spell) => spell.index), subclassName),
+    );
+  }
 
   function handleUpdateNumbers() {
     const worked = new Map(outOfDate.attacks.map((item) => [item.index, item.worked]));
@@ -2167,6 +2207,41 @@ function CharacterSheetPage() {
                       <Button variant="secondary" onClick={handleKeepNumbers}>
                         Keep mine
                       </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Subclass bonus spells not on the sheet, or counted by mistake. */}
+                {(missingBonusSpells.length > 0 || handCountedBonusSpells.length > 0) && (
+                  <div className="character-sheet__setup" role="status">
+                    <p className="character-sheet__stray-title">
+                      {subclassName} spells to sort out
+                    </p>
+                    <ul className="character-sheet__setup-list">
+                      {missingBonusSpells.length > 0 && (
+                        <li>
+                          Not on your sheet yet:{" "}
+                          {missingBonusSpells.map((spell) => spell.name).join(", ")}
+                        </li>
+                      )}
+                      {handCountedBonusSpells.length > 0 && (
+                        <li>
+                          On your sheet but counted toward spells known:{" "}
+                          {handCountedBonusSpells.map((spell) => spell.name).join(", ")}
+                        </li>
+                      )}
+                    </ul>
+                    <div className="character-sheet__setup-actions">
+                      {missingBonusSpells.length > 0 && (
+                        <Button onClick={handleAddBonusSpells}>
+                          Add {missingBonusSpells.length === 1 ? "it" : "them"}
+                        </Button>
+                      )}
+                      {handCountedBonusSpells.length > 0 && (
+                        <Button variant="secondary" onClick={handleMarkBonusSpells}>
+                          Mark as from {subclassName}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}

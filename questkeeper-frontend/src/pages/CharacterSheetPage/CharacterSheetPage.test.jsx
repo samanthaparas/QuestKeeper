@@ -55,6 +55,12 @@ vi.mock("../../utils/characterJournalStore", () => ({
   markNoteShared: vi.fn().mockResolvedValue(undefined),
 }));
 
+// The player's homebrew: none unless a test puts some in.
+const fakeHomebrew = vi.hoisted(() => ({ list: [] }));
+vi.mock("../../utils/homebrewCache", () => ({
+  loadHomebrew: () => Promise.resolve(fakeHomebrew.list),
+}));
+
 vi.mock("../../context/useAuth", () => ({
   useAuth: () => ({ user: { id: "user-1" } }),
 }));
@@ -1073,5 +1079,48 @@ describe("out-of-date numbers and optional class features", () => {
     // At level 6 the extra damage is a d6.
     expect(screen.getByText("Extra damage: 1d6")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Stop using Favored Foe" })).toBeInTheDocument();
+  });
+});
+
+describe("homebrew subclass bonus spells on an existing character", () => {
+  afterEach(() => {
+    fakeHomebrew.list = [];
+  });
+
+  it("offers to add the ones already passed, and adds them once outside spells known", async () => {
+    const user = userEvent.setup();
+    fakeHomebrew.list = [
+      {
+        id: "fw1",
+        category: "subclass",
+        name: "Fey Wanderer",
+        data: {
+          parentClass: "ranger",
+          features: [],
+          spells: [
+            { name: "Charm Person", level: 3, spellLevel: 1 },
+            { name: "Misty Step", level: 5, spellLevel: 2 },
+            { name: "Dispel Magic", level: 9, spellLevel: 3 },
+          ],
+        },
+      },
+    ];
+    const sheet = makeSheet({ level: 6 });
+    sheet.class = { id: "ranger", name: "Ranger", hitDie: 10, subclass: { id: "hb_fw1", name: "Fey Wanderer" } };
+    sheet.spellcasting = {
+      type: "known",
+      cantripsKnown: [],
+      spellsKnown: [{ index: "g", name: "Goodberry", level: 1, notes: "", components: "" }],
+    };
+    renderSheet(sheet);
+
+    const box = (await screen.findByText("Fey Wanderer spells to sort out")).closest("[role='status']");
+    expect(within(box).getByText("Not on your sheet yet: Charm Person, Misty Step")).toBeInTheDocument();
+    await user.click(within(box).getByRole("button", { name: "Add them" }));
+    expect(screen.queryByText("Fey Wanderer spells to sort out")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Spells" }));
+    expect(screen.getAllByText("Charm Person")).toHaveLength(1);
+    expect(screen.getAllByText(/From Fey Wanderer/)).toHaveLength(2);
   });
 });

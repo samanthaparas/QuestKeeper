@@ -372,3 +372,24 @@
   margin: 0;
   padding-left: 20px;
 }
+
+/* Review: "Your choices" and "Comes with level N" headings. */
+.level-up-wizard__review-heading {
+  margin: 0 0 8px;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 16px;
+}
+
+/* Back and Cancel side by side, wrapping on narrow screens. */
+.level-up-wizard__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Spell preview: "Level 2 · Abjuration · Concentration". */
+.level-up-wizard__spell-facts {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}

@@ -21,7 +21,13 @@ import {
   getBookSpellChoice,
   getSafeSpellLink,
   getLevelUpHitPointGain,
+  buildLevelUpSummary,
+  getSpellSlots,
+  isReplacedByOption,
+  subclassSpellsToGrant,
 } from "../../utils/characterSheet";
+import { loadHomebrew } from "../../utils/homebrewCache";
+import { getSubclassBonusSpells } from "../../utils/homebrewMappers";
 
 import {
   getFeats,
@@ -37,7 +43,11 @@ import Button from "../Button/Button";
 import SourceBadge from "../SourceBadge/SourceBadge";
 import BookEntryPanel from "../BookEntryPanel/BookEntryPanel";
 import HomebrewDialog from "../HomebrewDialog/HomebrewDialog";
-import { loadFeatureEntries, mapSubclassToPanel } from "../../utils/srdDetails";
+import {
+  featuresForNewLevel,
+  loadFeatureEntries,
+  mapSubclassToPanel,
+} from "../../utils/srdDetails";
 import {
   BOOK_OPTION,
   SKIP_OPTION,
@@ -232,6 +242,30 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
     // leveledClass is rebuilt each render; the step key and subclass are what matter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep?.key, pickedSubclass?.id]);
+
+  // Review: the new level's features and the subclass's bonus spells, looked
+  // up when the review shows (null while loading; entries null if it failed).
+  const [reviewLookups, setReviewLookups] = useState(null);
+  useEffect(() => {
+    if (currentStep) return;
+    let ignore = false;
+    Promise.all([
+      loadFeatureEntries({
+        classId: leveledClass?.id,
+        subclassId: getFeatureSubclassId(leveledClass),
+        raceId: sheet.race?.id,
+        subraceId: sheet.race?.subrace?.id,
+      }).catch(() => null),
+      loadHomebrew().catch(() => []),
+    ]).then(([entries, homebrew]) => {
+      if (!ignore) setReviewLookups({ entries, homebrew });
+    });
+    return () => {
+      ignore = true;
+    };
+    // leveledClass is rebuilt each render; the step and subclass are what matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, pickedSubclass?.id]);
 
   // What goes on the sheet, or null while a pick is missing or repeated.
   const resolvedFeatureChoices = featureGroups
@@ -493,6 +527,61 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
     }
 
     return null;
+  }
+
+  // The review's "comes with this level" list: worked out from a preview of
+  // the finished sheet (nothing is saved until Confirm), so it matches what
+  // the level-up will really do.
+  function getAutomaticGains() {
+    const preview = finalizeLevelUp({
+      ...sheet,
+      pendingLevelUp: { ...pendingLevelUp, status: "complete" },
+    });
+    const summary = buildLevelUpSummary(sheet, preview);
+    const gains = [];
+    if (summary.toProficiency !== summary.fromProficiency) {
+      gains.push(`Proficiency bonus: +${summary.fromProficiency} → +${summary.toProficiency}`);
+    }
+    const slotsBefore = Object.fromEntries(getSpellSlots(sheet.spellcasting).map((slot) => [slot.level, slot.max]));
+    const slotChanges = getSpellSlots(preview.spellcasting)
+      .filter((slot) => slot.max !== (slotsBefore[slot.level] ?? 0))
+      .map((slot) => `level ${slot.level}: ${slotsBefore[slot.level] ?? 0} → ${slot.max}`);
+    if (slotChanges.length) gains.push(`Spell slots: ${slotChanges.join(", ")}`);
+    if ((Number(preview.speed) || 0) !== (Number(sheet.speed) || 0)) {
+      gains.push(`Speed: ${sheet.speed} → ${preview.speed} ft`);
+    }
+
+    // Features picked in Class Choices are listed with the choices instead.
+    const picked = new Set(
+      (pendingLevelUp.steps.find((step) => step.key === "features")?.data?.features ?? []).map(
+        (feature) => feature.name,
+      ),
+    );
+    const granted = summary.newFeatures.map((feature) => feature.name).filter((name) => !picked.has(name));
+    const looked = reviewLookups?.entries
+      ? featuresForNewLevel(
+          reviewLookups.entries,
+          targetLevel,
+          (preview.features ?? []).map((feature) => feature.name),
+        )
+          .filter((entry) => !isReplacedByOption(preview, entry.name))
+          .map((entry) => entry.name)
+      : [];
+    const features = [...new Set([...granted, ...looked])];
+    if (features.length) gains.push(`New features: ${features.join(", ")}`);
+
+    const grantedSpells = summary.newSpells.filter((spell) => spell.grantedBy);
+    const subclassSpells = subclassSpellsToGrant(
+      preview,
+      getSubclassBonusSpells(leveledClass?.subclass?.id, reviewLookups?.homebrew ?? []),
+      targetLevel,
+    );
+    const spellNames = [
+      ...grantedSpells.map((spell) => `${spell.name} (${spell.grantedBy})`),
+      ...subclassSpells.map((spell) => `${spell.name} (${leveledClass.subclass.name})`),
+    ];
+    if (spellNames.length) gains.push(`Spells you always know: ${spellNames.join(", ")}`);
+    return gains;
   }
 
   function handleFinish() {
@@ -997,6 +1086,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
                     onBookDraftChange={(draft) => setFeatureBookDraft(draftKey, draft)}
                     onChange={(next) => setFeaturePick(group.key, slot, next)}
                     description={picked?.description}
+                    hint={slot === 0 ? group.hint : ""}
                   />
                 );
               })}
@@ -1157,6 +1247,21 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
               {selectedSpellDetails && (
                 <>
                   <h4>{selectedSpellDetails.name}</h4>
+                  {/* The facts players compare first, before the description. */}
+                  <p className="level-up-wizard__spell-facts">
+                    {selectedSpellDetails.level === 0
+                      ? "Cantrip"
+                      : `Level ${selectedSpellDetails.level}`}
+                    {selectedSpellDetails.school?.name ? ` · ${selectedSpellDetails.school.name}` : ""}
+                    {selectedSpellDetails.concentration ? " · Concentration" : ""}
+                    {selectedSpellDetails.ritual ? " · Ritual" : ""}
+                  </p>
+                  {selectedSpellDetails.components?.length > 0 && (
+                    <p>
+                      <strong>Components:</strong> {selectedSpellDetails.components.join(", ")}
+                      {selectedSpellDetails.material ? ` (${selectedSpellDetails.material})` : ""}
+                    </p>
+                  )}
                   {selectedSpellDetails.desc?.map((line, index) => (
                     <p key={index}>{line}</p>
                   ))}
@@ -1182,9 +1287,10 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
           )}
 
           <p className="level-up-wizard__step-description">
-            Spells from your subclass or other features (like Fey Wanderer Magic)
-            go on the Spells tab with &ldquo;Doesn&apos;t count toward spells
-            known&rdquo; ticked.
+            Bonus spells from a homebrew subclass (set in My Homebrew) and from
+            Tasha&apos;s Primal Awareness are added for you and don&apos;t count. Any
+            other extra spell goes on the Spells tab with &ldquo;Doesn&apos;t count
+            toward spells known&rdquo; ticked.
           </p>
 
           <Button
@@ -1202,24 +1308,52 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
             Review Level {targetLevel}
           </h3>
           <p className="level-up-wizard__step-description">
-            Double-check these choices for {sheet.name} before finishing. Not
-            right? Use Cancel below to discard this level-up and start over.
+            Double-check {sheet.name}&apos;s level {targetLevel} before finishing. Not
+            right? Use Back to change a choice; nothing is saved until you confirm.
           </p>
 
+          <h4 className="level-up-wizard__review-heading">Your choices</h4>
           <ul className="level-up-wizard__review-list">
             {pendingLevelUp.steps.map((step) => (
               <li key={step.key}>{describeStepChoice(step)}</li>
             ))}
           </ul>
 
+          <h4 className="level-up-wizard__review-heading">Comes with level {targetLevel}</h4>
+          {!reviewLookups && <p className="level-up-wizard__step-description">Looking up this level&apos;s features…</p>}
+          {reviewLookups && !reviewLookups.entries && (
+            <p className="level-up-wizard__step-description">
+              Couldn&apos;t look up this level&apos;s features right now. They&apos;re added
+              when you finish if the rules server answers.
+            </p>
+          )}
+          {reviewLookups && (
+            <ul className="level-up-wizard__review-list">
+              {getAutomaticGains().map((gain) => (
+                <li key={gain}>{gain}</li>
+              ))}
+              {getAutomaticGains().length === 0 && (
+                <li>Nothing else changes at this level, beyond your choices above.</li>
+              )}
+            </ul>
+          )}
+
           <Button onClick={handleFinish} disabled={isFinishing}>
             {isFinishing ? "Adding your new features…" : "Confirm & Finish Level Up"}
           </Button>
         </div>
       )}
-      <Button variant="secondary" onClick={onCancel}>
-        Cancel
-      </Button>
+      {/* Back keeps every choice (and the HP roll) as it was. */}
+      <div className="level-up-wizard__nav">
+        {stepIndex > 0 && (
+          <Button variant="secondary" onClick={() => setStepIndex((i) => i - 1)}>
+            Back
+          </Button>
+        )}
+        <Button variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1346,6 +1480,7 @@ function FeaturePickSelect({
   onBookDraftChange,
   onChange,
   description,
+  hint = "",
 }) {
   const draft = bookDraft ?? { name: "", link: "" };
   const update = (field) => (e) => onBookDraftChange({ ...draft, [field]: e.target.value });
@@ -1373,6 +1508,8 @@ function FeaturePickSelect({
           )}
         </select>
       </label>
+
+      {hint && <p className="level-up-wizard__book-spell-hint">{hint}</p>}
 
       {description && value !== BOOK_OPTION && (
         <div className="level-up-wizard__feat-card">

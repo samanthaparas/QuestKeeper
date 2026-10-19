@@ -571,7 +571,72 @@ function SubclassFields({ data, set, classOptions = [] }) {
         addLabel="Add a feature"
         namePlaceholder="Feature name"
       />
+
+      <BonusSpellsField spells={data.spells ?? []} onChange={(spells) => set({ spells })} />
     </>
+  );
+}
+
+// Spells the subclass always gives (Fey Wanderer Magic, a Cleric domain's):
+// each one is added to the character's sheet at its class level, and doesn't
+// count toward spells known. Only the name and levels are kept.
+function BonusSpellsField({ spells, onChange }) {
+  function update(index, changes) {
+    onChange(spells.map((spell, i) => (i === index ? { ...spell, ...changes } : spell)));
+  }
+  return (
+    <fieldset className="homebrew-form__group">
+      <legend className="homebrew-form__label">Bonus spells (optional)</legend>
+      <p className="homebrew-form__hint">
+        Spells this subclass always gives. They&apos;re added to the sheet at the class
+        level you give, and don&apos;t count toward spells known.
+      </p>
+      {spells.map((spell, index) => (
+        <div className="homebrew-form__row" key={index}>
+          <input
+            className="homebrew-form__input homebrew-form__input--grow"
+            aria-label={`Bonus spell ${index + 1} name`}
+            placeholder="Spell name"
+            maxLength={80}
+            value={spell.name}
+            onChange={(event) => update(index, { name: event.target.value })}
+          />
+          <NumberField
+            id={`homebrew-bonus-spell-${index}-level`}
+            label="Class level"
+            min={1}
+            max={20}
+            value={spell.level}
+            onChange={(level) => update(index, { level })}
+          />
+          <NumberField
+            id={`homebrew-bonus-spell-${index}-spell-level`}
+            label="Spell level"
+            min={0}
+            max={9}
+            value={spell.spellLevel}
+            onChange={(spellLevel) => update(index, { spellLevel })}
+          />
+          <button
+            type="button"
+            className="homebrew-form__remove"
+            aria-label={`Remove ${spell.name || `bonus spell ${index + 1}`}`}
+            onClick={() => onChange(spells.filter((_, i) => i !== index))}
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        className="homebrew-form__add"
+        onClick={() =>
+          onChange([...spells, { name: "", level: spells.at(-1)?.level ?? 3, spellLevel: 1 }])
+        }
+      >
+        Add a bonus spell
+      </button>
+    </fieldset>
   );
 }
 
