@@ -86,6 +86,8 @@ import {
   setTypedInitiative,
   getStaleInitiative,
   applyInitiativeUpdate,
+  getFreeCastsToSplit,
+  applyFreeCastsSplit,
   updateFeat,
   updateSpell,
   getSpellcastingAbility,
@@ -2608,6 +2610,7 @@ describe("Fighting Styles and renamed weapons in the numbers", () => {
       speed: [],
       // No Initiative was saved (0) with Dexterity +4.
       initiative: { saved: 0, worked: 4 },
+      freeCasts: [],
     });
     expect(JSON.stringify(pippa)).toBe(before);
     // A typed-in AC (manual) is never questioned.
@@ -2715,7 +2718,9 @@ describe("Tasha's optional Ranger features", () => {
     expect(names(ten)).toContain("Deft Explorer: Tireless");
     expect(ten.resources.map((resource) => resource.name)).toEqual([
       "Favored Foe",
-      "Primal Awareness free casts",
+      "Speak with Animals (free cast)",
+      "Beast Sense (free cast)",
+      "Speak with Plants (free cast)",
       "Deft Explorer: Tireless",
     ]);
     // Nothing doubles up when the same level comes round twice.
@@ -3100,11 +3105,20 @@ describe("feature-granted spells keep their details right", () => {
     ]);
   });
 
-  it("track a free cast per Primal Awareness spell, growing with new ones and removed when switched off", () => {
+  it("give each Primal Awareness spell its own 1/1 free cast, added with the spell and removed when switched off", () => {
     const six = switchOptionalFeature(pippaLike(), "primalAwareness", true);
-    expect(six.resources).toEqual([expect.objectContaining({ name: "Primal Awareness free casts", max: 2, resetOn: "long" })]);
+    expect(six.resources.map((resource) => [resource.name, resource.current, resource.max, resource.resetOn])).toEqual([
+      ["Speak with Animals (free cast)", 1, 1, "long"],
+      ["Beast Sense (free cast)", 1, 1, "long"],
+    ]);
     const nine = applyOptionalFeatureLevel({ ...six, level: 9 }, 9);
-    expect(nine.resources.find((resource) => resource.name === "Primal Awareness free casts").max).toBe(3);
+    expect(nine.resources.map((resource) => resource.name)).toEqual([
+      "Speak with Animals (free cast)",
+      "Beast Sense (free cast)",
+      "Speak with Plants (free cast)",
+    ]);
+    // The same level again adds nothing.
+    expect(applyOptionalFeatureLevel(nine, 9).resources).toHaveLength(3);
     expect(switchOptionalFeature(nine, "primalAwareness", false).resources).toEqual([]);
   });
 
@@ -3207,5 +3221,71 @@ describe("Initiative follows Dexterity", () => {
       initiativeMode: "manual",
       combat: { initiative: 7 },
     });
+  });
+});
+
+describe("splitting an older shared Primal Awareness pool", () => {
+  // Pippa at 9 as saved before: one shared pool, one cast already used.
+  function withSharedPool(current) {
+    const nine = applyOptionalFeatureLevel(
+      { ...switchOptionalFeature(pippaLike(), "primalAwareness", true), level: 9 },
+      9,
+    );
+    return {
+      ...nine,
+      resources: [
+        { id: "ff", name: "Favored Foe", max: 4, current: 4, resetOn: "long" },
+        { id: "pool", name: "Primal Awareness free casts", max: 3, current },
+      ],
+    };
+  }
+
+  it("is offered without changing anything, saying which spells start used", () => {
+    const sheet = withSharedPool(2);
+    const before = JSON.stringify(sheet);
+    expect(getFreeCastsToSplit(sheet)).toEqual([
+      {
+        key: "primalAwareness",
+        poolName: "Primal Awareness free casts",
+        pool: { current: 2, max: 3 },
+        spells: ["Speak with Animals", "Beast Sense", "Speak with Plants"],
+        used: ["Speak with Animals"],
+      },
+    ]);
+    expect(JSON.stringify(sheet)).toBe(before);
+  });
+
+  it("splits into one 1/1 per spell, keeping a used cast used and other resources alone", () => {
+    const split = applyFreeCastsSplit(withSharedPool(2));
+    expect(split.resources.map((resource) => [resource.name, resource.current, resource.max])).toEqual([
+      ["Favored Foe", 4, 4],
+      ["Speak with Animals (free cast)", 0, 1],
+      ["Beast Sense (free cast)", 1, 1],
+      ["Speak with Plants (free cast)", 1, 1],
+    ]);
+    expect(getFreeCastsToSplit(split)).toEqual([]);
+    // A full pool splits with nothing used.
+    expect(applyFreeCastsSplit(withSharedPool(3)).resources.filter((resource) => resource.current === 0)).toEqual([]);
+  });
+
+  it("splits on its own at the next level-up, and never doubles a spell's cast", () => {
+    const sheet = withSharedPool(3);
+    const ten = applyOptionalFeatureLevel({ ...sheet, level: 10 }, 10);
+    const names = ten.resources.map((resource) => resource.name);
+    expect(names.filter((name) => name.endsWith("(free cast)"))).toEqual([
+      "Speak with Animals (free cast)",
+      "Beast Sense (free cast)",
+      "Speak with Plants (free cast)",
+    ]);
+    expect(names).not.toContain("Primal Awareness free casts");
+  });
+
+  it("stays shared when the player keeps it, and just grows with new spells", () => {
+    const kept = applyFreeCastsSplit(withSharedPool(2), { keep: true });
+    expect(getFreeCastsToSplit(kept)).toEqual([]);
+    const thirteen = applyOptionalFeatureLevel({ ...kept, level: 13 }, 13);
+    const pool = thirteen.resources.find((resource) => resource.name === "Primal Awareness free casts");
+    expect([pool.current, pool.max]).toEqual([3, 4]);
+    expect(thirteen.resources.some((resource) => resource.freeCastFor)).toBe(false);
   });
 });

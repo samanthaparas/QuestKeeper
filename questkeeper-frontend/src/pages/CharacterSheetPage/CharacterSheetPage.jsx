@@ -66,6 +66,7 @@ import {
   withAutoInitiative,
   setTypedInitiative,
   applyInitiativeUpdate,
+  applyFreeCastsSplit,
   splitMagicWeaponName,
   addSubclassSpells,
   subclassSpellsToGrant,
@@ -562,6 +563,7 @@ function CharacterSheetPage() {
   const outOfDateCount =
     (outOfDate.armorClass ? 1 : 0) +
     (outOfDate.initiative ? 1 : 0) +
+    outOfDate.freeCasts.length +
     outOfDate.attacks.length +
     outOfDate.speed.length;
 
@@ -590,7 +592,8 @@ function CharacterSheetPage() {
     );
     // persistSheet works the auto AC out again as it saves.
     const updated = applySpeedUpdates({ ...sheet, attacks }, outOfDate.speed);
-    persistSheet(outOfDate.initiative ? applyInitiativeUpdate(updated) : updated);
+    const withInitiative = outOfDate.initiative ? applyInitiativeUpdate(updated) : updated;
+    persistSheet(outOfDate.freeCasts.length ? applyFreeCastsSplit(withInitiative) : withInitiative);
   }
 
   // "Keep mine": these numbers stay as typed and aren't offered again. The AC
@@ -605,7 +608,10 @@ function CharacterSheetPage() {
       ...(outOfDate.armorClass ? { acMode: "manual" } : {}),
     };
     const kept = applySpeedUpdates(next, outOfDate.speed, { keep: true });
-    persistSheet(outOfDate.initiative ? applyInitiativeUpdate(kept, { keep: true }) : kept);
+    const keptInitiative = outOfDate.initiative ? applyInitiativeUpdate(kept, { keep: true }) : kept;
+    persistSheet(
+      outOfDate.freeCasts.length ? applyFreeCastsSplit(keptInitiative, { keep: true }) : keptInitiative,
+    );
   }
 
   function persistSheet(next) {
@@ -2227,6 +2233,16 @@ function CharacterSheetPage() {
                           {formatModifier(outOfDate.initiative.worked)} (from your Dexterity)
                         </li>
                       )}
+                      {/* A shared free-cast pool from before, split into one per
+                          spell; any casts already used stay used. */}
+                      {outOfDate.freeCasts.map((item) => (
+                        <li key={item.key}>
+                          {item.poolName} {item.pool.current}/{item.pool.max} → one free cast
+                          each: {item.spells.join(", ")}
+                          {item.used.length > 0 &&
+                            ` (${item.used.join(", ")} will show as used; tap a pip to move it)`}
+                        </li>
+                      ))}
                       {outOfDate.speed.map((item) => (
                         <li key={item.featureIndex}>
                           Speed {item.saved} → {item.worked} ft (from {item.name})
