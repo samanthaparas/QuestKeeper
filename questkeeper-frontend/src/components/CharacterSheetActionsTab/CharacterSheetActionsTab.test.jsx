@@ -178,8 +178,13 @@ describe("CharacterSheetActionsTab", () => {
       onAttackRemove,
     });
 
+    // Hidden in play; "Edit attacks" shows them, "Done" hides them again.
+    expect(screen.queryByRole("button", { name: "Edit Longsword" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Edit attacks" }));
     expect(screen.getByRole("button", { name: "Edit Longsword" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Remove Longsword" }));
     expect(onAttackRemove).toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("button", { name: "Remove Longsword" })).toBeNull();
   });
 });

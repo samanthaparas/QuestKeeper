@@ -346,10 +346,15 @@ it("locks granted spells and lets the player lock or unlock any spell", async ()
   renderSheet(sheet);
 
   await user.click(await screen.findByRole("tab", { name: /Spells/ }));
+  // In play the row shows where the spell came from, and no buttons.
   const thaumaturgy = (await screen.findByText("Thaumaturgy")).closest("li");
-  expect(thaumaturgy).toHaveTextContent("🔒 From your race (Tiefling)");
-  expect(within(thaumaturgy).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
-  expect(within(thaumaturgy).queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
+  expect(thaumaturgy).toHaveTextContent("From your race (Tiefling)");
+  expect(within(screen.getByText("Light").closest("li")).queryByRole("button", { name: "Lock Light" })).toBeNull();
+
+  // Lock, Unlock, Edit and Remove are behind Edit spells.
+  await user.click(screen.getByRole("button", { name: "Edit spells" }));
+  expect(within(thaumaturgy).queryByRole("button", { name: /^Edit / })).not.toBeInTheDocument();
+  expect(within(thaumaturgy).queryByRole("button", { name: /^Remove / })).not.toBeInTheDocument();
 
   const light = screen.getByText("Light").closest("li");
   await user.click(within(light).getByRole("button", { name: "Lock Light" }));
@@ -1066,6 +1071,13 @@ describe("out-of-date numbers and optional class features", () => {
     renderSheet(sheet);
     await user.click(await screen.findByRole("tab", { name: /Features/ }));
 
+    // Folded to one line until tapped.
+    const panel = screen.getByText(/Optional class features \(Tasha's\)/).closest("details");
+    expect(panel.open).toBe(false);
+    expect(screen.getByText(/not using any/)).toBeInTheDocument();
+    await user.click(screen.getByText(/Optional class features \(Tasha's\)/));
+    expect(panel.open).toBe(true);
+
     const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false);
     await user.click(screen.getByRole("button", { name: "Use Favored Foe" }));
     expect(confirm.mock.calls[0][0]).toContain("Comes off: Favored Enemy (1 type), Favored Enemy (2 types)");
@@ -1079,6 +1091,7 @@ describe("out-of-date numbers and optional class features", () => {
     // At level 6 the extra damage is a d6.
     expect(screen.getByText("Extra damage: 1d6 · Needs concentration; once per turn")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Stop using Favored Foe" })).toBeInTheDocument();
+    expect(screen.getByText(/Optional class features \(Tasha's\) · 1 in use/)).toBeInTheDocument();
   });
 });
 
@@ -1142,5 +1155,117 @@ describe("Roving's speed on a sheet switched on before the fix", () => {
     await user.click(within(box).getByRole("button", { name: "Update" }));
     expect(screen.getByLabelText("Speed")).toHaveValue(35);
     expect(screen.queryByText(/out of date/)).not.toBeInTheDocument();
+  });
+});
+
+describe("compact Spells tab", () => {
+  it("shows spellcasting numbers on one line, slots as chips, and Max/Hide only while editing", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet({ class: { id: "wizard", name: "Wizard", spellcastingType: "prepared", spellcastingAbility: "intelligence" } });
+    sheet.spellcasting = {
+      type: "prepared",
+      cantripsKnown: [],
+      spellsKnown: [],
+      spellSlots: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => ({
+        level,
+        max: level === 1 ? 4 : level === 2 ? 2 : 0,
+        current: level === 1 ? 3 : level === 2 ? 2 : 0,
+      })),
+    };
+    renderSheet(sheet);
+    await user.click(await screen.findByRole("tab", { name: "Spells" }));
+
+    expect(screen.getByText("Save DC")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Spell attack/ })).toBeInTheDocument();
+    // "1st ●●●○ 3/4": the count is short, the screen reader label is full.
+    expect(screen.getByRole("group", { name: "Level 1 spell slots: 3 of 4 left" })).toBeInTheDocument();
+    expect(screen.getByText("3/4")).toBeInTheDocument();
+    expect(screen.queryByText("Max")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Hide level/ })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Edit slots" }));
+    expect(screen.getAllByText("Max").length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "Hide level 2 slots" }));
+    expect(screen.queryByRole("group", { name: /Level 2 spell slots/ })).toBeNull();
+    // Hidden levels can be brought back while editing.
+    await user.click(screen.getByRole("button", { name: "+ Level 2" }));
+    expect(screen.getByRole("group", { name: "Level 2 spell slots: 2 of 2 left" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("button", { name: "+ Level 2" })).toBeNull();
+  });
+});
+
+describe("calm spell list", () => {
+  it("sorts by level then A to Z, with the level first and no buttons until Edit spells", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet({ class: { id: "ranger", name: "Ranger", spellcastingType: "known", spellcastingAbility: "wisdom" } });
+    sheet.spellcasting = {
+      type: "known",
+      cantripsKnown: [{ index: "c", name: "Druidcraft", level: 0, notes: "", components: "V, S" }],
+      spellsKnown: [
+        { index: "s", name: "Silence", level: 2, notes: "", components: "V, S" },
+        { index: "g", name: "Goodberry", level: 1, notes: "", components: "V, S, M" },
+        { index: "a", name: "absorb Elements", level: 1, notes: "", components: "S" },
+        { index: "cp", name: "Charm Person", level: 1, notes: "", components: "", locked: true, grantedBy: "Fey Wanderer" },
+      ],
+    };
+    renderSheet(sheet);
+    await user.click(await screen.findByRole("tab", { name: "Spells" }));
+
+    const rows = [...document.querySelectorAll(".character-sheet__resource-list li")].filter((row) =>
+      row.querySelector(".character-sheet__spell-level-pill"),
+    );
+    expect(rows.map((row) => row.querySelector(".character-sheet__spell-level-pill").textContent)).toEqual([
+      "Cantrip",
+      "Lv 1",
+      "Lv 1",
+      "Lv 1",
+      "Lv 2",
+    ]);
+    expect(rows.map((row) => row.querySelector(".character-sheet__resource-name").textContent)).toEqual([
+      "Druidcraft",
+      "absorb Elements",
+      "Charm Person",
+      "Goodberry",
+      "Silence",
+    ]);
+    // Calm in play: a source tag, components as text, no buttons.
+    expect(rows[2]).toHaveTextContent("From Fey Wanderer");
+    expect(screen.queryByRole("button", { name: /^Lock / })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Edit Goodberry/ })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Edit spells" }));
+    expect(screen.getByRole("button", { name: "Lock Goodberry" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit Goodberry" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("button", { name: "Edit Goodberry" })).toBeNull();
+  });
+});
+
+describe("Edit buttons on the other lists", () => {
+  it("keeps pencils and trash hidden on Resources and Features lists until their Edit is tapped", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet();
+    sheet.resources = [{ id: "r1", name: "Favored Foe", max: 3, current: 3, resetOn: "long", notes: "" }];
+    sheet.features = [{ index: "f1", name: "Darkvision", description: "" }];
+    sheet.feats = [{ index: "ft1", name: "Alert" }];
+    sheet.proficiencies = [{ index: "p1", name: "Light Armor" }];
+    renderSheet(sheet);
+
+    await user.click(await screen.findByRole("tab", { name: "Resources" }));
+    expect(screen.queryByRole("button", { name: "Edit Favored Foe" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Edit resources" }));
+    expect(screen.getByRole("button", { name: "Edit Favored Foe" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /Features/ }));
+    for (const [label, item] of [
+      ["Edit features", "Darkvision"],
+      ["Edit feats", "Alert"],
+      ["Edit proficiencies", "Light Armor"],
+    ]) {
+      expect(screen.queryByRole("button", { name: `Remove ${item}` })).toBeNull();
+      await user.click(screen.getByRole("button", { name: label }));
+      expect(screen.getByRole("button", { name: `Remove ${item}` })).toBeInTheDocument();
+    }
   });
 });

@@ -47,8 +47,10 @@ function StatValue({ isEditing, label, value, onChange, min = 0, max }) {
   );
 }
 
-// The bulleted notes, with a box underneath to add another.
-function CompanionNotes({ name, notes, onChange }) {
+// The bulleted notes, with a box underneath to add another. A note's trash
+// button only shows while the card's "Edit stats" is open, like the other
+// lists' Edit buttons; adding a note works any time.
+function CompanionNotes({ name, notes, onChange, isEditing = false }) {
   const [draft, setDraft] = useState("");
 
   function addNote(event) {
@@ -68,24 +70,26 @@ function CompanionNotes({ name, notes, onChange }) {
           {notes.map((note) => (
             <li className="companion-card__note" key={note.id}>
               <span>{note.text}</span>
-              <button
-                type="button"
-                className="companion-card__note-remove"
-                aria-label={`Remove note: ${note.text}`}
-                title="Remove note"
-                onClick={() => onChange(notes.filter((other) => other.id !== note.id))}
-              >
-                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
-                  <path
-                    d={TRASH_ICON_PATH}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
+              {isEditing && (
+                <button
+                  type="button"
+                  className="companion-card__note-remove"
+                  aria-label={`Remove note: ${note.text}`}
+                  title="Remove note"
+                  onClick={() => onChange(notes.filter((other) => other.id !== note.id))}
+                >
+                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+                    <path
+                      d={TRASH_ICON_PATH}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -325,9 +329,12 @@ function CompanionCard({
         onAdd={onAttackAdd}
         onUpdate={onAttackUpdate}
         onRemove={onAttackRemove}
+        // The pencil and trash wait behind "Edit attacks", so rows stay calm in play.
+        hasEditToggle
+        editToggleLabel="Edit attacks"
       />
 
-      <CompanionNotes name={name} notes={notes} onChange={onNotesChange} />
+      <CompanionNotes name={name} notes={notes} onChange={onNotesChange} isEditing={isEditing} />
 
     </section>
   );

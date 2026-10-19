@@ -1377,14 +1377,20 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   flex: 1 1 220px;
 }
 
+/* "Add from my class and race" and the small Tasha's line share one row;
+   whichever is opened (the list to add, or the switches) wraps onto its own
+   full-width row underneath. */
 .character-sheet__feature-import {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
   margin-bottom: 12px;
-  justify-items: start;
 }
 
 .character-sheet__feature-import-panel {
+  flex-basis: 100%;
+  box-sizing: border-box;
   width: 100%;
   display: grid;
   gap: 8px;
@@ -2522,11 +2528,13 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
 }
 
 /* Features tab: Tasha's optional class features, each with its own switch. */
-.character-sheet__optional-features {
+/* Folded, it's one small line of muted text (no box), so it hardly takes
+   any room; opened, it becomes a box with the switches. */
+.character-sheet__optional-features[open] {
   display: grid;
+  flex-basis: 100%;
   gap: 6px;
-  margin-bottom: 14px;
-  padding: 12px 14px;
+  padding: 10px 14px;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-control);
   background-color: var(--qk-surface);
@@ -2534,4 +2542,156 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
 
 .character-sheet__optional-features li {
   margin-bottom: 6px;
+}
+
+/* The folded line: small and muted, still easy to tap. */
+.character-sheet__optional-features-toggle {
+  display: inline-block;
+  padding: 4px 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.character-sheet__optional-features-toggle:hover,
+.character-sheet__optional-features[open] .character-sheet__optional-features-toggle {
+  color: var(--qk-text);
+}
+
+/* Its own small arrow (the browser's goes away with inline-block): ▸ shut,
+   ▾ open, so it reads as something to tap. */
+.character-sheet__optional-features-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.character-sheet__optional-features-toggle::before {
+  content: "▸ ";
+}
+
+.character-sheet__optional-features[open] .character-sheet__optional-features-toggle::before {
+  content: "▾ ";
+}
+
+/* Spells tab: "Spellcasting" with its three numbers on the same line
+   (Ability WIS · Save DC 13 · Attack +5), wrapping under it on phones. */
+.character-sheet__spellcasting-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 20px;
+  margin-bottom: 10px;
+}
+
+.character-sheet__spellcasting-head .character-sheet__section-title {
+  margin: 0;
+}
+
+.character-sheet__spell-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  color: var(--qk-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.character-sheet__spell-stat-label {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.character-sheet__spell-stat-roll {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Spell slots: one small chip per level ("1st ●●●● 4/4"), wrapping, with
+   Edit slots at the end of the row. */
+.character-sheet__spell-slots-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The list's chips join the bar's own row (label, chips, Edit slots). */
+.character-sheet__spell-slot-chips {
+  display: contents;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.character-sheet__spell-slot-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+}
+
+/* A level with no slots (opened on purpose) stays quiet. */
+.character-sheet__spell-slot-chip--empty {
+  opacity: 0.6;
+}
+
+.character-sheet__spell-slot-level {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.character-sheet__spell-slot-none {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.character-sheet__spell-slot-hide,
+.character-sheet__spell-slot-edit {
+  padding: 2px 6px;
+  border: none;
+  background: none;
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.character-sheet__spell-slot-edit {
+  text-decoration: underline;
+}
+
+.character-sheet__spell-slot-hide:hover,
+.character-sheet__spell-slot-edit:hover {
+  color: var(--qk-text);
+}
+
+/* Spells list: the level leads each row ("Lv 1", "Cantrip"), all the same
+   width so the names line up under each other. */
+.character-sheet__spell-level-pill {
+  flex: 0 0 auto;
+  min-width: 58px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-terracotta-hover);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* V, S, M: quiet text, not another pill. */
+.character-sheet__spell-components {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  white-space: nowrap;
 }

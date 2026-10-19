@@ -233,6 +233,9 @@ function CharacterSheetActionsTab({
         onAdd={onAttackAdd}
         onUpdate={onAttackUpdate}
         onRemove={onAttackRemove}
+        // The pencil and trash wait behind "Edit attacks", so rows stay calm in play.
+        hasEditToggle
+        editToggleLabel="Edit attacks"
         isNameClickable={(attack) =>
           equipmentLookup.findMatches(attack.name).length > 0
         }

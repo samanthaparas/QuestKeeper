@@ -356,39 +356,6 @@ function CharacterSheetFeaturesTab({
           </div>
         )}
 
-        {/* Tasha's optional class features: each one is the player's (or
-            table's) choice, and nothing changes until they confirm. */}
-        {optionalFeatures.length > 0 && (
-          <div className="character-sheet__optional-features">
-            <p className="character-sheet__stray-title">Optional class features (Tasha&apos;s)</p>
-            <p className="character-sheet__empty-text">
-              Some tables swap these in for the original features. Ask your DM.
-              QuestKeeper keeps the names and numbers; the full text is in the book.
-            </p>
-            <ul className="character-sheet__setup-list">
-              {optionalFeatures.map((option) => {
-                const isOn = Boolean(optionalFeaturesOn[option.key]);
-                return (
-                  <li key={option.key}>
-                    <strong>{option.name}</strong>{" "}
-                    {isOn ? `(in use, instead of ${option.replaces})` : `instead of ${option.replaces}`}{" "}
-                    <a href={option.link} target="_blank" rel="noopener noreferrer">
-                      Read it
-                    </a>{" "}
-                    <Button
-                      variant="secondary"
-                      type="button"
-                      onClick={() => onOptionalFeatureSwitch(option.key, !isOn)}
-                    >
-                      {isOn ? `Stop using ${option.name}` : `Use ${option.name}`}
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
-
         <div className="character-sheet__feature-import">
           <Button
             variant="secondary"
@@ -398,6 +365,48 @@ function CharacterSheetFeaturesTab({
           >
             {showImport ? "Close" : "Add from my class and race"}
           </Button>
+
+          {/* Tasha's optional class features: each one is the player's (or
+              table's) choice, and nothing changes until they confirm. */}
+          {/* Folded to one small line beside the button, so it doesn't take
+              up the tab once decided; it says how many are in use, and a tap
+              opens it onto its own full-width row. */}
+          {optionalFeatures.length > 0 && (
+            <details className="character-sheet__optional-features">
+              <summary className="character-sheet__optional-features-toggle">
+                Optional class features (Tasha&apos;s) ·{" "}
+                {(() => {
+                  const inUse = optionalFeatures.filter((option) => optionalFeaturesOn[option.key]).length;
+                  return inUse > 0 ? `${inUse} in use` : "not using any";
+                })()}
+              </summary>
+              <p className="character-sheet__empty-text">
+                Some tables swap these in for the original features. Ask your DM.
+                QuestKeeper keeps the names and numbers; the full text is in the book.
+              </p>
+              <ul className="character-sheet__setup-list">
+                {optionalFeatures.map((option) => {
+                  const isOn = Boolean(optionalFeaturesOn[option.key]);
+                  return (
+                    <li key={option.key}>
+                      <strong>{option.name}</strong>{" "}
+                      {isOn ? `(in use, instead of ${option.replaces})` : `instead of ${option.replaces}`}{" "}
+                      <a href={option.link} target="_blank" rel="noopener noreferrer">
+                        Read it
+                      </a>{" "}
+                      <Button
+                        variant="secondary"
+                        type="button"
+                        onClick={() => onOptionalFeatureSwitch(option.key, !isOn)}
+                      >
+                        {isOn ? `Stop using ${option.name}` : `Use ${option.name}`}
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </details>
+          )}
 
           {showImport && (
             <div className="character-sheet__feature-import-panel">
@@ -485,6 +494,9 @@ function CharacterSheetFeaturesTab({
           onAdd={onFeatureAdd}
           onUpdate={onFeatureUpdate}
           onRemove={onFeatureRemove}
+          // The pencil and trash wait behind "Edit features", so rows stay calm in play.
+          hasEditToggle
+          editToggleLabel="Edit features"
           isNameClickable={(feature) =>
             findFeatureMatches(feature.name).length > 0
           }
@@ -577,6 +589,9 @@ function CharacterSheetFeaturesTab({
           onAdd={onFeatAdd}
           onUpdate={onFeatUpdate}
           onRemove={onFeatRemove}
+          // The pencil and trash wait behind "Edit feats", so rows stay calm in play.
+          hasEditToggle
+          editToggleLabel="Edit feats"
           isNameClickable={(feat) => getFeatMatches(feat).length > 0}
           onNameClick={openFeatDetails}
         />
@@ -604,6 +619,9 @@ function CharacterSheetFeaturesTab({
           onAdd={onProficiencyAdd}
           onUpdate={onProficiencyUpdate}
           onRemove={onProficiencyRemove}
+          // The pencil and trash wait behind "Edit proficiencies", so rows stay calm in play.
+          hasEditToggle
+          editToggleLabel="Edit proficiencies"
         />
       </section>
 
