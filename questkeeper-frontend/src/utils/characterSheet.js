@@ -835,7 +835,13 @@ export function getOutOfDateNumbers(sheet, weaponDetailsFor, workedArmorClass = 
       bonus: grant.speed,
     }));
 
-  return { armorClass, attacks, speed, initiative: getStaleInitiative(sheet) };
+  return {
+    armorClass,
+    attacks,
+    speed,
+    initiative: getStaleInitiative(sheet),
+    freeCasts: getFreeCastsToSplit(sheet),
+  };
 }
 
 // An earlier version wrote Roving's speed to an unused top-level "speed"
@@ -2206,21 +2212,88 @@ function addOptionGains(sheet, option, from, to) {
   return syncFreeCasts(next, option);
 }
 
-// Primal Awareness: one free cast per spell it gave, so the pool's size
-// follows how many of its spells the sheet has. Uses already spent stay spent.
+// Primal Awareness: each of its spells can be cast once per long rest
+// without a slot, so each gets its own 1/1 resource ("Beast Sense (free
+// cast)"), added when the spell arrives and never twice. Sheets from before
+// had one shared pool ("Primal Awareness free casts" 3/3); it's turned into
+// the per-spell ones here, with any casts already used kept used (the
+// earliest spells take them; the player can tap a pip to move one). A pool
+// the player chose to keep ("Keep mine") just grows with the spells instead.
+const freeCastName = (spellName) => `${spellName} (free cast)`;
+
 function syncFreeCasts(sheet, option) {
   if (!option.freeCasts) return sheet;
-  const count = (sheet.spellcasting?.spellsKnown ?? []).filter((spell) => spell.grantedBy === option.name).length;
-  const existing = (sheet.resources ?? []).find((resource) => resource.name === option.freeCasts);
-  if (count === 0 || existing?.max === count) return sheet;
-  const resources = existing
-    ? sheet.resources.map((resource) =>
-        resource === existing
-          ? { ...resource, max: count, current: Math.min(count, resource.current + (count - resource.max)) }
-          : resource,
-      )
-    : [...(sheet.resources ?? []), createResource({ name: option.freeCasts, max: count, resetOn: "long" })];
-  return { ...sheet, resources };
+  const spells = (sheet.spellcasting?.spellsKnown ?? [])
+    .filter((spell) => spell.grantedBy === option.name)
+    .sort((a, b) => (a.acquiredAtLevel ?? 0) - (b.acquiredAtLevel ?? 0));
+  const resources = sheet.resources ?? [];
+  const pool = resources.find((resource) => resource.name === option.freeCasts);
+
+  if (pool?.keepShared) {
+    if (pool.max === spells.length || spells.length === 0) return sheet;
+    const grown = { ...pool, max: spells.length, current: Math.min(spells.length, pool.current + (spells.length - pool.max)) };
+    return { ...sheet, resources: resources.map((resource) => (resource === pool ? grown : resource)) };
+  }
+
+  const tracked = new Set(
+    resources.filter((resource) => resource.freeCastFor).map((resource) => resource.freeCastFor.toLowerCase()),
+  );
+  let spent = pool ? Math.max(0, (pool.max ?? 0) - (pool.current ?? 0)) : 0;
+  const added = spells
+    .filter((spell) => !tracked.has(spell.name.toLowerCase()))
+    .map((spell) => {
+      const used = spent > 0;
+      if (used) spent -= 1;
+      return {
+        ...createResource({ name: freeCastName(spell.name), max: 1, resetOn: "long" }),
+        current: used ? 0 : 1,
+        freeCastFor: spell.name,
+        grantedBy: option.name,
+      };
+    });
+  if (added.length === 0 && !pool) return sheet;
+  return { ...sheet, resources: [...resources.filter((resource) => resource !== pool), ...added] };
+}
+
+// For the sheet's "out of date" notice: a shared free-cast pool from before
+// that can be split into one per spell. used: the spells that will start
+// used, so nothing already spent comes back.
+export function getFreeCastsToSplit(sheet) {
+  return getOptionalClassFeatures(sheet?.class)
+    .filter((option) => option.freeCasts && sheet.optionalFeatures?.[option.key])
+    .flatMap((option) => {
+      const pool = (sheet.resources ?? []).find((resource) => resource.name === option.freeCasts);
+      if (!pool || pool.keepShared) return [];
+      const split = syncFreeCasts(sheet, option).resources.filter(
+        (resource) => resource.grantedBy === option.name && resource.freeCastFor,
+      );
+      return [
+        {
+          key: option.key,
+          poolName: pool.name,
+          pool: { current: pool.current, max: pool.max },
+          spells: split.map((resource) => resource.freeCastFor),
+          used: split.filter((resource) => resource.current === 0).map((resource) => resource.freeCastFor),
+        },
+      ];
+    });
+}
+
+// Update: split the shared pools. keep: leave them shared (and don't ask again).
+export function applyFreeCastsSplit(sheet, { keep = false } = {}) {
+  const options = getOptionalClassFeatures(sheet?.class).filter(
+    (option) => option.freeCasts && sheet.optionalFeatures?.[option.key],
+  );
+  if (keep) {
+    const names = new Set(options.map((option) => option.freeCasts));
+    return {
+      ...sheet,
+      resources: (sheet.resources ?? []).map((resource) =>
+        names.has(resource.name) ? { ...resource, keepShared: true } : resource,
+      ),
+    };
+  }
+  return options.reduce((next, option) => syncFreeCasts(next, option), sheet);
 }
 
 // What switching an option on or off would do, for the confirm message.
@@ -2279,8 +2352,13 @@ export function switchOptionalFeature(sheet, key, turnOn) {
     ...withoutStraySpeed(sheet),
     optionalFeatures,
     features: (sheet.features ?? []).filter((feature) => !isGrant(feature.name)),
+    // Its resources go too: the features', the per-spell free casts and
+    // an older shared pool.
     resources: (sheet.resources ?? []).filter(
-      (resource) => !isGrant(resource.name) && resource.name !== option.freeCasts,
+      (resource) =>
+        !isGrant(resource.name) &&
+        resource.name !== option.freeCasts &&
+        resource.grantedBy !== option.name,
     ),
     ...(hadSpeed
       ? { combat: { ...sheet.combat, speed: (Number(sheet.combat?.speed) || 30) - hadSpeed } }

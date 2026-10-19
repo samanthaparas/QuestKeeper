@@ -1341,3 +1341,40 @@ describe("Initiative on an older sheet", () => {
     expect(screen.queryByText(/out of date/)).not.toBeInTheDocument();
   });
 });
+
+describe("Primal Awareness free casts on an older sheet", () => {
+  it("offers to split the shared pool, keeping a used cast used", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet({ level: 9 });
+    sheet.class = { id: "ranger", name: "Ranger", hitDie: 10 };
+    sheet.optionalFeatures = { primalAwareness: true };
+    sheet.spellcasting = {
+      type: "known",
+      cantripsKnown: [],
+      spellsKnown: ["Speak with Animals", "Beast Sense", "Speak with Plants"].map((name, i) => ({
+        index: `pa${i}`,
+        name,
+        level: i + 1,
+        notes: "",
+        components: "V, S",
+        locked: true,
+        grantedBy: "Primal Awareness",
+        acquiredAtLevel: [3, 5, 9][i],
+      })),
+    };
+    sheet.resources = [{ id: "pool", name: "Primal Awareness free casts", max: 3, current: 2, resetOn: "long", notes: "" }];
+    renderSheet(sheet);
+
+    const box = (await screen.findByText(/out of date/)).closest("[role='status']");
+    expect(box).toHaveTextContent(
+      "Primal Awareness free casts 2/3 → one free cast each: Speak with Animals, Beast Sense, Speak with Plants (Speak with Animals will show as used; tap a pip to move it)",
+    );
+    await user.click(within(box).getByRole("button", { name: "Update" }));
+
+    await user.click(screen.getByRole("tab", { name: "Resources" }));
+    expect(screen.getByRole("group", { name: "Speak with Animals (free cast): 0 of 1 left" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Beast Sense (free cast): 1 of 1 left" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Speak with Plants (free cast): 1 of 1 left" })).toBeInTheDocument();
+    expect(screen.queryByText("Primal Awareness free casts")).toBeNull();
+  });
+});
