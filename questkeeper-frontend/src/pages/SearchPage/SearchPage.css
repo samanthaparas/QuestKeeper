@@ -74,8 +74,21 @@
   gap: 16px;
 }
 
+/* Closes the details (on narrow screens it's the way back to the list). */
 .search-page__back-button {
-  display: none;
+  margin-bottom: 12px;
+}
+
+/* The heading the details open on takes focus; it shows a ring only when
+   reached by keyboard-like focus, not on every mouse click. */
+.detail-panel__title:focus {
+  outline: none;
+}
+
+.detail-panel__title:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 
 .search-page__status,
@@ -138,16 +151,50 @@
   justify-self: start;
 }
 
+/* No extra fading: the muted colour is already as light as text can be
+   and still read easily (4.5:1). */
 .search-page__note {
   margin-bottom: 24px;
   color: var(--qk-text-muted);
   font-style: italic;
-  opacity: 0.85;
 }
 
+/* 900px and narrower there's no room for both columns, so the details take
+   the list's place (rather than opening far below a long list), with Back
+   to results to return to the list where it was. */
 @media screen and (max-width: 900px) {
-  .search-page__layout {
+  .search-page__layout,
+  .search-page__layout--detail-open {
     grid-template-columns: 1fr;
+  }
+
+  .search-page__layout--detail-open .search-page__results {
+    display: none;
+  }
+
+  /* While an entry is open, the list's intro, search and filters step
+     aside too, so an entry opened from a shared link sits right under the
+     page title instead of below a long intro (no focus jump needed). Back
+     to results brings them all back as they were. Messages (errors) and
+     the screen-reader announcer stay. */
+  .search-page__content:has(.search-page__layout--detail-open)
+    :is(
+      .search-page__description,
+      .search-page__note,
+      .search-form-wrapper,
+      .source-filter,
+      .search-page__filters,
+      .search-page__count,
+      .magic-items-page__search,
+      .magic-item-filters
+    ) {
+    display: none;
+  }
+
+  .search-page__detail-wrapper {
+    position: static;
+    max-height: none;
+    overflow: visible;
   }
 }
 
@@ -170,25 +217,6 @@
     gap: 20px;
   }
 
-  .search-page__detail-wrapper {
-    display: none;
-    position: static;
-    max-height: none;
-    overflow: visible;
-  }
-
-  .search-page__layout--detail-open .search-page__results {
-    display: none;
-  }
-
-  .search-page__layout--detail-open .search-page__detail-wrapper {
-    display: block;
-  }
-
-  .search-page__back-button {
-    display: inline-block;
-    margin-bottom: 16px;
-  }
 
   .result-card,
   .detail-panel,

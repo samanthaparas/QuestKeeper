@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { getMagicItemCatalog } from "../../utils/api";
-import { useOpenFromLink } from "../../hooks/useOpenFromLink";
+import { useBrowseSelection } from "../../hooks/useOpenFromLink";
+import BrowseLayout from "../../components/BrowseLayout/BrowseLayout";
+import { dedupeEntries, entryKey } from "../../utils/browseList";
 import { BOOK_MAGIC_ITEMS } from "../../utils/bookMagicItems";
 import {
   filterMagicItems,
@@ -23,37 +25,55 @@ const PAGE_SIZE = 60;
 // list can be bookmarked or shared.
 function MagicItemsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const filters = useMemo(() => filtersFromParams(searchParams), [searchParams]);
   const [catalog, setCatalog] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [selected, setSelected] = useState(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // Bumped by "Try again" after the catalog failed to load.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    let ignore = false;
     getMagicItemCatalog()
-      .then(setCatalog)
-      .catch(() =>
-        setLoadError("Couldn't load the SRD and Vault of Magic items right now. The official book items are still listed below."),
+      .then((items) => {
+        if (ignore) return;
+        setCatalog(items);
+        setLoadError("");
+      })
+      .catch(
+        () =>
+          !ignore &&
+          setLoadError("Couldn't load the SRD and Vault of Magic items right now. The official book items are still listed below."),
       )
-      .finally(() => setIsLoading(false));
-  }, []);
+      .finally(() => !ignore && setIsLoading(false));
+    return () => {
+      ignore = true;
+    };
+  }, [attempt]);
 
-  const allItems = useMemo(() => [...catalog, ...BOOK_MAGIC_ITEMS], [catalog]);
+  // One list for the cards, the count and "no items match".
+  const allItems = useMemo(() => dedupeEntries([...catalog, ...BOOK_MAGIC_ITEMS]), [catalog]);
   // Search text first, so the source buttons' counts follow the search.
   const searchMatches = useMemo(() => filterMagicItems(allItems, { q: filters.q }), [allItems, filters.q]);
   const results = useMemo(() => filterMagicItems(allItems, filters), [allItems, filters]);
   const visible = results.slice(0, visibleCount);
   const remaining = results.length - visible.length;
 
-  // Links like quick-jump's "/magic-items?open=..." open that item. Waits for
-  // the catalog, since the book items are there from the start.
-  useOpenFromLink({ items: allItems, ready: !isLoading, onOpen: setSelected });
+  // The open item lives in the address with the filters (?rarity=rare&open=
+  // ...), so it can be shared and reloaded; a filter that hides it closes it.
+  // The book items are there from the start; this waits for the catalog.
+  const selection = useBrowseSelection({ items: allItems, visibleItems: results, ready: !isLoading });
 
   function updateFilters(next) {
-    setSearchParams(filtersToParams(next), { replace: true });
+    // Keeps the open item (if the new filters still show it).
+    const params = filtersToParams(next);
+    ["open", "edition"].forEach((name) => {
+      if (searchParams.get(name)) params[name] = searchParams.get(name);
+    });
+    setSearchParams(params, { replace: true, state: location.state });
     setVisibleCount(PAGE_SIZE);
-    setSelected(null);
   }
 
   return (
@@ -81,30 +101,38 @@ function MagicItemsPage() {
 
         <MagicItemFilters filters={filters} onChange={updateFilters} items={searchMatches} />
 
-        {isLoading && <p className="search-page__status">Loading magic items...</p>}
-        {loadError && <p className="search-page__error">{loadError}</p>}
+        {loadError && (
+          <div className="search-page__error browse-layout__error" role="alert">
+            {loadError}{" "}
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setIsLoading(true);
+                setAttempt((count) => count + 1);
+              }}
+            >
+              Try again
+            </Button>
+          </div>
+        )}
 
-        <p className="magic-items-page__count" aria-live="polite">
-          {results.length.toLocaleString()} of {allItems.length.toLocaleString()} items
-          {activeFilterCount(filters) > 0 || filters.q ? " match" : ""}
-        </p>
-
-        <section className={`search-page__layout ${selected ? "search-page__layout--detail-open" : ""}`}>
-          <div className="search-page__results">
-            {!isLoading && results.length === 0 && (
-              <p className="search-page__empty">No items match. Try fewer filters.</p>
-            )}
-
-            {visible.map((item) => (
-              <MagicItemCard
-                key={item.index}
-                item={item}
-                isSelected={selected?.index === item.index}
-                onSelect={setSelected}
-              />
-            ))}
-
-            {remaining > 0 && (
+        <BrowseLayout
+          noun="item"
+          isLoading={isLoading}
+          total={allItems.length}
+          shownCount={results.length}
+          isFiltered={activeFilterCount(filters) > 0 || Boolean(filters.q)}
+          emptyText="No items match. Try fewer filters."
+          selection={selection}
+          // Magic items have their own, richer details panel.
+          renderDetail={(open) => <MagicItemDetail
+              key={open.selectedKey}
+              item={open.selected}
+              headingId={open.headingId}
+              describedBy={open.describedBy}
+            />}
+          footer={
+            remaining > 0 && (
               <Button
                 variant="secondary"
                 className="search-page__show-more"
@@ -112,26 +140,19 @@ function MagicItemsPage() {
               >
                 {`Show ${Math.min(remaining, PAGE_SIZE)} more (${remaining.toLocaleString()} left)`}
               </Button>
-            )}
-          </div>
-
-          <div className="search-page__detail-wrapper">
-            {selected ? (
-              <>
-                <Button variant="secondary" className="search-page__back-button" onClick={() => setSelected(null)}>
-                  Back to results
-                </Button>
-                {/* A new key per item replays the panel's opening animation. */}
-                <MagicItemDetail key={selected.index} item={selected} />
-              </>
-            ) : (
-              <section className="detail-panel">
-                <h2 className="detail-panel__title">Select an item</h2>
-                <p>Choose an item from the list to see everything about it.</p>
-              </section>
-            )}
-          </div>
-        </section>
+            )
+          }
+        >
+          {visible.map((item) => (
+            <MagicItemCard
+              key={entryKey(item)}
+              id={selection.cardId(item)}
+              item={item}
+              isSelected={selection.selected === item}
+              onSelect={selection.open}
+            />
+          ))}
+        </BrowseLayout>
       </div>
     </main>
   );

@@ -69,7 +69,11 @@ export function SrdBlocks({ blocks }) {
 // link away to My Homebrew, which would lose the player's progress).
 // animate: fade and slide in each time a different entry opens (off for the
 // homebrew form's live preview, which changes on every keystroke).
-function DetailPanel({ selectedResult, actions, inPicker = false, animate = true }) {
+// headingId: given by a browse page, so it can move focus to the entry's
+// name when it opens (see useBrowseSelection).
+// describedBy: the id of a line about this entry shown outside the panel
+// ("isn't in the list with your current filters").
+function DetailPanel({ selectedResult, actions, inPicker = false, animate = true, headingId, describedBy }) {
   if (!selectedResult) {
     return (
       <section className="detail-panel">
@@ -87,9 +91,13 @@ function DetailPanel({ selectedResult, actions, inPicker = false, animate = true
       // A new key per entry replays the opening animation.
       key={animate ? selectedResult.name : undefined}
       className={`detail-panel${animate ? " detail-panel--enter" : ""}`}
+      aria-labelledby={headingId}
+      aria-describedby={describedBy}
     >
       <div className="flex-header-row detail-panel__header">
-        <h2 className="detail-panel__title">{selectedResult.name}</h2>
+        <h2 className="detail-panel__title" id={headingId} tabIndex={headingId ? -1 : undefined}>
+          {selectedResult.name}
+        </h2>
         {actions}
       </div>
 

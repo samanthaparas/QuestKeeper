@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getBackgrounds, getBackgroundDetails } from "../utils/api";
 import { mapBackgroundToPanel } from "../utils/srdDetails";
 import { getCardPreview } from "../utils/beginnerGuidance";
 import SearchForm from "../components/SearchForm/SearchForm";
-import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
 import SourceFilter from "../components/SourceFilter/SourceFilter";
 import { filterBySource } from "../utils/sourceFilters";
 import "../pages/SearchPage/SearchPage.css";
-import Button from "../components/Button/Button";
-import { useOpenFromLink } from "../hooks/useOpenFromLink";
+import { useBrowseSelection } from "../hooks/useOpenFromLink";
+import BrowseLayout from "../components/BrowseLayout/BrowseLayout";
+import { dedupeEntries, entryKey } from "../utils/browseList";
 
 function formatBackground2024(data) {
   const abilityScoreNames = data.ability_scores.map((a) => a.name).join(", ");
@@ -29,14 +30,17 @@ function formatBackground2024(data) {
 
 function BackgroundsPage() {
   const [backgroundResults, setBackgroundResults] = useState([]);
-  const [selectedResult, setSelectedResult] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   // "all" or one book name, picked with the SourceFilter buttons.
   const [sourceFilter, setSourceFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState("");
+  const [loadError, setLoadError] = useState(false);
+  // Bumped by "Try again" after the list failed to load.
+  const [attempt, setAttempt] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    let ignore = false;
     Promise.all([getBackgrounds(), getBackgrounds("2024")])
       .then(([legacy, updated]) => {
         const formattedBackgrounds = [...legacy, ...updated].map((item) => ({
@@ -51,63 +55,35 @@ function BackgroundsPage() {
           url: item.url,
         }));
 
-        setBackgroundResults(formattedBackgrounds);
+        if (ignore) return;
+        // 2014 and 2024 backgrounds can share an id; the edition tells them apart.
+        setBackgroundResults(dedupeEntries(formattedBackgrounds));
+        setLoadError(false);
       })
-      .catch(() => {
-        setApiError("Unable to load backgrounds. Please try again later.");
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, []);
+      .catch(() => !ignore && setLoadError(true))
+      .finally(() => !ignore && setIsLoading(false));
+    return () => {
+      ignore = true;
+    };
+  }, [attempt]);
 
   // Search text first, then the source buttons (their counts follow the search).
   const searchMatches = backgroundResults.filter((result) =>
-    result.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    result.name.toLowerCase().includes(searchQuery.trim().toLowerCase()),
   );
   const filteredBackgrounds = filterBySource(searchMatches, sourceFilter);
 
-  function handleSearchSubmit(e) {
-    e.preventDefault();
-  }
-
-  function handleSearchChange(e) {
-    setSearchQuery(e.target.value);
-    setSelectedResult(null);
-  }
-
-  function handleResultClick(result) {
-    setSelectedResult(result);
-
-    getBackgroundDetails(result.index, result.edition)
-      .then((data) => {
-        const formattedBackground =
-          result.edition === "2024"
-            ? formatBackground2024(data)
-            : mapBackgroundToPanel(data);
-
-        setSelectedResult({
-          ...formattedBackground,
-          index: result.index,
-        });
-        setApiError("");
-      })
-      .catch(() => {
-        setApiError(
-          "Unable to load background details. Please try again later.",
-        );
-      });
-  }
-
-  // Links like quick-jump's "/backgrounds?open=acolyte&edition=2024" open
-  // that background (the same name can be in both rule sets).
-  useOpenFromLink({
+  // The open background lives in the address (?open=acolyte&edition=2024),
+  // so it can be shared and reloaded.
+  const selection = useBrowseSelection({
     items: backgroundResults,
+    visibleItems: filteredBackgrounds,
     ready: !isLoading,
-    onOpen: handleResultClick,
-    matches: (item, params) =>
-      item.index === params.get("open") &&
-      (item.edition === "2024" ? "2024" : "2014") === (params.get("edition") ?? "2014"),
+    loadDetail: (item) =>
+      getBackgroundDetails(item.index, item.edition).then((data) => ({
+        ...(item.edition === "2024" ? formatBackground2024(data) : mapBackgroundToPanel(data)),
+        index: item.index,
+      })),
   });
 
   return (
@@ -129,65 +105,43 @@ function BackgroundsPage() {
         </p>
 
         <SearchForm
+          scope="backgrounds"
           searchQuery={searchQuery}
-          onSearchChange={handleSearchChange}
-          onSearchSubmit={handleSearchSubmit}
+          onSearchChange={(e) => setSearchQuery(e.target.value)}
+          onSearchEverywhere={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
         />
-
-        {isLoading && (
-          <p className="search-page__status">Loading backgrounds...</p>
-        )}
-        {apiError && <p className="search-page__error">{apiError}</p>}
 
         <SourceFilter
           underSearch
           items={searchMatches}
           value={sourceFilter}
-          onChange={(source) => {
-            setSourceFilter(source);
-            setSelectedResult(null);
-          }}
+          onChange={setSourceFilter}
         />
 
-        <section
-          className={`search-page__layout ${
-            selectedResult ? "search-page__layout--detail-open" : ""
-          }`}
+        <BrowseLayout
+          noun="background"
+          isLoading={isLoading}
+          loadError={loadError}
+          onRetry={() => {
+            setIsLoading(true);
+            setAttempt((count) => count + 1);
+          }}
+          total={backgroundResults.length}
+          shownCount={filteredBackgrounds.length}
+          isFiltered={Boolean(searchQuery.trim()) || sourceFilter !== "all"}
+          emptyText="No backgrounds match. Try another search or choose All sources."
+          selection={selection}
         >
-          <div className="search-page__results">
-            {!isLoading && filteredBackgrounds.length === 0 && (
-              <p className="search-page__empty">
-                No backgrounds found. Try another search.
-              </p>
-            )}
-
-            {filteredBackgrounds.map((result) => (
-              <ResultCard
-                key={`${result.edition}:${result.index}`}
-                result={result}
-                isSelected={
-                  selectedResult?.index === result.index &&
-                  selectedResult?.edition === result.edition
-                }
-                onClick={() => handleResultClick(result)}
-              />
-            ))}
-          </div>
-
-          <div className="search-page__detail-wrapper">
-            {selectedResult && (
-              <Button
-                variant="secondary"
-                className="search-page__back-button"
-                onClick={() => setSelectedResult(null)}
-              >
-                Back to results
-              </Button>
-            )}
-
-            <DetailPanel selectedResult={selectedResult} />
-          </div>
-        </section>
+          {filteredBackgrounds.map((result) => (
+            <ResultCard
+              key={entryKey(result)}
+              id={selection.cardId(result)}
+              result={result}
+              isSelected={selection.selected === result}
+              onClick={() => selection.open(result)}
+            />
+          ))}
+        </BrowseLayout>
       </div>
     </main>
   );
