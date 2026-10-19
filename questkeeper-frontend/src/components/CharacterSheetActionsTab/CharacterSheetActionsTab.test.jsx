@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CharacterSheetActionsTab from "./CharacterSheetActionsTab";
 import { getWeaponDetails } from "../../utils/api";
@@ -186,5 +186,26 @@ describe("CharacterSheetActionsTab", () => {
     expect(onAttackRemove).toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("button", { name: "Remove Longsword" })).toBeNull();
+  });
+
+  it("edits an attack in its own row, and saves from there", async () => {
+    const onAttackUpdate = vi.fn();
+    renderTab({
+      attacks: [
+        { index: "a1", name: "Wisteria's Kiss", toHit: 9, damage: "1d8+4", damageType: "Piercing", notes: "" },
+        { index: "a2", name: "Dagger", toHit: 7, damage: "1d4+4", damageType: "Piercing", notes: "" },
+      ],
+      onAttackUpdate,
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Edit attacks" }));
+    await userEvent.click(screen.getByRole("button", { name: "Edit Dagger" }));
+
+    const form = document.querySelector(".character-sheet__inline-edit");
+    expect(within(form).getByDisplayValue("Dagger")).toBeInTheDocument();
+    // Wisteria's Kiss is still an ordinary row above the form.
+    expect(form.previousElementSibling).toHaveTextContent("Wisteria's Kiss");
+    await userEvent.click(within(form).getByRole("button", { name: "Save Changes" }));
+    expect(onAttackUpdate).toHaveBeenCalledWith("a2", expect.objectContaining({ name: "Dagger" }));
+    expect(document.querySelector(".character-sheet__inline-edit")).toBeNull();
   });
 });

@@ -891,9 +891,22 @@ export function buildFeatureChoices(
 // that aren't on the sheet yet, for adding them automatically on level-up.
 // Pick-one options (each Fighting Style) are left out; the feature that
 // asks for the pick is added and the choice is made on the Features tab.
+//
+// Every SRD class has a stand-in at its subclass levels ("Ranger Archetype
+// feature", "Path feature") that only says "your subclass gives a feature
+// here". When the subclass has a real feature at that level (Beguiling
+// Twist), the stand-in is skipped; without one (a subclass with no features
+// listed), it stays as a reminder.
 export function featuresForNewLevel(entries, level, existingNames = []) {
+  const subclassHasFeatureHere = entries.some(
+    (entry) => entry.order === 3 && !entry.otherSubclass && !entry.optionOf && entry.level === level,
+  );
   return buildFeatureChoices(entries, level, existingNames).filter(
-    (choice) => choice.level === level && !choice.alreadyAdded && !choice.optionOf,
+    (choice) =>
+      choice.level === level &&
+      !choice.alreadyAdded &&
+      !choice.optionOf &&
+      !(subclassHasFeatureHere && choice.order === 2 && /\sfeature$/i.test(choice.name)),
   );
 }
 

@@ -348,9 +348,12 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
     setSelectedSubclassIndex(toHomebrewIndex(saved.id));
   }
 
+  // 2014 characters get 2014 feats only (the 2014 SRD's and the player's
+  // homebrew): no 2024 feats such as Epic Boons or the 2024 Fighting Style
+  // feats, which belong to the other rules.
   useEffect(() => {
-    Promise.all([getFeats(), getFeats("2024")])
-      .then(([legacy, updated]) => setAllFeats([...legacy, ...updated]))
+    getFeats()
+      .then((feats) => setAllFeats(feats.filter((feat) => feat.edition !== "2024")))
       .catch(() => {
         // Feat picking degrades to an empty dropdown; not worth a hard
         // error state for this one field.
@@ -885,6 +888,10 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
                   </option>
                 ))}
               </select>
+              <p className="level-up-wizard__book-spell-hint">
+                A feat from a book (like Sharpshooter) isn&apos;t listed: make it as
+                homebrew on the Feats page, and it shows up here.
+              </p>
 
               {/* Only shown once there's a feat to describe, so no empty box
                   sits under the dropdown before one is picked. */}

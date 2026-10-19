@@ -12,13 +12,30 @@ export function componentsText(components) {
 
 const LIST_KEYS = ["cantripsKnown", "spellsKnown"];
 
-// Spells with no components. byName: (name) -> SRD index, for spells typed
-// in by hand whose index isn't the SRD's.
+// A spell's own index can be the SRD's ("hunters-mark"); spells typed in or
+// added by a feature get a made-up one (a long random id), which the SRD
+// will never know.
+const isMadeUpIndex = (index) => /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(String(index ?? "")) || String(index ?? "").startsWith("hb_");
+
+// Spells with no components that the SRD can fill. byName: (name) -> SRD
+// index, for spells typed in by hand whose index isn't the SRD's.
 export function spellsMissingComponents(spellcasting, byName = () => null) {
   return LIST_KEYS.flatMap((key) => spellcasting?.[key] ?? [])
     .filter((spell) => !componentsText(spell.components))
-    .map((spell) => ({ spell, srdIndex: byName(spell.name) ?? spell.index }))
+    .map((spell) => ({
+      spell,
+      srdIndex: byName(spell.name) ?? (isMadeUpIndex(spell.index) ? null : spell.index),
+    }))
     .filter(({ srdIndex }) => Boolean(srdIndex));
+}
+
+// Spells with no components the SRD doesn't have (book spells like Beast
+// Sense): these need typing in, so the sheet says which ones.
+export function spellsNeedingTypedComponents(spellcasting, byName = () => null) {
+  const fillable = new Set(spellsMissingComponents(spellcasting, byName).map(({ spell }) => spell));
+  return LIST_KEYS.flatMap((key) => spellcasting?.[key] ?? []).filter(
+    (spell) => !componentsText(spell.components) && !fillable.has(spell),
+  );
 }
 
 // The same spellcasting, with empty components filled from the SRD. Spells

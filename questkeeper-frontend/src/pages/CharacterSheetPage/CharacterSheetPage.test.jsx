@@ -353,7 +353,8 @@ it("locks granted spells and lets the player lock or unlock any spell", async ()
 
   // Lock, Unlock, Edit and Remove are behind Edit spells.
   await user.click(screen.getByRole("button", { name: "Edit spells" }));
-  expect(within(thaumaturgy).queryByRole("button", { name: /^Edit / })).not.toBeInTheDocument();
+  // Locked: its details can be corrected, but it can't be removed.
+  expect(within(thaumaturgy).getByRole("button", { name: "Edit Thaumaturgy" })).toBeInTheDocument();
   expect(within(thaumaturgy).queryByRole("button", { name: /^Remove / })).not.toBeInTheDocument();
 
   const light = screen.getByText("Light").closest("li");
@@ -1281,5 +1282,40 @@ describe("roll bar during level-up", () => {
 
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(await screen.findByText(/Tap a number to roll it/)).toBeInTheDocument();
+  });
+});
+
+describe("editing in place", () => {
+  it("opens a feature's edit form in its own row, with Save and Cancel right there", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet();
+    sheet.features = [
+      { index: "f1", name: "Darkvision", description: "See in the dark." },
+      { index: "f2", name: "Beguiling Twist", description: "Old text." },
+    ];
+    renderSheet(sheet);
+    await user.click(await screen.findByRole("tab", { name: /Features/ }));
+    await user.click(screen.getByRole("button", { name: "Edit features" }));
+    await user.click(screen.getByRole("button", { name: "Edit Beguiling Twist" }));
+
+    // The form is where the row was (Darkvision is still a normal row above).
+    const form = document.querySelector(".character-sheet__inline-edit");
+    expect(form).toBeInTheDocument();
+    expect(within(form).getByDisplayValue("Beguiling Twist")).toBeInTheDocument();
+    expect(form.previousElementSibling).toHaveTextContent("Darkvision");
+    // Nothing to scroll up for: no Save Changes up by Add Feature.
+    expect(screen.getAllByRole("button", { name: "Save Changes" })).toHaveLength(1);
+
+    const description = within(form).getByDisplayValue("Old text.");
+    await user.clear(description);
+    await user.type(description, "New text.");
+    await user.click(within(form).getByRole("button", { name: "Save Changes" }));
+    expect(document.querySelector(".character-sheet__inline-edit")).toBeNull();
+    expect(screen.getByText("Beguiling Twist")).toBeInTheDocument();
+
+    // Cancel leaves it unchanged.
+    await user.click(screen.getByRole("button", { name: "Edit Darkvision" }));
+    await user.click(within(document.querySelector(".character-sheet__inline-edit")).getByRole("button", { name: "Cancel" }));
+    expect(document.querySelector(".character-sheet__inline-edit")).toBeNull();
   });
 });

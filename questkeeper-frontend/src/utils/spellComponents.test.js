@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { componentsText, fillMissingComponents, spellsMissingComponents } from "./spellComponents";
+import {
+  componentsText,
+  fillMissingComponents,
+  spellsMissingComponents,
+  spellsNeedingTypedComponents,
+} from "./spellComponents";
 import { buildStartingSpellcasting, addRacialCantrip } from "./characterSheet";
 import { getSpellDetails } from "./api";
 
@@ -47,5 +52,39 @@ describe("spell components", () => {
     const filled = await fillMissingComponents(spellcasting, byName);
     expect(filled.spellsKnown.map((spell) => spell.components)).toEqual(["V, S, M", "V, S (my note)", ""]);
     expect(getSpellDetails).not.toHaveBeenCalledWith("cure-wounds");
+  });
+});
+
+describe("spells the SRD can't fill", () => {
+  // Beast Sense (Primal Awareness) isn't in the SRD; its made-up index must
+  // not be mistaken for an SRD one.
+  const spellcasting = {
+    cantripsKnown: [],
+    spellsKnown: [
+      { index: "6f1c2a3b-1111-4222-8333-944455556666", name: "Beast Sense", level: 2, components: "" },
+      { index: "silence", name: "Silence", level: 2, components: "" },
+      { index: "4b0c2a3b-1111-4222-8333-944455556666", name: "Misty Step", level: 2, components: "" },
+      { index: "x", name: "Goodberry", level: 1, components: "V, S, M" },
+    ],
+  };
+  const byName = (name) => ({ silence: "silence", "misty step": "misty-step" })[name.toLowerCase()] ?? null;
+
+  it("only counts spells the SRD has as fillable", () => {
+    expect(spellsMissingComponents(spellcasting, byName).map(({ spell }) => spell.name)).toEqual([
+      "Silence",
+      "Misty Step",
+    ]);
+  });
+
+  it("names the ones to type in by hand", () => {
+    expect(spellsNeedingTypedComponents(spellcasting, byName).map((spell) => spell.name)).toEqual(["Beast Sense"]);
+  });
+
+  it("never asks the SRD for a made-up index, so filling can finish", async () => {
+    getSpellDetails.mockReset();
+    getSpellDetails.mockImplementation((index) => Promise.resolve({ components: index === "silence" ? ["V", "S"] : ["V"] }));
+    const filled = await fillMissingComponents(spellcasting, byName);
+    expect(getSpellDetails.mock.calls.map(([index]) => index)).toEqual(["silence", "misty-step"]);
+    expect(filled.spellsKnown.map((spell) => spell.components)).toEqual(["", "V, S", "V", "V, S, M"]);
   });
 });

@@ -2707,7 +2707,11 @@ describe("Tasha's optional Ranger features", () => {
     expect(nine.spellcasting.spellsKnown.map((spell) => spell.name)).toContain("Speak with Plants");
     const ten = applyOptionalFeatureLevel({ ...nine, level: 10 }, 10);
     expect(names(ten)).toContain("Deft Explorer: Tireless");
-    expect(ten.resources.map((resource) => resource.name)).toEqual(["Favored Foe", "Deft Explorer: Tireless"]);
+    expect(ten.resources.map((resource) => resource.name)).toEqual([
+      "Favored Foe",
+      "Primal Awareness free casts",
+      "Deft Explorer: Tireless",
+    ]);
     // Nothing doubles up when the same level comes round twice.
     expect(applyOptionalFeatureLevel(ten, 10).features).toHaveLength(ten.features.length);
   });
@@ -3077,5 +3081,77 @@ describe("inventory weapons and renamed attacks", () => {
     const equipment = [{ index: "i1", name: "Longbow" }];
     expect(findInventoryWeapons(equipment, [longbow], [{ name: "Wisteria's Kiss", baseWeapon: "Longbow" }])).toEqual([]);
     expect(findInventoryWeapons(equipment, [longbow], [{ name: "Wisteria's Kiss" }])).toHaveLength(1);
+  });
+});
+
+describe("feature-granted spells keep their details right", () => {
+  it("give Primal Awareness spells their components, Beast Sense's S included", () => {
+    const sheet = switchOptionalFeature(pippaLike(), "primalAwareness", true);
+    const granted = sheet.spellcasting.spellsKnown.filter((spell) => spell.grantedBy === "Primal Awareness");
+    expect(granted.map((spell) => [spell.name, spell.components])).toEqual([
+      ["Speak with Animals", "V, S"],
+      ["Beast Sense", "S"],
+    ]);
+  });
+
+  it("track a free cast per Primal Awareness spell, growing with new ones and removed when switched off", () => {
+    const six = switchOptionalFeature(pippaLike(), "primalAwareness", true);
+    expect(six.resources).toEqual([expect.objectContaining({ name: "Primal Awareness free casts", max: 2, resetOn: "long" })]);
+    const nine = applyOptionalFeatureLevel({ ...six, level: 9 }, 9);
+    expect(nine.resources.find((resource) => resource.name === "Primal Awareness free casts").max).toBe(3);
+    expect(switchOptionalFeature(nine, "primalAwareness", false).resources).toEqual([]);
+  });
+
+  it("keep their source and level when their details are corrected", () => {
+    const sheet = switchOptionalFeature(pippaLike(), "primalAwareness", true);
+    const beast = sheet.spellcasting.spellsKnown.find((spell) => spell.name === "Beast Sense");
+    const edited = updateSpell(sheet.spellcasting, "spellsKnown", beast.index, {
+      name: "Beast Sense",
+      level: 2,
+      notes: "",
+      components: "S",
+      bonusSpell: false,
+      link: "",
+    });
+    const after = edited.spellsKnown.find((spell) => spell.index === beast.index);
+    expect(after).toMatchObject({ components: "S", grantedBy: "Primal Awareness", locked: true, acquiredAtLevel: 5 });
+    expect(countsTowardSpellsKnown(after)).toBe(false);
+  });
+});
+
+describe("subclass-level stand-in features", () => {
+  const entry = (name, order, level, extra = {}) => ({
+    key: `feature:${name}`,
+    name,
+    order,
+    level,
+    description: "",
+    choices: [],
+    optionOf: null,
+    otherSubclass: false,
+    ...extra,
+  });
+
+  it("skip 'Ranger Archetype feature' when the subclass has its own feature at that level", () => {
+    const entries = [entry("Ranger Archetype feature", 2, 7), entry("Beguiling Twist", 3, 7)];
+    expect(featuresForNewLevel(entries, 7, []).map((item) => item.name)).toEqual(["Beguiling Twist"]);
+  });
+
+  it("keep it as a reminder when the subclass lists nothing there", () => {
+    const entries = [entry("Ranger Archetype feature", 2, 7), entry("Hunter's Prey", 3, 3)];
+    expect(featuresForNewLevel(entries, 7, []).map((item) => item.name)).toEqual(["Ranger Archetype feature"]);
+  });
+
+  it("never skip a real class feature that happens to sit at the same level", () => {
+    const entries = [entry("Extra Attack", 2, 5), entry("Misty Wanderer", 3, 5)];
+    expect(featuresForNewLevel(entries, 5, []).map((item) => item.name)).toEqual(["Extra Attack", "Misty Wanderer"]);
+  });
+
+  it("follow the 2014 Ranger spells-known table from level 5 to 11", () => {
+    const counts = [5, 6, 7, 8, 9, 10, 11].map((level) =>
+      getLevelUpSpellPlan({ id: "ranger" }, { type: "known", cantripsKnown: [], spellsKnown: [] }, level).spells,
+    );
+    // From an empty sheet, the picks equal the table: 4, 4, 5, 5, 6, 6, 7.
+    expect(counts).toEqual([4, 4, 5, 5, 6, 6, 7]);
   });
 });

@@ -71,6 +71,7 @@ vi.mock("../../utils/api", () => ({
 import { MemoryRouter } from "react-router-dom";
 import LevelUpWizard from "./LevelUpWizard";
 import {
+  getFeats,
   getClassFeatures,
   getClassSpells,
   getFeatureDetails,
@@ -739,5 +740,31 @@ describe("LevelUpWizard Back, review and spell preview", () => {
     expect(await screen.findByText("Level 1 · Divination · Concentration")).toBeInTheDocument();
     expect(screen.getByText(/Components:/).parentElement).toHaveTextContent("Components: V");
     expect(screen.getByText("Mark a creature.")).toBeInTheDocument();
+  });
+});
+
+describe("LevelUpWizard feats for a 2014 character", () => {
+  it("lists 2014 and homebrew feats only, never 2024 ones like Epic Boons", async () => {
+    getFeats.mockClear();
+    getFeats.mockResolvedValue([
+      { index: "grappler", name: "Grappler", edition: "2014" },
+      { index: "hb_1", name: "Sharpshooter (my version)", edition: "Homebrew" },
+      { index: "boon-of-fate", name: "Boon of Fate", edition: "2024" },
+    ]);
+    render(
+      <MemoryRouter>
+        <LevelUpWizard sheet={makeCharacter("fighter", "Fighter", 3)} onComplete={vi.fn()} onCancel={vi.fn()} />
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Take Average/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Take a Feat" }));
+
+    // Only the 2014 list is asked for.
+    expect(getFeats.mock.calls.every((call) => call[0] !== "2024")).toBe(true);
+    const names = within(screen.getByRole("combobox")).getAllByRole("option").map((option) => option.textContent);
+    expect(names).toEqual(["Choose a feat", "Grappler (2014 SRD)", "Sharpshooter (my version) (Homebrew)"]);
+    expect(screen.getByText(/make it as homebrew on the Feats page/)).toBeInTheDocument();
+    getFeats.mockResolvedValue([]);
   });
 });
