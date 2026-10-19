@@ -62,6 +62,7 @@ import {
   refreshWeaponAttacks,
   getFightingStyles,
   getOutOfDateNumbers,
+  applySpeedUpdates,
   splitMagicWeaponName,
   addSubclassSpells,
   subclassSpellsToGrant,
@@ -551,7 +552,8 @@ function CharacterSheetPage() {
     weaponDetailsFor,
     sheet.acMode === "auto" ? computeWornArmorClass(sheet, gearDetailsFor) : null,
   );
-  const outOfDateCount = (outOfDate.armorClass ? 1 : 0) + outOfDate.attacks.length;
+  const outOfDateCount =
+    (outOfDate.armorClass ? 1 : 0) + outOfDate.attacks.length + outOfDate.speed.length;
 
   // Bonus spells the homebrew subclass gives that the sheet doesn't have yet
   // (a character who passed those levels before bonus spells existed), and
@@ -577,7 +579,7 @@ function CharacterSheetPage() {
       worked.has(attack.index) ? { ...attack, ...worked.get(attack.index) } : attack,
     );
     // persistSheet works the auto AC out again as it saves.
-    persistSheet({ ...sheet, attacks });
+    persistSheet(applySpeedUpdates({ ...sheet, attacks }, outOfDate.speed));
   }
 
   // "Keep mine": these numbers stay as typed and aren't offered again. The AC
@@ -591,7 +593,7 @@ function CharacterSheetPage() {
       ),
       ...(outOfDate.armorClass ? { acMode: "manual" } : {}),
     };
-    persistSheet(next);
+    persistSheet(applySpeedUpdates(next, outOfDate.speed, { keep: true }));
   }
 
   function persistSheet(next) {
@@ -2195,6 +2197,11 @@ function CharacterSheetPage() {
                           armor and Dexterity)
                         </li>
                       )}
+                      {outOfDate.speed.map((item) => (
+                        <li key={item.featureIndex}>
+                          Speed {item.saved} → {item.worked} ft (from {item.name})
+                        </li>
+                      ))}
                       {outOfDate.attacks.map((item) => (
                         <li key={item.index}>
                           {item.name}: {formatModifier(item.saved.toHit)} / {item.saved.damage || "—"}{" "}

@@ -817,7 +817,50 @@ export function getOutOfDateNumbers(sheet, weaponDetailsFor, workedArmorClass = 
     ];
   });
 
-  return { armorClass, attacks };
+  // A speed feature (Roving) on the sheet that never added its speed: one
+  // switched on before the speed went in the right place. Its speedBonus is
+  // missing, where one that did add it (or that the player kept) has one.
+  const speedGrants = getOptionalClassFeatures(sheet?.class).flatMap((option) =>
+    option.grants.filter((grant) => grant.speed),
+  );
+  const savedSpeed = Number(sheet?.combat?.speed) || 30;
+  const speed = (sheet?.features ?? [])
+    .map((feature) => ({ feature, grant: speedGrants.find((grant) => sameName(grant.name, feature.name)) }))
+    .filter(({ feature, grant }) => grant && feature.speedBonus === undefined)
+    .map(({ feature, grant }) => ({
+      featureIndex: feature.index,
+      name: feature.name,
+      saved: savedSpeed,
+      worked: savedSpeed + grant.speed,
+      bonus: grant.speed,
+    }));
+
+  return { armorClass, attacks, speed };
+}
+
+// An earlier version wrote Roving's speed to an unused top-level "speed"
+// field instead of combat.speed; it's dropped so it can't confuse anything.
+function withoutStraySpeed(sheet) {
+  const copy = { ...sheet };
+  delete copy.speed;
+  return copy;
+}
+
+// Update for those speed features: the speed goes up and each one is marked
+// as having added it. keep: the player's number stays (marked as 0 added).
+export function applySpeedUpdates(sheet, updates = [], { keep = false } = {}) {
+  if (updates.length === 0) return sheet;
+  const byIndex = new Map(updates.map((update) => [update.featureIndex, update]));
+  const added = keep ? 0 : updates.reduce((total, update) => total + update.bonus, 0);
+  return {
+    ...withoutStraySpeed(sheet),
+    combat: { ...sheet.combat, speed: (Number(sheet.combat?.speed) || 30) + added },
+    features: (sheet.features ?? []).map((feature) =>
+      byIndex.has(feature.index)
+        ? { ...feature, speedBonus: keep ? 0 : byIndex.get(feature.index).bonus }
+        : feature,
+    ),
+  };
 }
 
 // Turns the weapons a character starts with into rows for the Actions tab,
@@ -862,8 +905,10 @@ export function findInventoryWeapons(
   const weaponsByName = new Map(
     weapons.map((weapon) => [weapon.name.toLowerCase(), weapon]),
   );
-  const attackNames = attacks.map((attack) =>
-    String(attack.name ?? "").toLowerCase(),
+  // A renamed weapon ("Wisteria's Kiss", weapon type Longbow) covers its
+  // inventory Longbow too, so it isn't offered as a second attack.
+  const attackNames = attacks.flatMap((attack) =>
+    [attack.name, attack.baseWeapon].filter(Boolean).map((name) => String(name).toLowerCase()),
   );
   const seen = new Set();
 
@@ -2017,6 +2062,7 @@ export const OPTIONAL_CLASS_FEATURES = {
           name: "Favored Foe",
           // Extra damage on a marked target, by Ranger level.
           damageByLevel: [[14, "1d8"], [6, "1d6"], [1, "1d4"]],
+          note: "Needs concentration; once per turn",
           resource: { resetOn: "long", perProficiency: true },
         },
       ],
@@ -2099,7 +2145,12 @@ function addOptionGains(sheet, option, from, to) {
         : null;
       next.features = [
         ...(next.features ?? []),
-        createFeat({ name: grant.name, description: "", choices, link: option.link }),
+        {
+          ...createFeat({ name: grant.name, description: "", choices, link: option.link }),
+          // How much speed this feature added (Roving: 5), so switching it off
+          // takes back exactly that and nothing the player typed.
+          ...(grant.speed ? { speedBonus: grant.speed } : {}),
+        },
       ];
       if (grant.resource) {
         next.resources = [
@@ -2110,7 +2161,13 @@ function addOptionGains(sheet, option, from, to) {
           },
         ];
       }
-      if (grant.speed) next.speed = (Number(next.speed) || 30) + grant.speed;
+      // The sheet's speed lives in combat.speed (the Speed box).
+      if (grant.speed) {
+        next.combat = {
+          ...(next.combat ?? {}),
+          speed: (Number(next.combat?.speed) || 30) + grant.speed,
+        };
+      }
       if (grant.languages) {
         const reminder = `Choose ${grant.languages} more (${grant.name.replace(/^.*: /, "")})`;
         next.languages = [String(next.languages ?? "").trim(), reminder].filter(Boolean).join("\n");
@@ -2188,15 +2245,18 @@ export function switchOptionalFeature(sheet, key, turnOn) {
 
   const grantNames = option.grants.map((grant) => grant.name);
   const isGrant = (name) => grantNames.some((grantName) => sameName(name, grantName));
-  const hadSpeed = option.grants
-    .filter((grant) => grant.speed && (sheet.features ?? []).some((feature) => sameName(feature.name, grant.name)))
-    .reduce((total, grant) => total + grant.speed, 0);
+  // Only speed the feature really added comes off (see speedBonus).
+  const hadSpeed = (sheet.features ?? [])
+    .filter((feature) => isGrant(feature.name))
+    .reduce((total, feature) => total + (Number(feature.speedBonus) || 0), 0);
   return {
-    ...sheet,
+    ...withoutStraySpeed(sheet),
     optionalFeatures,
     features: (sheet.features ?? []).filter((feature) => !isGrant(feature.name)),
     resources: (sheet.resources ?? []).filter((resource) => !isGrant(resource.name)),
-    speed: hadSpeed ? (Number(sheet.speed) || 30) - hadSpeed : sheet.speed,
+    ...(hadSpeed
+      ? { combat: { ...sheet.combat, speed: (Number(sheet.combat?.speed) || 30) - hadSpeed } }
+      : {}),
     ...(sheet.spellcasting
       ? {
           spellcasting: {
