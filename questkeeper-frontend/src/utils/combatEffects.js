@@ -17,7 +17,17 @@
 // Elemental Weapon isn't in the SRD, so only its numbers and a short summary
 // in our own words are kept here; the book has the full wording.
 
-import { attackWeaponFor, spendSpellCasting } from "./characterSheet";
+import {
+  attackWeaponFor,
+  formatModifier,
+  getFightingStyles,
+  getProficiencyBonus,
+  getWeaponAttackMath,
+  hasFeat,
+  isMagicWeaponAttack,
+  spendSpellCasting,
+} from "./characterSheet";
+import { parseDamage } from "./attacks";
 
 const sameName = (a, b) => String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
 
@@ -101,7 +111,7 @@ export function withEffectsEnded(sheet) {
 // ignoreConcentration: leave out effects held by concentration, because a
 // new concentration spell ends them (recasting on the same weapon is fine).
 export function isMagicAttack(sheet, attack, { ignoreConcentration = false } = {}) {
-  if (attackWeaponFor(attack, () => null).magicBonus > 0) return true;
+  if (isMagicWeaponAttack(attack)) return true;
   return getAttackEffects(sheet, attack).some((effect) => !(ignoreConcentration && effect.concentration));
 }
 
@@ -191,16 +201,80 @@ export function endEffectsForRest(sheet, restType) {
 
 const lower = (text) => String(text ?? "").trim().toLowerCase();
 
+// Adds a flat bonus to a damage text, folding it into the flat part that's
+// already there: "1d8+7" and 10 make "1d8+17", not "1d8+7+10". Text the app
+// can't read just gets "+10" on the end.
+export function addFlatDamage(damageText, bonus) {
+  const text = String(damageText ?? "").trim();
+  if (!bonus) return text;
+  if (!text) return String(bonus);
+  const parts = parseDamage(text);
+  if (!parts) return `${text}${bonus >= 0 ? "+" : ""}${bonus}`;
+  const flat = parts.filter((part) => part.type === "flat").reduce((sum, part) => sum + part.sign * part.value, 0) + bonus;
+  const dice = parts
+    .filter((part) => part.type === "dice")
+    .map((part, i) => `${part.sign < 0 ? "-" : i === 0 ? "" : "+"}${part.count}d${part.sides}`)
+    .join("");
+  if (!dice) return String(flat);
+  return flat === 0 ? dice : `${dice}${flat > 0 ? "+" : ""}${flat}`;
+}
+
+// --- Sharpshooter ----------------------------------------------------------------
+//
+// Sharpshooter (a feat) lets a ranged weapon attack take -5 to hit for +10
+// damage. It's chosen one attack at a time, never saved on the weapon. Its
+// other benefits need no numbers: long range doesn't give disadvantage, and
+// half and three-quarters cover don't count against your ranged weapon attacks.
+export const SHARPSHOOTER = {
+  toHit: -5,
+  damage: 10,
+  summary:
+    "Before a ranged weapon attack, you can take -5 to hit for +10 damage if it hits. You also ignore half and three-quarters cover, and attacking at long range doesn't give you disadvantage.",
+};
+
+// Can this attack use Sharpshooter? The character needs the feat, and the
+// attack must be a ranged weapon. A weapon QuestKeeper doesn't know (a
+// homebrew one) is the player's call, so the choice is offered unless it's
+// clearly not a weapon at all.
+export function canUseSharpshooter(sheet, attack, weaponDetailsFor = () => null) {
+  if (!hasFeat(sheet, "Sharpshooter")) return false;
+  if (/unarmed/i.test(attack?.name ?? "")) return false;
+  const { weapon } = attackWeaponFor(attack, weaponDetailsFor);
+  if (weapon) return weapon.weapon_range === "Ranged";
+  return true;
+}
+
+// The weapon's own extra damage (Wisteria's Kiss's 1d4 psychic), as damage
+// parts. One with a condition ("vs undead") is optional: it's only rolled
+// when the player switches it on for that hit.
+function weaponExtraParts(attack) {
+  return (attack?.extraDamage ?? [])
+    .filter((extra) => String(extra?.dice ?? "").trim())
+    .map((extra, position) => ({
+      dice: String(extra.dice).trim(),
+      type: lower(extra.type),
+      source: String(extra.source ?? "").trim() || attack?.name || "Extra",
+      condition: String(extra.condition ?? "").trim(),
+      key: `weapon-${position}`,
+    }));
+}
+
 // The attack as it is right now, with its active effects counted:
-//   toHit         the saved bonus plus any effect bonuses
+//   toHit         the saved bonus plus any effect bonuses (and Sharpshooter)
 //   damageParts   [{ dice, type, source }]: the weapon's own damage first,
-//                 then each effect's extra dice, each with its own type
+//                 then the weapon's own extra damage (Wisteria's Kiss's
+//                 psychic), then each effect's extra dice, each with its type
+//   optionalParts extra damage with a condition ("vs undead"), rolled only
+//                 when switched on for a hit (see options.useOptional)
 //   modifiers     [{ source, text }] for "where does this come from"
 //   effects       the active effects on it
+// options: sharpshooter (true for this one attack: -5 to hit, +10 damage,
+// added once, to the weapon's own damage) and useOptional (the keys of the
+// optional parts switched on).
 // The saved attack is never changed; with no effects it comes back with the
 // same numbers and one damage part. `sheet` can be a preview (see
 // previewEffect).
-export function getEffectiveAttack(sheet, attack) {
+export function getEffectiveAttack(sheet, attack, { sharpshooter = false, useOptional = [] } = {}) {
   const effects = getAttackEffects(sheet, attack);
   let toHit = Number(attack?.toHit) || 0;
   let damageBonus = 0;
@@ -222,6 +296,18 @@ export function getEffectiveAttack(sheet, attack) {
     });
   });
 
+  // Sharpshooter's +10 goes on the weapon's own damage once, never on each
+  // extra part, so it's counted once per hit.
+  if (sharpshooter) {
+    toHit += SHARPSHOOTER.toHit;
+    damageBonus += SHARPSHOOTER.damage;
+  }
+
+  const weaponExtras = weaponExtraParts(attack);
+  const always = weaponExtras.filter((part) => !part.condition);
+  const optionalParts = weaponExtras.filter((part) => part.condition);
+  const chosen = optionalParts.filter((part) => useOptional.includes(part.key));
+
   const weaponDamage = String(attack?.damage ?? "").trim();
   return {
     ...attack,
@@ -229,16 +315,81 @@ export function getEffectiveAttack(sheet, attack) {
     baseToHit: Number(attack?.toHit) || 0,
     damageParts: [
       {
-        dice: damageBonus && weaponDamage ? `${weaponDamage}+${damageBonus}` : weaponDamage,
+        dice: damageBonus && weaponDamage ? addFlatDamage(weaponDamage, damageBonus) : weaponDamage,
         type: lower(attack?.damageType),
         source: attack?.name ?? "",
       },
+      ...always,
+      ...chosen,
       ...extraParts,
     ],
+    optionalParts,
     modifiers,
     effects,
+    sharpshooter,
     isEnchanted: effects.length > 0,
+    isMagicWeapon: isMagicWeaponAttack(attack),
   };
+}
+
+// --- Where an attack's numbers come from -----------------------------------------
+//
+// Lines like "+5 Dexterity", "+4 Proficiency", "+2 Archery", "+2 Magic",
+// "-5 Sharpshooter", then the total, so a player can check the sheet and spot
+// a bonus counted twice. For a weapon QuestKeeper knows, the saved to hit is
+// split into its parts; anything the player typed on top shows as "Typed in
+// by you". For a weapon it doesn't know, the saved number is one line.
+// Returns { toHit: [{ label, value }], toHitTotal, damage: [{ label, text }] }.
+export function getAttackBreakdown(sheet, attack, weaponDetailsFor = () => null, options = {}) {
+  const live = getEffectiveAttack(sheet, attack, options);
+  const saved = Number(attack?.toHit) || 0;
+  const { weapon, magicBonus } = attackWeaponFor(attack, weaponDetailsFor);
+  const toHit = [];
+  const damage = [];
+
+  if (weapon) {
+    const proficiencyNames = (sheet?.proficiencies ?? []).map((proficiency) => proficiency.name);
+    const mathWith = (names) =>
+      getWeaponAttackMath({
+        weapon,
+        scores: sheet?.abilityScores,
+        proficiencyNames: names,
+        proficiencyBonus: getProficiencyBonus(sheet?.level ?? 1),
+        magicBonus,
+        fightingStyles: getFightingStyles(sheet?.features),
+      });
+    // Trained either way (an inventory weapon can be marked proficient on
+    // its own); the one that matches the saved number explains it best.
+    const choices = [mathWith(proficiencyNames), mathWith([...proficiencyNames, weapon.name])];
+    const math = choices.find((option) => option.toHit === saved) ?? choices[0];
+    const abilityLabel = math.ability === "dexterity" ? "Dexterity" : "Strength";
+    toHit.push({ label: abilityLabel, value: math.abilityMod });
+    if (math.proficient) toHit.push({ label: "Proficiency", value: math.proficiencyBonus });
+    if (math.styleBonus) toHit.push({ label: "Archery Fighting Style", value: math.styleBonus });
+    if (math.magicBonus) toHit.push({ label: "Magic weapon", value: math.magicBonus });
+    if (saved !== math.toHit) toHit.push({ label: "Typed in by you", value: saved - math.toHit });
+
+    damage.push({ label: `${weapon.name} dice`, text: weapon.damage.damage_dice });
+    if (math.abilityMod) damage.push({ label: abilityLabel, text: formatModifier(math.abilityMod) });
+    if (math.magicBonus) damage.push({ label: "Magic weapon", text: formatModifier(math.magicBonus) });
+  } else {
+    toHit.push({ label: "Saved to hit", value: saved });
+    if (attack?.damage) damage.push({ label: "Saved damage", text: String(attack.damage) });
+  }
+
+  live.modifiers.forEach((modifier) => {
+    const match = modifier.text.match(/^([+-]\d+) to hit$/);
+    if (match) toHit.push({ label: modifier.source, value: Number(match[1]) });
+  });
+  if (live.sharpshooter) {
+    toHit.push({ label: "Sharpshooter", value: SHARPSHOOTER.toHit });
+    damage.push({ label: "Sharpshooter", text: formatModifier(SHARPSHOOTER.damage) });
+  }
+  live.damageParts.slice(1).forEach((part) => {
+    damage.push({ label: part.source, text: `${part.dice}${part.type ? ` ${part.type}` : ""}` });
+  });
+
+  return { toHit, toHitTotal: live.toHit, damage };
 }
 
 // "1d4+5 piercing + 1d4 fire": the damage parts as one line to read.

@@ -551,6 +551,359 @@
   margin-top: 4px;
 }
 
+/* A weapon's extra damage rows (1d4 psychic) in the attack editor. On a
+   phone the boxes wrap, one or two to a line. */
+.character-sheet__extra-damage-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+}
+
+.character-sheet__extra-damage-editor legend {
+  padding: 0 6px;
+  color: var(--qk-text);
+  font-weight: 600;
+}
+
+.character-sheet__extra-damage-editor > .qk-button,
+.character-sheet__extra-damage-editor > button {
+  align-self: flex-start;
+}
+
+.character-sheet__extra-damage-empty {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.character-sheet__extra-damage-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.character-sheet__extra-damage-row {
+  align-items: flex-end;
+}
+
+/* A box with its short label above it ("Dice", "Damage type"). Boxes share
+   the row and wrap two to a line on a phone. */
+.character-sheet__labeled-box {
+  display: flex;
+  flex: 1 1 150px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Boxes with labels line up along their bottoms, even if a label wraps. */
+.character-sheet__resource-form:has(.character-sheet__labeled-box) {
+  align-items: flex-end;
+}
+
+.character-sheet__labeled-box--dice {
+  flex: 0 1 96px;
+}
+
+.character-sheet__labeled-box .character-sheet__resource-form-input,
+.character-sheet__labeled-box .character-sheet__resource-form-select {
+  width: 100%;
+  min-width: 0;
+  font-weight: 400;
+}
+
+/* The example inside a box: clear enough to read, still lighter than typing. */
+.character-sheet__labeled-box input::placeholder {
+  color: var(--qk-text-muted);
+  opacity: 0.85;
+}
+
+/* "Preview: Wisteria's Kiss ✨ · +13 to hit · 1d8+7 piercing + 1d4 psychic" */
+.character-sheet__attack-preview {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+  overflow-wrap: anywhere;
+}
+
+/* Extra damage that only applies sometimes ("vs undead"). */
+.character-sheet__extra-damage--optional {
+  color: var(--qk-text-muted);
+}
+
+/* Sharpshooter in the attack panel at a table (a tick box). */
+.character-sheet__sharpshooter {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 32px;
+  color: var(--qk-text);
+  cursor: pointer;
+}
+
+/* Under a weapon's name: Sharpshooter and "How it adds up", on one line. */
+.character-sheet__attack-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+/* (Doubled class: wins over the plain details-toggle colour further down.) */
+.character-sheet__details-toggle.character-sheet__breakdown-toggle {
+  margin-left: 0;
+  min-height: 32px;
+  color: var(--qk-terracotta);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* A small on/off button (Sharpshooter): outlined when off, filled when on. */
+.character-sheet__chip {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: transparent;
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.character-sheet__chip:hover {
+  border-color: var(--qk-terracotta);
+  color: var(--qk-terracotta);
+}
+
+.character-sheet__chip--on,
+.character-sheet__chip--on:hover {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+/* Keyboard focus on these small controls: a ring in the text colour (dark
+   brown in light mode, cream in dark mode), which reads warm and has strong
+   contrast on every background. It sits outside the button, so it's never
+   mistaken for Sharpshooter being on (that's the filled button and "●"). */
+.character-sheet__chip:focus-visible,
+.character-sheet__details-toggle.character-sheet__breakdown-toggle:focus-visible,
+.character-sheet__breakdown-close:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 3px;
+}
+
+/* Damage parts side by side, each with its type; they wrap as a whole. */
+.character-sheet__damage-parts {
+  display: inline;
+}
+
+.character-sheet__damage-part {
+  white-space: nowrap;
+}
+
+.character-sheet__damage-type {
+  color: var(--qk-text-muted);
+}
+
+.character-sheet__damage-sep {
+  color: var(--qk-text-muted);
+}
+
+/* "How it adds up": a small card under the weapon, two short columns. */
+/* As wide as the weapon's row above it, so it reads as part of that weapon;
+   the two columns inside stay narrow (see below), so it's still quick to scan. */
+.character-sheet__breakdown {
+  padding: 10px 14px 12px;
+  border: 1px solid var(--qk-border);
+  border-left: 3px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface-muted);
+  font-size: 14px;
+}
+
+.character-sheet__breakdown-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.character-sheet__breakdown-title {
+  margin: 0;
+  color: var(--qk-text);
+  font-size: 15px;
+}
+
+.character-sheet__breakdown-title:focus {
+  outline: none;
+}
+
+.character-sheet__breakdown-close {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--qk-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.character-sheet__breakdown-close:hover {
+  color: var(--qk-terracotta);
+}
+
+.character-sheet__breakdown-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  gap: 4px 56px;
+  margin-top: 6px;
+}
+
+@media screen and (max-width: 520px) {
+  .character-sheet__breakdown-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 20px;
+  }
+}
+
+.character-sheet__breakdown-heading {
+  margin: 0 0 2px;
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Number, then what it's from: "+5  Dexterity". */
+.character-sheet__breakdown-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 1px 10px;
+  margin: 0;
+}
+
+.character-sheet__breakdown-list dt {
+  color: var(--qk-text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.character-sheet__breakdown-list dd {
+  margin: 0;
+  color: var(--qk-text-muted);
+}
+
+.character-sheet__breakdown-total {
+  margin: 4px 0 0;
+  padding-top: 4px;
+  border-top: 1px solid var(--qk-border);
+  color: var(--qk-text);
+  font-weight: 700;
+}
+
+.character-sheet__breakdown-note {
+  margin: 8px 0 0;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+/* Very narrow phones: the two columns stack. */
+@media screen and (max-width: 340px) {
+  .character-sheet__breakdown-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Equipping a weapon that an attack already looks like: link it, make a new
+   one, or just equip. Buttons wrap on a phone. */
+.character-sheet__link-choice {
+  margin: 6px 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface-muted);
+}
+
+.character-sheet__link-choice p {
+  margin: 0 0 8px;
+  color: var(--qk-text);
+}
+
+.character-sheet__link-choice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* "Swap armor?  Leather Armor → Scale Mail  [Swap armor] [Cancel]": a small
+   note under the item, only as wide as it needs (it wraps on a phone). */
+.character-sheet__swap-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  margin: -2px 0 8px 12px;
+  padding: 6px 10px 6px 12px;
+  border-left: 3px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  font-size: 14px;
+}
+
+.character-sheet__swap-choice-title {
+  margin: 0;
+  color: var(--qk-text);
+  font-weight: 700;
+}
+
+.character-sheet__swap-choice-detail {
+  margin: 0;
+  color: var(--qk-text);
+  overflow-wrap: anywhere;
+}
+
+.character-sheet__swap-choice-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Smaller buttons than usual, still at least 36px tall to tap. */
+.character-sheet__swap-choice-actions .qk-button {
+  min-height: 36px;
+  padding: 4px 14px;
+  font-size: 14px;
+}
+
+/* Read out by screen readers, not shown (the arrow says it on screen). */
+.character-sheet__visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .character-sheet__textarea {
   width: 100%;
   min-height: 90px;
@@ -775,6 +1128,11 @@
     gap: 2px;
     min-width: 0;
     overflow-wrap: anywhere;
+  }
+
+  /* With no Type column, damage takes the room beside To Hit. */
+  .character-sheet__attacks-cell[data-label="Damage"] {
+    grid-column: span 2;
   }
 
   .character-sheet__attacks-cell::before {

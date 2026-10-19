@@ -707,9 +707,20 @@ export function splitMagicWeaponName(name) {
   };
 }
 
-// The SRD weapon an attack is made with, and any magic bonus in its name.
-// A renamed weapon ("Wisteria's Kiss") says what it is in baseWeapon
-// ("Longbow"); otherwise the name is used ("+1 Longbow" -> Longbow, +1).
+// The magic bonus saved on an attack in its own field (the editor's "Magic"
+// choice), or null when the attack has none saved (older attacks, which
+// only had the bonus in their name).
+export function savedMagicBonus(attack) {
+  const value = attack?.magicBonus;
+  if (value === undefined || value === null || value === "") return null;
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 0 ? number : null;
+}
+
+// The SRD weapon an attack is made with, and its magic bonus. The bonus
+// saved in its own field wins ("Wisteria's Kiss", a +2 Longbow); without
+// one it's read from the name ("+1 Longbow" -> Longbow, +1). A renamed
+// weapon says what it is in baseWeapon ("Longbow").
 // weapon is null for anything QuestKeeper doesn't know (a homebrew weapon).
 export function attackWeaponFor(attack, weaponDetailsFor) {
   const fromName = splitMagicWeaponName(attack?.name);
@@ -719,8 +730,28 @@ export function attackWeaponFor(attack, weaponDetailsFor) {
   const isWeapon = Boolean(weapon?.damage?.damage_dice && weapon.weapon_category);
   return {
     weapon: isWeapon ? weapon : null,
-    magicBonus: fromName.magicBonus || fromBase?.magicBonus || 0,
+    magicBonus: savedMagicBonus(attack) ?? (fromName.magicBonus || fromBase?.magicBonus || 0),
   };
+}
+
+// Is this attack made with a magic weapon? A magic bonus (saved or in the
+// name) or the editor's "Magic, no bonus" choice (a Flame Tongue).
+export function isMagicWeaponAttack(attack) {
+  if (attack?.isMagic) return true;
+  return attackWeaponFor(attack, () => null).magicBonus > 0;
+}
+
+// Does the character have this feat? Feats are kept on the Feats list, and
+// older sheets sometimes have them as a feature instead ("Feat: Sharpshooter").
+export function hasFeat(sheet, featName) {
+  const wanted = String(featName).trim().toLowerCase();
+  const names = [...(sheet?.feats ?? []), ...(sheet?.features ?? [])].map((entry) =>
+    String(entry?.name ?? "")
+      .replace(/^feat:\s*/i, "")
+      .trim()
+      .toLowerCase(),
+  );
+  return names.includes(wanted);
 }
 
 // Weapon attacks are saved as plain numbers (to hit +5, damage 1d8+3), so
@@ -787,7 +818,8 @@ export function getOutOfDateNumbers(sheet, weaponDetailsFor, workedArmorClass = 
 
   const proficiencyNames = (sheet?.proficiencies ?? []).map((proficiency) => proficiency.name);
   const attacks = (sheet?.attacks ?? []).flatMap((attack) => {
-    if (attack.manual) return [];
+    // Kept by the player, or about to be filled in (fillPendingAttacks).
+    if (attack.manual || attack.numbersPending) return [];
     const { weapon, magicBonus } = attackWeaponFor(attack, weaponDetailsFor);
     if (!weapon) return [];
     const mathWith = (names) =>
@@ -806,6 +838,36 @@ export function getOutOfDateNumbers(sheet, weaponDetailsFor, workedArmorClass = 
       (math) => math.toHit === Number(attack.toHit) && math.damage === attack.damage,
     );
     if (matches) return [];
+    // A magic weapon whose bonus was never saved (typed into to hit and
+    // damage by hand, like a +2 longbow with a new name). Its numbers are
+    // right, so the notice offers to mark it +N instead of taking the +N off.
+    if (savedMagicBonus(attack) === null && magicBonus === 0) {
+      for (const bonus of [1, 2, 3]) {
+        const asMagic = (names) =>
+          getWeaponAttackMath({
+            weapon,
+            scores: sheet.abilityScores,
+            proficiencyNames: names,
+            proficiencyBonus: getProficiencyBonus(sheet.level),
+            magicBonus: bonus,
+            fightingStyles: getFightingStyles(sheet.features),
+          });
+        const fits = [asMagic(proficiencyNames), asMagic([...proficiencyNames, weapon.name])].some(
+          (math) => math.toHit === Number(attack.toHit) && math.damage === attack.damage,
+        );
+        if (fits) {
+          return [
+            {
+              index: attack.index,
+              name: attack.name,
+              saved: { toHit: Number(attack.toHit) || 0, damage: attack.damage },
+              worked: { toHit: Number(attack.toHit) || 0, damage: attack.damage, magicBonus: bonus },
+              magicBonus: bonus,
+            },
+          ];
+        }
+      }
+    }
     const worked = options[0];
     return [
       {
@@ -925,6 +987,8 @@ export function findInventoryWeapons(
     const weapon = weaponsByName.get(name);
     if (!weapon || seen.has(name)) return [];
     seen.add(name);
+    // Already linked to an attack (shown, or put away): nothing to offer.
+    if (attacks.some((attack) => attack.inventoryIndex && attack.inventoryIndex === item.index)) return [];
     if (attackNames.some((attackName) => attackName.includes(name))) return [];
     return [{ item, weapon }];
   });
@@ -2119,6 +2183,282 @@ export function getAttunedCount(equipment) {
   return (equipment ?? []).filter((item) => item.attuned).length;
 }
 
+// --- Inventory weapons linked to attacks -----------------------------------------
+//
+// A weapon in the inventory can be linked to attacks on the Actions tab, so
+// a weapon is set up once. The pieces:
+//   item.baseWeapon, magicBonus, isMagic, extraDamage   the weapon's facts
+//     (what it is, +1/+2/+3, extra typed damage), kept on the item
+//   item.wielded         equipped as a weapon (armor uses item.equipped for
+//                        AC; this is separate so AC never changes)
+//   attack.inventoryIndex  the item an attack is made with. Several attacks
+//                        can point at one item. Each keeps its own copy of
+//                        the facts, so everything that reads an attack
+//                        (Sharpshooter, Elemental Weapon, typed damage)
+//                        works the same whether it's linked or not.
+// Attacks with no inventoryIndex (everything saved before this) are
+// standalone and always shown. Nothing here changes a sheet unless the
+// player equips, edits, links or unlinks something.
+
+const WEAPON_FACT_KEYS = ["baseWeapon", "magicBonus", "isMagic", "extraDamage"];
+const sameText = (a, b) => String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
+
+// Is this inventory item a weapon? Its category (picked or guessed from the
+// SRD or its name), or weapon facts already saved on it.
+export function isWeaponItem(item, details = null) {
+  if (WEAPON_FACT_KEYS.some((key) => item?.[key] !== undefined && item?.[key] !== "")) return true;
+  return getInventoryCategory(item, details) === "weapons";
+}
+
+// The weapon facts an item passes to its attacks (only the ones it has).
+export function weaponFactsOf(item) {
+  const facts = {};
+  if (item?.baseWeapon) facts.baseWeapon = item.baseWeapon;
+  if (savedMagicBonus(item) !== null) facts.magicBonus = savedMagicBonus(item);
+  if (item?.isMagic !== undefined) facts.isMagic = Boolean(item.isMagic);
+  if (Array.isArray(item?.extraDamage)) facts.extraDamage = item.extraDamage.map((row) => ({ ...row }));
+  return facts;
+}
+
+export const linkedAttacksFor = (sheet, itemIndex) =>
+  (sheet?.attacks ?? []).filter((attack) => attack.inventoryIndex && attack.inventoryIndex === itemIndex);
+
+// The item an attack is linked to, or null (standalone, or its item is gone).
+export const linkedItemFor = (sheet, attack) =>
+  attack?.inventoryIndex ? ((sheet?.equipment ?? []).find((item) => item.index === attack.inventoryIndex) ?? null) : null;
+
+// Hidden from Actions: linked to a weapon that's in the inventory but not
+// equipped. Its setup is kept, and equipping the weapon brings it back.
+export function isAttackPutAway(sheet, attack) {
+  const item = linkedItemFor(sheet, attack);
+  return Boolean(item && !item.wielded);
+}
+
+// Standalone attacks that look like this weapon: the same name, or made
+// with the same weapon type ("Wisteria's Kiss" attack, Longbow item).
+export function findMatchingAttacks(sheet, item) {
+  return (sheet?.attacks ?? []).filter(
+    (attack) =>
+      !attack.inventoryIndex &&
+      (sameText(attack.name, item.name) ||
+        (item.baseWeapon && sameText(attack.name, item.baseWeapon)) ||
+        (attack.baseWeapon && (sameText(attack.baseWeapon, item.name) || sameText(attack.baseWeapon, item.baseWeapon)))),
+  );
+}
+
+// What QuestKeeper works out for an attack with this weapon (both ways for
+// proficiency, as elsewhere: the item's own P counts too). weapon: the SRD
+// weapon, or null when unknown (then nothing is worked out).
+function workedNumbersFor(sheet, attackLike, weapon, item) {
+  if (!weapon) return [];
+  const names = (sheet?.proficiencies ?? []).map((proficiency) => proficiency.name);
+  const lists = item?.proficient ? [[...names, weapon.name]] : [names, [...names, weapon.name]];
+  return lists.map((proficiencyNames) =>
+    getWeaponAttackMath({
+      weapon,
+      scores: sheet?.abilityScores,
+      proficiencyNames,
+      proficiencyBonus: getProficiencyBonus(sheet?.level ?? 1),
+      magicBonus: attackWeaponFor(attackLike, () => null).magicBonus,
+      fightingStyles: getFightingStyles(sheet?.features),
+    }),
+  );
+}
+
+// The weapon an attack-like thing names, by name: "Longbow" for a renamed
+// one or a "+1 Longbow".
+const weaponNameOf = (attackLike) =>
+  splitMagicWeaponName(String(attackLike?.baseWeapon ?? "").trim() || attackLike?.name).baseName;
+
+// A new attack linked to an inventory weapon, with its numbers worked out
+// when QuestKeeper knows the weapon. weaponDetailsFor(name): SRD details,
+// null for a weapon that isn't in the SRD, or undefined while its details are
+// still loading. Then the attack is marked numbersPending and its numbers
+// are filled in as soon as they load (fillPendingAttacks), so a new player
+// never has to repair a new attack.
+export function createLinkedAttack(sheet, item, weaponDetailsFor = () => null) {
+  const facts = weaponFactsOf(item);
+  const draft = { name: item.name, ...facts };
+  const { weapon } = attackWeaponFor(draft, weaponDetailsFor);
+  const loading = !weapon && weaponDetailsFor(weaponNameOf(draft)) === undefined;
+  // Trained only if the Proficiencies list or the item's own P says so.
+  const [math] = workedNumbersFor(sheet, draft, weapon, item);
+  return {
+    ...createAttack({
+      name: item.name,
+      toHit: math ? math.toHit : 0,
+      damage: math ? math.damage : "",
+      damageType: weapon?.damage?.damage_type?.name ?? "",
+      notes: weapon ? describeWeaponNotes(weapon, item.quantity ?? 1) : "",
+      baseWeapon: facts.baseWeapon ?? "",
+      magicBonus: facts.magicBonus ?? null,
+      isMagic: Boolean(facts.isMagic),
+      extraDamage: facts.extraDamage ?? [],
+    }),
+    inventoryIndex: item.index,
+    ...(loading ? { numbersPending: true } : {}),
+  };
+}
+
+// Fills in the numbers of attacks marked numbersPending once their weapon's
+// details have loaded: to hit, damage, damage type and notes, worked out as
+// for a new attack. One whose weapon turns out not to be in the SRD (a
+// homebrew weapon) just loses the mark; its numbers are the player's to type.
+// Returns the same sheet when nothing changed, so it's safe to run often.
+export function fillPendingAttacks(sheet, weaponDetailsFor = () => undefined) {
+  let changed = false;
+  const attacks = (sheet?.attacks ?? []).map((attack) => {
+    if (!attack.numbersPending) return attack;
+    const details = weaponDetailsFor(weaponNameOf(attack));
+    if (details === undefined) return attack;
+    changed = true;
+    const next = { ...attack };
+    delete next.numbersPending;
+    const { weapon } = attackWeaponFor(attack, weaponDetailsFor);
+    if (!weapon) return next;
+    const [math] = workedNumbersFor(sheet, attack, weapon, linkedItemFor(sheet, attack));
+    return {
+      ...next,
+      toHit: math.toHit,
+      damage: math.damage,
+      damageType: attack.damageType || (weapon.damage?.damage_type?.name ?? ""),
+      notes: attack.notes || describeWeaponNotes(weapon, linkedItemFor(sheet, attack)?.quantity ?? 1),
+    };
+  });
+  return changed ? { ...sheet, attacks } : sheet;
+}
+
+const withItem = (sheet, itemIndex, updates) => ({
+  ...sheet,
+  equipment: updateEquipmentItem(sheet.equipment, itemIndex, updates),
+});
+
+// Equips a weapon. choice says what to do with its attacks:
+//   "auto"   linked attacks come back; with none, a matching standalone
+//            attack needs the player's choice (returned as needsChoice), or
+//            a new linked attack is made when nothing matches
+//   "link:<attack index>"  link that standalone attack (its numbers are kept)
+//   "new"    make a new linked attack
+//   "none"   just equip it
+// Returns { sheet, needsChoice?: [matching attacks] }; with needsChoice the
+// sheet is unchanged.
+export function equipWeapon(sheet, itemIndex, weaponDetailsFor = () => null, choice = "auto") {
+  const item = (sheet?.equipment ?? []).find((entry) => entry.index === itemIndex);
+  if (!item) return { sheet };
+  const equipped = withItem(sheet, itemIndex, { wielded: true });
+  if (choice === "none") return { sheet: equipped };
+  if (choice.startsWith("link:")) return { sheet: linkAttack(equipped, choice.slice(5), itemIndex) };
+  if (choice === "auto") {
+    if (linkedAttacksFor(sheet, itemIndex).length > 0) return { sheet: equipped };
+    const matches = findMatchingAttacks(sheet, item);
+    if (matches.length > 0) return { sheet, needsChoice: matches };
+  }
+  return { sheet: { ...equipped, attacks: [...(equipped.attacks ?? []), createLinkedAttack(equipped, item, weaponDetailsFor)] } };
+}
+
+// Puts a weapon away: its linked attacks are hidden, never deleted.
+export const unequipWeapon = (sheet, itemIndex) => withItem(sheet, itemIndex, { wielded: false });
+
+// Is a weapon fact empty (nothing set up): missing, 0, false, "" or [].
+const isEmptyFact = (value) =>
+  value === undefined || value === null || value === "" || value === 0 || value === false || (Array.isArray(value) && value.length === 0);
+
+// Links a standalone attack to an item. Facts the item doesn't have yet are
+// filled from the attack (so an attack set up first, like a +2 bow, teaches
+// the item its +2, and the bonus is never lost); after that they're shared.
+// A +N read from the attack's name counts as its magic bonus. Numbers are kept.
+export function linkAttack(sheet, attackIndex, itemIndex) {
+  const item = (sheet?.equipment ?? []).find((entry) => entry.index === itemIndex);
+  const attack = (sheet?.attacks ?? []).find((entry) => entry.index === attackIndex);
+  if (!item || !attack) return sheet;
+  const attackFacts = { ...attack, magicBonus: attackWeaponFor(attack, () => null).magicBonus };
+  const fromAttack = {};
+  WEAPON_FACT_KEYS.forEach((key) => {
+    if (isEmptyFact(item[key]) && !isEmptyFact(attackFacts[key])) fromAttack[key] = attackFacts[key];
+  });
+  const next = Object.keys(fromAttack).length ? withItem(sheet, itemIndex, fromAttack) : sheet;
+  // Empty facts aren't written onto an attack that never had them, so an
+  // older attack with a +2 typed into its numbers can still be spotted (the
+  // "out of date" notice offers to mark it +2 rather than take it off).
+  const facts = Object.fromEntries(
+    Object.entries(weaponFactsOf({ ...item, ...fromAttack })).filter(
+      ([key, value]) => !(isEmptyFact(value) && attack[key] === undefined),
+    ),
+  );
+  return { ...next, attacks: updateAttack(next.attacks, attackIndex, { ...facts, inventoryIndex: itemIndex }) };
+}
+
+// Unlinks an attack: it becomes standalone, with everything it had.
+export function unlinkAttack(sheet, attackIndex) {
+  return {
+    ...sheet,
+    attacks: (sheet?.attacks ?? []).map((attack) => {
+      if (attack.index !== attackIndex) return attack;
+      const copy = { ...attack };
+      delete copy.inventoryIndex;
+      return copy;
+    }),
+  };
+}
+
+// After a linked weapon changes (edited in Inventory, or its facts edited on
+// one of its attacks), its attacks follow. For each linked attack:
+//   - the facts (weapon type, magic, extra damage) are copied over
+//   - the name follows only if it was the item's old name
+//   - to hit and damage are worked out again only if they still matched
+//     what was worked out before (never for "Keep mine" attacks, or numbers
+//     the player typed); otherwise the "out of date" notice offers it
+// before: the item as it was. skipAttack: the attack the change came from
+// (its own numbers were just saved by the player).
+export function syncLinkedAttacks(sheet, itemIndex, before, weaponDetailsFor = () => null, { skipAttack = null } = {}) {
+  const item = (sheet?.equipment ?? []).find((entry) => entry.index === itemIndex);
+  if (!item) return sheet;
+  const facts = weaponFactsOf(item);
+  const attacks = (sheet.attacks ?? []).map((attack) => {
+    if (attack.inventoryIndex !== itemIndex) return attack;
+    const next = { ...attack, ...facts };
+    if (!item.baseWeapon) delete next.baseWeapon;
+    if (before && sameText(attack.name, before.name)) next.name = item.name;
+    if (attack.index === skipAttack || attack.manual) return next;
+    const { weapon: oldWeapon } = attackWeaponFor(attack, weaponDetailsFor);
+    const { weapon } = attackWeaponFor(next, weaponDetailsFor);
+    // Which way it matched (trained or not) is kept for the new numbers.
+    const matched = workedNumbersFor(sheet, attack, oldWeapon, before ?? item).findIndex(
+      (math) => math.toHit === Number(attack.toHit) && math.damage === attack.damage,
+    );
+    if (matched === -1) return next;
+    // A new weapon type whose details are still loading: filled in on arrival.
+    if (!weapon && weaponDetailsFor(weaponNameOf(next)) === undefined) return { ...next, numbersPending: true };
+    if (!weapon) return next;
+    const options = workedNumbersFor(sheet, next, weapon, item);
+    const fresh = options[Math.min(matched, options.length - 1)];
+    return { ...next, toHit: fresh.toHit, damage: fresh.damage };
+  });
+  return { ...sheet, attacks };
+}
+
+// The facts edited on a linked attack go back to its item, then to the
+// item's other attacks, so the weapon is described once.
+export function shareAttackFacts(sheet, attackIndex, weaponDetailsFor = () => null) {
+  const attack = (sheet?.attacks ?? []).find((entry) => entry.index === attackIndex);
+  const item = linkedItemFor(sheet, attack);
+  if (!item) return sheet;
+  const updates = {};
+  WEAPON_FACT_KEYS.forEach((key) => {
+    updates[key] = attack[key];
+  });
+  if (!attack.baseWeapon) updates.baseWeapon = undefined;
+  const next = withItem(sheet, item.index, updates);
+  return syncLinkedAttacks(next, item.index, item, weaponDetailsFor, { skipAttack: attackIndex });
+}
+
+// Removing an inventory item never removes attack setup: its attacks are
+// unlinked and stay on the Actions tab as standalone attacks.
+export function removeEquipmentKeepingAttacks(sheet, itemIndex) {
+  const unlinked = linkedAttacksFor(sheet, itemIndex).reduce((next, attack) => unlinkAttack(next, attack.index), sheet);
+  return { ...unlinked, equipment: removeEquipmentItem(unlinked.equipment, itemIndex) };
+}
+
 // Clicking a skill's badge steps through: not proficient -> proficient ->
 // expertise -> not proficient.
 export function cycleSkillProficiency(skills, expertise, skillIndex) {
@@ -2151,7 +2491,23 @@ export function toggleSkillProficiency(skills, skillIndex) {
 
 // baseWeapon: the SRD weapon a renamed one is ("Longbow" for "Wisteria's
 // Kiss"), so its numbers can still be worked out.
-export function createAttack({ name, toHit, damage, damageType, notes, baseWeapon = "" }) {
+// magicBonus, isMagic and extraDamage are optional, so attacks saved before
+// they existed still work: magicBonus is the weapon's +1/+2/+3 (counted in
+// to hit and the weapon's own damage), isMagic marks a magic weapon with no
+// bonus, and extraDamage is damage the weapon always adds in its own type
+// ([{ dice: "1d4", type: "psychic", source: "Wisteria's Kiss", condition: "" }];
+// one with a condition, like "vs undead", is only added when switched on).
+export function createAttack({
+  name,
+  toHit,
+  damage,
+  damageType,
+  notes,
+  baseWeapon = "",
+  magicBonus = null,
+  isMagic = false,
+  extraDamage = [],
+}) {
   return {
     index: crypto.randomUUID(),
     name,
@@ -2160,7 +2516,52 @@ export function createAttack({ name, toHit, damage, damageType, notes, baseWeapo
     damageType: damageType || "",
     notes: notes || "",
     ...(baseWeapon ? { baseWeapon } : {}),
+    ...(magicBonus !== null && magicBonus !== undefined ? { magicBonus } : {}),
+    ...(isMagic ? { isMagic: true } : {}),
+    ...(extraDamage.length > 0 ? { extraDamage } : {}),
   };
+}
+
+// The editor's Magic choice: not magic, magic with no bonus (a Flame Tongue),
+// or a +1, +2 or +3 weapon. The bonus is added to to hit and the weapon's own
+// damage, and the "out of date" check counts it.
+export const MAGIC_OPTIONS = [
+  { value: "", label: "Not magic" },
+  { value: "0", label: "Magic, no bonus" },
+  { value: "1", label: "Magic +1" },
+  { value: "2", label: "Magic +2" },
+  { value: "3", label: "Magic +3" },
+];
+
+
+// The editor's "Magic" choice ("" not magic, "0" magic with no bonus, "1" to
+// "3" a +N weapon) as the fields saved on the attack. An empty choice also
+// clears a bonus read from the name, so "No" always means no.
+export function magicChoiceToFields(choice) {
+  const text = String(choice ?? "");
+  if (text === "") return { magicBonus: 0, isMagic: false };
+  const bonus = Number(text);
+  return { magicBonus: Number.isInteger(bonus) && bonus > 0 ? bonus : 0, isMagic: true };
+}
+
+// And back: what the editor's Magic choice shows for a saved attack.
+export function magicChoiceFor(attack) {
+  const { magicBonus } = attackWeaponFor(attack, () => null);
+  if (magicBonus > 0) return String(magicBonus);
+  return attack?.isMagic ? "0" : "";
+}
+
+// The extra damage rows from the editor, tidied for saving: rows with no
+// dice are dropped, and the rest are trimmed.
+export function cleanExtraDamage(rows = []) {
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => ({
+      dice: String(row?.dice ?? "").replace(/\s+/g, ""),
+      type: String(row?.type ?? "").trim().toLowerCase(),
+      source: String(row?.source ?? "").trim(),
+      condition: String(row?.condition ?? "").trim(),
+    }))
+    .filter((row) => row.dice);
 }
 
 export function removeAttack(attacks, index) {

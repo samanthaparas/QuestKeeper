@@ -43,11 +43,23 @@ import {
   getHitDiceRemaining,
   createEquipmentItem,
   updateEquipmentItem,
-  removeEquipmentItem,
   getAttunedCount,
   cycleSkillProficiency,
   setTemporaryHp,
   createAttack,
+  cleanExtraDamage,
+  magicChoiceToFields,
+  equipWeapon,
+  unequipWeapon,
+  unlinkAttack,
+  syncLinkedAttacks,
+  shareAttackFacts,
+  removeEquipmentKeepingAttacks,
+  fillPendingAttacks,
+  linkedAttacksFor,
+  linkedItemFor,
+  isAttackPutAway,
+  isWeaponItem,
   removeAttack,
   updateAttack,
   createFeat,
@@ -104,6 +116,8 @@ import {
   withArmorBonus,
   withAutoArmorClass,
   computeWornArmorClass,
+  equipArmor,
+  findArmorConflicts,
 } from "../../utils/armorClass";
 import { getEquipment, getEquipmentDetails } from "../../utils/api";
 import { featuresForNewLevel, loadFeatureEntries, normalizeItemName } from "../../utils/srdDetails";
@@ -122,6 +136,8 @@ import {
   getActiveEffects,
   getCastSlotLevels,
   getEffectiveAttack,
+  getAttackBreakdown,
+  canUseSharpshooter,
   getEligibleWeapons,
   previewEffect,
   withEffectsEnded,
@@ -223,6 +239,23 @@ function CharacterSheetPage() {
   const [featureEntries, setFeatureEntries] = useState({ key: null, entries: [] });
   const [activeSlotLevels, setActiveSlotLevels] = useState(() => new Set());
   const [attackWith, setAttackWith] = useState(null);
+  // Attacks with Sharpshooter switched on (by attack id). Never saved: it's
+  // chosen for one attack at a time, and cleared when that attack is done.
+  const [sharpshooterOn, setSharpshooterOn] = useState(() => new Set());
+  // An inventory weapon being equipped when a standalone attack already
+  // looks like it: { itemIndex, matches }. The player picks what happens.
+  const [pendingLink, setPendingLink] = useState(null);
+  // Armor or a shield being put on while another of its kind is worn:
+  // { itemIndex, blockedBy }. The player can swap or cancel.
+  const [pendingArmor, setPendingArmor] = useState(null);
+  function setSharpshooter(attackIndex, on) {
+    setSharpshooterOn((previous) => {
+      const next = new Set(previous);
+      if (on) next.add(attackIndex);
+      else next.delete(attackIndex);
+      return next;
+    });
+  }
   const tableCombat = useTableTurn(sheet?.id);
   // Click-to-roll: any bonus on the sheet rolls, and can be shared with the
   // character's table.
@@ -341,6 +374,10 @@ function CharacterSheetPage() {
   // "+1 Longbow" or a renamed one), so attack numbers can be checked too.
   const lookupItems = [
     ...(sheet?.equipment ?? []),
+    // A renamed inventory weapon ("Wisteria's Kiss") is looked up as its type.
+    ...(sheet?.equipment ?? [])
+      .filter((item) => item.baseWeapon)
+      .map((item) => ({ name: splitMagicWeaponName(item.baseWeapon).baseName })),
     ...(sheet?.attacks ?? []).map((attack) => ({
       name: splitMagicWeaponName(attack.baseWeapon || attack.name).baseName,
     })),
@@ -404,6 +441,7 @@ function CharacterSheetPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gearNames, gearAttempt]);
   const gearDetailsFor = (item) => gearDetails[normalizeItemName(item.name)];
+  const isShieldItem = (item) => gearDetailsFor(item)?.armor_category === "Shield";
 
   // The player's homebrew, so a race, background or subclass picked as a
   // draft in creation can remind them to fill in its details.
@@ -454,6 +492,17 @@ function CharacterSheetPage() {
       runPendingSave();
     };
   }, []);
+
+  // An attack made while its weapon's details were still loading (a renamed
+  // weapon added and equipped in one go) gets its numbers as soon as they
+  // arrive, after a refresh too. Nothing changes when nothing is waiting.
+  useEffect(() => {
+    if (!sheet?.attacks?.some((attack) => attack.numbersPending)) return;
+    const filled = fillPendingAttacks(sheet, (name) => gearDetails[normalizeItemName(name)]);
+    if (filled !== sheet) persistSheet(filled);
+    // persistSheet is the same save used everywhere; it isn't a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gearDetails, sheet]);
 
   if (isLoading) {
     return (
@@ -589,6 +638,9 @@ function CharacterSheetPage() {
   // The numbers saved on the sheet that come from its scores and level: the
   // AC (when on auto) and auto-filled weapon attacks, worked out again.
   const weaponDetailsFor = (name) => gearDetails[normalizeItemName(name)] ?? null;
+  // The same, but undefined while a weapon's details are still loading, so a
+  // new linked attack can wait for them (see createLinkedAttack).
+  const weaponDetailsOrLoading = (name) => gearDetails[normalizeItemName(name)];
   function withCurrentNumbers(before, next) {
     // Initiative follows Dexterity too (see withAutoInitiative).
     return withAutoInitiative(
@@ -644,12 +696,18 @@ function CharacterSheetPage() {
   }
 
   function handleUpdateNumbers() {
+    // worked can carry a magicBonus: a magic weapon whose bonus is saved now.
     const worked = new Map(outOfDate.attacks.map((item) => [item.index, item.worked]));
     const attacks = (sheet.attacks ?? []).map((attack) =>
       worked.has(attack.index) ? { ...attack, ...worked.get(attack.index) } : attack,
     );
     // persistSheet works the auto AC out again as it saves.
-    const updated = applySpeedUpdates({ ...sheet, attacks }, outOfDate.speed);
+    // A linked attack that just got its magic bonus saved shares it with its
+    // inventory weapon.
+    const shared = outOfDate.attacks
+      .filter((item) => item.magicBonus)
+      .reduce((next, item) => shareAttackFacts(next, item.index, weaponDetailsFor), { ...sheet, attacks });
+    const updated = applySpeedUpdates(shared, outOfDate.speed);
     const withInitiative = outOfDate.initiative ? applyInitiativeUpdate(updated) : updated;
     persistSheet(outOfDate.freeCasts.length ? applyFreeCastsSplit(withInitiative) : withInitiative);
   }
@@ -778,12 +836,32 @@ function CharacterSheetPage() {
   }
 
   // Putting armor on (or taking it off). The first time, AC goes on auto.
+  // One body armor and one shield at a time: if another is already worn,
+  // the item asks whether to swap instead (see armorChoiceFor).
   function handleEquipToggle(id, currentlyEquipped) {
-    persistSheet({
-      ...sheet,
-      acMode: sheet.acMode ?? "auto",
-      equipment: updateEquipmentItem(sheet.equipment, id, { equipped: !currentlyEquipped }),
-    });
+    setPendingArmor(null);
+    if (currentlyEquipped) {
+      persistSheet({ ...sheet, equipment: updateEquipmentItem(sheet.equipment, id, { equipped: false }) });
+      return;
+    }
+    const result = equipArmor(sheet, id, gearDetailsFor);
+    if (result.blockedBy) {
+      setPendingArmor({ itemIndex: id, blockedBy: result.blockedBy });
+      return;
+    }
+    persistSheet({ ...result.sheet, acMode: sheet.acMode ?? "auto" });
+  }
+
+  function handleArmorSwap() {
+    if (!pendingArmor) return;
+    const { sheet: swapped } = equipArmor(sheet, pendingArmor.itemIndex, gearDetailsFor, { swap: true });
+    persistSheet({ ...swapped, acMode: sheet.acMode ?? "auto" });
+    setPendingArmor(null);
+  }
+
+  // Takes one item off (the warning about two worn at once).
+  function handleTakeOff(id) {
+    persistSheet({ ...sheet, equipment: updateEquipmentItem(sheet.equipment, id, { equipped: false }) });
   }
 
   // A typed Initiative keeps following Dexterity, with the difference kept
@@ -1167,18 +1245,46 @@ function CharacterSheetPage() {
     });
   }
 
+  // The item editor's weapon box as fields on the item (nothing when the
+  // item isn't a weapon, so other items stay as they were).
+  function weaponFieldsFrom(values) {
+    const weapon = values.weapon ?? {};
+    if (!weapon.known && !isWeaponItem({ name: values.name, category: values.category })) return {};
+    return {
+      baseWeapon: String(weapon.baseWeapon ?? "").trim() || undefined,
+      ...magicChoiceToFields(weapon.magic),
+      extraDamage: cleanExtraDamage(weapon.extraDamage),
+    };
+  }
+
+  // Equipping a weapon brings back or makes its attack; when a standalone
+  // attack already looks like it, the player chooses (see linkChoiceFor).
+  function equipOrAsk(next, itemIndex) {
+    const result = equipWeapon(next, itemIndex, weaponDetailsOrLoading);
+    if (result.needsChoice) {
+      setPendingLink({ itemIndex, matches: result.needsChoice });
+      return next;
+    }
+    return result.sheet;
+  }
+
   function handleEquipmentAdd(values) {
-    const item = createEquipmentItem({
-      name: values.name.trim(),
-      quantity: Number(values.quantity) || 1,
-      description: values.description.trim(),
-      category: values.category,
-    });
-    persistSheet({ ...sheet, equipment: [...(sheet.equipment ?? []), item] });
+    const item = {
+      ...createEquipmentItem({
+        name: values.name.trim(),
+        quantity: Number(values.quantity) || 1,
+        description: values.description.trim(),
+        category: values.category,
+      }),
+      ...weaponFieldsFrom(values),
+    };
+    const next = { ...sheet, equipment: [...(sheet.equipment ?? []), item] };
+    persistSheet(values.weapon?.wielded ? equipOrAsk(next, item.index) : next);
   }
 
   function handleEquipmentUpdate(id, values) {
-    persistSheet({
+    const before = (sheet.equipment ?? []).find((item) => item.index === id);
+    let next = {
       ...sheet,
       equipment: updateEquipmentItem(sheet.equipment, id, {
         name: values.name.trim(),
@@ -1186,15 +1292,38 @@ function CharacterSheetPage() {
         description: values.description.trim(),
         // "Guess for me" clears a picked category.
         category: values.category || undefined,
+        ...weaponFieldsFrom(values),
       }),
-    });
+    };
+    // Its linked attacks follow the edit (customised numbers are kept).
+    next = syncLinkedAttacks(next, id, before, weaponDetailsOrLoading);
+    const wantWielded = Boolean(values.weapon?.wielded);
+    if (values.weapon && wantWielded !== Boolean(before?.wielded)) {
+      next = wantWielded ? equipOrAsk(next, id) : unequipWeapon(next, id);
+    }
+    persistSheet(next);
   }
 
+  // Its attacks are kept, unlinked (the Remove question says so).
   function handleEquipmentRemove(id) {
-    persistSheet({
-      ...sheet,
-      equipment: removeEquipmentItem(sheet.equipment, id),
-    });
+    if (pendingLink?.itemIndex === id) setPendingLink(null);
+    persistSheet(removeEquipmentKeepingAttacks(sheet, id));
+  }
+
+  function handleWeaponEquipToggle(item) {
+    setPendingLink(null);
+    persistSheet(item.wielded ? unequipWeapon(sheet, item.index) : equipOrAsk(sheet, item.index));
+  }
+
+  // The answer to "an attack already matches": "link:<attack>", "new" or "none".
+  function handleLinkChoice(choice) {
+    if (!pendingLink) return;
+    persistSheet(equipWeapon(sheet, pendingLink.itemIndex, weaponDetailsOrLoading, choice).sheet);
+    setPendingLink(null);
+  }
+
+  function handleAttackUnlink(attack) {
+    persistSheet(unlinkAttack(sheet, attack.index));
   }
 
   function handleEquipmentAttuneToggle(id, currentlyAttuned) {
@@ -1553,6 +1682,7 @@ function CharacterSheetPage() {
   }
 
   function handleAttackAdd(values) {
+    const magic = magicChoiceToFields(values.magic);
     const attack = createAttack({
       name: values.name.trim(),
       toHit: values.toHit,
@@ -1560,20 +1690,30 @@ function CharacterSheetPage() {
       damageType: values.damageType.trim(),
       notes: values.notes.trim(),
       baseWeapon: (values.baseWeapon ?? "").trim(),
+      magicBonus: magic.magicBonus,
+      isMagic: magic.isMagic,
+      extraDamage: cleanExtraDamage(values.extraDamage),
     });
     persistSheet({ ...sheet, attacks: [...(sheet.attacks ?? []), attack] });
   }
 
   function handleAttackUpdate(id, values) {
-    persistSheet({
+    // A linked attack's weapon setup goes back to its inventory weapon and
+    // that weapon's other attacks (see shareAttackFacts).
+    const save = (next) => persistSheet(shareAttackFacts(next, id, weaponDetailsOrLoading));
+    save({
       ...sheet,
+      // Saved by the player, so its numbers are theirs now (not waiting).
       attacks: updateAttack(sheet.attacks, id, {
+        numbersPending: undefined,
         name: values.name.trim(),
         toHit: Number(values.toHit) || 0,
         damage: values.damage.trim(),
         damageType: values.damageType.trim(),
         notes: values.notes.trim(),
         baseWeapon: (values.baseWeapon ?? "").trim(),
+        ...magicChoiceToFields(values.magic),
+        extraDamage: cleanExtraDamage(values.extraDamage),
       }),
     });
   }
@@ -2387,12 +2527,20 @@ function CharacterSheetPage() {
                           Speed {item.saved} → {item.worked} ft (from {item.name})
                         </li>
                       ))}
-                      {outOfDate.attacks.map((item) => (
-                        <li key={item.index}>
-                          {item.name}: {formatModifier(item.saved.toHit)} / {item.saved.damage || "—"}{" "}
-                          → {formatModifier(item.worked.toHit)} / {item.worked.damage}
-                        </li>
-                      ))}
+                      {outOfDate.attacks.map((item) =>
+                        item.magicBonus ? (
+                          // The numbers are right; only the bonus isn't saved.
+                          <li key={item.index}>
+                            {item.name}: looks like a +{item.magicBonus} magic weapon. Update marks it +
+                            {item.magicBonus} and keeps {formatModifier(item.saved.toHit)} / {item.saved.damage}.
+                          </li>
+                        ) : (
+                          <li key={item.index}>
+                            {item.name}: {formatModifier(item.saved.toHit)} / {item.saved.damage || "—"}{" "}
+                            → {formatModifier(item.worked.toHit)} / {item.worked.damage}
+                          </li>
+                        ),
+                      )}
                     </ul>
                     <div className="character-sheet__setup-actions">
                       <Button onClick={handleUpdateNumbers}>Update</Button>
@@ -2537,14 +2685,48 @@ function CharacterSheetPage() {
                             attack={getEffectiveAttack(
                               sheet,
                               (sheet.attacks ?? []).find((item) => item.index === attackWith.index) ?? attackWith,
+                              { sharpshooter: sharpshooterOn.has(attackWith.index) },
                             )}
                             combat={tableCombat}
-                            onClose={() => setAttackWith(null)}
+                            sharpshooter={
+                              canUseSharpshooter(sheet, attackWith, weaponDetailsFor)
+                                ? {
+                                    on: sharpshooterOn.has(attackWith.index),
+                                    onChange: (on) => setSharpshooter(attackWith.index, on),
+                                  }
+                                : null
+                            }
+                            onClose={() => {
+                              setSharpshooter(attackWith.index, false);
+                              setAttackWith(null);
+                            }}
                           />
                         ) : null
                       }
-                      attacks={sheet.attacks ?? []}
-                      effectiveAttackFor={(attack) => getEffectiveAttack(sheet, attack)}
+                      // Attacks of weapons put away are hidden, not gone.
+                      attacks={(sheet.attacks ?? []).filter((attack) => !isAttackPutAway(sheet, attack))}
+                      putAway={(sheet.equipment ?? [])
+                        .filter((item) => !item.wielded)
+                        .map((item) => ({ item, attacks: linkedAttacksFor(sheet, item.index) }))
+                        .filter((entry) => entry.attacks.length > 0)}
+                      onEquipWeapon={handleWeaponEquipToggle}
+                      onInventoryWeaponAdd={handleWeaponEquipToggle}
+                      linkedItemFor={(attack) => linkedItemFor(sheet, attack)}
+                      onUnlink={handleAttackUnlink}
+                      effectiveAttackFor={(attack) =>
+                        getEffectiveAttack(sheet, attack, { sharpshooter: sharpshooterOn.has(attack.index) })
+                      }
+                      sharpshooterFor={(attack) =>
+                        canUseSharpshooter(sheet, attack, weaponDetailsFor)
+                          ? { on: sharpshooterOn.has(attack.index) }
+                          : null
+                      }
+                      onSharpshooterToggle={(attack) => setSharpshooter(attack.index, !sharpshooterOn.has(attack.index))}
+                      breakdownFor={(attack) =>
+                        getAttackBreakdown(sheet, attack, weaponDetailsFor, {
+                          sharpshooter: sharpshooterOn.has(attack.index),
+                        })
+                      }
                       onEndEffect={handleEndEffect}
                       onAttackAdd={handleAttackAdd}
                       onAttackUpdate={handleAttackUpdate}
@@ -2646,6 +2828,85 @@ function CharacterSheetPage() {
                       isArmor={(item) => isArmorDetails(gearDetailsFor(item))}
                       categoryOf={(item) => getInventoryCategory(item, gearDetailsFor(item))}
                       onEquipToggle={handleEquipToggle}
+                      isWeapon={(item) => isWeaponItem(item, gearDetailsFor(item))}
+                      onWeaponEquipToggle={handleWeaponEquipToggle}
+                      linkedCountFor={(item) => linkedAttacksFor(sheet, item.index).length}
+                      armorWarning={
+                        // Worn two of a kind (saved before this was checked).
+                        findArmorConflicts(sheet, gearDetailsFor).map((conflict) => (
+                          <div className="character-sheet__link-choice" role="alert" key={conflict.slot}>
+                            <p>
+                              You&apos;re wearing{" "}
+                              {conflict.slot === "body" ? "more than one set of armor" : "more than one shield"}:{" "}
+                              {conflict.items.map((item) => item.name).join(" and ")}. Only {conflict.counted.name}{" "}
+                              counts toward your AC. Take one off:
+                            </p>
+                            <div className="character-sheet__link-choice-actions">
+                              {conflict.items.map((item) => (
+                                <Button key={item.index} variant="secondary" onClick={() => handleTakeOff(item.index)}>
+                                  Take off {item.name}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                      }
+                      linkChoiceFor={(item) =>
+                        pendingArmor?.itemIndex === item.index ? (
+                          // Another armor (or shield) is already worn: a small
+                          // question under the item, what's on → what goes on.
+                          <div
+                            className="character-sheet__swap-choice"
+                            role="group"
+                            aria-labelledby={`swap-${item.index}`}
+                          >
+                            <p className="character-sheet__swap-choice-title" id={`swap-${item.index}`}>
+                              {isShieldItem(item) ? "Swap shield?" : "Swap armor?"}
+                            </p>
+                            <p className="character-sheet__swap-choice-detail">
+                              {pendingArmor.blockedBy.map((other) => other.name).join(" and ")}{" "}
+                              <span aria-hidden="true">→</span>
+                              <span className="character-sheet__visually-hidden"> will be replaced by </span>{" "}
+                              {item.name}
+                            </p>
+                            <div className="character-sheet__swap-choice-actions">
+                              <Button onClick={handleArmorSwap}>
+                                {isShieldItem(item) ? "Swap shield" : "Swap armor"}
+                              </Button>
+                              <Button variant="secondary" onClick={() => setPendingArmor(null)}>
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : pendingLink?.itemIndex === item.index ? (
+                          // An attack already looks like this weapon: link it,
+                          // make a new one, or just equip.
+                          <div className="character-sheet__link-choice" role="group" aria-label={`Equipping ${item.name}`}>
+                            <p>
+                              {pendingLink.matches.length === 1
+                                ? `"${pendingLink.matches[0].name}" on your Actions tab looks like ${item.name}.`
+                                : `${pendingLink.matches.length} attacks on your Actions tab look like ${item.name}.`}{" "}
+                              Link it so they share the weapon&apos;s setup? Its to hit and damage stay as they are.
+                            </p>
+                            <div className="character-sheet__link-choice-actions">
+                              {pendingLink.matches.map((attack) => (
+                                <Button key={attack.index} onClick={() => handleLinkChoice(`link:${attack.index}`)}>
+                                  Link {attack.name}
+                                </Button>
+                              ))}
+                              <Button variant="secondary" onClick={() => handleLinkChoice("new")}>
+                                Make a new attack
+                              </Button>
+                              <Button variant="secondary" onClick={() => handleLinkChoice("none")}>
+                                Just equip it
+                              </Button>
+                              <Button variant="secondary" onClick={() => setPendingLink(null)}>
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null
+                      }
                     />
                   )}
 
