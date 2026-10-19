@@ -23,9 +23,19 @@ function SearchForm({
   placeholder = scope ? `Type to filter ${scope}…` : "Search spells, classes, races, rules, or game terms…",
   onSearchEverywhere = null,
   inputId = "search-input",
+  // A global search can show its label above the box too, with a hint
+  // under it (the home page's "Search by name").
+  showLabel = false,
+  hint = "",
 }) {
   const hintId = useId();
   const isScoped = Boolean(scope);
+  const labelShown = isScoped || showLabel;
+  const hintText = isScoped
+    ? `Filters the ${scope} below as you type.${
+        onSearchEverywhere ? " Search everywhere also looks through classes, races, spells and backgrounds." : ""
+      }`
+    : hint;
 
   function submit(event) {
     event.preventDefault();
@@ -39,8 +49,8 @@ function SearchForm({
   }
 
   return (
-    <div className={`search-form-wrapper${isScoped ? " search-form-wrapper--scoped" : ""}`}>
-      {isScoped && (
+    <div className={`search-form-wrapper${labelShown ? " search-form-wrapper--scoped" : ""}`}>
+      {labelShown && (
         <label className="search-form__visible-label" htmlFor={inputId}>
           {label}
         </label>
@@ -54,7 +64,7 @@ function SearchForm({
         aria-label={isScoped ? scope.charAt(0).toUpperCase() + scope.slice(1) : undefined}
         onSubmit={submit}
       >
-        {!isScoped && (
+        {!labelShown && (
           <label className="search-form__label" htmlFor={inputId}>
             {label}
           </label>
@@ -74,7 +84,7 @@ function SearchForm({
             }
           }}
           placeholder={placeholder}
-          aria-describedby={isScoped ? hintId : undefined}
+          aria-describedby={hintText ? hintId : undefined}
           autoComplete="off"
         />
         {(!isScoped || onSearchEverywhere) && (
@@ -87,10 +97,9 @@ function SearchForm({
           </button>
         )}
       </form>
-      {isScoped && (
+      {hintText && (
         <p className="search-form__hint" id={hintId}>
-          Filters the {scope} below as you type.
-          {onSearchEverywhere ? " Search everywhere also looks through classes, races, spells and backgrounds." : ""}
+          {hintText}
         </p>
       )}
     </div>

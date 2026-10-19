@@ -327,7 +327,10 @@ function ResultCard({ result, onUse }) {
         </div>
       )}
 
-      <Button className="quiz__use" onClick={onUse}>
+      {/* Named for its build, so the three buttons are told apart by
+          screen readers. It starts with the words on the button, so voice
+          control ("click Use this build") still finds it. */}
+      <Button className="quiz__use" onClick={onUse} aria-label={`Use this build: ${build.name}`}>
         Use this build
       </Button>
 

@@ -1,7 +1,14 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
-import { aiResultLink, clearRecent, loadRecent, rankResults, saveRecent } from "../../utils/quickJump";
+import {
+  aiResultLink,
+  clearRecent,
+  loadRecent,
+  OPEN_SEARCH_EVENT,
+  rankResults,
+  saveRecent,
+} from "../../utils/quickJump";
 import { searchByMeaning } from "../../utils/api";
 import { loadCharacterEntries, loadContentLists, pageEntries } from "../../utils/quickJumpIndex";
 import "./QuickJump.css";
@@ -28,6 +35,17 @@ function SearchIcon() {
 // typing, or ⌘K (Ctrl+K on Windows) anywhere at all.
 function QuickJump() {
   const [isOpen, setIsOpen] = useState(false);
+  // Words another page asked it to open with (see openQuickSearch).
+  const [request, setRequest] = useState(null);
+
+  useEffect(() => {
+    function handleOpen(event) {
+      setRequest(event.detail ?? null);
+      setIsOpen(true);
+    }
+    window.addEventListener(OPEN_SEARCH_EVENT, handleOpen);
+    return () => window.removeEventListener(OPEN_SEARCH_EVENT, handleOpen);
+  }, []);
 
   useEffect(() => {
     function handleKeyDown(event) {
@@ -59,7 +77,16 @@ function QuickJump() {
       </button>
 
       {/* Only exists while open, so every search starts fresh. */}
-      {isOpen && <QuickJumpDialog onClose={() => setIsOpen(false)} />}
+      {isOpen && (
+        <QuickJumpDialog
+          initialQuery={request?.query ?? ""}
+          startMeaning={Boolean(request?.meaning)}
+          onClose={() => {
+            setIsOpen(false);
+            setRequest(null);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -92,7 +119,7 @@ function AskAiRow({ query, search }) {
 // backend (Claude) for entries that match what the words mean ("heal",
 // "sneak past guards"), each with a short reason. It only runs when picked,
 // never on every keystroke, so it doesn't cost anything until it's used.
-function QuickJumpDialog({ onClose }) {
+function QuickJumpDialog({ onClose, initialQuery = "", startMeaning = false }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const userId = user?.id;
@@ -100,7 +127,7 @@ function QuickJumpDialog({ onClose }) {
   const inputRef = useRef(null);
   const dialogRef = useRef(null);
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   // Groups opened with "Show all" (reset with each new search).
   const [expanded, setExpanded] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -210,6 +237,18 @@ function QuickJumpDialog({ onClose }) {
     // optionId only changes with listId, which never changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
+
+  // Opened with a description to search by meaning: ask straight away, and
+  // only once (each search by meaning is a paid request, so a remount in
+  // development mode must not ask twice).
+  const askedOnOpen = useRef(false);
+  useEffect(() => {
+    if (askedOnOpen.current || !startMeaning || initialQuery.trim().length < 2) return;
+    askedOnOpen.current = true;
+    askAi();
+    // Only when it opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function askAi() {
     const asked = query.trim();

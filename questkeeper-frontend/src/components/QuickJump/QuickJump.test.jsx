@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import QuickJump from "./QuickJump";
 import { searchByMeaning } from "../../utils/api";
 import { installFakeStorage } from "../../test/fakeStorage";
+import { openQuickSearch } from "../../utils/quickJump";
 
 vi.mock("../../context/useAuth", () => ({ useAuth: () => ({ user: { id: "me" } }) }));
 
@@ -182,5 +183,26 @@ describe("QuickJump", () => {
     await settle();
 
     expect(screen.getByText("AI search isn't set up yet.")).toBeInTheDocument();
+  });
+});
+
+describe("QuickJump opened from another page", () => {
+  it("opens with the words in it and runs the search by meaning straight away", async () => {
+    searchByMeaning.mockResolvedValue({
+      results: [{ id: "pass-without-trace", name: "Pass without Trace", category: "Spell", why: "Hides your group" }],
+    });
+    await renderSearch();
+    act(() => openQuickSearch({ query: "Help me sneak past guards", meaning: true }));
+    expect(searchBox()).toHaveValue("Help me sneak past guards");
+    expect(searchByMeaning).toHaveBeenCalledWith("Help me sneak past guards");
+    expect(await screen.findByText("Pass without Trace")).toBeInTheDocument();
+  });
+
+  it("opens with words but asks nothing when meaning isn't wanted", async () => {
+    searchByMeaning.mockClear();
+    await renderSearch();
+    act(() => openQuickSearch({ query: "fire" }));
+    expect(searchBox()).toHaveValue("fire");
+    expect(searchByMeaning).not.toHaveBeenCalled();
   });
 });

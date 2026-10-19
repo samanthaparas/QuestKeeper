@@ -141,3 +141,12 @@ export function aiResultLink(result, entries = []) {
   return page ? `${page}?${new URLSearchParams({ open: rest.join(":") })}` : null;
 }
 
+// Opens the header's search from anywhere else (the home page's "Describe
+// what you need"), with words already in it; meaning: also runs the
+// search by meaning right away. The header's QuickJump listens for it, so
+// there's still only one search dialog.
+export const OPEN_SEARCH_EVENT = "qk-open-search";
+
+export function openQuickSearch({ query = "", meaning = false } = {}) {
+  window.dispatchEvent(new CustomEvent(OPEN_SEARCH_EVENT, { detail: { query, meaning } }));
+}

@@ -62,4 +62,91 @@
   text-decoration: underline;
   cursor: pointer;
   font: inherit;
+  /* A comfortable tap target, not just the height of the words. */
+  min-height: 44px;
+  padding: 0 8px;
+}
+
+/* "Start fresh instead": a link-looking button inside a sentence, still a
+   comfortable tap target. */
+.auth-page__fresh {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  background: none;
+  border: none;
+  color: var(--qk-text);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+.auth-page__fresh:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* Why an account, and what happens next. */
+.auth-page__why {
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border-left: 4px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-small);
+  background: var(--qk-background);
+  color: var(--qk-text);
+  line-height: 1.5;
+}
+
+.auth-page__why-title {
+  margin: 0 0 6px;
+  font-family: var(--qk-font-display);
+  font-size: 18px;
+}
+
+.auth-page__why p {
+  margin: 0 0 8px;
+}
+
+.auth-page__why p:last-child {
+  margin-bottom: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.auth-page__why-next {
+  font-weight: 700;
+}
+
+.auth-page__hint {
+  margin: 2px 0 0;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+/* "Check your email" after signing up. */
+.auth-page__notice {
+  margin-bottom: 20px;
+  color: var(--qk-text);
+  line-height: 1.5;
+}
+
+.auth-page__sample {
+  margin: 12px 0 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.auth-page__sample a {
+  color: var(--qk-terracotta-hover);
+}
+
+/* Narrow screens: less outer space, so the form keeps its width. */
+@media (max-width: 480px) {
+  .auth-page {
+    margin: 24px 16px;
+    padding: 24px 18px;
+  }
 }
