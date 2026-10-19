@@ -256,24 +256,37 @@ export function getLevelUpFeatureChoices(entries, sheet, level) {
 // a pick is still missing. picks: { [groupKey]: [value per slot] }, where a
 // value is an option's value or BOOK_OPTION; bookDrafts: { "<key>#<slot>":
 // { name, link } } for typed book options. Returns
-//   { features: [{ name, description, source, choices, link }], expertise: [skill] }
+//   { features: [{ name, description, source, choices, link }], expertise: [skill],
+//     skipped: [feature name] }
 export const BOOK_OPTION = "__book__";
+// "Skip" for a word-list pick (a Ranger's Favored Enemy or Natural Explorer):
+// many tables use Tasha's replacements (Favored Foe, Deft Explorer) instead,
+// so the SRD feature is left off the sheet rather than forced on.
+export const SKIP_OPTION = "__skip__";
 
 export function resolveLevelUpFeatureChoices(groups, picks, bookDrafts, sheet, { safeLink, sourceOf }) {
   const have = new Set((sheet.features ?? []).map((feature) => normalizeItemName(feature.name)));
   const features = [];
   const listFeatures = new Map();
   const expertise = [];
+  const skipped = [];
   const chosenNames = new Set();
 
   for (const group of groups) {
     const slots = Array.from({ length: group.choose }, (_, slot) => picks[group.key]?.[slot] ?? "");
     if (slots.some((value) => !value)) return null;
     // The same option in two dropdowns counts once, so it isn't allowed.
-    const listed = slots.filter((value) => value !== BOOK_OPTION);
+    const listed = slots.filter((value) => value !== BOOK_OPTION && value !== SKIP_OPTION);
     if (new Set(listed).size !== listed.length) return null;
 
-    if (group.kind === "list") {
+    if (group.kind === "list" && slots.includes(SKIP_OPTION)) {
+      // Skipped: nothing goes on the sheet for this feature.
+      if (!skipped.includes(group.entry.name)) skipped.push(group.entry.name);
+      listFeatures.delete(group.entry.key);
+      continue;
+    }
+
+    if (group.kind === "list" && !skipped.includes(group.entry.name)) {
       // All of a feature's list picks are saved on that one feature.
       const feature = listFeatures.get(group.entry.key) ?? {
         name: group.entry.name,
@@ -326,5 +339,5 @@ export function resolveLevelUpFeatureChoices(groups, picks, bookDrafts, sheet, {
   }
   if (new Set(expertise).size !== expertise.length) return null;
 
-  return { features: resolved, expertise };
+  return { features: resolved, expertise, skipped };
 }

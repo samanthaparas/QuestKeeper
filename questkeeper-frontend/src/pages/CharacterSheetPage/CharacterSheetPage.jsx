@@ -402,7 +402,9 @@ function CharacterSheetPage() {
   // they don't have to go looking. The free server can take about 20 seconds
   // to wake up, so it waits up to 45 seconds (and tries once more if the first
   // look-up fails quickly) before saying so in the summary instead.
-  async function withNewLevelFeatures(updatedSheet) {
+  // skippedFeatures: ones the player chose to leave off in the wizard (a
+  // Favored Enemy their table replaces with Favored Foe).
+  async function withNewLevelFeatures(updatedSheet, skippedFeatures = []) {
     const attempt = () =>
       loadFeatureEntries({
         classId: updatedSheet.class?.id,
@@ -413,7 +415,7 @@ function CharacterSheetPage() {
         featuresForNewLevel(
           entries,
           updatedSheet.level,
-          (updatedSheet.features ?? []).map((feature) => feature.name),
+          [...(updatedSheet.features ?? []).map((feature) => feature.name), ...skippedFeatures],
         ),
       );
     const lookup = attempt().catch(() => attempt());
@@ -437,9 +439,12 @@ function CharacterSheetPage() {
     }
   }
 
-  async function handleLevelUpComplete(leveledSheet) {
+  async function handleLevelUpComplete(leveledSheet, { skippedFeatures = [] } = {}) {
     setIsAddingLevelFeatures(true);
-    const { sheet: updatedSheet, featuresFailed } = await withNewLevelFeatures(leveledSheet);
+    const { sheet: updatedSheet, featuresFailed } = await withNewLevelFeatures(
+      leveledSheet,
+      skippedFeatures,
+    );
     setIsAddingLevelFeatures(false);
     // Lists both the features picked in the wizard (a Fighting Style) and the
     // ones added for the new level.
