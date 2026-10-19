@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   getAbilityModifier,
   getProficiencyBonus,
@@ -130,7 +130,20 @@ import {
   withSummonEnded,
 } from "./characterSheet";
 import { toCompanionRow } from "./partyStrip";
-import { getInventoryCategory } from "./characterSheet";
+import {
+  getInventoryCategory,
+  cleanRegain,
+  rollRegain,
+  applyDawn,
+  undoDawn,
+  describeReset,
+  setItemCharges,
+  itemChargesFor,
+  unlinkedResources,
+  removeEquipmentKeepingAttacks,
+  cleanMagicDetails,
+  describeMagicItem,
+} from "./characterSheet";
 import { featuresForNewLevel } from "./srdDetails";
 
 describe("getAbilityModifier", () => {
@@ -3764,5 +3777,151 @@ describe("spell details on new spells", () => {
       5,
     );
     expect(spellcasting.spellsKnown[0]).toMatchObject({ name: "Silence", school: "Illusion", ritual: true, acquiredAtLevel: 5 });
+  });
+});
+
+// --- Recharging: rests, dawn and by hand ---------------------------------------------
+describe("resources that refill at dawn or by hand", () => {
+  const sheetWith = (resources, extra = {}) => ({
+    resources,
+    combat: { hitPoints: { current: 10, max: 10, temporary: 0 }, hitDice: { total: 3, remaining: 3, die: 8 } },
+    ...extra,
+  });
+  const wand = { id: "w", name: "Wand of Conducting", max: 3, current: 0, resetOn: "dawn", regain: "1d3" };
+  const staff = { id: "s", name: "Staff of Flowers", max: 10, current: 2, resetOn: "dawn", regain: "1d6+4" };
+  const manual = { id: "m", name: "Lucky Coin", max: 2, current: 0, resetOn: "manual" };
+  const shortOne = { id: "k", name: "Second Wind", max: 1, current: 0, resetOn: "short" };
+  const longOne = { id: "l", name: "Channel Divinity", max: 1, current: 0, resetOn: "long" };
+  const older = { id: "o", name: "Old resource", max: 2, current: 0 };
+
+  it("keeps short and long rests working, and never refills dawn or by-hand ones from a rest", () => {
+    const all = sheetWith([wand, staff, manual, shortOne, longOne, older]);
+    const afterShort = applyRest(all, "short").resources;
+    expect(afterShort.map((resource) => resource.current)).toEqual([0, 2, 0, 1, 0, 0]);
+    const afterLong = applyRest(all, "long").resources;
+    expect(afterLong.map((resource) => resource.current)).toEqual([0, 2, 0, 1, 1, 2]);
+  });
+
+  it("reads regain as a number, dice, or blank for all", () => {
+    expect(cleanRegain(" 1d6 + 4 ")).toBe("1d6+4");
+    expect(cleanRegain("3")).toBe("3");
+    expect(cleanRegain("lots")).toBe("");
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // d3 -> 2, d6 -> 4
+    expect(rollRegain(wand)).toEqual({ amount: 2, text: "1d3 [2] = 2" });
+    expect(rollRegain(staff)).toEqual({ amount: 8, text: "1d6 [4]+4 = 8" });
+    expect(rollRegain({ ...wand, regain: "" })).toEqual({ amount: 3, text: "all" });
+    vi.restoreAllMocks();
+  });
+
+  it("regains dawn charges on New dawn, never past the maximum, and leaves the rest alone", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.99); // d3 -> 3, d6 -> 6
+    const { sheet, results } = applyDawn(sheetWith([wand, { ...staff, current: 5 }, manual, longOne]));
+    expect(sheet.resources.map((resource) => resource.current)).toEqual([3, 10, 0, 0]);
+    expect(results.map((result) => [result.name, result.gained])).toEqual([
+      ["Wand of Conducting", 3],
+      ["Staff of Flowers", 5],
+    ]);
+    expect(sheet.day).toBe(2);
+    vi.restoreAllMocks();
+  });
+
+  it("undoes an accidental dawn exactly once", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const start = sheetWith([wand, staff], { day: 4 });
+    const { sheet } = applyDawn(start);
+    const undone = undoDawn(sheet);
+    expect(undone.resources.map((resource) => resource.current)).toEqual([0, 2]);
+    expect(undone.day).toBe(4);
+    expect(undoDawn(undone)).toBe(undone);
+    vi.restoreAllMocks();
+  });
+
+  it("does nothing at dawn when nothing refills at dawn", () => {
+    const start = sheetWith([shortOne, longOne]);
+    expect(applyDawn(start)).toEqual({ sheet: start, results: [] });
+  });
+
+  it("describes when each one refills", () => {
+    expect([wand, { ...wand, regain: "" }, manual, shortOne, longOne, older].map(describeReset)).toEqual([
+      "Dawn (+1d3)",
+      "Dawn (+all)",
+      "By hand",
+      "Short Rest",
+      "Long Rest",
+      "Long Rest",
+    ]);
+    expect(createResource({ name: "x", max: 2, resetOn: "weekly" }).resetOn).toBe("long");
+  });
+});
+
+// --- An item's charges are one shared resource -----------------------------------------
+describe("inventory items with charges", () => {
+  const item = { index: "i1", name: "Wand of Conducting", quantity: 1 };
+  const base = (extra = {}) => ({ equipment: [item], resources: [], attacks: [], ...extra });
+
+  it("makes one resource for an item's charges, shown by both tabs", () => {
+    const sheet = setItemCharges(base(), item, { max: "3", resetOn: "dawn", regain: "1d3" });
+    expect(sheet.resources).toHaveLength(1);
+    expect(sheet.resources[0]).toMatchObject({ name: "Wand of Conducting", max: 3, current: 3, resetOn: "dawn", regain: "1d3", itemIndex: "i1" });
+    expect(itemChargesFor(sheet, item)).toBe(sheet.resources[0]);
+    // Spending a charge anywhere changes that same resource.
+    const spent = { ...sheet, resources: setResourceCurrent(sheet.resources, sheet.resources[0].id, 1) };
+    expect(itemChargesFor(spent, item).current).toBe(1);
+  });
+
+  it("keeps charges left when its settings change, and follows a rename", () => {
+    let sheet = setItemCharges(base(), item, { max: 10, resetOn: "dawn", regain: "1d6+4" });
+    sheet = { ...sheet, resources: setResourceCurrent(sheet.resources, sheet.resources[0].id, 4) };
+    const renamed = { ...item, name: "Staff of Flowers" };
+    sheet = setItemCharges(sheet, renamed, { max: 10, resetOn: "manual", regain: "" }, item);
+    expect(sheet.resources).toHaveLength(1);
+    expect(sheet.resources[0]).toMatchObject({ name: "Staff of Flowers", current: 4, resetOn: "manual" });
+    expect(sheet.resources[0].regain).toBeUndefined();
+    sheet = setItemCharges(sheet, renamed, { max: 3, resetOn: "dawn" });
+    expect(sheet.resources[0].current).toBe(3);
+  });
+
+  it("takes over an existing resource without losing charges used", () => {
+    const old = { id: "r1", name: "Wand charges", max: 3, current: 1, resetOn: "long" };
+    const sheet = setItemCharges(base({ resources: [old] }), item, { linkResourceId: "r1" });
+    expect(sheet.resources).toEqual([{ ...old, itemIndex: "i1" }]);
+    expect(unlinkedResources(sheet)).toEqual([]);
+  });
+
+  it("never deletes the resource: clearing charges or removing the item unlinks it", () => {
+    const linked = setItemCharges(base(), item, { max: 3, resetOn: "dawn" });
+    const cleared = setItemCharges(linked, item, { max: "" });
+    expect(cleared.resources).toHaveLength(1);
+    expect(cleared.resources[0].itemIndex).toBeUndefined();
+    const removed = removeEquipmentKeepingAttacks(linked, "i1");
+    expect(removed.equipment).toEqual([]);
+    expect(removed.resources).toHaveLength(1);
+    expect(removed.resources[0].itemIndex).toBeUndefined();
+  });
+
+  it("leaves items without charges, and sheets without resources, as they were", () => {
+    const plain = base();
+    expect(setItemCharges(plain, item, { max: 0 })).toBe(plain);
+    expect(itemChargesFor(plain, item)).toBeNull();
+    expect(removeEquipmentKeepingAttacks({ equipment: [item] }, "i1")).toEqual({ equipment: [] });
+  });
+});
+
+// --- Requiring attunement isn't being attuned -----------------------------------------
+describe("attunement details", () => {
+  it("keeps 'requires attunement' separate from being attuned, and never attunes on adding", () => {
+    const added = { ...createEquipmentItem({ name: "Cloak of Protection", quantity: 1, description: "Wondrous item, uncommon (requires attunement)" }), ...cleanMagicDetails({ rarity: "Uncommon", itemType: "Wondrous item", requiresAttunement: true, attunementBy: "a ranger" }) };
+    expect(added.attuned).toBe(false);
+    expect(added).toMatchObject({ rarity: "Uncommon", requiresAttunement: true, attunementBy: "a ranger" });
+    expect(getAttunedCount([added])).toBe(0);
+    expect(describeMagicItem(added)).toBe("Uncommon wondrous item · Requires attunement by a ranger");
+  });
+
+  it("adds nothing to a plain item", () => {
+    const details = cleanMagicDetails({});
+    expect(Object.values(details).every((value) => value === undefined)).toBe(true);
+    expect(describeMagicItem({ name: "Rope" })).toBe("");
+    // "By" only counts when attunement is required; unknown rarities are dropped.
+    expect(cleanMagicDetails({ attunementBy: "a druid", rarity: "Mythic" })).toMatchObject({ attunementBy: undefined, rarity: undefined });
   });
 });

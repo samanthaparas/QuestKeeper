@@ -12,7 +12,7 @@ import {
 } from "../../utils/attacks";
 import { describeDamageParts } from "../../utils/combatEffects";
 import { SharpshooterToggle } from "../CharacterSheetActionsTab/CharacterSheetActionsTab";
-import { attackRoll, dealDamage } from "../../utils/tableStore";
+import { attackRoll, cancelAttack, dealDamage } from "../../utils/tableStore";
 import Button from "../Button/Button";
 import ExtraDamagePicker from "../ExtraDamagePicker/ExtraDamagePicker";
 import "./AttackPanel.css";
@@ -67,6 +67,8 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatur
 
   // Extra damage with a condition, switched on for this hit.
   const [optionalOn, setOptionalOn] = useState(() => new Set());
+  // "Cancel attack" asks once before it lets the attack go.
+  const [confirmCancel, setConfirmCancel] = useState(false);
   // On-hit features ticked for this hit (by key).
   const [onHitOn, setOnHitOn] = useState(() => new Set());
   const chosenOnHit = onHitFeatures.filter(
@@ -105,6 +107,12 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatur
   // dealt). Only its name is shown, which players already see.
   const targetName = combat.combatants.find((combatant) => combatant.id === me.attack_target)?.name ?? "this creature";
   const isAwaitingDm = me.attack_state === "awaiting_dm";
+  // A rolled attack that isn't finished: its target is locked, and it can
+  // only be finished (damage) or cancelled, never pointed somewhere else.
+  const unfinished = hasHit || isAwaitingDm;
+  // That unfinished attack was made with another weapon: finish it with
+  // that one (its own dice), or cancel it, before this weapon can attack.
+  const otherWeapon = unfinished && me.attack_name && me.attack_name !== attack.name ? me.attack_name : null;
   // The outcome follows the live state, so "Waiting for the DM" turns into
   // "That hits!" the moment the DM calls it.
   const liveOutcome = hasHit
@@ -171,6 +179,17 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatur
 
   // parts: what each damage type dealt, when the app worked it out (not for
   // a total typed by hand, which has no breakdown).
+  // Lets go of the unfinished attack: it still counts as an attack this
+  // turn, no damage is dealt, and earlier damage stays. Back to the weapons.
+  async function confirmCancelAttack() {
+    await run(async () => {
+      await cancelAttack(combat.table.id);
+      setConfirmCancel(false);
+      combat.refresh();
+      onClose();
+    });
+  }
+
   async function submitDamage(amount, parts = null) {
     await run(async () => {
       await dealDamage(combat.table.id, amount, parts);
@@ -342,13 +361,23 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatur
         </p>
       )}
 
-      {isAwaitingDm && (
+      {/* The target is locked once rolled; say which, and that cancelling
+          is the way out. */}
+      {unfinished && (
+        <p className="attack-panel__note">
+          {otherWeapon
+            ? `Your attack with ${otherWeapon} on ${targetName} isn't finished. Finish it with ${otherWeapon}, or cancel it first.`
+            : `Target: ${targetName} (locked for this attack).`}
+        </p>
+      )}
+
+      {isAwaitingDm && !otherWeapon && (
         <p className="attack-panel__note">
           The DM is deciding whether that hits. This updates on its own.
         </p>
       )}
 
-      {hasHit && (
+      {hasHit && !otherWeapon && (
         <div className="attack-panel__damage">
           <p className="attack-panel__note">
             Now roll damage
@@ -522,6 +551,27 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatur
           )}
         </div>
       )}
+      {/* Cancel an unfinished attack, after one explicit "yes". */}
+      {unfinished &&
+        (confirmCancel ? (
+          <div className="attack-panel__cancel" role="group" aria-label="Cancel this attack?">
+            <span>
+              Cancel the attack on {targetName}? No damage is dealt, and it still counts as an attack this turn.
+            </span>
+            <Button variant="secondary" disabled={isBusy} onClick={confirmCancelAttack}>
+              Yes, cancel it
+            </Button>
+            <Button variant="secondary" disabled={isBusy} onClick={() => setConfirmCancel(false)}>
+              Keep it
+            </Button>
+          </div>
+        ) : (
+          <div className="attack-panel__cancel">
+            <button type="button" className="attack-panel__cancel-link" onClick={() => setConfirmCancel(true)}>
+              Cancel attack
+            </button>
+          </div>
+        ))}
     </section>
   );
 }

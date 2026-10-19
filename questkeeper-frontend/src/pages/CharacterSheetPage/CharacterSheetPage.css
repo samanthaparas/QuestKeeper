@@ -864,6 +864,77 @@
   gap: 8px;
 }
 
+/* Resources: the New dawn button, a short line on what it's for, and what
+   the last dawn did (with Undo). */
+.character-sheet__dawn-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.character-sheet__dawn-help {
+  flex: 1 1 240px;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.character-sheet__dawn-note {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--qk-text);
+  font-size: 14px;
+}
+
+.character-sheet__resource-item {
+  color: var(--qk-text-muted);
+}
+
+/* Item editor: "Magic item details (optional)", closed for plain items. */
+.character-sheet__magic-details {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.character-sheet__magic-details > summary {
+  min-height: 32px;
+  color: var(--qk-terracotta);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.character-sheet__magic-details[open] {
+  padding: 4px 12px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+}
+
+/* Under an item's name: "Rare wand · Requires attunement" and its charges. */
+.character-sheet__item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: center;
+  margin-top: 2px;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.character-sheet__item-charges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.character-sheet__item-charges-label {
+  color: var(--qk-text);
+  font-weight: 600;
+}
+
 /* "Swap armor?  Leather Armor → Scale Mail  [Swap armor] [Cancel]": a small
    note under the item, only as wide as it needs (it wraps on a phone). */
 .character-sheet__swap-choice {

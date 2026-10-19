@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { dealDamage, pickActiveTable } from "./tableStore";
+import { cancelAttack, dealDamage, pickActiveTable } from "./tableStore";
 
 const rpc = vi.hoisted(() => vi.fn());
 vi.mock("./supabaseClient", () => ({ supabase: { rpc } }));
@@ -72,5 +72,25 @@ describe("dealDamage", () => {
     rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: "It is not your turn" } });
     await expect(dealDamage("t1", 11, parts)).rejects.toMatchObject({ message: "It is not your turn" });
     expect(rpc).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("cancelAttack", () => {
+  beforeEach(() => rpc.mockReset());
+
+  it("asks the server to let the unfinished attack go", async () => {
+    rpc.mockResolvedValue({ data: null, error: null });
+    await cancelAttack("t1");
+    expect(rpc).toHaveBeenCalledWith("cancel_attack", { p_table_id: "t1" });
+  });
+
+  it("says in plain words when the database update hasn't been run yet", async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: "PGRST202", message: "not found" } });
+    await expect(cancelAttack("t1")).rejects.toThrow(/isn't set up yet/);
+  });
+
+  it("passes the server's own reason through", async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: "It is not your turn" } });
+    await expect(cancelAttack("t1")).rejects.toMatchObject({ message: "It is not your turn" });
   });
 });
