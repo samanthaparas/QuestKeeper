@@ -976,6 +976,9 @@ describe("level-up keeps the sheet's own numbers current", () => {
     sheet.abilityScores = { ...sheet.abilityScores, dexterity: 16 };
     sheet.acMode = "auto";
     sheet.combat.armorClass = 14;
+    sheet.initiativeMode = "auto";
+    sheet.combat.initiative = 3;
+    sheet.combat.initiativeBonus = 0;
     sheet.equipment = [{ index: "i1", name: "Leather Armor", quantity: 1, equipped: true }];
     renderSheet(sheet);
     expect(await screen.findByLabelText("Armor Class")).toHaveValue(14);
@@ -991,6 +994,8 @@ describe("level-up keeps the sheet's own numbers current", () => {
 
     // Leather armor: 11 + DEX modifier, now +4.
     expect(await screen.findByLabelText("Armor Class")).toHaveValue(15);
+    // Initiative follows the new Dexterity too (+3 -> +4).
+    expect(screen.getByRole("spinbutton", { name: "Initiative" })).toHaveValue(4);
   });
 });
 
@@ -1041,7 +1046,7 @@ describe("out-of-date numbers and optional class features", () => {
     const user = userEvent.setup();
     renderSheet(stalePippa());
 
-    const notice = await screen.findByText("2 numbers are out of date");
+    const notice = await screen.findByText("3 numbers are out of date");
     const box = notice.closest("[role='status']");
     expect(within(box).getByText(/AC 14 → 15/)).toBeInTheDocument();
     expect(within(box).getByText("Longbow: +5 / 1d8+3 → +9 / 1d8+4")).toBeInTheDocument();
@@ -1055,7 +1060,7 @@ describe("out-of-date numbers and optional class features", () => {
   it("keeps the player's numbers when they say so", async () => {
     const user = userEvent.setup();
     renderSheet(stalePippa());
-    const box = (await screen.findByText("2 numbers are out of date")).closest("[role='status']");
+    const box = (await screen.findByText("3 numbers are out of date")).closest("[role='status']");
     await user.click(within(box).getByRole("button", { name: "Keep mine" }));
     expect(screen.queryByText(/out of date/)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Armor Class")).toHaveValue(14);
@@ -1317,5 +1322,22 @@ describe("editing in place", () => {
     await user.click(screen.getByRole("button", { name: "Edit Darkvision" }));
     await user.click(within(document.querySelector(".character-sheet__inline-edit")).getByRole("button", { name: "Cancel" }));
     expect(document.querySelector(".character-sheet__inline-edit")).toBeNull();
+  });
+});
+
+describe("Initiative on an older sheet", () => {
+  it("offers Initiative +3 -> +5 for a stale number and changes it only on Update", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet({ level: 8 });
+    sheet.abilityScores = { ...sheet.abilityScores, dexterity: 20 };
+    sheet.combat.initiative = 3;
+    renderSheet(sheet);
+
+    const box = (await screen.findByText(/out of date/)).closest("[role='status']");
+    expect(within(box).getByText("Initiative +3 → +5 (from your Dexterity)")).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "Initiative" })).toHaveValue(3);
+    await user.click(within(box).getByRole("button", { name: "Update" }));
+    expect(screen.getByRole("spinbutton", { name: "Initiative" })).toHaveValue(5);
+    expect(screen.queryByText(/out of date/)).not.toBeInTheDocument();
   });
 });
