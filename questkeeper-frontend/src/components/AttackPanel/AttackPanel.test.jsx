@@ -347,4 +347,110 @@ describe("AttackPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: /Roll d20 \(\+10\)/ }));
     expect(attackRoll).toHaveBeenCalledWith(expect.objectContaining({ bonus: 10 }));
   });
+
+  // --- Dreadful Strikes (an on-hit feature) ---------------------------------------
+  describe("Dreadful Strikes", () => {
+    const dreadful = (status = "ok") => ({
+      key: "dreadful strikes",
+      name: "Dreadful Strikes",
+      dice: "1d6",
+      type: "psychic",
+      limit: "oncePerTargetPerTurn",
+      note: "Each creature can take it once per turn.",
+      eligibility: { status },
+    });
+    const hitOn = (overrides = {}) => makeCombat({ attack_state: "hit", attack_target: "c-kobold", ...overrides });
+
+    it("is offered after a hit, off until ticked, and dealt as its own psychic part", async () => {
+      vi.spyOn(Math, "random").mockReturnValue(0.5); // d4 -> 3, d6 -> 4
+      const onOnHitDealt = vi.fn();
+      render(<AttackPanel attack={dagger} combat={hitOn()} onClose={vi.fn()} onHitFeatures={[dreadful()]} onOnHitDealt={onOnHitDealt} />);
+
+      const box = screen.getByRole("checkbox", { name: "Dreadful Strikes: +1d6 psychic" });
+      expect(box).not.toBeChecked();
+      await userEvent.click(box);
+      await userEvent.click(screen.getByRole("button", { name: "Roll damage" }));
+      await userEvent.click(screen.getByRole("button", { name: "Deal 10 damage" }));
+      expect(dealDamage).toHaveBeenCalledWith("t1", 10, [
+        { amount: 6, type: "piercing", source: "Dagger" },
+        { amount: 4, type: "psychic", source: "Dreadful Strikes" },
+      ]);
+      expect(onOnHitDealt).toHaveBeenCalledWith([expect.objectContaining({ key: "dreadful strikes" })]);
+    });
+
+    it("can be declined: left unticked, it isn't rolled or used", async () => {
+      vi.spyOn(Math, "random").mockReturnValue(0.5);
+      const onOnHitDealt = vi.fn();
+      render(<AttackPanel attack={dagger} combat={hitOn()} onClose={vi.fn()} onHitFeatures={[dreadful()]} onOnHitDealt={onOnHitDealt} />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Roll damage" }));
+      await userEvent.click(screen.getByRole("button", { name: "Deal 6 damage" }));
+      expect(dealDamage).toHaveBeenCalledWith("t1", 6, [{ amount: 6, type: "piercing", source: "Dagger" }]);
+      expect(onOnHitDealt).not.toHaveBeenCalled();
+    });
+
+    it("doubles its dice on a critical hit, with the weapon's", async () => {
+      vi.spyOn(Math, "random").mockReturnValue(0.5);
+      render(<AttackPanel attack={dagger} combat={hitOn({ attack_crit: true })} onClose={vi.fn()} onHitFeatures={[dreadful()]} />);
+
+      await userEvent.click(screen.getByRole("checkbox", { name: "Dreadful Strikes: +1d6 psychic" }));
+      await userEvent.click(screen.getByRole("button", { name: "Roll damage" }));
+      // 3 x 2 + 3 piercing, 4 x 2 psychic.
+      await userEvent.click(screen.getByRole("button", { name: "Deal 17 damage" }));
+      expect(dealDamage).toHaveBeenCalledWith("t1", 17, [
+        { amount: 9, type: "piercing", source: "Dagger" },
+        { amount: 8, type: "psychic", source: "Dreadful Strikes" },
+      ]);
+    });
+
+    it("isn't offered before the hit, so a miss can't use it", async () => {
+      attackRoll.mockResolvedValue("miss");
+      const onOnHitDealt = vi.fn();
+      render(<AttackPanel attack={dagger} combat={makeCombat()} onClose={vi.fn()} onHitFeatures={[dreadful()]} onOnHitDealt={onOnHitDealt} />);
+
+      expect(screen.queryByRole("checkbox", { name: /Dreadful Strikes/ })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: /Roll d20/ }));
+      expect(await screen.findByText(/That misses!/)).toBeInTheDocument();
+      expect(screen.queryByRole("checkbox", { name: /Dreadful Strikes/ })).not.toBeInTheDocument();
+      expect(onOnHitDealt).not.toHaveBeenCalled();
+    });
+
+    it("is greyed out when it already landed on this creature this turn, and says so", () => {
+      render(<AttackPanel attack={dagger} combat={hitOn()} onClose={vi.fn()} onHitFeatures={[dreadful("used")]} />);
+
+      expect(screen.getByRole("checkbox", { name: "Dreadful Strikes: +1d6 psychic" })).toBeDisabled();
+      expect(screen.getByText("Already used on Kobold this turn.")).toBeInTheDocument();
+    });
+
+    it("asks the player to keep track when the turn isn't known", () => {
+      render(<AttackPanel attack={dagger} combat={hitOn()} onClose={vi.fn()} onHitFeatures={[dreadful("manual")]} />);
+
+      expect(screen.getByRole("checkbox", { name: "Dreadful Strikes: +1d6 psychic" })).toBeEnabled();
+      expect(screen.getByText(/can't tell whose turn it is, so check this yourself/)).toBeInTheDocument();
+    });
+
+    it("rides alongside Elemental Weapon, each part in its own type", async () => {
+      vi.spyOn(Math, "random").mockReturnValue(0.5); // d4 -> 3, d6 -> 4
+      const enchanted = {
+        ...dagger,
+        name: "The Darling Deceiver",
+        damageParts: [
+          { dice: "1d4+5", type: "piercing", source: "The Darling Deceiver" },
+          { dice: "1d4", type: "fire", source: "Elemental Weapon" },
+        ],
+        modifiers: [],
+        isEnchanted: false,
+      };
+      render(<AttackPanel attack={enchanted} combat={hitOn()} onClose={vi.fn()} onHitFeatures={[dreadful()]} />);
+
+      await userEvent.click(screen.getByRole("checkbox", { name: "Dreadful Strikes: +1d6 psychic" }));
+      await userEvent.click(screen.getByRole("button", { name: "Roll damage" }));
+      await userEvent.click(screen.getByRole("button", { name: "Deal 15 damage" }));
+      expect(dealDamage).toHaveBeenCalledWith("t1", 15, [
+        { amount: 8, type: "piercing", source: "The Darling Deceiver" },
+        { amount: 3, type: "fire", source: "Elemental Weapon" },
+        { amount: 4, type: "psychic", source: "Dreadful Strikes" },
+      ]);
+    });
+  });
 });

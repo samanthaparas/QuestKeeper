@@ -314,6 +314,9 @@ function CharacterSheetActionsTab({
   // its linked attack. Without it, a standalone attack is made as before.
   onInventoryWeaponAdd = null,
   onEndEffect = () => {},
+  // Features that add damage on a hit (Dreadful Strikes). Here, away from a
+  // table's attack panel, they're a roll the player adds themselves.
+  onHitFeatures = [],
   attacks,
   onAttackAdd,
   onAttackUpdate,
@@ -454,6 +457,24 @@ function CharacterSheetActionsTab({
     ...attacks,
     ...putAway.flatMap((entry) => entry.attacks),
   ]);
+
+  // On-hit features as one small line under the attacks: at a table the
+  // attack panel offers them after a hit and keeps track; here the player
+  // rolls and keeps track themselves.
+  const onHitLine =
+    onHitFeatures.length > 0 && (attacks?.length ?? 0) > 0 ? (
+        <p className="character-sheet__on-hit-line">
+          {onHitFeatures.map((feature) => (
+            <span key={feature.key}>
+              {feature.name}{" "}
+              <RollButton label={`${feature.name} (${feature.type})`} damage={feature.dice}>
+                +{feature.dice}
+              </RollButton>{" "}
+              {feature.type} on a hit <span className="character-sheet__damage-type">({feature.note.replace(/\.$/, "").toLowerCase()})</span>
+            </span>
+          ))}
+        </p>
+    ) : null;
 
   // Weapons put away: their attacks are kept, just hidden until equipped.
   const putAwayLine =
@@ -657,8 +678,9 @@ function CharacterSheetActionsTab({
         ]}
         emptyText="Weapons and other attacks go here. Tap Add Weapon and start typing a weapon's name: its damage fills in for you. Attack spells like Fire Bolt live on the Spells tab."
         footer={
-          putAwayLine || inventoryFooter ? (
+          onHitLine || putAwayLine || inventoryFooter ? (
             <>
+              {onHitLine}
               {putAwayLine}
               {inventoryFooter}
             </>

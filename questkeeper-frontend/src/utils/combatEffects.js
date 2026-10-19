@@ -221,8 +221,9 @@ export function addFlatDamage(damageText, bonus) {
 
 // --- Sharpshooter ----------------------------------------------------------------
 //
-// Sharpshooter (a feat) lets a ranged weapon attack take -5 to hit for +10
-// damage. It's chosen one attack at a time, never saved on the weapon. Its
+// Sharpshooter (the 2014 feat) lets a ranged weapon attack take -5 to hit
+// for +10 damage. The 2024 feat has no such trade, so only the 2014 one
+// (or one with no edition saved) offers it. It's chosen one attack at a time, never saved on the weapon. Its
 // other benefits need no numbers: long range doesn't give disadvantage, and
 // half and three-quarters cover don't count against your ranged weapon attacks.
 export const SHARPSHOOTER = {
@@ -237,7 +238,7 @@ export const SHARPSHOOTER = {
 // homebrew one) is the player's call, so the choice is offered unless it's
 // clearly not a weapon at all.
 export function canUseSharpshooter(sheet, attack, weaponDetailsFor = () => null) {
-  if (!hasFeat(sheet, "Sharpshooter")) return false;
+  if (!hasFeat(sheet, "Sharpshooter", { edition: "2014" })) return false;
   if (/unarmed/i.test(attack?.name ?? "")) return false;
   const { weapon } = attackWeaponFor(attack, weaponDetailsFor);
   if (weapon) return weapon.weapon_range === "Ranged";
@@ -426,3 +427,109 @@ export function previewEffect(sheet, key, choices) {
   };
   return getEffectiveAttack({ ...sheet, activeEffects: [effect] }, attack);
 }
+
+// --- On-hit features (Dreadful Strikes) ---------------------------------------------
+//
+// Some features add damage when an attack hits, chosen hit by hit. Each rule
+// below says:
+//   trigger   when it's offered ("weaponHit": after a weapon attack hits)
+//   has       whether this character has it (from their features or class,
+//             never their name)
+//   damage    the dice and type by class level (a homebrew subclass's own
+//             "Extra damage" steps win, when it lists them)
+//   limit     how often it can land: "oncePerTargetPerTurn" (each creature
+//             once per turn, other creatures still can), or null for none
+// A new feature is mostly a new entry here. Its damage is never part of the
+// weapon: it's offered at the damage step after a hit, off unless ticked,
+// and only counts as used once that damage is dealt, so a miss or a "not
+// this time" uses nothing.
+//
+// Dreadful Strikes (Fey Wanderer) isn't in the SRD, so only its numbers and
+// a short note in our own words are kept here.
+
+const featureKey = (name) => String(name ?? "").trim().toLowerCase();
+const hasFeatureNamed = (sheet, name) =>
+  (sheet?.features ?? []).some((feature) => featureKey(feature.name) === featureKey(name));
+
+export const ON_HIT_RULES = {
+  "dreadful strikes": {
+    name: "Dreadful Strikes",
+    trigger: "weaponHit",
+    has: (sheet) =>
+      hasFeatureNamed(sheet, "Dreadful Strikes") ||
+      (sheet?.class?.id === "ranger" && /fey wanderer/i.test(sheet?.class?.subclass?.name ?? "")),
+    damage: [
+      { level: 3, dice: "1d4", type: "psychic" },
+      { level: 11, dice: "1d6", type: "psychic" },
+    ],
+    limit: "oncePerTargetPerTurn",
+    note: "Each creature can take it once per turn.",
+  },
+};
+
+const stepAt = (steps, level) => [...(steps ?? [])].reverse().find((step) => level >= step.level) ?? null;
+
+// The on-hit features this character can use now for a trigger:
+// [{ key, name, dice, type, limit, note }]. homebrewDamage: the subclass's
+// features with damage steps (getSubclassFeatureDamage), when it's homebrew.
+export function getOnHitFeatures(sheet, homebrewDamage = [], trigger = "weaponHit") {
+  const level = Number(sheet?.level) || 1;
+  return Object.entries(ON_HIT_RULES).flatMap(([key, rule]) => {
+    if (rule.trigger !== trigger || !rule.has(sheet)) return [];
+    const homebrew = (homebrewDamage ?? []).find((feature) => featureKey(feature.name) === key);
+    const step = stepAt(homebrew?.damage, level) ?? stepAt(rule.damage, level);
+    if (!step) return [];
+    return [
+      {
+        key,
+        name: rule.name,
+        dice: step.dice,
+        type: String(step.type || rule.damage[0].type).toLowerCase(),
+        limit: rule.limit ?? null,
+        note: rule.note,
+      },
+    ];
+  });
+}
+
+// Which turn it is at a table: the round and whose turn. Both change on
+// every Next Turn, so a new turn always has a new key. null when the table
+// doesn't say (no fight running), so nothing is tracked by guesswork.
+export function turnKeyFor(table) {
+  if (!table?.combat_active || !table.current_combatant_id) return null;
+  return `${table.round ?? 1}:${table.current_combatant_id}`;
+}
+
+// The creatures (combatant ids) a feature has landed on this turn. A
+// different turn key means a new turn, so the list starts empty.
+export function onHitTargetsThisTurn(sheet, key, turnKey) {
+  const use = sheet?.onHitUses?.[key];
+  return use && turnKey && use.turn === turnKey ? use.targets : [];
+}
+
+// Can this feature go on this hit?
+//   { status: "ok" }       yes (and it will be tracked)
+//   { status: "used" }     it already landed on this creature this turn
+//   { status: "manual" }   it has a limit but the turn or target isn't
+//                          known, so the player checks it themselves and
+//                          nothing is tracked
+export function onHitEligibility(sheet, feature, { turnKey = null, targetId = null } = {}) {
+  if (feature?.limit !== "oncePerTargetPerTurn") return { status: "ok" };
+  if (!turnKey || !targetId) return { status: "manual" };
+  return onHitTargetsThisTurn(sheet, feature.key, turnKey).includes(targetId) ? { status: "used" } : { status: "ok" };
+}
+
+// Notes that the feature's damage was dealt to this creature this turn
+// (only for limited features, and only when the turn and target are known).
+export function recordOnHit(sheet, feature, turnKey, targetId) {
+  if (feature?.limit !== "oncePerTargetPerTurn" || !turnKey || !targetId) return sheet;
+  const targets = onHitTargetsThisTurn(sheet, feature.key, turnKey);
+  if (targets.includes(targetId)) return sheet;
+  return {
+    ...sheet,
+    onHitUses: { ...(sheet?.onHitUses ?? {}), [feature.key]: { turn: turnKey, targets: [...targets, targetId] } },
+  };
+}
+
+// The feature as a damage part, rolled and logged in its own type.
+export const onHitPart = (feature) => ({ dice: feature.dice, type: feature.type, source: feature.name });
