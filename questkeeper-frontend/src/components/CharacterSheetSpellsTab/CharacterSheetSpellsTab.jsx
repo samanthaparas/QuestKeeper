@@ -15,9 +15,65 @@ import {
 } from "../../utils/characterSheet";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
 import {
-  spellsMissingComponents,
+  castingTimeGroup,
+  castingTimeOrder,
+  durationGroup,
+  durationRounds,
+  SPELL_SCHOOLS,
+  spellFactsFrom,
+  spellsMissingDetails,
   spellsNeedingTypedComponents,
 } from "../../utils/spellComponents";
+
+// --- Sort and Show for the spell list ---------------------------------------
+// Level first (the default) keeps cantrips on top and each level together.
+const schoolOf = (spell) => spell.school || "School not filled in";
+const SPELL_SORTS = [
+  { key: "level", label: "Level", compare: (a, b) => (a.level ?? 0) - (b.level ?? 0) },
+  { key: "name", label: "Name (A–Z)", compare: () => 0 },
+  {
+    key: "school",
+    label: "School",
+    compare: (a, b) => (a.school ? 0 : 1) - (b.school ? 0 : 1) || schoolOf(a).localeCompare(schoolOf(b)),
+    groupOf: schoolOf,
+  },
+  {
+    key: "castingTime",
+    label: "Casting time",
+    compare: (a, b) => castingTimeOrder(a) - castingTimeOrder(b),
+    groupOf: castingTimeGroup,
+  },
+  {
+    key: "duration",
+    label: "Duration",
+    compare: (a, b) => durationRounds(a) - durationRounds(b),
+    groupOf: durationGroup,
+  },
+  {
+    key: "components",
+    label: "Components",
+    compare: (a, b) => String(a.components ?? "").localeCompare(String(b.components ?? "")),
+    groupOf: (spell) => spell.components || "Components not filled in",
+  },
+];
+const hasComponent = (letter) => (spell) =>
+  String(spell.components ?? "").toUpperCase().split(/[^A-Z]+/).includes(letter);
+const SPELL_FILTERS = [
+  { key: "concentration", label: "Concentration", match: (spell) => spell.concentration === true },
+  { key: "ritual", label: "Ritual", match: (spell) => spell.ritual === true },
+  { key: "cantrips", label: "Cantrips", match: (spell) => spell.level === 0 },
+  { key: "leveled", label: "Levelled spells", match: (spell) => spell.level > 0 },
+  { key: "bonus", label: "Bonus spells (don't count)", match: (spell) => Boolean(spell.bonusSpell || spell.grantedBy) },
+  { key: "bonusAction", label: "Bonus action", match: (spell) => castingTimeGroup(spell) === "Bonus action" },
+  { key: "reaction", label: "Reaction", match: (spell) => castingTimeGroup(spell) === "Reaction" },
+  { key: "noMaterial", label: "No material component", match: (spell) => spell.components && !hasComponent("M")(spell) },
+  { key: "material", label: "Needs a material component", match: hasComponent("M") },
+  ...SPELL_SCHOOLS.map((school) => ({
+    key: `school:${school}`,
+    label: school,
+    match: (spell) => spell.school === school,
+  })),
+];
 
 // "1st", "2nd", "3rd", "4th"... for the slot chips.
 function ordinal(level) {
@@ -61,17 +117,25 @@ function CharacterSheetSpellsTab({
     if (!match) return null;
 
     return getSpellDetails(match.index)
-      .then((details) => ({
-        level: String(match.level),
-        components: (details.components ?? []).join(", "),
-      }))
+      .then((details) => {
+        const facts = spellFactsFrom(details);
+        return {
+          level: String(match.level),
+          components: (details.components ?? []).join(", "),
+          school: facts.school ?? "",
+          castingTime: facts.castingTime ?? "",
+          duration: facts.duration ?? "",
+          concentration: Boolean(facts.concentration),
+          ritual: Boolean(facts.ritual),
+        };
+      })
       .catch(() => null);
   }
 
   // Spells added without components (older characters' starting spells).
   const findSrdIndex = (name) =>
     allSpells.find((spell) => spell.name.toLowerCase() === String(name).trim().toLowerCase())?.index ?? null;
-  const missingComponents = spellsMissingComponents(spellcasting, findSrdIndex).length;
+  const missingComponents = spellsMissingDetails(spellcasting, findSrdIndex).length;
   // Book spells the SRD can't fill (Beast Sense): named, so the player knows
   // to type them. Only once the SRD list has loaded, so SRD spells aren't
   // listed by mistake while it loads.
@@ -244,7 +308,7 @@ function CharacterSheetSpellsTab({
       {onFillComponents && missingComponents > 0 && (
         <p className="character-sheet__fill-components">
           {missingComponents === 1 ? "1 spell is" : `${missingComponents} spells are`} missing
-          {" "}components (V, S, M).{" "}
+          {" "}details (components, school, casting time, duration).{" "}
           <button type="button" onClick={fillComponents} disabled={isFilling}>
             {isFilling ? "Filling in…" : "Fill in from the SRD"}
           </button>
@@ -259,15 +323,12 @@ function CharacterSheetSpellsTab({
 
       <EditableItemList
         title="Spells"
-        // By level (cantrips first), then A to Z, so a level is easy to scan.
-        items={[
-          ...(spellcasting?.cantripsKnown ?? []),
-          ...(spellcasting?.spellsKnown ?? []),
-        ].sort(
-          (a, b) =>
-            (a.level ?? 0) - (b.level ?? 0) ||
-            String(a.name ?? "").localeCompare(String(b.name ?? ""), undefined, { sensitivity: "base" }),
-        )}
+        // Sorted by the Sort choice: by level (cantrips first), then A to Z,
+        // unless the player picks another order.
+        items={[...(spellcasting?.cantripsKnown ?? []), ...(spellcasting?.spellsKnown ?? [])]}
+        viewKey="spells"
+        sortOptions={SPELL_SORTS}
+        filterOptions={SPELL_FILTERS}
         getItemId={(item) => item.index}
         fields={[
           {
@@ -296,6 +357,21 @@ function CharacterSheetSpellsTab({
             placeholder: "Components (V, S, M)",
             width: "large",
           },
+          // Filled in for SRD spells; typed for book spells. Used to sort
+          // and filter the list.
+          {
+            key: "school",
+            type: "select",
+            defaultValue: "",
+            options: [
+              { value: "", label: "School" },
+              ...SPELL_SCHOOLS.map((school) => ({ value: school, label: school })),
+            ],
+          },
+          { key: "castingTime", type: "text", placeholder: "Casting time (e.g. 1 action)" },
+          { key: "duration", type: "text", placeholder: "Duration (e.g. 1 hour)" },
+          { key: "concentration", type: "checkbox", label: "Concentration" },
+          { key: "ritual", type: "checkbox", label: "Ritual" },
           {
             // Book spells aren't in the SRD: a link to where they're written
             // up (like dnd5e.wikidot.com), never the book's own text.
@@ -374,6 +450,17 @@ function CharacterSheetSpellsTab({
               >
                 Book link
               </a>
+            )}
+            {/* Short tags for what matters mid-fight. */}
+            {spell.concentration && (
+              <span className="character-sheet__resource-reset" title="Needs concentration">
+                Conc
+              </span>
+            )}
+            {spell.ritual && (
+              <span className="character-sheet__resource-reset" title="Can be cast as a ritual">
+                Ritual
+              </span>
             )}
             {spell.components && (
               <span className="character-sheet__spell-components" title="Components">

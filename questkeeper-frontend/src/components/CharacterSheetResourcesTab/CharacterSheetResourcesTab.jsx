@@ -1,6 +1,30 @@
 import UsePips, { MAX_PIPS } from "../UsePips/UsePips";
 import EditableItemList from "../EditableItemList/EditableItemList";
 
+// Ways to order the resources, and which ones to show. The default keeps
+// the order they were added.
+const restLabel = (resource) => (resource.resetOn === "short" ? "Short rest" : "Long rest");
+const RESOURCE_SORTS = [
+  { key: "added", label: "Order added" },
+  { key: "name", label: "Name (A–Z)", compare: () => 0 },
+  {
+    key: "rest",
+    label: "Rest that refills it",
+    // Short rest ones first: they come back sooner.
+    compare: (a, b) => restLabel(b).localeCompare(restLabel(a)),
+    groupOf: restLabel,
+  },
+  { key: "max", label: "Most uses", compare: (a, b) => (Number(b.max) || 0) - (Number(a.max) || 0) },
+  { key: "left", label: "Uses left", compare: (a, b) => (Number(b.current) || 0) - (Number(a.current) || 0) },
+];
+const RESOURCE_FILTERS = [
+  { key: "short", label: "Short rest", match: (resource) => resource.resetOn === "short" },
+  { key: "long", label: "Long rest", match: (resource) => resource.resetOn !== "short" },
+  { key: "ready", label: "Has uses left", match: (resource) => (Number(resource.current) || 0) > 0 },
+  { key: "spent", label: "Used up", match: (resource) => (Number(resource.current) || 0) <= 0 },
+  { key: "free", label: "Free spell casts", match: (resource) => Boolean(resource.freeCastFor) },
+];
+
 function CharacterSheetResourcesTab({
   resources,
   onResourceCurrentChange,
@@ -49,6 +73,9 @@ function CharacterSheetResourcesTab({
       // The pencil and trash wait behind "Edit resources", so rows stay calm in play.
       hasEditToggle
       editToggleLabel="Edit resources"
+      viewKey="resources"
+      sortOptions={RESOURCE_SORTS}
+      filterOptions={RESOURCE_FILTERS}
       extraRowContent={(resource) => (
         <>
           {/* A few uses (Channel Divinity): pips to tap. A big pool (Lay on

@@ -130,6 +130,7 @@ import {
   withSummonEnded,
 } from "./characterSheet";
 import { toCompanionRow } from "./partyStrip";
+import { getInventoryCategory } from "./characterSheet";
 import { featuresForNewLevel } from "./srdDetails";
 
 describe("getAbilityModifier", () => {
@@ -3717,5 +3718,51 @@ describe("a companion summoned with Summon Fey", () => {
     const unlinked = applySummonAction(cast, "unlink");
     expect(unlinked.companionCreature).toEqual(fable());
     expect(unlinked.concentration).toBeNull();
+  });
+});
+
+describe("inventory categories", () => {
+  it("guesses from the SRD first, then from the name, and a picked one always wins", () => {
+    expect(getInventoryCategory({ name: "Wisteria's Kiss" }, { weapon_category: "Martial" })).toBe("weapons");
+    expect(getInventoryCategory({ name: "Leather Armor" }, { armor_category: "Light" })).toBe("armor");
+    expect(getInventoryCategory({ name: "Arrows" }, { gear_category: { index: "ammunition" } })).toBe("consumables");
+    expect(getInventoryCategory({ name: "Potion of Healing" })).toBe("consumables");
+    expect(getInventoryCategory({ name: "Croissant" })).toBe("consumables");
+    expect(getInventoryCategory({ name: "+1 Longsword" })).toBe("weapons");
+    expect(getInventoryCategory({ name: "Cloak of Elvenkind" })).toBe("worn");
+    expect(getInventoryCategory({ name: "Silver locket" })).toBe("treasure");
+    expect(getInventoryCategory({ name: "Rope, hempen (50 feet)" })).toBe("gear");
+    expect(getInventoryCategory({ name: "Croissant", category: "treasure" })).toBe("treasure");
+    // Junk in the saved field is ignored.
+    expect(getInventoryCategory({ name: "Croissant", category: "snacks" })).toBe("consumables");
+  });
+
+  it("saves a category only when one is picked", () => {
+    expect(createEquipmentItem({ name: "Croissant", quantity: 1 })).not.toHaveProperty("category");
+    expect(createEquipmentItem({ name: "Rock", quantity: 1, category: "treasure" }).category).toBe("treasure");
+    expect(createEquipmentItem({ name: "Rock", quantity: 1, category: "nope" })).not.toHaveProperty("category");
+  });
+});
+
+describe("spell details on new spells", () => {
+  it("keeps them on a spell added by hand", () => {
+    const sheet = { class: { spellcastingType: "known" }, spellcasting: { cantripsKnown: [], spellsKnown: [] } };
+    const spellcasting = addManualSpell(sheet, {
+      name: "Beast Sense",
+      level: "2",
+      components: "S",
+      facts: { school: "Divination", ritual: true, concentration: true },
+    });
+    expect(spellcasting.spellsKnown[0]).toMatchObject({ name: "Beast Sense", school: "Divination", ritual: true, concentration: true });
+  });
+
+  it("keeps them on a spell learned at level-up", () => {
+    const spellcasting = applyLevelUpSpellChoices(
+      { type: "known", cantripsKnown: [], spellsKnown: [] },
+      { id: "ranger" },
+      { spells: [{ index: "silence", name: "Silence", level: 2, components: "V, S", facts: { school: "Illusion", ritual: true } }] },
+      5,
+    );
+    expect(spellcasting.spellsKnown[0]).toMatchObject({ name: "Silence", school: "Illusion", ritual: true, acquiredAtLevel: 5 });
   });
 });

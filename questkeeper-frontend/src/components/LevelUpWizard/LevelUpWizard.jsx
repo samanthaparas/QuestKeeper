@@ -62,6 +62,7 @@ import {
 import { getFeatureSubclassId, sourceFromEntry } from "../../utils/featureSources";
 import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
+import { spellFactsFrom } from "../../utils/spellComponents";
 
 // The dropdown value for "Book spell instead": the player types the spell in
 // themselves, for spells from books that aren't in the SRD list.
@@ -445,6 +446,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
         name: spell.name,
         level: spell.level,
         components: (details?.components ?? []).join(", "),
+        facts: spellFactsFrom(details),
       };
     };
 

@@ -68,6 +68,7 @@ import {
   applyInitiativeUpdate,
   applyFreeCastsSplit,
   applySummonAction,
+  getInventoryCategory,
   getSummonInfo,
   getSummonTemplate,
   getSpellAttackModifier,
@@ -96,7 +97,7 @@ import { loadHomebrew } from "../../utils/homebrewCache";
 import { getSubclassBonusSpells, getSubclassFeatureDamage } from "../../utils/homebrewMappers";
 import { describePicks } from "../../utils/featureChoices";
 import { RETRY_DELAYS } from "../../hooks/useSrdEquipmentLookup";
-import { fillMissingComponents } from "../../utils/spellComponents";
+import { fillMissingComponents, spellFactsFromForm } from "../../utils/spellComponents";
 import {
   isArmorDetails,
   magicArmorFor,
@@ -1155,6 +1156,7 @@ function CharacterSheetPage() {
       name: values.name.trim(),
       quantity: Number(values.quantity) || 1,
       description: values.description.trim(),
+      category: values.category,
     });
     persistSheet({ ...sheet, equipment: [...(sheet.equipment ?? []), item] });
   }
@@ -1166,6 +1168,8 @@ function CharacterSheetPage() {
         name: values.name.trim(),
         quantity: Number(values.quantity) || 1,
         description: values.description.trim(),
+        // "Guess for me" clears a picked category.
+        category: values.category || undefined,
       }),
     });
   }
@@ -1391,6 +1395,7 @@ function CharacterSheetPage() {
       components: values.components.trim(),
       bonusSpell: Boolean(values.bonusSpell),
       link: values.link?.trim() ?? "",
+      facts: spellFactsFromForm(values),
     });
     persistSheet({ ...sheet, spellcasting });
   }
@@ -1407,12 +1412,14 @@ function CharacterSheetPage() {
         components: values.components.trim(),
         bonusSpell: Boolean(values.bonusSpell),
         link: values.link?.trim() ?? "",
+        ...spellFactsFromForm(values, { keepBlank: true }),
       },
     );
     persistSheet({ ...sheet, spellcasting });
   }
 
-  // "Fill in from the SRD": only spells with no components get them.
+  // "Fill in from the SRD": only spells missing components or details
+  // (school, casting time, duration...) get them; typed ones are kept.
   async function handleFillComponents(findSrdIndex) {
     const spellcasting = await fillMissingComponents(sheet.spellcasting, findSrdIndex);
     if (spellcasting !== sheet.spellcasting) persistSheet({ ...sheet, spellcasting });
@@ -2570,6 +2577,7 @@ function CharacterSheetPage() {
                         handleEquipmentProficientToggle
                       }
                       isArmor={(item) => isArmorDetails(gearDetailsFor(item))}
+                      categoryOf={(item) => getInventoryCategory(item, gearDetailsFor(item))}
                       onEquipToggle={handleEquipToggle}
                     />
                   )}

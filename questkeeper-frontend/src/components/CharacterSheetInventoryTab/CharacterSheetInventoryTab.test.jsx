@@ -31,13 +31,51 @@ function renderTab(props = {}) {
 }
 
 describe("CharacterSheetInventoryTab", () => {
-  it("puts attuned items at the top", () => {
+  it("groups items by category, guessed from the name, under small headings", () => {
     renderTab();
+
+    const rows = screen.getAllByRole("listitem").map((row) => row.textContent);
+    expect(rows[0]).toBe("Armor & shields");
+    expect(rows[1]).toContain("Chain Mail");
+    expect(rows[2]).toBe("Worn items");
+    expect(rows[3]).toContain("Helm of Teleportation");
+    expect(rows[4]).toBe("Gear & tools");
+    expect(rows[5]).toContain("Pouch");
+  });
+
+  it("puts attuned items at the top when sorted in the order added", async () => {
+    window.localStorage.clear();
+    renderTab();
+    await userEvent.selectOptions(screen.getByLabelText("Sort Inventory"), "added");
 
     const names = screen.getAllByRole("listitem").map((row) => row.textContent);
     expect(names[0]).toContain("Helm of Teleportation");
     expect(names[1]).toContain("Chain Mail");
     expect(names[2]).toContain("Pouch");
+    window.localStorage.clear();
+  });
+
+  it("uses a picked category over the guess, and filters to one category", async () => {
+    window.localStorage.clear();
+    renderTab({
+      equipment: [
+        ...EQUIPMENT,
+        { index: "i4", name: "Croissant", quantity: 2 },
+        { index: "i5", name: "Potion of Healing", quantity: 3 },
+        { index: "i6", name: "Silver locket", quantity: 1 },
+        { index: "i7", name: "Lucky rock", quantity: 1, category: "treasure" },
+      ],
+    });
+    await userEvent.selectOptions(screen.getByLabelText("Show Inventory"), "category:consumables");
+    let rows = screen.getAllByRole("listitem").map((row) => row.textContent);
+    expect(rows[0]).toBe("Consumables");
+    expect(rows.slice(1).map((row) => row.split(" x")[0])).toEqual(["Croissant", "Potion of Healing"]);
+    expect(screen.getByText("2 of 7")).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Show Inventory"), "category:treasure");
+    rows = screen.getAllByRole("listitem").map((row) => row.textContent);
+    expect(rows).toEqual(["Treasure & keepsakes", expect.stringContaining("Lucky rock"), expect.stringContaining("Silver locket")]);
+    window.localStorage.clear();
   });
 
   it("keeps the pencil and trash buttons behind an Edit button", async () => {
@@ -84,4 +122,3 @@ describe("CharacterSheetInventoryTab", () => {
     expect(screen.queryByText(/Couldn't look up item details/)).not.toBeInTheDocument();
   });
 });
-

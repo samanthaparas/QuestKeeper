@@ -3,7 +3,13 @@ import {
   componentsText,
   fillMissingComponents,
   spellsMissingComponents,
+  spellsMissingDetails,
   spellsNeedingTypedComponents,
+  castingTimeGroup,
+  durationGroup,
+  durationRounds,
+  spellFactsFrom,
+  spellFactsFromForm,
 } from "./spellComponents";
 import { buildStartingSpellcasting, addRacialCantrip } from "./characterSheet";
 import { getSpellDetails } from "./api";
@@ -51,7 +57,43 @@ describe("spell components", () => {
 
     const filled = await fillMissingComponents(spellcasting, byName);
     expect(filled.spellsKnown.map((spell) => spell.components)).toEqual(["V, S, M", "V, S (my note)", ""]);
-    expect(getSpellDetails).not.toHaveBeenCalledWith("cure-wounds");
+  });
+
+  it("fills a spell's school, casting time, duration, concentration and ritual, keeping typed ones", async () => {
+    getSpellDetails.mockReset();
+    getSpellDetails.mockImplementation((index) =>
+      Promise.resolve({
+        index,
+        components: ["V", "S"],
+        school: { name: index === "silence" ? "Illusion" : "Enchantment" },
+        casting_time: "1 action",
+        duration: "Up to 10 minutes",
+        concentration: true,
+        ritual: index === "silence",
+      }),
+    );
+    const spellcasting = {
+      cantripsKnown: [],
+      spellsKnown: [
+        { index: "silence", name: "Silence", level: 2, components: "V, S" },
+        { index: "x2", name: "Charm Person", level: 1, components: "V, S", school: "Enchantment", duration: "1 hour" },
+      ],
+    };
+    expect(spellsMissingDetails(spellcasting).map(({ spell }) => spell.name)).toEqual(["Silence"]);
+    const filled = await fillMissingComponents(spellcasting);
+    expect(filled.spellsKnown[0]).toEqual({
+      index: "silence",
+      name: "Silence",
+      level: 2,
+      components: "V, S",
+      school: "Illusion",
+      castingTime: "1 action",
+      duration: "Up to 10 minutes",
+      concentration: true,
+      ritual: true,
+    });
+    // Typed details are never replaced.
+    expect(filled.spellsKnown[1]).toBe(spellcasting.spellsKnown[1]);
   });
 });
 
@@ -84,7 +126,43 @@ describe("spells the SRD can't fill", () => {
     getSpellDetails.mockReset();
     getSpellDetails.mockImplementation((index) => Promise.resolve({ components: index === "silence" ? ["V", "S"] : ["V"] }));
     const filled = await fillMissingComponents(spellcasting, byName);
-    expect(getSpellDetails.mock.calls.map(([index]) => index)).toEqual(["silence", "misty-step"]);
+    // Goodberry has its components, but not its other details yet.
+    expect(getSpellDetails.mock.calls.map(([index]) => index)).toEqual(["silence", "misty-step", "x"]);
     expect(filled.spellsKnown.map((spell) => spell.components)).toEqual(["", "V, S", "V", "V, S, M"]);
+  });
+});
+
+describe("spell details for sorting", () => {
+  it("reads the SRD's shape and ours, leaving out what's missing", () => {
+    expect(
+      spellFactsFrom({ school: { name: "Illusion" }, casting_time: "1 action", duration: "Up to 10 minutes", concentration: true, ritual: true }),
+    ).toEqual({ school: "Illusion", castingTime: "1 action", duration: "Up to 10 minutes", concentration: true, ritual: true });
+    expect(spellFactsFrom({ school: "Divination" })).toEqual({ school: "Divination" });
+    expect(spellFactsFrom(null)).toEqual({});
+  });
+
+  it("cleans the form: blanks left off a new spell, kept (to clear) on an edit", () => {
+    const values = { school: "Wizardry", castingTime: " 1 action ", duration: "", concentration: true, ritual: false };
+    expect(spellFactsFromForm(values)).toEqual({ castingTime: "1 action", concentration: true });
+    expect(spellFactsFromForm(values, { keepBlank: true })).toEqual({
+      school: "",
+      castingTime: "1 action",
+      duration: "",
+      concentration: true,
+      ritual: false,
+    });
+  });
+
+  it("orders durations from instant to until dispelled, and names casting times", () => {
+    const order = ["Until dispelled", "1 round", "Up to 8 hours", "Instantaneous", "Up to 1 minute", "Special", "10 minutes"]
+      .map((duration) => ({ duration }))
+      .sort((a, b) => durationRounds(a) - durationRounds(b))
+      .map(durationGroup);
+    expect(order).toEqual(["Instantaneous", "1 round", "1 minute", "10 minutes", "8 hours", "Until dispelled", "Special"]);
+    expect(
+      ["1 reaction, which you take when...", "1 bonus action", "1 action", "1 minute", ""].map((castingTime) =>
+        castingTimeGroup({ castingTime }),
+      ),
+    ).toEqual(["Reaction", "Bonus action", "Action", "Longer", "Not filled in"]);
   });
 });

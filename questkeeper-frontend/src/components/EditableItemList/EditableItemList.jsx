@@ -139,6 +139,30 @@ function IconButton({ kind, label, onClick }) {
   );
 }
 
+// The Sort and Show choices are remembered per list in this browser (a
+// convenience only: if storage is blocked, the list just starts on its
+// first options).
+function readListView(viewKey) {
+  if (!viewKey) return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(`qk-list-view:${viewKey}`)) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function saveListView(viewKey, view) {
+  if (!viewKey) return;
+  try {
+    window.localStorage.setItem(`qk-list-view:${viewKey}`, JSON.stringify(view));
+  } catch {
+    // Storage blocked (private window): the choice just isn't remembered.
+  }
+}
+
+const byName = (a, b) =>
+  String(a?.name ?? "").localeCompare(String(b?.name ?? ""), undefined, { sensitivity: "base" });
+
 function EditableItemList({
   title,
   items,
@@ -171,6 +195,16 @@ function EditableItemList({
   editToggleLabel = "Edit",
   // Something before the name on each row (a spell's level pill).
   leadingContent = null,
+  // Sort and Show (filter) choices above the list. The first of each is the
+  // default. sortOptions: [{ key, label, compare(a, b), groupOf(item) }]:
+  // compare orders the rows (ties go A to Z by name), and groupOf, when
+  // given, puts a small heading over each group ("Long rest"). Without
+  // compare the rows stay in the order given. filterOptions: [{ key,
+  // label, match(item) }], after a built-in "All"; ones nothing matches
+  // aren't offered. viewKey remembers the choices for this list.
+  sortOptions = null,
+  filterOptions = null,
+  viewKey = null,
 }) {
   const primaryField = fields[0];
   const textareaField = fields.find((field) => field.type === "textarea");
@@ -183,6 +217,33 @@ function EditableItemList({
   const [expandedIds, setExpandedIds] = useState(() => new Set());
   const [isEditMode, setIsEditMode] = useState(false);
   const showRowButtons = !hasEditToggle || isEditMode;
+
+  const [view, setView] = useState(() => readListView(viewKey));
+  function chooseView(changes) {
+    const next = { ...view, ...changes };
+    setView(next);
+    saveListView(viewKey, next);
+  }
+  const availableFilters = (filterOptions ?? []).filter((option) => items.some(option.match));
+  const sort = sortOptions?.find((option) => option.key === view.sort) ?? sortOptions?.[0] ?? null;
+  // A remembered filter that matches nothing now (the last potion was drunk)
+  // quietly goes back to All.
+  const filter = availableFilters.find((option) => option.key === view.filter) ?? null;
+  const filtered = filter ? items.filter(filter.match) : items;
+  const shownItems = sort?.compare
+    ? [...filtered].sort((a, b) => sort.compare(a, b) || byName(a, b))
+    : filtered;
+  // The group heading to put before each row that starts a new group.
+  const groupHeadings = new Map();
+  if (sort?.groupOf) {
+    let last = null;
+    shownItems.forEach((item) => {
+      const group = sort.groupOf(item);
+      if (group !== last) groupHeadings.set(getItemId(item), group);
+      last = group;
+    });
+  }
+  const hasControls = items.length > 1 && ((sortOptions?.length ?? 0) > 1 || availableFilters.length > 0);
 
   function resetForm() {
     setValues(createEmptyValues(fields));
@@ -404,6 +465,49 @@ function EditableItemList({
       {/* Adding a new one: the form opens at the top, by the Add button. */}
       {isAdding && renderForm()}
 
+      {hasControls && (
+        <div className="character-sheet__list-controls">
+          {(sortOptions?.length ?? 0) > 1 && (
+            <label className="character-sheet__list-control">
+              Sort
+              <select
+                aria-label={`Sort ${title}`}
+                value={sort.key}
+                onChange={(event) => chooseView({ sort: event.target.value })}
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {availableFilters.length > 0 && (
+            <label className="character-sheet__list-control">
+              Show
+              <select
+                aria-label={`Show ${title}`}
+                value={filter?.key ?? ""}
+                onChange={(event) => chooseView({ filter: event.target.value })}
+              >
+                <option value="">All</option>
+                {availableFilters.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {filter && (
+            <span className="character-sheet__list-count">
+              {shownItems.length} of {items.length}
+            </span>
+          )}
+        </div>
+      )}
+
       {items.length === 0 ? (
         <p className="character-sheet__empty-prompt">{emptyText}</p>
       ) : columns ? (
@@ -415,21 +519,24 @@ function EditableItemList({
             ))}
             <span></span>
           </div>
-          {items.map((item) => {
+          {shownItems.map((item) => {
             const id = getItemId(item);
             const notes = textareaField ? item[textareaField.key] : "";
+            const heading = groupHeadings.get(id);
 
             const panel = rowPanel ? rowPanel(item) : null;
             // Being edited: the form takes this row's place.
             if (id === editingId) {
               return (
-                <div className="character-sheet__inline-edit" key={id}>
-                  {renderForm({ inline: true })}
-                </div>
+                <Fragment key={id}>
+                  {heading && <p className="character-sheet__list-group">{heading}</p>}
+                  <div className="character-sheet__inline-edit">{renderForm({ inline: true })}</div>
+                </Fragment>
               );
             }
             return (
               <Fragment key={id}>
+              {heading && <p className="character-sheet__list-group">{heading}</p>}
               <div
                 className="character-sheet__attacks-row"
                 style={columnStyle}
@@ -470,21 +577,30 @@ function EditableItemList({
         </div>
       ) : (
         <ul className="character-sheet__resource-list">
-          {items.map((item) => {
+          {shownItems.map((item) => {
             const id = getItemId(item);
             const notes = textareaField ? item[textareaField.key] : "";
+            const heading = groupHeadings.get(id);
+            const headingRow = heading && (
+              <li className="character-sheet__list-group">
+                {heading}
+              </li>
+            );
 
             // Being edited: the form takes this row's place.
             if (id === editingId) {
               return (
-                <li className="character-sheet__inline-edit" key={id}>
-                  {renderForm({ inline: true })}
-                </li>
+                <Fragment key={id}>
+                  {headingRow}
+                  <li className="character-sheet__inline-edit">{renderForm({ inline: true })}</li>
+                </Fragment>
               );
             }
 
             return (
-              <li className="character-sheet__resource-row" key={id}>
+              <Fragment key={id}>
+              {headingRow}
+              <li className="character-sheet__resource-row">
                 {leadingContent && leadingContent(item)}
                 {renderPrimaryCell(item, id, notes)}
 
@@ -529,9 +645,20 @@ function EditableItemList({
                   </span>
                 )}
               </li>
+              </Fragment>
             );
           })}
         </ul>
+      )}
+
+      {/* Show picked something nothing on the list is right now. */}
+      {items.length > 0 && shownItems.length === 0 && (
+        <p className="character-sheet__empty-prompt">
+          Nothing to show for &ldquo;{filter?.label}&rdquo;.{" "}
+          <button type="button" className="character-sheet__lookup-retry" onClick={() => chooseView({ filter: "" })}>
+            Show all
+          </button>
+        </p>
       )}
 
       {footer}

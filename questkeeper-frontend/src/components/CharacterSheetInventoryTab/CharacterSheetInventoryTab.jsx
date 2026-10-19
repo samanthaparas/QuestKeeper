@@ -2,7 +2,14 @@ import EditableItemList from "../EditableItemList/EditableItemList";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
 import { useSrdEquipmentLookup } from "../../hooks/useSrdEquipmentLookup";
-import { getAttunedCount } from "../../utils/characterSheet";
+import {
+  getAttunedCount,
+  getInventoryCategory,
+  INVENTORY_CATEGORIES,
+  inventoryCategoryLabel,
+} from "../../utils/characterSheet";
+
+const ORDER = INVENTORY_CATEGORIES.map((category) => category.key);
 
 function CharacterSheetInventoryTab({
   equipment,
@@ -14,6 +21,8 @@ function CharacterSheetInventoryTab({
   // Armor and shields can be equipped; their AC then counts on the sheet.
   isArmor = () => false,
   onEquipToggle = () => {},
+  // An item's category: the one picked, or a guess (see getInventoryCategory).
+  categoryOf = (item) => getInventoryCategory(item),
 }) {
   const equipmentLookup = useSrdEquipmentLookup();
   const detailView = useSrdDetailView();
@@ -29,6 +38,35 @@ function CharacterSheetInventoryTab({
   const sortedEquipment = [
     ...equipment.filter((item) => item.attuned),
     ...equipment.filter((item) => !item.attuned),
+  ];
+
+  // Sort: by category (the default, with a heading over each), A to Z, most
+  // first, or as added. Show: one category, or what's attuned, worn or
+  // proficient.
+  const categoryLabel = (item) => inventoryCategoryLabel(categoryOf(item));
+  const sortOptions = [
+    {
+      key: "category",
+      label: "Category",
+      // Attuned items first within their category.
+      compare: (a, b) =>
+        ORDER.indexOf(categoryOf(a)) - ORDER.indexOf(categoryOf(b)) ||
+        Number(Boolean(b.attuned)) - Number(Boolean(a.attuned)),
+      groupOf: categoryLabel,
+    },
+    { key: "name", label: "Name (A–Z)", compare: () => 0 },
+    { key: "quantity", label: "Quantity (most first)", compare: (a, b) => (b.quantity ?? 1) - (a.quantity ?? 1) },
+    { key: "added", label: "Order added" },
+  ];
+  const filterOptions = [
+    ...INVENTORY_CATEGORIES.map((category) => ({
+      key: `category:${category.key}`,
+      label: category.label,
+      match: (item) => categoryOf(item) === category.key,
+    })),
+    { key: "attuned", label: "Attuned", match: (item) => Boolean(item.attuned) },
+    { key: "worn", label: "Wearing (armor)", match: (item) => Boolean(item.equipped) },
+    { key: "proficient", label: "Proficient", match: (item) => Boolean(item.proficient) },
   ];
 
   return (
@@ -48,8 +86,11 @@ function CharacterSheetInventoryTab({
         Attuned Items: {getAttunedCount(equipment)} / 3
       </p>
       <EditableItemList
-        title="Equipment"
+        title="Inventory"
         items={sortedEquipment}
+        viewKey="inventory"
+        sortOptions={sortOptions}
+        filterOptions={filterOptions}
         getItemId={(item) => item.index}
         fields={[
           {
@@ -64,6 +105,16 @@ function CharacterSheetInventoryTab({
             width: "small",
             min: 1,
             defaultValue: "1",
+          },
+          {
+            // Left on "Guess for me", the sheet guesses from the name.
+            key: "category",
+            type: "select",
+            defaultValue: "",
+            options: [
+              { value: "", label: "Category: guess for me" },
+              ...INVENTORY_CATEGORIES.map((category) => ({ value: category.key, label: category.label })),
+            ],
           },
           {
             key: "description",

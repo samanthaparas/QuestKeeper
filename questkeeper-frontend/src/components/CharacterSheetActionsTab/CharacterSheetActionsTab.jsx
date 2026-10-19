@@ -19,6 +19,31 @@ import {
 
 // attackPanelFor(attack): the attack panel for the attack being made, shown
 // right under that attack's row; null for the others.
+// Ways to order the attacks: as added (the default), A to Z, best to-hit
+// first, or grouped by damage type.
+const damageTypeOf = (attack) => String(attack.damageType ?? "").trim() || "No type";
+const ATTACK_SORTS = [
+  { key: "added", label: "Order added" },
+  { key: "name", label: "Name (A–Z)", compare: () => 0 },
+  { key: "toHit", label: "To hit (best first)", compare: (a, b) => (Number(b.toHit) || 0) - (Number(a.toHit) || 0) },
+  {
+    key: "type",
+    label: "Damage type",
+    compare: (a, b) => damageTypeOf(a).localeCompare(damageTypeOf(b)),
+    groupOf: damageTypeOf,
+  },
+];
+
+// Show just one damage type (only the types on the list are offered).
+function damageTypeFilters(attacks) {
+  const types = [...new Set((attacks ?? []).map(damageTypeOf))].sort();
+  return types.map((type) => ({
+    key: `type:${type.toLowerCase()}`,
+    label: type,
+    match: (attack) => damageTypeOf(attack) === type,
+  }));
+}
+
 function CharacterSheetActionsTab({
   onAttack,
   attackPanelFor = null,
@@ -240,6 +265,10 @@ function CharacterSheetActionsTab({
           equipmentLookup.findMatches(attack.name).length > 0
         }
         onNameClick={openAttackDetails}
+        // Sort and Show above the list; the choice is remembered here.
+        viewKey="attacks"
+        sortOptions={ATTACK_SORTS}
+        filterOptions={damageTypeFilters(attacks)}
       />
       <SrdDetailDialog view={detailView.view} onClose={detailView.close} />
     </>
