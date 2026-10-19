@@ -773,17 +773,21 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false }) {
                 ))}
               </select>
 
-              <div className="level-up-wizard__feat-card">
-                {isFeatLoading && <p>Loading feat...</p>}
-                {featDetails && (
-                  <>
-                    <h4>{featDetails.name}</h4>
-                    {getFeatDescriptionLines(featDetails).map((line, index) => (
-                      <p key={index}>{line}</p>
-                    ))}
-                  </>
-                )}
-              </div>
+              {/* Only shown once there's a feat to describe, so no empty box
+                  sits under the dropdown before one is picked. */}
+              {(isFeatLoading || featDetails) && (
+                <div className="level-up-wizard__feat-card">
+                  {isFeatLoading && <p>Loading feat...</p>}
+                  {featDetails && (
+                    <>
+                      <h4>{featDetails.name}</h4>
+                      {getFeatDescriptionLines(featDetails).map((line, index) => (
+                        <p key={index}>{line}</p>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
             </>
           )}
 
