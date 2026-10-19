@@ -17,6 +17,11 @@ import {
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
 import { spellsMissingComponents } from "../../utils/spellComponents";
 
+// "1st", "2nd", "3rd", "4th"... for the slot chips.
+function ordinal(level) {
+  return `${level}${level === 1 ? "st" : level === 2 ? "nd" : level === 3 ? "rd" : "th"}`;
+}
+
 function CharacterSheetSpellsTab({
   spellcasting,
   spellcastingAbility,
@@ -88,110 +93,128 @@ function CharacterSheetSpellsTab({
   }
 
   const slots = getSpellSlots(spellcasting);
+  // Slots' Max boxes, Hide and "+ Level N" show only while editing.
+  const [isEditingSlots, setIsEditingSlots] = useState(false);
 
   return (
     <>
-      {spellcastingAbility && (
-        <section className="character-sheet__section">
+      {/* Spellcasting and slots in one section: the three numbers on a single
+          line, then one small chip per slot level, so even a level 9 caster's
+          slots take a couple of short rows and the spells stay close. */}
+      <section className="character-sheet__section">
+        <div className="character-sheet__spellcasting-head">
           <h2 className="character-sheet__section-title">Spellcasting</h2>
-          {spellsStartAt && (
-            <p className="character-sheet__spells-not-yet" role="note">
-              {spellsStartAt.className} spellcasting starts at level {spellsStartAt.level}, so
-              there are no spell slots or spells from your class yet. Anything you add
-              below is by hand (for house rules or other features).
-            </p>
-          )}
-          <div className="character-sheet__hero-row">
-            <div className="character-sheet__stat-box">
-              <span className="character-sheet__stat-label">
-                Spellcasting Ability
-              </span>
-              <span className="character-sheet__stat-value">
+          {spellcastingAbility && (
+            <div className="character-sheet__spell-stats">
+              <span className="character-sheet__spell-stat">
+                <span className="character-sheet__spell-stat-label">Ability</span>{" "}
                 {ABILITY_ABBREVIATIONS[spellcastingAbility]}
               </span>
-            </div>
-            <div className="character-sheet__stat-box">
-              <span className="character-sheet__stat-label">Spell Save DC</span>
-              <span className="character-sheet__stat-value">
+              <span className="character-sheet__spell-stat">
+                <span className="character-sheet__spell-stat-label">Save DC</span>{" "}
                 {getSpellSaveDC(abilityScore, proficiencyBonus)}
               </span>
-            </div>
-            <div className="character-sheet__stat-box">
-              <span className="character-sheet__stat-label">Spell Attack</span>
-              {/* Tap to roll a spell attack. */}
-              <RollButton
-                label="Spell attack"
-                bonus={getSpellAttackModifier(abilityScore, proficiencyBonus)}
-                className="character-sheet__stat-value"
-              >
-                {formatModifier(
-                  getSpellAttackModifier(abilityScore, proficiencyBonus),
-                )}
-              </RollButton>
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section className="character-sheet__section">
-        <h2 className="character-sheet__section-title">Spell Slots</h2>
-
-        <ul className="character-sheet__spell-slots-grid">
-          {slots
-            .filter((slot) => activeSlotLevels.has(slot.level))
-            .map((slot) => (
-              <li className="character-sheet__spell-slot-card" key={slot.level}>
-                <span className="character-sheet__spell-slot-label">
-                  Level {slot.level}
-                </span>
-                {/* Tap a pip to spend a slot or get one back. */}
-                {slot.max > 0 && slot.max <= MAX_PIPS ? (
-                  <UsePips
-                    label={`Level ${slot.level} spell slots`}
-                    current={slot.current}
-                    max={slot.max}
-                    onChange={(value) =>
-                      onSpellSlotChange(slot.level, "current", value)
-                    }
-                  />
-                ) : (
-                  <input
-                    type="number"
-                    className="character-sheet__hp-input character-sheet__hp-input--tiny"
-                    aria-label={`Level ${slot.level} slots left`}
-                    value={slot.current}
-                    onChange={(e) =>
-                      onSpellSlotChange(slot.level, "current", e.target.value)
-                    }
-                    min={0}
-                    max={slot.max}
-                  />
-                )}
-                {/* How many slots of this level you have (Level Up sets it). */}
-                <label className="character-sheet__spell-slot-max">
-                  Max
-                  <input
-                    type="number"
-                    className="character-sheet__hp-input character-sheet__hp-input--tiny"
-                    value={slot.max}
-                    onChange={(e) =>
-                      onSpellSlotChange(slot.level, "max", e.target.value)
-                    }
-                    min={0}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="character-sheet__resource-remove"
-                  onClick={() => onHideSlotLevel(slot.level)}
+              <span className="character-sheet__spell-stat">
+                <span className="character-sheet__spell-stat-label">Attack</span>{" "}
+                {/* Tap to roll a spell attack. */}
+                <RollButton
+                  label="Spell attack"
+                  bonus={getSpellAttackModifier(abilityScore, proficiencyBonus)}
+                  className="character-sheet__spell-stat-roll"
                 >
-                  Hide
-                </button>
-              </li>
-            ))}
-        </ul>
+                  {formatModifier(getSpellAttackModifier(abilityScore, proficiencyBonus))}
+                </RollButton>
+              </span>
+            </div>
+          )}
+        </div>
 
-        {slots.some((slot) => !activeSlotLevels.has(slot.level)) && (
+        {spellcastingAbility && spellsStartAt && (
+          <p className="character-sheet__spells-not-yet" role="note">
+            {spellsStartAt.className} spellcasting starts at level {spellsStartAt.level}, so
+            there are no spell slots or spells from your class yet. Anything you add
+            below is by hand (for house rules or other features).
+          </p>
+        )}
+
+        <div className="character-sheet__spell-slots-bar">
+          <span className="character-sheet__spell-stat-label">Slots</span>
+          {/* role="list" keeps it a list for screen readers; its chips flow
+              in one line with the label and Edit slots. */}
+          <ul className="character-sheet__spell-slot-chips" role="list">
+            {slots
+              .filter((slot) => activeSlotLevels.has(slot.level))
+              .map((slot) => (
+                <li
+                  className={`character-sheet__spell-slot-chip${
+                    slot.max === 0 ? " character-sheet__spell-slot-chip--empty" : ""
+                  }`}
+                  key={slot.level}
+                >
+                  <span className="character-sheet__spell-slot-level">{ordinal(slot.level)}</span>
+                  {/* Tap a pip to spend a slot or get one back. */}
+                  {slot.max > 0 && slot.max <= MAX_PIPS ? (
+                    <UsePips
+                      compact
+                      label={`Level ${slot.level} spell slots`}
+                      current={slot.current}
+                      max={slot.max}
+                      onChange={(value) => onSpellSlotChange(slot.level, "current", value)}
+                    />
+                  ) : slot.max > 0 ? (
+                    <span className="character-sheet__spell-slot-count">
+                      <input
+                        type="number"
+                        className="character-sheet__hp-input character-sheet__hp-input--tiny"
+                        aria-label={`Level ${slot.level} slots left`}
+                        value={slot.current}
+                        onChange={(e) => onSpellSlotChange(slot.level, "current", e.target.value)}
+                        min={0}
+                        max={slot.max}
+                      />
+                      /{slot.max}
+                    </span>
+                  ) : (
+                    <span className="character-sheet__spell-slot-none">none</span>
+                  )}
+                  {/* Max and Hide are rarely needed (Level Up sets the max), so
+                      they only show while editing. */}
+                  {isEditingSlots && (
+                    <>
+                      <label className="character-sheet__spell-slot-max">
+                        Max
+                        <input
+                          type="number"
+                          className="character-sheet__hp-input character-sheet__hp-input--tiny"
+                          value={slot.max}
+                          onChange={(e) => onSpellSlotChange(slot.level, "max", e.target.value)}
+                          min={0}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="character-sheet__spell-slot-hide"
+                        aria-label={`Hide level ${slot.level} slots`}
+                        onClick={() => onHideSlotLevel(slot.level)}
+                      >
+                        ×
+                      </button>
+                    </>
+                  )}
+                </li>
+              ))}
+          </ul>
+          <button
+            type="button"
+            className="character-sheet__spell-slot-edit"
+            aria-expanded={isEditingSlots}
+            onClick={() => setIsEditingSlots((editing) => !editing)}
+          >
+            {isEditingSlots ? "Done" : "Edit slots"}
+          </button>
+        </div>
+
+        {isEditingSlots && slots.some((slot) => !activeSlotLevels.has(slot.level)) && (
           <div className="character-sheet__resource-form">
             {slots
               .filter((slot) => !activeSlotLevels.has(slot.level))
@@ -223,10 +246,15 @@ function CharacterSheetSpellsTab({
 
       <EditableItemList
         title="Spells"
+        // By level (cantrips first), then A to Z, so a level is easy to scan.
         items={[
           ...(spellcasting?.cantripsKnown ?? []),
           ...(spellcasting?.spellsKnown ?? []),
-        ].sort((a, b) => (a.level ?? 0) - (b.level ?? 0))}
+        ].sort(
+          (a, b) =>
+            (a.level ?? 0) - (b.level ?? 0) ||
+            String(a.name ?? "").localeCompare(String(b.name ?? ""), undefined, { sensitivity: "base" }),
+        )}
         getItemId={(item) => item.index}
         fields={[
           {
@@ -289,20 +317,31 @@ function CharacterSheetSpellsTab({
         onRemove={onSpellRemove}
         isLocked={(spell) => Boolean(spell.locked)}
         onToggleLock={onSpellLockToggle}
+        // Lock, Unlock, the pencil and the trash wait behind "Edit spells",
+        // so in play each row is just level, name and what helps at the table.
+        hasEditToggle
+        editToggleLabel="Edit spells"
+        leadingContent={(spell) => (
+          <span
+            className="character-sheet__spell-level-pill"
+            aria-label={spell.level === 0 ? "Cantrip" : `Level ${spell.level}`}
+          >
+            {spell.level === 0 ? "Cantrip" : `Lv ${spell.level}`}
+          </span>
+        )}
         isNameClickable={(spell) =>
           findSrdMatches(spell.name, allSpells).length > 0
         }
         onNameClick={openSpellDetails}
-        extraRowContent={(spell) => (
+        extraRowContent={(spell, { isEditMode: isEditingSpells } = {}) => (
           <>
-            {spell.locked && (
+            {/* Where a spell came from always shows; a plain lock only
+                matters while editing. */}
+            {spell.locked && (spell.grantedBy || isEditingSpells) && (
               <span className="character-sheet__lock-tag">
-                🔒 {describeSpellLock(spell)}
+                {spell.grantedBy ? describeSpellLock(spell) : `🔒 ${describeSpellLock(spell)}`}
               </span>
             )}
-            <span className="character-sheet__resource-reset">
-              {spell.level === 0 ? "Cantrip" : `Level ${spell.level}`}
-            </span>
             {spell.bonusSpell && (
               <span
                 className="character-sheet__resource-reset"
@@ -322,7 +361,7 @@ function CharacterSheetSpellsTab({
               </a>
             )}
             {spell.components && (
-              <span className="character-sheet__resource-reset">
+              <span className="character-sheet__spell-components" title="Components">
                 {spell.components}
               </span>
             )}

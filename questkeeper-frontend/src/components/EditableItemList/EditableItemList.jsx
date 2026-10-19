@@ -167,6 +167,10 @@ function EditableItemList({
   // Equipment: the pencil and trash buttons stay hidden (rows stay one calm
   // line on a phone) until "Edit" is tapped beside Add.
   hasEditToggle = false,
+  // The toggle's words ("Edit spells"); "Edit" if not given.
+  editToggleLabel = "Edit",
+  // Something before the name on each row (a spell's level pill).
+  leadingContent = null,
 }) {
   const primaryField = fields[0];
   const textareaField = fields.find((field) => field.type === "textarea");
@@ -323,7 +327,7 @@ function EditableItemList({
               aria-pressed={isEditMode}
               onClick={() => setIsEditMode((on) => !on)}
             >
-              {isEditMode ? "Done" : "Edit"}
+              {isEditMode ? "Done" : editToggleLabel}
             </Button>
           )}
           {isAdding ? (
@@ -416,8 +420,13 @@ function EditableItemList({
                       {rowAction.label}
                     </button>
                   )}
-                  <IconButton kind="edit" label={`Edit ${getLabel(item)}`} onClick={() => handleEdit(item)} />
-                  <IconButton kind="remove" label={`Remove ${getLabel(item)}`} onClick={() => handleRemoveClick(item, id)} />
+                  {/* With an Edit toggle, the pencil and trash wait for it. */}
+                  {showRowButtons && (
+                    <>
+                      <IconButton kind="edit" label={`Edit ${getLabel(item)}`} onClick={() => handleEdit(item)} />
+                      <IconButton kind="remove" label={`Remove ${getLabel(item)}`} onClick={() => handleRemoveClick(item, id)} />
+                    </>
+                  )}
                 </span>
               </div>
               {panel && <div className="character-sheet__row-panel">{panel}</div>}
@@ -433,42 +442,43 @@ function EditableItemList({
 
             return (
               <li className="character-sheet__resource-row" key={id}>
+                {leadingContent && leadingContent(item)}
                 {renderPrimaryCell(item, id, notes)}
 
-                {extraRowContent && extraRowContent(item)}
+                {extraRowContent && extraRowContent(item, { isEditMode })}
 
-                <span className="character-sheet__attacks-actions">
-                  {isLocked?.(item) ? (
-                    onToggleLock && (
-                      <button
-                        type="button"
-                        className="character-sheet__resource-remove"
-                        onClick={() => handleUnlockClick(item)}
-                      >
-                        Unlock
-                      </button>
-                    )
-                  ) : (
-                    <>
-                      {onToggleLock && (
+                {/* With an Edit toggle, Lock/Unlock, the pencil and the trash
+                    only show while editing, so rows stay calm in play. */}
+                {showRowButtons && (
+                  <span className="character-sheet__attacks-actions">
+                    {isLocked?.(item) ? (
+                      onToggleLock && (
                         <button
                           type="button"
                           className="character-sheet__resource-remove"
-                          aria-label={`Lock ${getLabel(item)}`}
-                          onClick={() => onToggleLock(item)}
+                          onClick={() => handleUnlockClick(item)}
                         >
-                          Lock
+                          Unlock
                         </button>
-                      )}
-                      {showRowButtons && (
-                        <>
-                          <IconButton kind="edit" label={`Edit ${getLabel(item)}`} onClick={() => handleEdit(item)} />
-                          <IconButton kind="remove" label={`Remove ${getLabel(item)}`} onClick={() => handleRemoveClick(item, id)} />
-                        </>
-                      )}
-                    </>
-                  )}
-                </span>
+                      )
+                    ) : (
+                      <>
+                        {onToggleLock && (
+                          <button
+                            type="button"
+                            className="character-sheet__resource-remove"
+                            aria-label={`Lock ${getLabel(item)}`}
+                            onClick={() => onToggleLock(item)}
+                          >
+                            Lock
+                          </button>
+                        )}
+                        <IconButton kind="edit" label={`Edit ${getLabel(item)}`} onClick={() => handleEdit(item)} />
+                        <IconButton kind="remove" label={`Remove ${getLabel(item)}`} onClick={() => handleRemoveClick(item, id)} />
+                      </>
+                    )}
+                  </span>
+                )}
               </li>
             );
           })}

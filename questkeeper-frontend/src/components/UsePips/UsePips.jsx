@@ -10,7 +10,8 @@ export const MAX_PIPS = 12;
 //
 // label: what they are, for screen readers ("Level 1 spell slots").
 // onChange(newCurrent)
-function UsePips({ label, current, max, onChange }) {
+// compact: pips and a short "3/4" count on one line (spell slot chips).
+function UsePips({ label, current, max, onChange, compact = false }) {
   const left = Math.max(0, Math.min(current ?? 0, max));
   // The count before this change, so newly lit pips can sweep in order.
   const [seen, setSeen] = useState({ left, from: left });
@@ -18,7 +19,7 @@ function UsePips({ label, current, max, onChange }) {
   const from = seen.from;
 
   return (
-    <div className="use-pips">
+    <div className={`use-pips${compact ? " use-pips--compact" : ""}`}>
       <div className="use-pips__row" role="group" aria-label={`${label}: ${left} of ${max} left`}>
         {Array.from({ length: max }, (_, index) => {
           const lit = index < left;
@@ -42,7 +43,7 @@ function UsePips({ label, current, max, onChange }) {
         })}
       </div>
       <span className="use-pips__count">
-        {left} of {max} left
+        {compact ? `${left}/${max}` : `${left} of ${max} left`}
       </span>
     </div>
   );

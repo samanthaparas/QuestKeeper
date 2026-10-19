@@ -113,6 +113,9 @@ describe("CompanionCard", () => {
       expect.objectContaining({ text: "Flies 90 ft" }),
     ]);
 
+    // Removing waits for "Edit stats", like the other lists' Edit buttons.
+    expect(screen.queryByRole("button", { name: "Remove note: Wears barding" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: /Edit stats/ }));
     await user.click(screen.getByRole("button", { name: "Remove note: Wears barding" }));
     expect(onNotesChange).toHaveBeenLastCalledWith([]);
   });

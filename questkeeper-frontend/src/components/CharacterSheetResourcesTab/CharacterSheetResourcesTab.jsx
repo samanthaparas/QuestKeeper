@@ -46,6 +46,9 @@ function CharacterSheetResourcesTab({
       onAdd={onResourceAdd}
       onUpdate={onResourceUpdate}
       onRemove={onResourceRemove}
+      // The pencil and trash wait behind "Edit resources", so rows stay calm in play.
+      hasEditToggle
+      editToggleLabel="Edit resources"
       extraRowContent={(resource) => (
         <>
           {/* A few uses (Channel Divinity): pips to tap. A big pool (Lay on

@@ -98,3 +98,20 @@
     background-color: var(--qk-terracotta-soft);
   }
 }
+
+/* Compact: everything on one line, for small spell slot chips. */
+.use-pips--compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.use-pips--compact .use-pips__row {
+  flex-wrap: nowrap;
+  gap: 5px;
+  max-width: none;
+}
+
+.use-pips--compact .use-pips__count {
+  font-size: 13px;
+}
