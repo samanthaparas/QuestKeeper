@@ -1077,7 +1077,7 @@ describe("out-of-date numbers and optional class features", () => {
     // Its row in the list (the panel's heading says it too).
     expect(document.querySelector(".character-sheet__resource-name")?.textContent).toBe("Favored Foe");
     // At level 6 the extra damage is a d6.
-    expect(screen.getByText("Extra damage: 1d6")).toBeInTheDocument();
+    expect(screen.getByText("Extra damage: 1d6 · Needs concentration; once per turn")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Stop using Favored Foe" })).toBeInTheDocument();
   });
 });
@@ -1122,5 +1122,25 @@ describe("homebrew subclass bonus spells on an existing character", () => {
     await user.click(screen.getByRole("tab", { name: "Spells" }));
     expect(screen.getAllByText("Charm Person")).toHaveLength(1);
     expect(screen.getAllByText(/From Fey Wanderer/)).toHaveLength(2);
+  });
+});
+
+describe("Roving's speed on a sheet switched on before the fix", () => {
+  it("offers Speed 30 → 35 and changes it only on Update", async () => {
+    const user = userEvent.setup();
+    const sheet = makeSheet({ level: 6 });
+    sheet.class = { id: "ranger", name: "Ranger", hitDie: 10 };
+    sheet.optionalFeatures = { deftExplorer: true };
+    sheet.speed = 35; // where the old version put it
+    sheet.combat.speed = 30;
+    sheet.features = [{ index: "r", name: "Deft Explorer: Roving", description: "" }];
+    renderSheet(sheet);
+
+    const box = (await screen.findByText("1 number is out of date")).closest("[role='status']");
+    expect(within(box).getByText("Speed 30 → 35 ft (from Deft Explorer: Roving)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Speed")).toHaveValue(30);
+    await user.click(within(box).getByRole("button", { name: "Update" }));
+    expect(screen.getByLabelText("Speed")).toHaveValue(35);
+    expect(screen.queryByText(/out of date/)).not.toBeInTheDocument();
   });
 });

@@ -547,9 +547,9 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
       .filter((slot) => slot.max !== (slotsBefore[slot.level] ?? 0))
       .map((slot) => `level ${slot.level}: ${slotsBefore[slot.level] ?? 0} → ${slot.max}`);
     if (slotChanges.length) gains.push(`Spell slots: ${slotChanges.join(", ")}`);
-    if ((Number(preview.speed) || 0) !== (Number(sheet.speed) || 0)) {
-      gains.push(`Speed: ${sheet.speed} → ${preview.speed} ft`);
-    }
+    const speedBefore = Number(sheet.combat?.speed) || 30;
+    const speedAfter = Number(preview.combat?.speed) || 30;
+    if (speedAfter !== speedBefore) gains.push(`Speed: ${speedBefore} → ${speedAfter} ft`);
 
     // Features picked in Class Choices are listed with the choices instead.
     const picked = new Set(

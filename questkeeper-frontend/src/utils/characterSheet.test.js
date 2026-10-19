@@ -81,6 +81,7 @@ import {
   subclassSpellsToGrant,
   subclassSpellsCountedByHand,
   markSpellsGrantedBy,
+  applySpeedUpdates,
   updateFeat,
   updateSpell,
   getSpellcastingAbility,
@@ -2600,6 +2601,7 @@ describe("Fighting Styles and renamed weapons in the numbers", () => {
       attacks: [
         { index: "a", name: "Longbow", saved: { toHit: 5, damage: "1d8+3" }, worked: { toHit: 9, damage: "1d8+4" } },
       ],
+      speed: [],
     });
     expect(JSON.stringify(pippa)).toBe(before);
     // A typed-in AC (manual) is never questioned.
@@ -2611,7 +2613,7 @@ describe("Tasha's optional Ranger features", () => {
   const ranger = (extra = {}) => ({
     level: 6,
     class: { id: "ranger", name: "Ranger" },
-    speed: 30,
+    combat: { speed: 30 },
     languages: "Common, Elvish",
     skills: { stealth: true, perception: true },
     skillExpertise: {},
@@ -2667,7 +2669,7 @@ describe("Tasha's optional Ranger features", () => {
     expect(names(after)).toContain("Deft Explorer: Roving");
     expect(names(after)).not.toContain("Deft Explorer: Tireless");
     expect(names(after).some((name) => name.startsWith("Natural Explorer"))).toBe(false);
-    expect(after.speed).toBe(35);
+    expect(after.combat.speed).toBe(35);
     expect(after.languages).toBe("Common, Elvish\nChoose 2 more (Canny)");
     const canny = after.features.find((feature) => feature.name === "Deft Explorer: Canny");
     expect(canny.choices[0]).toMatchObject({ choose: 1, options: ["perception", "stealth"], grantsExpertise: true });
@@ -2690,7 +2692,7 @@ describe("Tasha's optional Ranger features", () => {
   it("switches back off cleanly", () => {
     const on = switchOptionalFeature(switchOptionalFeature(ranger(), "deftExplorer", true), "primalAwareness", true);
     const off = switchOptionalFeature(switchOptionalFeature(on, "deftExplorer", false), "primalAwareness", false);
-    expect(off.speed).toBe(30);
+    expect(off.combat.speed).toBe(30);
     expect(names(off).some((name) => name.startsWith("Deft Explorer") || name === "Primal Awareness")).toBe(false);
     expect(off.spellcasting.spellsKnown.map((spell) => spell.name)).toEqual(["Goodberry"]);
     expect(off.optionalFeatures).toEqual({ deftExplorer: false, primalAwareness: false });
@@ -2767,11 +2769,11 @@ function pippaLike() {
     level: 6,
     class: { id: "ranger", name: "Ranger", hitDie: 10, subclass: { id: "hb_fw1", name: "Fey Wanderer" } },
     abilityScores: { strength: 12, dexterity: 18, constitution: 13, intelligence: 12, wisdom: 14, charisma: 13 },
-    speed: 30,
     languages: "Common, Elvish\nChoose 1 more (your race)",
     skills: { stealth: true, perception: true, insight: true, survival: true },
     skillExpertise: { stealth: true },
     combat: {
+      speed: 30,
       hitPoints: { max: 57, current: 57, temporary: 0 },
       hitDice: { total: 6, remaining: 6, die: 10 },
       hpHistory: [],
@@ -2861,7 +2863,7 @@ describe("switching an existing level 6 Ranger to Tasha's options", () => {
   it("keeps HP, gear, attacks and unrelated features, and removes only what's replaced", () => {
     const before = pippaLike();
     const after = switched();
-    expect(after.combat).toEqual(before.combat);
+    expect(after.combat).toEqual({ ...before.combat, speed: 35 });
     expect(after.equipment).toEqual(before.equipment);
     expect(after.attacks).toEqual(before.attacks);
     const names = after.features.map((feature) => feature.name);
@@ -2873,7 +2875,7 @@ describe("switching an existing level 6 Ranger to Tasha's options", () => {
       "Deft Explorer: Roving",
       "Primal Awareness",
     ]);
-    expect(after.speed).toBe(35);
+    expect(after.combat.speed).toBe(35);
   });
 
   it("adds Primal Awareness's level 3 and 5 spells outside spells known", () => {
@@ -2961,5 +2963,119 @@ describe("a level 6 to 7 Fey Wanderer Ranger using Tasha's options", () => {
     expect(featuresForNewLevel(entries, 7, sheet.features.map((feature) => feature.name)).map((entry) => entry.name)).toEqual([
       "Beguiling Twist",
     ]);
+  });
+});
+
+describe("Roving's speed", () => {
+  it("goes on the Speed box when Deft Explorer is switched on, and comes off exactly", () => {
+    const on = switchOptionalFeature(pippaLike(), "deftExplorer", true);
+    expect(on.combat.speed).toBe(35);
+    expect(on.features.find((feature) => feature.name === "Deft Explorer: Roving").speedBonus).toBe(5);
+    expect(switchOptionalFeature(on, "deftExplorer", false).combat.speed).toBe(30);
+    // A speed the player changed afterwards (a Longstrider spell, boots) only
+    // loses Roving's 5.
+    const typed = { ...on, combat: { ...on.combat, speed: 45 } };
+    expect(switchOptionalFeature(typed, "deftExplorer", false).combat.speed).toBe(40);
+  });
+
+  it("is offered as an update on a sheet switched on before the fix, and not changed until then", () => {
+    // Pippa's sheet as saved: Roving on, its 5 in an unused field, Speed 30.
+    const on = switchOptionalFeature(pippaLike(), "deftExplorer", true);
+    const roving = on.features.find((feature) => feature.name === "Deft Explorer: Roving");
+    const saved = {
+      ...on,
+      speed: 35,
+      combat: { ...on.combat, speed: 30 },
+      features: on.features.map((feature) => (feature === roving ? { ...feature, speedBonus: undefined } : feature)),
+    };
+    const stale = getOutOfDateNumbers(saved, () => null, null).speed;
+    expect(stale).toEqual([
+      { featureIndex: roving.index, name: "Deft Explorer: Roving", saved: 30, worked: 35, bonus: 5 },
+    ]);
+
+    const updated = applySpeedUpdates(saved, stale);
+    expect(updated.combat.speed).toBe(35);
+    expect("speed" in updated).toBe(false);
+    expect(getOutOfDateNumbers(updated, () => null, null).speed).toEqual([]);
+    // The rest of the sheet is as it was.
+    expect(updated.combat.hitPoints).toEqual(saved.combat.hitPoints);
+    expect(updated.spellcasting).toEqual(saved.spellcasting);
+
+    // "Keep mine": Speed stays 30, isn't asked again, and switching off
+    // later doesn't take 5 the sheet never got.
+    const kept = applySpeedUpdates(saved, stale, { keep: true });
+    expect(kept.combat.speed).toBe(30);
+    expect(getOutOfDateNumbers(kept, () => null, null).speed).toEqual([]);
+    expect(switchOptionalFeature(kept, "deftExplorer", false).combat.speed).toBe(30);
+  });
+});
+
+describe("Pippa's damage features don't stack by mistake", () => {
+  const longbow = {
+    name: "Longbow",
+    weapon_category: "Martial",
+    weapon_range: "Ranged",
+    damage: { damage_dice: "1d8" },
+    properties: [],
+  };
+  const math = (features) =>
+    getWeaponAttackMath({
+      weapon: longbow,
+      scores: { strength: 12, dexterity: 18 },
+      proficiencyNames: ["Martial Weapons"],
+      proficiencyBonus: 3,
+      fightingStyles: getFightingStyles(features),
+    });
+
+  it("counts Archery once, whatever other Fighting Style features are listed", () => {
+    const features = [
+      { name: "Fighting Style" },
+      { name: "Fighting Style: Archery" },
+      { name: "Fighting Style: Archery" },
+    ];
+    expect(math(features).toHit).toBe(9);
+    expect(math([{ name: "Fighting Style" }]).toHit).toBe(7);
+  });
+
+  it("leaves Favored Foe and Dreadful Strikes out of the weapon's own damage", () => {
+    const sheet = switchOptionalFeature(pippaLike(), "favoredFoe", true);
+    expect(math(sheet.features).damage).toBe("1d8+4");
+    const foe = sheet.features.find((feature) => feature.name === "Favored Foe");
+    expect(foe).toBeTruthy();
+    expect(sheet.features.some((feature) => feature.name === "Dreadful Strikes")).toBe(true);
+    // Favored Foe tracks its own uses: proficiency bonus per long rest.
+    expect(sheet.resources).toEqual([
+      expect.objectContaining({ name: "Favored Foe", max: 3, resetOn: "long" }),
+    ]);
+    const grant = getOptionalClassFeatures(sheet.class)[0].grants[0];
+    expect([getGrantDamage(grant, 6), grant.note]).toEqual(["1d6", "Needs concentration; once per turn"]);
+  });
+});
+
+describe("language reminders", () => {
+  it("clear as each placeholder line is replaced, and leave proficiencies alone", () => {
+    const sheet = switchOptionalFeature(pippaLike(), "deftExplorer", true);
+    sheet.proficiencies = [{ index: "p1", name: "Disguise kit" }];
+    const languageTasks = (languages) =>
+      getSetupTasks({ ...sheet, languages }).filter((task) => task.key.startsWith("language:")).map((task) => task.label);
+
+    expect(languageTasks(sheet.languages)).toEqual([
+      "Choose 1 more language (your race)",
+      "Choose 2 more languages (Canny)",
+    ]);
+    expect(languageTasks("Common, Elvish, Sylvan\nChoose 2 more (Canny)")).toEqual([
+      "Choose 2 more languages (Canny)",
+    ]);
+    expect(languageTasks("Common, Elvish, Sylvan, Draconic, Gnomish")).toEqual([]);
+    expect(sheet.proficiencies).toEqual([{ index: "p1", name: "Disguise kit" }]);
+  });
+});
+
+describe("inventory weapons and renamed attacks", () => {
+  it("doesn't offer a Longbow again when a renamed attack is that Longbow", () => {
+    const longbow = { index: "longbow", name: "Longbow" };
+    const equipment = [{ index: "i1", name: "Longbow" }];
+    expect(findInventoryWeapons(equipment, [longbow], [{ name: "Wisteria's Kiss", baseWeapon: "Longbow" }])).toEqual([]);
+    expect(findInventoryWeapons(equipment, [longbow], [{ name: "Wisteria's Kiss" }])).toHaveLength(1);
   });
 });
