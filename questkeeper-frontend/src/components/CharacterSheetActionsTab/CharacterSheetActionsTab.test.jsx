@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CharacterSheetActionsTab from "./CharacterSheetActionsTab";
 import { getWeaponDetails } from "../../utils/api";
+import { installFakeStorage } from "../../test/fakeStorage";
 
 vi.mock("../../utils/api", () => ({
   getWeapons: vi.fn().mockResolvedValue([
@@ -210,7 +211,7 @@ describe("CharacterSheetActionsTab", () => {
   });
 
   it("sorts attacks by to-hit or damage type, and shows one damage type", async () => {
-    window.localStorage.clear();
+    installFakeStorage();
     renderTab({
       equipment: [],
       attacks: [
@@ -232,6 +233,5 @@ describe("CharacterSheetActionsTab", () => {
 
     await userEvent.selectOptions(screen.getByLabelText("Show Attacks"), "type:bludgeoning");
     expect(names()).toEqual(["# Bludgeoning", "Club"]);
-    window.localStorage.clear();
   });
 });

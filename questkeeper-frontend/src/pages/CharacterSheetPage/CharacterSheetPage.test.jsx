@@ -8,6 +8,7 @@ import { getCharacter } from "../../utils/characterStore";
 import { listCharacterTables } from "../../utils/tableStore";
 import { getEquipment, getEquipmentDetails } from "../../utils/api";
 import { createCharacterSheet } from "../../utils/characterSheet";
+import { installFakeStorage } from "../../test/fakeStorage";
 
 // --- Fakes for everything that would talk to the network ---
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -1459,7 +1460,7 @@ describe("sort and show on the sheet's lists", () => {
       .map((row) => row.textContent);
 
   it("sorts spells by school with headings, shows only concentration spells, and remembers the choice", async () => {
-    window.localStorage.clear();
+    installFakeStorage();
     const user = userEvent.setup();
     const sheet = makeSheet({ class: { id: "ranger", name: "Ranger", spellcastingType: "known", spellcastingAbility: "wisdom" } });
     sheet.spellcasting = {
@@ -1497,11 +1498,10 @@ describe("sort and show on the sheet's lists", () => {
     await user.click(await screen.findByRole("tab", { name: "Spells" }));
     expect(screen.getByLabelText("Sort Spells")).toHaveValue("duration");
     expect(screen.getByLabelText("Show Spells")).toHaveValue("concentration");
-    window.localStorage.clear();
   });
 
   it("groups resources by the rest that refills them, and shows only used-up ones", async () => {
-    window.localStorage.clear();
+    installFakeStorage();
     const user = userEvent.setup();
     const sheet = makeSheet();
     sheet.resources = [
@@ -1528,11 +1528,10 @@ describe("sort and show on the sheet's lists", () => {
     expect(rowNames(list())).toHaveLength(1);
     await user.selectOptions(screen.getByLabelText("Show Resources"), "free");
     expect(rowNames(list())[0]).toContain("Beast Sense");
-    window.localStorage.clear();
   });
 
   it("adds a spell's school, duration, concentration and ritual from the form", async () => {
-    window.localStorage.clear();
+    installFakeStorage();
     const user = userEvent.setup();
     const sheet = makeSheet({ class: { id: "ranger", name: "Ranger", spellcastingType: "known", spellcastingAbility: "wisdom" } });
     sheet.spellcasting = { type: "known", cantripsKnown: [], spellsKnown: [], spellSlots: [] };

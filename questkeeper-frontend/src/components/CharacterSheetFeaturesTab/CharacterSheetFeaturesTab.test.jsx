@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CharacterSheetFeaturesTab from "./CharacterSheetFeaturesTab";
+import { installFakeStorage } from "../../test/fakeStorage";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
 
@@ -206,7 +207,7 @@ describe("CharacterSheetFeaturesTab: sort and show", () => {
     );
 
   it("groups features by where they're from, and sorts them by level", async () => {
-    window.localStorage.clear();
+    installFakeStorage();
     renderTab({ classId: "ranger", level: 5, features, optionalFeatures });
     await userEvent.selectOptions(screen.getByLabelText("Sort Features"), "origin");
     expect(groupedRows("Features")).toEqual([
@@ -225,11 +226,10 @@ describe("CharacterSheetFeaturesTab: sort and show", () => {
     expect(groupedRows("Features").slice(0, 3)).toEqual(["Darkvision", "Spellcasting", "Dreadful Strikes"]);
     await userEvent.selectOptions(screen.getByLabelText("Show Features"), "origin:Subclass");
     expect(groupedRows("Features")).toEqual(["Dreadful Strikes"]);
-    window.localStorage.clear();
   });
 
   it("groups proficiencies by kind, guessed from their names", async () => {
-    window.localStorage.clear();
+    installFakeStorage();
     renderTab({
       proficiencies: [
         { index: "p1", name: "Longbows" },
@@ -248,6 +248,5 @@ describe("CharacterSheetFeaturesTab: sort and show", () => {
       "# Tools",
       "Thieves' Tools",
     ]);
-    window.localStorage.clear();
   });
 });

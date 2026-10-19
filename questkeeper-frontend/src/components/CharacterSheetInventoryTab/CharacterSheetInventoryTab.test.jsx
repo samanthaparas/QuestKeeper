@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CharacterSheetInventoryTab from "./CharacterSheetInventoryTab";
+import { installFakeStorage } from "../../test/fakeStorage";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
 // What the SRD item look-up says (a test can change it).
@@ -44,7 +45,7 @@ describe("CharacterSheetInventoryTab", () => {
   });
 
   it("puts attuned items at the top when sorted in the order added", async () => {
-    window.localStorage.clear();
+    installFakeStorage();
     renderTab();
     await userEvent.selectOptions(screen.getByLabelText("Sort Inventory"), "added");
 
@@ -52,11 +53,10 @@ describe("CharacterSheetInventoryTab", () => {
     expect(names[0]).toContain("Helm of Teleportation");
     expect(names[1]).toContain("Chain Mail");
     expect(names[2]).toContain("Pouch");
-    window.localStorage.clear();
   });
 
   it("uses a picked category over the guess, and filters to one category", async () => {
-    window.localStorage.clear();
+    installFakeStorage();
     renderTab({
       equipment: [
         ...EQUIPMENT,
@@ -75,7 +75,6 @@ describe("CharacterSheetInventoryTab", () => {
     await userEvent.selectOptions(screen.getByLabelText("Show Inventory"), "category:treasure");
     rows = screen.getAllByRole("listitem").map((row) => row.textContent);
     expect(rows).toEqual(["Treasure & keepsakes", expect.stringContaining("Lucky rock"), expect.stringContaining("Silver locket")]);
-    window.localStorage.clear();
   });
 
   it("keeps the pencil and trash buttons behind an Edit button", async () => {
