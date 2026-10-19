@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getFeatsToBrowse, getFeatDetails } from "../utils/api";
 import { mapFeatToPanel } from "../utils/srdDetails";
 import SearchForm from "../components/SearchForm/SearchForm";
-import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
 import SourceFilter from "../components/SourceFilter/SourceFilter";
 import { filterBySource } from "../utils/sourceFilters";
 import "../pages/SearchPage/SearchPage.css";
-import Button from "../components/Button/Button";
-import { useOpenFromLink } from "../hooks/useOpenFromLink";
+import { useBrowseSelection } from "../hooks/useOpenFromLink";
+import BrowseLayout from "../components/BrowseLayout/BrowseLayout";
+import { dedupeEntries, entryKey } from "../utils/browseList";
 
 // Feats: the SRD ones (full text), homebrew ones, and the feats from the
 // official books (a short summary and a link to their full rules).
@@ -21,18 +22,23 @@ function firstSentence(text) {
 
 function FeatsPage() {
   const [featResults, setFeatResults] = useState([]);
-  const [selectedResult, setSelectedResult] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   // "all" or one book name, picked with the SourceFilter buttons.
   const [sourceFilter, setSourceFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState("");
+  const [loadError, setLoadError] = useState(false);
+  // Bumped by "Try again" after the list failed to load.
+  const [attempt, setAttempt] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    let ignore = false;
     getFeatsToBrowse()
       .then((data) => {
+        if (ignore) return;
+        setLoadError(false);
         setFeatResults(
-          data.map((item) => ({
+          dedupeEntries(data.map((item) => ({
             index: item.index,
             name: item.name,
             category: "Feat",
@@ -43,54 +49,34 @@ function FeatsPage() {
             // Phones can't hover, so the card shows the summary's first sentence.
             tagline: firstSentence(item.preview),
             description: "Select this feat to view more details.",
-          })),
+          }))),
         );
       })
-      .catch(() => {
-        setApiError("Unable to load feats. Please try again later.");
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, []);
+      .catch(() => !ignore && setLoadError(true))
+      .finally(() => !ignore && setIsLoading(false));
+    return () => {
+      ignore = true;
+    };
+  }, [attempt]);
 
   // Search text first, then the source buttons (their counts follow the search).
   const searchMatches = featResults.filter((result) =>
-    result.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    result.name.toLowerCase().includes(searchQuery.trim().toLowerCase()),
   );
   const filteredFeats = filterBySource(searchMatches, sourceFilter);
 
-  function handleSearchSubmit(e) {
-    e.preventDefault();
-  }
-
-  function handleSearchChange(e) {
-    setSearchQuery(e.target.value);
-    setSelectedResult(null);
-  }
-
-  function handleResultClick(result) {
-    setSelectedResult(result);
-
-    getFeatDetails(result.index, result.edition)
-      .then((data) => {
-        setSelectedResult({ ...mapFeatToPanel(data), index: result.index, edition: result.edition });
-        setApiError("");
-      })
-      .catch(() => {
-        setApiError("Unable to load feat details. Please try again later.");
-      });
-  }
-
-  // Links like quick-jump's "/feats?open=grappler&edition=2014" open that feat
-  // (the same name can be in both rule sets).
-  useOpenFromLink({
+  // The open feat lives in the address (?open=grappler&edition=2014), so it
+  // can be shared and reloaded.
+  const selection = useBrowseSelection({
     items: featResults,
+    visibleItems: filteredFeats,
     ready: !isLoading,
-    onOpen: handleResultClick,
-    matches: (item, params) =>
-      item.index === params.get("open") &&
-      (params.get("edition") ? item.edition === params.get("edition") : true),
+    loadDetail: (item) =>
+      getFeatDetails(item.index, item.edition).then((data) => ({
+        ...mapFeatToPanel(data),
+        index: item.index,
+        edition: item.edition,
+      })),
   });
 
   return (
@@ -111,61 +97,43 @@ function FeatsPage() {
         </p>
 
         <SearchForm
+          scope="feats"
           searchQuery={searchQuery}
-          onSearchChange={handleSearchChange}
-          onSearchSubmit={handleSearchSubmit}
+          onSearchChange={(e) => setSearchQuery(e.target.value)}
+          onSearchEverywhere={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
         />
-
-        {isLoading && <p className="search-page__status">Loading feats...</p>}
-        {apiError && <p className="search-page__error">{apiError}</p>}
 
         <SourceFilter
           underSearch
           items={searchMatches}
           value={sourceFilter}
-          onChange={(source) => {
-            setSourceFilter(source);
-            setSelectedResult(null);
-          }}
+          onChange={setSourceFilter}
         />
 
-        <section
-          className={`search-page__layout ${
-            selectedResult ? "search-page__layout--detail-open" : ""
-          }`}
+        <BrowseLayout
+          noun="feat"
+          isLoading={isLoading}
+          loadError={loadError}
+          onRetry={() => {
+            setIsLoading(true);
+            setAttempt((count) => count + 1);
+          }}
+          total={featResults.length}
+          shownCount={filteredFeats.length}
+          isFiltered={Boolean(searchQuery.trim()) || sourceFilter !== "all"}
+          emptyText="No feats match. Try another search or choose All sources."
+          selection={selection}
         >
-          <div className="search-page__results">
-            {!isLoading && filteredFeats.length === 0 && (
-              <p className="search-page__empty">No feats found. Try another search.</p>
-            )}
-
-            {filteredFeats.map((result) => (
-              <ResultCard
-                key={`${result.edition}:${result.index}`}
-                result={result}
-                isSelected={
-                  selectedResult?.index === result.index &&
-                  selectedResult?.edition === result.edition
-                }
-                onClick={() => handleResultClick(result)}
-              />
-            ))}
-          </div>
-
-          <div className="search-page__detail-wrapper">
-            {selectedResult && (
-              <Button
-                variant="secondary"
-                className="search-page__back-button"
-                onClick={() => setSelectedResult(null)}
-              >
-                Back to results
-              </Button>
-            )}
-
-            <DetailPanel selectedResult={selectedResult} />
-          </div>
-        </section>
+          {filteredFeats.map((result) => (
+            <ResultCard
+              key={entryKey(result)}
+              id={selection.cardId(result)}
+              result={result}
+              isSelected={selection.selected === result}
+              onClick={() => selection.open(result)}
+            />
+          ))}
+        </BrowseLayout>
       </div>
     </main>
   );

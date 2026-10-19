@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSpells, getSpellDetails } from "../utils/api";
-import { useOpenFromLink } from "../hooks/useOpenFromLink";
+import { useBrowseSelection } from "../hooks/useOpenFromLink";
+import { dedupeEntries, entryKey } from "../utils/browseList";
+import BrowseLayout from "../components/BrowseLayout/BrowseLayout";
 import { mapSpellToPanel } from "../utils/srdDetails";
 import {
   ALL,
@@ -13,7 +15,6 @@ import {
   hasActiveSpellFilters,
 } from "../utils/spellFilters";
 import SearchForm from "../components/SearchForm/SearchForm";
-import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
 import "../pages/SearchPage/SearchPage.css";
 import Button from "../components/Button/Button";
@@ -43,82 +44,71 @@ function SpellFilterSelect({ id, label, allLabel, value, options, onChange }) {
 
 function SpellsPage() {
   const [spellResults, setSpellResults] = useState([]);
-  const [selectedResult, setSelectedResult] = useState(null);
   const [filters, setFilters] = useState(EMPTY_SPELL_FILTERS);
   const [visibleCount, setVisibleCount] = useState(SPELLS_PAGE_SIZE);
   const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState("");
+  const [loadError, setLoadError] = useState(false);
+  // Bumped by "Try again" after the list failed to load.
+  const [attempt, setAttempt] = useState(0);
 
   const navigate = useNavigate();
 
   useEffect(() => {
+    let ignore = false;
     getSpells()
       .then((data) => {
-        const formattedSpells = data.map((item) => ({
-          index: item.index,
-          name: item.name,
-          category: "Spell",
-          description: "Select this spell to view more details.",
-          tagline: describeSpellListing(item),
-          url: item.url,
-          level: item.level,
-          school: item.school,
-          classes: item.classes,
-        }));
-
+        if (ignore) return;
+        const formattedSpells = dedupeEntries(
+          data.map((item) => ({
+            index: item.index,
+            name: item.name,
+            category: "Spell",
+            description: "Select this spell to view more details.",
+            tagline: describeSpellListing(item),
+            url: item.url,
+            level: item.level,
+            school: item.school,
+            classes: item.classes,
+            // 2014 and 2024 versions share an id; the edition tells them apart.
+            ...(item.edition ? { edition: item.edition } : {}),
+          })),
+        );
         setSpellResults(formattedSpells);
+        setLoadError(false);
       })
       .catch((err) => {
         console.error("Unable to load spells:", err);
-        setApiError("Unable to load spells. Please try again later.");
+        if (!ignore) setLoadError(true);
       })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, []);
+      .finally(() => !ignore && setIsLoading(false));
+    return () => {
+      ignore = true;
+    };
+  }, [attempt]);
 
   const filterOptions = getSpellFilterOptions(spellResults);
+  // One list for the cards, the count and "nothing found".
   const filteredSpells = filterSpells(spellResults, filters);
   const visibleSpells = filteredSpells.slice(0, visibleCount);
   const remainingCount = filteredSpells.length - visibleSpells.length;
+
+  // The open spell lives in the address (?open=fireball), so it can be
+  // shared and reloaded; a filter that hides it closes it.
+  const selection = useBrowseSelection({
+    items: spellResults,
+    visibleItems: filteredSpells,
+    ready: !isLoading,
+    loadDetail: (spell) => getSpellDetails(spell.index).then(mapSpellToPanel),
+  });
 
   function updateFilters(changes) {
     setFilters((current) => ({ ...current, ...changes }));
     setVisibleCount(SPELLS_PAGE_SIZE);
   }
 
-  function handleSearchSubmit(e) {
-    e.preventDefault();
-
-    if (!filters.query.trim()) return;
-
-    navigate(`/search?q=${encodeURIComponent(filters.query.trim())}`);
-  }
-
-  function handleSearchChange(e) {
-    updateFilters({ query: e.target.value });
-    setSelectedResult(null);
-  }
-
   function handleClearFilters() {
     updateFilters({ level: ALL, classIndex: ALL, school: ALL });
   }
-
-  function handleResultClick(result) {
-    setSelectedResult(result);
-
-    getSpellDetails(result.index)
-      .then((data) => {
-        setSelectedResult(mapSpellToPanel(data));
-        setApiError("");
-      })
-      .catch(() => {
-        setApiError("Unable to load spell details. Please try again.");
-      });
-  }
-
-  // Links like quick-jump's "/spells?open=fireball" open that spell.
-  useOpenFromLink({ items: spellResults, ready: !isLoading, onOpen: handleResultClick });
 
   const showFilters = !isLoading && spellResults.length > 0;
 
@@ -133,9 +123,10 @@ function SpellsPage() {
         </p>
 
         <SearchForm
+          scope="spells"
           searchQuery={filters.query}
-          onSearchChange={handleSearchChange}
-          onSearchSubmit={handleSearchSubmit}
+          onSearchChange={(e) => updateFilters({ query: e.target.value })}
+          onSearchEverywhere={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
         />
 
         {showFilters && (
@@ -184,66 +175,41 @@ function SpellsPage() {
           </div>
         )}
 
-        {isLoading && <p className="search-page__status">Loading spells...</p>}
-        {apiError && <p className="search-page__error">{apiError}</p>}
-
-        {showFilters && (
-          <p className="search-page__count" aria-live="polite">
-            {filteredSpells.length === spellResults.length
-              ? `${spellResults.length} spells`
-              : `${filteredSpells.length} of ${spellResults.length} spells match`}
-          </p>
-        )}
-
-        <section
-          className={`search-page__layout ${
-            selectedResult ? "search-page__layout--detail-open" : ""
-          }`}
-        >
-          <div className="search-page__results">
-            {!isLoading && !apiError && filteredSpells.length === 0 && (
-              <p className="search-page__empty">
-                No spells found. Try another search
-                {hasActiveSpellFilters(filters) && " or clear the filters"}.
-              </p>
-            )}
-
-            {visibleSpells.map((result) => (
-              <ResultCard
-                key={result.index}
-                result={result}
-                isSelected={selectedResult?.index === result.index}
-                onClick={() => handleResultClick(result)}
-              />
-            ))}
-
-            {remainingCount > 0 && (
+        <BrowseLayout
+          noun="spell"
+          isLoading={isLoading}
+          loadError={loadError}
+          onRetry={() => {
+            setIsLoading(true);
+            setAttempt((count) => count + 1);
+          }}
+          total={spellResults.length}
+          shownCount={filteredSpells.length}
+          isFiltered={filteredSpells.length !== spellResults.length}
+          emptyText={`No spells found. Try another search${hasActiveSpellFilters(filters) ? " or clear the filters" : ""}.`}
+          selection={selection}
+          footer={
+            remainingCount > 0 && (
               <Button
                 variant="secondary"
                 className="search-page__show-more"
-                onClick={() =>
-                  setVisibleCount((count) => count + SPELLS_PAGE_SIZE)
-                }
+                onClick={() => setVisibleCount((count) => count + SPELLS_PAGE_SIZE)}
               >
                 {`Show ${Math.min(remainingCount, SPELLS_PAGE_SIZE)} more (${remainingCount} left)`}
               </Button>
-            )}
-          </div>
-
-          <div className="search-page__detail-wrapper">
-            {selectedResult && (
-              <Button
-                variant="secondary"
-                className="search-page__back-button"
-                onClick={() => setSelectedResult(null)}
-              >
-                Back to results
-              </Button>
-            )}
-
-            <DetailPanel selectedResult={selectedResult} />
-          </div>
-        </section>
+            )
+          }
+        >
+          {visibleSpells.map((result) => (
+            <ResultCard
+              key={entryKey(result)}
+              id={selection.cardId(result)}
+              result={result}
+              isSelected={selection.selected === result}
+              onClick={() => selection.open(result)}
+            />
+          ))}
+        </BrowseLayout>
       </div>
     </main>
   );

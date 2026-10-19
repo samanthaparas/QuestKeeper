@@ -17,7 +17,9 @@ function toBlocks(text) {
 
 // The full picture of one item: its facts, then its description (open-licensed
 // items) or a link to the full write-up (book items).
-function MagicItemDetail({ item }) {
+// headingId: from the page, so focus can move to the item's name when it
+// opens (see useBrowseSelection).
+function MagicItemDetail({ item, headingId, describedBy }) {
   const [loaded, setLoaded] = useState(null); // { index, data } or { index, error }
 
   useEffect(() => {
@@ -45,8 +47,14 @@ function MagicItemDetail({ item }) {
   ].filter(([, value]) => value);
 
   return (
-    <section className="detail-panel detail-panel--enter magic-item-detail" aria-label={item.name}>
-      <h2 className="detail-panel__title">{item.name}</h2>
+    <section
+      className="detail-panel detail-panel--enter magic-item-detail"
+      aria-label={item.name}
+      aria-describedby={describedBy}
+    >
+      <h2 className="detail-panel__title" id={headingId} tabIndex={headingId ? -1 : undefined}>
+        {item.name}
+      </h2>
       <p className="magic-item-detail__badges">
         <span className={rarityClass(item.rarity)}>{item.rarity}</span>{" "}
         <SourceBadge source={item.source} official={item.sourceGroup === OFFICIAL_BOOKS_GROUP} />

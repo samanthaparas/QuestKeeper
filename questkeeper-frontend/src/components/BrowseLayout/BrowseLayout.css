@@ -1,0 +1,30 @@
+/* The browse pages' shared messages. The details layout itself lives in
+   SearchPage.css, which every browse page already uses. */
+
+/* Read out by screen readers, never shown: the count after a change. */
+.browse-layout__announcer {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* "Couldn't load..." with its Try again button beside it. */
+.browse-layout__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+/* "Elf isn't in the list with your current filters." */
+.browse-layout__outside {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--qk-border);
+}

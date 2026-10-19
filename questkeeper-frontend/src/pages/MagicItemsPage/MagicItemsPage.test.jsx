@@ -87,7 +87,7 @@ describe("MagicItemsPage", () => {
     expect(holy).toHaveTextContent("Requires attunement by a Paladin");
     expect(holy).toHaveTextContent("SRD 5.2");
     expect(screen.getByText("Alchemy Jug")).toBeInTheDocument();
-    expect(screen.getByText("3 of 3 items")).toBeInTheDocument();
+    expect(screen.getByText("3 items")).toBeInTheDocument();
   });
 
   it("filters by rarity and keeps the filter in the address", async () => {

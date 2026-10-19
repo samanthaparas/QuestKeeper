@@ -33,9 +33,11 @@
 }
 
 /* The menu holding the page you're on. */
+/* The menu you're in. The text uses the main text colour: the accent on
+   the light highlight was just under the 4.5:1 contrast text needs. */
 .nav-menus__trigger--active {
   background-color: var(--qk-terracotta-soft);
-  color: var(--qk-terracotta-hover);
+  color: var(--qk-text);
 }
 
 .nav-menus__trigger:focus-visible {

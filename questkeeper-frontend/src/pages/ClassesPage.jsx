@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getClasses } from "../utils/api";
 import { loadClassDetails, mapClassToPanel } from "../utils/srdDetails";
 import { getClassGuidance, getCardPreview } from "../utils/beginnerGuidance";
@@ -6,21 +7,26 @@ import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
 import "../pages/SearchPage/SearchPage.css";
-import Button from "../components/Button/Button";
 import SourceFilter from "../components/SourceFilter/SourceFilter";
 import { filterBySource } from "../utils/sourceFilters";
-import { useOpenFromLink } from "../hooks/useOpenFromLink";
+import { useBrowseSelection } from "../hooks/useOpenFromLink";
+import BrowseLayout from "../components/BrowseLayout/BrowseLayout";
+import { dedupeEntries, entryKey } from "../utils/browseList";
 
 function ClassesPage() {
   const [classResults, setClassResults] = useState([]);
-  const [selectedResult, setSelectedResult] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState("");
+  const [loadError, setLoadError] = useState(false);
+  // Bumped by "Try again" after the list failed to load.
+  const [attempt, setAttempt] = useState(0);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   // "all" or one book name, picked with the SourceFilter buttons.
   const [sourceFilter, setSourceFilter] = useState("all");
 
   useEffect(() => {
+    let ignore = false;
     getClasses()
       .then((data) => {
         const formattedClasses = data.map((item) => ({
@@ -36,53 +42,32 @@ function ClassesPage() {
           url: item.url,
         }));
 
-        setClassResults(formattedClasses);
+        if (ignore) return;
+        setClassResults(dedupeEntries(formattedClasses));
+        setLoadError(false);
       })
-      .catch((err) => {
-        console.error("Unable to load classes:", err);
-        setApiError("Unable to load classes. Please try again later.");
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, []);
+      .catch(() => !ignore && setLoadError(true))
+      .finally(() => !ignore && setIsLoading(false));
+    return () => {
+      ignore = true;
+    };
+  }, [attempt]);
 
   // Search text first, then the source buttons (their counts follow the search).
   const searchMatches = classResults.filter((result) =>
-    result.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    result.name.toLowerCase().includes(searchQuery.trim().toLowerCase()),
   );
   const filteredClasses = filterBySource(searchMatches, sourceFilter);
 
-  function handleSearchSubmit(e) {
-    e.preventDefault();
-  }
-
-  function handleSearchChange(e) {
-    setSearchQuery(e.target.value);
-    setSelectedResult(null);
-  }
-
-  // subclassIndex: open the class with this subclass's tab showing.
-  function handleResultClick(result, subclassIndex) {
-    setSelectedResult(result);
-
-    loadClassDetails(result.index)
-      .then((data) => {
-        setSelectedResult({ ...mapClassToPanel(data), initialSubclass: subclassIndex });
-        setApiError("");
-      })
-      .catch(() => {
-        setApiError("Unable to load class details. Please try again later.");
-      });
-  }
-
-  // Links like quick-jump's "/classes?open=wizard&subclass=evocation" open
-  // that class, at that subclass.
-  useOpenFromLink({
+  // The open class lives in the address (?open=wizard, and &subclass=
+  // evocation to open at that subclass), so it can be shared and reloaded.
+  const selection = useBrowseSelection({
     items: classResults,
+    visibleItems: filteredClasses,
     ready: !isLoading,
-    onOpen: (item, params) => handleResultClick(item, params.get("subclass") ?? undefined),
+    loadDetail: (item) => loadClassDetails(item.index).then(mapClassToPanel),
   });
+  const subclass = searchParams.get("subclass") ?? undefined;
 
   return (
     <main className="search-page">
@@ -95,60 +80,51 @@ function ClassesPage() {
         </p>
 
         <SearchForm
+          scope="classes"
           searchQuery={searchQuery}
-          onSearchChange={handleSearchChange}
-          onSearchSubmit={handleSearchSubmit}
+          onSearchChange={(e) => setSearchQuery(e.target.value)}
+          onSearchEverywhere={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
         />
-
-        {isLoading && <p className="search-page__status">Loading classes...</p>}
-        {apiError && <p className="search-page__error">{apiError}</p>}
 
         <SourceFilter
           underSearch
           items={searchMatches}
           value={sourceFilter}
-          onChange={(source) => {
-            setSourceFilter(source);
-            setSelectedResult(null);
-          }}
+          onChange={setSourceFilter}
         />
 
-        <section
-          className={`search-page__layout ${
-            selectedResult ? "search-page__layout--detail-open" : ""
-          }`}
+        <BrowseLayout
+          noun="class"
+          isLoading={isLoading}
+          loadError={loadError}
+          onRetry={() => {
+            setIsLoading(true);
+            setAttempt((count) => count + 1);
+          }}
+          total={classResults.length}
+          shownCount={filteredClasses.length}
+          isFiltered={Boolean(searchQuery.trim()) || sourceFilter !== "all"}
+          emptyText="No classes match. Try another search or choose All sources."
+          selection={selection}
+          // The subclass a link points to opens on its own tab.
+          renderDetail={(open) => (
+            <DetailPanel
+              selectedResult={open.detail ? { ...open.detail, initialSubclass: subclass } : open.selected}
+              headingId={open.headingId}
+              describedBy={open.describedBy}
+            />
+          )}
         >
-          <div className="search-page__results">
-            {!isLoading && filteredClasses.length === 0 && (
-              <p className="search-page__empty">
-                No classes found. Try another search.
-              </p>
-            )}
-
-            {filteredClasses.map((result) => (
-              <ResultCard
-                key={result.name}
-                result={result}
-                isSelected={selectedResult?.name === result.name}
-                onClick={() => handleResultClick(result)}
-              />
-            ))}
-          </div>
-
-          <div className="search-page__detail-wrapper">
-            {selectedResult && (
-              <Button
-                variant="secondary"
-                className="search-page__back-button"
-                onClick={() => setSelectedResult(null)}
-              >
-                Back to results
-              </Button>
-            )}
-
-            <DetailPanel selectedResult={selectedResult} />
-          </div>
-        </section>
+          {filteredClasses.map((result) => (
+            <ResultCard
+              key={entryKey(result)}
+              id={selection.cardId(result)}
+              result={result}
+              isSelected={selection.selected === result}
+              onClick={() => selection.open(result)}
+            />
+          ))}
+        </BrowseLayout>
       </div>
     </main>
   );

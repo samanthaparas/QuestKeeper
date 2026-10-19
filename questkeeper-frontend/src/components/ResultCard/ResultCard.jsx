@@ -15,7 +15,9 @@ const ICON_RESOLVERS = {
   Background: getBackgroundIcon,
 };
 
-function ResultCard({ result, onClick, isSelected }) {
+// id: set by a browse page, so focus can come back to this card when its
+// details close.
+function ResultCard({ result, onClick, isSelected, id }) {
   const previewId = useId();
   const resolveIcon = ICON_RESOLVERS[result.category];
   const schoolId = typeof result.school === "string"
@@ -27,9 +29,12 @@ function ResultCard({ result, onClick, isSelected }) {
 
   return (
     <button
+      id={id}
       className={`result-card ${isSelected ? "result-card--selected" : ""}`}
       type="button"
       onClick={onClick}
+      // Says which card is open, not by its ring colour alone.
+      aria-current={isSelected ? "true" : undefined}
       aria-describedby={result.preview ? previewId : undefined}
     >
       {iconSrc && (

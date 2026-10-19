@@ -4,12 +4,14 @@ import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 import { attunementLine, kindLine, rarityClass } from "../../utils/magicItemFilters";
 
 // One item in the list: everything a player or DM scans for, at a glance.
-function MagicItemCard({ item, isSelected, onSelect }) {
+// id: from the page, so focus can come back here when the details close.
+function MagicItemCard({ item, isSelected, onSelect, id }) {
   const kind = kindLine(item);
   const attunement = attunementLine(item);
 
   return (
     <button
+      id={id}
       type="button"
       className={`magic-item-card${isSelected ? " magic-item-card--selected" : ""}`}
       onClick={() => onSelect(item)}

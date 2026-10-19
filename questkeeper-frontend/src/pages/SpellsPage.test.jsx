@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import SpellsPage from "./SpellsPage";
 import { getSpells } from "../utils/api";
 import { SPELLS_PAGE_SIZE } from "../utils/spellFilters";
 
 vi.mock("../utils/api", () => ({
   getSpells: vi.fn(),
-  getSpellDetails: vi.fn(() => new Promise(() => {})),
+  getSpellDetails: vi.fn((index) => Promise.resolve({ index, name: index === "fireball" ? "Fireball" : index })),
 }));
 
 const wizard = { index: "wizard", name: "Wizard" };
@@ -40,10 +40,16 @@ const fewSpells = [
   },
 ];
 
-function renderPage() {
+function Address() {
+  const { search } = useLocation();
+  return <p data-testid="address">{search}</p>;
+}
+
+function renderPage(path = "/spells") {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[path]}>
       <SpellsPage />
+      <Address />
     </MemoryRouter>,
   );
 }
@@ -120,5 +126,32 @@ describe("SpellsPage", () => {
     expect(
       screen.queryByRole("button", { name: /more/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("opens Fireball from a link and keeps it there after a reload", async () => {
+    const first = renderPage("/spells?open=fireball");
+    // Waits for the loaded details (the name also shows while they load).
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Fireball" })).toBeInTheDocument());
+    expect(screen.getByTestId("address")).toHaveTextContent("?open=fireball");
+    // A reload is the same address rendered again.
+    first.unmount();
+    renderPage("/spells?open=fireball");
+    // Waits for the loaded details (the name also shows while they load).
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Fireball" })).toBeInTheDocument());
+  });
+
+  it("closes the open spell when the filters leave it out, keeping focus on the filter", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /^Fireball/ }));
+    // Waits for the loaded details (the name also shows while they load).
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Fireball" })).toBeInTheDocument());
+
+    const level = screen.getByLabelText("Level");
+    await user.selectOptions(level, "0");
+    expect(screen.queryByRole("heading", { level: 2, name: "Fireball" })).toBeNull();
+    expect(screen.getByTestId("address")).toBeEmptyDOMElement();
+    expect(level).toHaveFocus();
+    expect(screen.getByText("1 of 3 spells match")).toBeInTheDocument();
   });
 });
