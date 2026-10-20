@@ -267,3 +267,88 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
+/* "QuestKeeper has a fresh update": a small card floating in the bottom-left
+   corner, above the dice bar, so nothing on the page moves. It fades in once
+   (not under Reduce motion) and stays quiet until tapped. */
+.update-banner {
+  position: fixed;
+  bottom: 96px;
+  left: 16px;
+  z-index: 60;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--qk-border);
+  border-left: 3px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  box-shadow: 0 6px 18px -10px var(--qk-shadow, rgba(0, 0, 0, 0.35));
+  color: var(--qk-text);
+  font-size: 14px;
+  animation: update-banner-in 0.4s ease-out;
+}
+
+.update-banner__actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.update-banner__refresh,
+.update-banner__later {
+  min-height: 32px;
+  padding: 2px 12px;
+  border-radius: var(--qk-radius-control);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.update-banner__refresh {
+  border: 1px solid var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+.update-banner__later {
+  border: 1px solid var(--qk-border);
+  background: none;
+  color: var(--qk-text-muted);
+}
+
+.update-banner__refresh:focus-visible,
+.update-banner__later:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+@keyframes update-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .update-banner {
+    animation: none;
+  }
+}
+
+/* Phones: across the bottom, just above the dice bar. */
+@media screen and (max-width: 600px) {
+  .update-banner {
+    right: 16px;
+    bottom: 112px;
+    max-width: none;
+  }
+}

@@ -25,6 +25,8 @@ import {
   getClassSpells,
   getFeats,
   getFeatDetails,
+  fetchDeployedBuild,
+  isNewerBuild,
 } from "./api";
 
 const homebrew = [
@@ -241,3 +243,37 @@ describe("drafts made with Pick it now, add details later", () => {
   });
 });
 
+
+// --- The "fresh update" check ---------------------------------------------------------
+describe("checking for a newer version", () => {
+  const jsonResponse = (body, type = "application/json") => ({
+    ok: true,
+    headers: { get: () => type },
+    json: async () => body,
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("offers a refresh only when a different build is live and both are known", () => {
+    expect(isNewerBuild("abc", "def")).toBe(true);
+    expect(isNewerBuild("abc", "abc")).toBe(false);
+    expect(isNewerBuild("abc", null)).toBe(false);
+    expect(isNewerBuild("", "def")).toBe(false);
+  });
+
+  it("reads the live build from version.json, never from a cache", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ buildId: "def" }));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await fetchDeployedBuild()).toBe("def");
+    expect(fetchMock.mock.calls[0][0]).toMatch(/^\/version\.json\?t=\d+$/);
+    expect(fetchMock.mock.calls[0][1]).toEqual({ cache: "no-store" });
+  });
+
+  it("says nothing when it can't tell (development's page instead of JSON, offline, or no id)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse("<html>", "text/html")));
+    expect(await fetchDeployedBuild()).toBeNull();
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    expect(await fetchDeployedBuild()).toBeNull();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({})));
+    expect(await fetchDeployedBuild()).toBeNull();
+  });
+});
