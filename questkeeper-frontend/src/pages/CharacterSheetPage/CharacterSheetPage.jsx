@@ -95,8 +95,7 @@ import {
   getInventoryCategory,
   getSummonInfo,
   getSummonTemplate,
-  getSpellAttackModifier,
-  getSpellSaveDC,
+  getSpellNumbers,
   isSummonPresent,
   tickSummonRounds,
   withSummonEnded,
@@ -2843,9 +2842,7 @@ function CharacterSheetPage() {
                             // Summon Fey); null for an ordinary one.
                             summon={getSummonInfo(
                               companionView(sheet, creature),
-                              spellcastingAbility
-                                ? getSpellAttackModifier(sheet.abilityScores[spellcastingAbility] ?? 10, proficiencyBonus)
-                                : proficiencyBonus,
+                              getSpellNumbers(sheet)?.spellAttack ?? proficiencyBonus,
                             )}
                             onSummon={(action, payload) =>
                               persistSheet(
@@ -2873,6 +2870,7 @@ function CharacterSheetPage() {
                       spellcastingAbility={spellcastingAbility}
                       abilityScore={sheet.abilityScores[spellcastingAbility]}
                       proficiencyBonus={proficiencyBonus}
+                      spellNumbers={getSpellNumbers(sheet)}
                       activeSlotLevels={activeSlotLevels}
                       onSpellSlotChange={handleSpellSlotChange}
                       onShowSlotLevel={handleShowSlotLevel}
@@ -2923,17 +2921,7 @@ function CharacterSheetPage() {
                       onEquipToggle={handleEquipToggle}
                       isWeapon={(item) => isWeaponItem(item, gearDetailsFor(item))}
                       chargesFor={(item) => itemChargesFor(sheet, item)}
-                      mySpellNumbers={
-                        spellcastingAbility
-                          ? {
-                              saveDc: getSpellSaveDC(sheet.abilityScores[spellcastingAbility] ?? 10, proficiencyBonus),
-                              spellAttack: getSpellAttackModifier(
-                                sheet.abilityScores[spellcastingAbility] ?? 10,
-                                proficiencyBonus,
-                              ),
-                            }
-                          : null
-                      }
+                      mySpellNumbers={getSpellNumbers(sheet)}
                       freeResources={unlinkedResources(sheet)}
                       onChargesChange={handleResourceCurrentChange}
                       onWeaponEquipToggle={handleWeaponEquipToggle}

@@ -70,7 +70,9 @@ function MagicItemFields({ value, onChange, freeResources }) {
       details.requiresAttunement ||
       Number(details.chargesMax) > 0 ||
       details.saveDcMode ||
-      details.attackMode,
+      details.attackMode ||
+      Number(details.spellDcBonus) > 0 ||
+      Number(details.spellAttackBonus) > 0,
   );
   return (
     <details className="character-sheet__magic-details" open={hasAny || undefined}>
@@ -127,6 +129,35 @@ function MagicItemFields({ value, onChange, freeResources }) {
           </label>
         )}
       </div>
+      {/* Raises the wielder's own spell save DC / spell attack (Moon
+          Sickle: +1 and +1), while attuned if it needs attunement. */}
+      <div className="character-sheet__extra-damage-row">
+        <label className="character-sheet__labeled-box character-sheet__labeled-box--dice">
+          <span>+ to your spell save DC</span>
+          <input
+            className="character-sheet__resource-form-input"
+            type="number"
+            min="0"
+            max="5"
+            placeholder="0"
+            value={details.spellDcBonus ?? ""}
+            onChange={(event) => set("spellDcBonus", event.target.value)}
+          />
+        </label>
+        <label className="character-sheet__labeled-box character-sheet__labeled-box--dice">
+          <span>+ to your spell attack</span>
+          <input
+            className="character-sheet__resource-form-input"
+            type="number"
+            min="0"
+            max="5"
+            placeholder="0"
+            value={details.spellAttackBonus ?? ""}
+            onChange={(event) => set("spellAttackBonus", event.target.value)}
+          />
+        </label>
+      </div>
+
       {/* Its spells' save DC and attack: its own, or the wielder's. */}
       <div className="character-sheet__extra-damage-row">
         <ItemNumberField
@@ -418,6 +449,8 @@ function CharacterSheetInventoryTab({
                 saveDcValue: typeof item.saveDc === "number" ? String(item.saveDc) : "",
                 attackMode: item.spellAttack === "mine" ? "mine" : typeof item.spellAttack === "number" ? "fixed" : "",
                 attackValue: typeof item.spellAttack === "number" ? String(item.spellAttack) : "",
+                spellDcBonus: item.spellDcBonus ? String(item.spellDcBonus) : "",
+                spellAttackBonus: item.spellAttackBonus ? String(item.spellAttackBonus) : "",
               };
             },
             render: ({ value, onChange }) => (
@@ -457,13 +490,27 @@ function CharacterSheetInventoryTab({
           const numbers = itemSpellNumbers(item, mySpellNumbers);
           const usesMineButNone = (item.saveDc === "mine" || item.spellAttack === "mine") && !mySpellNumbers;
           const hasNumbers = numbers.saveDc !== null || numbers.spellAttack !== null || usesMineButNone;
-          if (!about && !charges && !hasNumbers) return null;
+          // What it adds to your own spells, and whether it counts right now.
+          const bonusText = [
+            item.spellAttackBonus ? `+${item.spellAttackBonus} spell attack` : "",
+            item.spellDcBonus ? `+${item.spellDcBonus} spell save DC` : "",
+          ]
+            .filter(Boolean)
+            .join(", ");
+          const bonusCounts = !item.requiresAttunement || item.attuned;
+          if (!about && !charges && !hasNumbers && !bonusText) return null;
           return (
             <span className="character-sheet__item-meta">
               {about && (
                 <span>
                   {about}
                   {item.requiresAttunement ? (item.attuned ? " (attuned)" : " (not attuned yet)") : ""}
+                </span>
+              )}
+              {bonusText && (
+                <span>
+                  {bonusText}
+                  {bonusCounts ? " (counted in your spells)" : " (counts once attuned)"}
                 </span>
               )}
               {hasNumbers && (

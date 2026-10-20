@@ -6,9 +6,7 @@ import {
   formatModifier,
   getEffectiveArmorClass,
   getCompanions,
-  getProficiencyBonus,
-  getSpellAttackModifier,
-  getSpellSaveDC,
+  getSpellNumbers,
   getSpellcastingAbility,
   getSpellSlots,
   getAttunedCount,
@@ -52,7 +50,7 @@ const ABILITY_NAMES = {
 };
 
 // The numbers the DM needs to run a caster: save DC and spell attack (from
-// their spellcasting ability and level), slots left at each level, what
+// their spellcasting ability, level and items like a Moon Sickle), slots left at each level, what
 // they're concentrating on, and spells changing their attacks right now.
 function SpellcastingSummary({ sheet }) {
   const ability = sheet.class?.spellcastingAbility ?? getSpellcastingAbility(sheet.class ?? null);
@@ -60,17 +58,16 @@ function SpellcastingSummary({ sheet }) {
   const concentration = sheet.concentration?.spell;
   const effects = getActiveEffects(sheet);
   if (!ability && slots.length === 0 && !concentration && effects.length === 0) return null;
-  const score = sheet.abilityScores?.[ability] ?? 10;
-  const proficiency = getProficiencyBonus(sheet.level ?? 1);
+  const numbers = getSpellNumbers(sheet);
   return (
     <div className="character-summary__block">
       {ability && (
         <p className="character-summary__spell-numbers">
           <span>
-            Spell save DC <b>{getSpellSaveDC(score, proficiency)}</b>
+            Spell save DC <b>{numbers?.saveDc}</b>
           </span>
           <span>
-            Spell attack <b>{formatModifier(getSpellAttackModifier(score, proficiency))}</b>
+            Spell attack <b>{formatModifier(numbers?.spellAttack ?? 0)}</b>
           </span>
           <span>{ABILITY_NAMES[ability] ?? ability}</span>
         </p>

@@ -86,6 +86,9 @@ function CharacterSheetSpellsTab({
   spellcastingAbility,
   abilityScore,
   proficiencyBonus,
+  // The save DC and spell attack with everything counted, items included
+  // (getSpellNumbers). Without it, the plain ability-and-proficiency ones.
+  spellNumbers = null,
   activeSlotLevels,
   onSpellSlotChange,
   onShowSlotLevel,
@@ -187,23 +190,32 @@ function CharacterSheetSpellsTab({
           <h2 className="character-sheet__section-title">Spellcasting</h2>
           {spellcastingAbility && (
             <div className="character-sheet__spell-stats">
+              {/* Items adding to these numbers (a Moon Sickle's +1), named. */}
+              {spellNumbers?.bonuses?.sources?.length > 0 && (
+                <span className="character-sheet__spell-stat character-sheet__spell-stat--note">
+                  includes{" "}
+                  {spellNumbers.bonuses.sources
+                    .map((source) => `${source.name} (${[source.attack ? `+${source.attack} attack` : "", source.dc ? `+${source.dc} DC` : ""].filter(Boolean).join(", ")})`)
+                    .join(" and ")}
+                </span>
+              )}
               <span className="character-sheet__spell-stat">
                 <span className="character-sheet__spell-stat-label">Ability</span>{" "}
                 {ABILITY_ABBREVIATIONS[spellcastingAbility]}
               </span>
               <span className="character-sheet__spell-stat">
                 <span className="character-sheet__spell-stat-label">Save DC</span>{" "}
-                {getSpellSaveDC(abilityScore, proficiencyBonus)}
+                {spellNumbers?.saveDc ?? getSpellSaveDC(abilityScore, proficiencyBonus)}
               </span>
               <span className="character-sheet__spell-stat">
                 <span className="character-sheet__spell-stat-label">Attack</span>{" "}
                 {/* Tap to roll a spell attack. */}
                 <RollButton
                   label="Spell attack"
-                  bonus={getSpellAttackModifier(abilityScore, proficiencyBonus)}
+                  bonus={spellNumbers?.spellAttack ?? getSpellAttackModifier(abilityScore, proficiencyBonus)}
                   className="character-sheet__spell-stat-roll"
                 >
-                  {formatModifier(getSpellAttackModifier(abilityScore, proficiencyBonus))}
+                  {formatModifier(spellNumbers?.spellAttack ?? getSpellAttackModifier(abilityScore, proficiencyBonus))}
                 </RollButton>
               </span>
             </div>
