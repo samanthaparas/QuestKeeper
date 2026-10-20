@@ -167,3 +167,19 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* "Spell save DC 14 · Spell attack +6 · Wisdom" and "Slots left: ..." */
+.character-summary__spell-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 6px 0 2px;
+  color: var(--qk-text);
+  font-size: 14px;
+}
+
+.character-summary__slots {
+  margin: 2px 0;
+  color: var(--qk-text);
+  font-size: 14px;
+}
