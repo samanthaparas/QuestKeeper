@@ -5,7 +5,16 @@ import {
   getAbilityModifier,
   formatModifier,
   getEffectiveArmorClass,
+  getCompanions,
+  getProficiencyBonus,
+  getSpellAttackModifier,
+  getSpellSaveDC,
+  getSpellcastingAbility,
+  getSpellSlots,
+  getAttunedCount,
 } from "../../utils/characterSheet";
+import { describeDamageParts, getActiveEffects, getEffectiveAttack, getOnHitFeatures } from "../../utils/combatEffects";
+import { toCompanionRow } from "../../utils/partyStrip";
 import ConditionBadges from "../ConditionBadges/ConditionBadges";
 import "./CharacterSummaryCard.css";
 
@@ -25,6 +34,91 @@ function NameList({ title, items }) {
             {itemName(item)}
             {item?.quantity > 1 ? ` x${item.quantity}` : ""}
             {item?.attuned ? " (attuned)" : ""}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const ORDINALS = ["Cantrip", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
+const ABILITY_NAMES = {
+  strength: "Strength",
+  dexterity: "Dexterity",
+  constitution: "Constitution",
+  intelligence: "Intelligence",
+  wisdom: "Wisdom",
+  charisma: "Charisma",
+};
+
+// The numbers the DM needs to run a caster: save DC and spell attack (from
+// their spellcasting ability and level), slots left at each level, what
+// they're concentrating on, and spells changing their attacks right now.
+function SpellcastingSummary({ sheet }) {
+  const ability = sheet.class?.spellcastingAbility ?? getSpellcastingAbility(sheet.class ?? null);
+  const slots = getSpellSlots(sheet.spellcasting).filter((slot) => slot.max > 0);
+  const concentration = sheet.concentration?.spell;
+  const effects = getActiveEffects(sheet);
+  if (!ability && slots.length === 0 && !concentration && effects.length === 0) return null;
+  const score = sheet.abilityScores?.[ability] ?? 10;
+  const proficiency = getProficiencyBonus(sheet.level ?? 1);
+  return (
+    <div className="character-summary__block">
+      {ability && (
+        <p className="character-summary__spell-numbers">
+          <span>
+            Spell save DC <b>{getSpellSaveDC(score, proficiency)}</b>
+          </span>
+          <span>
+            Spell attack <b>{formatModifier(getSpellAttackModifier(score, proficiency))}</b>
+          </span>
+          <span>{ABILITY_NAMES[ability] ?? ability}</span>
+        </p>
+      )}
+      {slots.length > 0 && (
+        <p className="character-summary__slots">
+          Slots left:{" "}
+          {slots.map((slot, index) => (
+            <span key={slot.level}>
+              {index > 0 ? " · " : ""}
+              {ORDINALS[slot.level]} <b>{slot.current}</b>/{slot.max}
+            </span>
+          ))}
+        </p>
+      )}
+      {concentration && (
+        <p className="character-summary__slots">
+          🎯 Concentrating on <b>{concentration}</b>
+          {typeof sheet.concentration?.rounds === "number" ? ` (${sheet.concentration.rounds} rounds left)` : ""}
+        </p>
+      )}
+      {effects.map((effect) => (
+        <p className="character-summary__slots" key={effect.id}>
+          ✨ {effect.spell}
+          {effect.damageType ? ` (${String(effect.damageType).toLowerCase()})` : ""}
+          {effect.attackName ? ` on ${effect.attackName}` : ""}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+// Known spells grouped by level ("1st: Absorb Elements, Ensnaring Strike").
+function SpellsByLevel({ spellcasting }) {
+  const spells = [...(spellcasting?.cantripsKnown ?? []), ...(spellcasting?.spellsKnown ?? [])];
+  if (spells.length === 0) return null;
+  const levels = [...new Set(spells.map((spell) => Number(spell?.level) || 0))].sort((a, b) => a - b);
+  return (
+    <div className="character-summary__block">
+      <h4 className="character-summary__block-title">Spells</h4>
+      <ul className="character-summary__list">
+        {levels.map((level) => (
+          <li key={level}>
+            <b>{level === 0 ? "Cantrips" : ORDINALS[level]}:</b>{" "}
+            {spells
+              .filter((spell) => (Number(spell?.level) || 0) === level)
+              .map(itemName)
+              .join(", ")}
           </li>
         ))}
       </ul>
@@ -119,27 +213,63 @@ function CharacterSummaryCard({ sheet, playerName }) {
 
       <details className="character-summary__section" open>
         <summary>Attacks and spells</summary>
+        {/* Attacks as they are right now: magic, every damage type,
+            damage that applies only sometimes, and spells on them. */}
         {(sheet.attacks ?? []).length > 0 && (
           <ul className="character-summary__list">
-            {sheet.attacks.map((attack) => (
-              <li key={attack.id ?? attack.name}>
-                {attack.name}: {formatModifier(Number(attack.toHit) || 0)} to
-                hit
-                {attack.damage ? `, ${attack.damage}` : ""}
-                {attack.type ? ` ${attack.type}` : ""}
-              </li>
-            ))}
+            {sheet.attacks.map((attack) => {
+              const live = getEffectiveAttack(sheet, attack);
+              return (
+                <li key={attack.index ?? attack.id ?? attack.name}>
+                  <b>
+                    {attack.name}
+                    {live.isMagicWeapon || live.isEnchanted ? " ✨" : ""}
+                  </b>
+                  : {formatModifier(live.toHit)} to hit
+                  {describeDamageParts(live.damageParts) ? `, ${describeDamageParts(live.damageParts)}` : ""}
+                  {live.optionalParts.map((part) => ` (+${part.dice} ${part.type} ${part.condition})`).join("")}
+                </li>
+              );
+            })}
           </ul>
         )}
-        <NameList title="Cantrips" items={spellcasting?.cantripsKnown} />
-        <NameList title="Spells" items={spellcasting?.spellsKnown} />
+        {/* Damage they can add on a hit (Dreadful Strikes). */}
+        {getOnHitFeatures(sheet).map((feature) => (
+          <p className="character-summary__slots" key={feature.key}>
+            On a hit: {feature.name} +{feature.dice} {feature.type} ({feature.note.replace(/\.$/, "").toLowerCase()})
+          </p>
+        ))}
+        <SpellcastingSummary sheet={sheet} />
+        <SpellsByLevel spellcasting={spellcasting} />
         {(sheet.attacks ?? []).length === 0 && !spellcasting && (
           <p className="character-summary__empty">Nothing listed.</p>
         )}
       </details>
 
+      {/* Their companions (a mount, a familiar, a summon): HP and AC. */}
+      {getCompanions(sheet).length > 0 && (
+        <details className="character-summary__section" open>
+          <summary>Companions</summary>
+          <ul className="character-summary__list">
+            {getCompanions(sheet).map((creature) => {
+              // The party strip's numbers: a summon's come from its spell,
+              // and it only has them while it's summoned.
+              const row = toCompanionRow({ ...sheet, companionMode: "creature", companionCreature: creature });
+              return (
+                <li key={creature.id}>
+                  <b>{creature.name || "Companion"}</b>
+                  {row ? `: HP ${row.hp.current}/${row.hp.max}, AC ${row.armorClass}` : ": not summoned right now"}
+                  {creature.summon && row ? " · summoned" : ""}
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      )}
+
       <details className="character-summary__section">
         <summary>Inventory</summary>
+        <p className="character-summary__slots">Attuned items: {getAttunedCount(sheet.equipment)}/3</p>
         <NameList title="Equipment" items={sheet.equipment} />
         {(sheet.equipment ?? []).length === 0 && (
           <p className="character-summary__empty">Nothing listed.</p>
