@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { getInitials } from "../../utils/characterSheet";
-import { uploadPortrait, validatePortraitFile } from "../../utils/portraits";
+import { shrinkImage, uploadPortrait, validatePortraitFile } from "../../utils/portraits";
 import "./PortraitUpload.css";
 
 // size="large": a big rounded square (the sheet's side panel); "tiny": a
@@ -21,19 +21,21 @@ function PortraitUpload({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
 
-  function handleFileChange(e) {
-    const file = e.target.files[0];
+  async function handleFileChange(e) {
+    const chosen = e.target.files[0];
     e.target.value = "";
-    if (!file) return;
+    if (!chosen) return;
 
+    // A big photo or screenshot is shrunk first, so it fits the 5 MB limit.
+    setError("");
+    setIsUploading(true);
+    const file = await shrinkImage(chosen);
     const validationError = validatePortraitFile(file);
     if (validationError) {
       setError(validationError);
+      setIsUploading(false);
       return;
     }
-
-    setError("");
-    setIsUploading(true);
 
     uploadPortrait(userId, characterId, file)
       .then((url) => {

@@ -69,6 +69,8 @@ export async function listConversations(tableId, myId) {
       tableId: conversation.table_id,
       everyone: conversation.everyone,
       memberIds: members.map((member) => member.user_id),
+      // When each member last read it, for "Seen by" under your messages.
+      members: members.map((member) => ({ userId: member.user_id, lastReadAt: member.last_read_at })),
       lastMessage: own[0] ?? null,
       unread: own.filter((message) => message.sender_id !== myId && message.created_at > lastRead).length,
     };
@@ -115,7 +117,7 @@ export async function markConversationRead(conversationId) {
 
 export function validateMessageImage(file) {
   if (!IMAGE_TYPES.includes(file.type)) return "Pictures can be PNG, JPG, WebP or GIF.";
-  if (file.size > MAX_IMAGE_BYTES) return "Pictures must be smaller than 5 MB.";
+  if (file.size > MAX_IMAGE_BYTES) return "That picture is still over 5 MB after shrinking it. Try a smaller one.";
   return null;
 }
 

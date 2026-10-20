@@ -7,8 +7,13 @@ import {
   uploadMessageImage,
   validateMessageImage,
 } from "../../utils/messageStore";
-import { messageTime, personName, whoCanSee } from "./messageLabels";
+import { messageTime, personName, readReceipt, whoCanSee } from "./messageLabels";
 import ImageLightbox from "../ImageLightbox/ImageLightbox";
+import { shrinkImage } from "../../utils/portraits";
+
+// How often to look again while your latest message hasn't been seen by
+// everyone yet, so "Seen by" catches up soon after they open it.
+const RECEIPT_CHECK_MS = 10000;
 
 // One conversation: its messages (yours on the right), who can see it, and
 // a box to write in, with an optional picture (a map, a handout).
@@ -22,6 +27,10 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
+  // A picture being dragged over the box (it lights up to say "drop here").
+  const [isDragging, setIsDragging] = useState(false);
+  // A preview of the attached picture, shown before sending.
+  const [preview, setPreview] = useState(null);
   // Messages that were unread when it opened get a small "unsealing" flourish.
   const [unreadWhenOpened] = useState(() => conversation?.unread ?? 0);
   const endRef = useRef(null);
@@ -61,13 +70,68 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
     endRef.current?.scrollIntoView?.({ block: "end" });
   }, [messages.length]);
 
+  // The attached picture's preview link is let go when it's replaced.
+  useEffect(() => {
+    if (!preview) return undefined;
+    return () => URL.revokeObjectURL?.(preview);
+  }, [preview]);
+
+  // Attaches a picture (or clears it), with its preview.
+  function setAttached(next) {
+    setFile(next);
+    setPreview(next && typeof URL.createObjectURL === "function" ? URL.createObjectURL(next) : null);
+  }
+
+  // Your newest message and who has seen it. While someone hasn't, check
+  // again every few seconds (the list refreshes on its own every 30).
+  const myLatest = [...messages].reverse().find((message) => message.sender_id === myId) ?? null;
+  const receipt = myLatest ? readReceipt(conversation, myLatest, people, myId) : null;
+  const waitingToBeSeen = Boolean(receipt && !receipt.seenAll);
+  useEffect(() => {
+    if (!waitingToBeSeen || typeof onRead !== "function") return undefined;
+    const timer = setInterval(onRead, RECEIPT_CHECK_MS);
+    return () => clearInterval(timer);
+  }, [waitingToBeSeen, onRead]);
+
+  // Attaches a picture from the picker, a paste or a drop: big ones are
+  // shrunk first, then checked.
+  async function attachFile(chosen) {
+    if (!chosen) return;
+    setError("");
+    const ready = await shrinkImage(chosen);
+    const problem = validateMessageImage(ready);
+    setError(problem ?? "");
+    setAttached(problem ? null : ready);
+  }
+
   function chooseFile(event) {
     const chosen = event.target.files?.[0];
     event.target.value = "";
-    if (!chosen) return;
-    const problem = validateMessageImage(chosen);
-    setError(problem ?? "");
-    setFile(problem ? null : chosen);
+    attachFile(chosen);
+  }
+
+  // Cmd/Ctrl+V of a screenshot attaches it. Text pastes as usual.
+  function handlePaste(event) {
+    const item = [...(event.clipboardData?.items ?? [])].find(
+      (entry) => entry.kind === "file" && entry.type.startsWith("image/"),
+    );
+    if (!item) return;
+    if (!event.clipboardData.getData("text")) event.preventDefault();
+    attachFile(item.getAsFile());
+  }
+
+  function handleDragOver(event) {
+    if (![...(event.dataTransfer?.types ?? [])].includes("Files")) return;
+    event.preventDefault();
+    setIsDragging(true);
+  }
+
+  function handleDrop(event) {
+    const dropped = [...(event.dataTransfer?.files ?? [])].find((entry) => entry.type.startsWith("image/"));
+    setIsDragging(false);
+    if (!dropped) return;
+    event.preventDefault();
+    attachFile(dropped);
   }
 
   async function handleSend(event) {
@@ -79,7 +143,7 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
       const imagePath = file ? await uploadMessageImage(conversationId, file) : null;
       await sendMessage(conversationId, { body: text, imagePath });
       setText("");
-      setFile(null);
+      setAttached(null);
       setMessages(await listMessages(conversationId));
     } catch (sendError) {
       setError(sendError.message ?? "Couldn't send that. Try again.");
@@ -113,13 +177,23 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
               </span>
               {message.image_path && <MessageImage path={message.image_path} />}
               {message.body && <p className="table-messages__text">{message.body}</p>}
+              {/* Under your newest message: who has seen it. */}
+              {mine && message.id === myLatest?.id && receipt && (
+                <span className="table-messages__receipt">{receipt.text}</span>
+              )}
             </li>
           );
         })}
         <li ref={endRef} aria-hidden="true" />
       </ol>
 
-      <form className="table-messages__composer" onSubmit={handleSend}>
+      <form
+        className={`table-messages__composer${isDragging ? " table-messages__composer--dragging" : ""}`}
+        onSubmit={handleSend}
+        onDragOver={handleDragOver}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+      >
         {error && (
           <p className="table-messages__error" role="alert">
             {error}
@@ -127,8 +201,9 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
         )}
         {file && (
           <p className="table-messages__attached">
-            Picture: {file.name}{" "}
-            <button type="button" className="table-messages__link" onClick={() => setFile(null)}>
+            {preview && <img className="table-messages__attached-preview" src={preview} alt="" />}
+            Picture: {file.name} ({(file.size / (1024 * 1024)).toFixed(1)} MB){" "}
+            <button type="button" className="table-messages__link" onClick={() => setAttached(null)}>
               Remove
             </button>
           </p>
@@ -136,11 +211,12 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
         <textarea
           className="table-messages__input"
           aria-label="Your message"
-          placeholder="Write a secret message..."
+          placeholder="Write a secret message... (paste or drop a screenshot to add it)"
           rows={2}
           maxLength={2000}
           value={text}
           onChange={(event) => setText(event.target.value)}
+          onPaste={handlePaste}
           // Enter sends; Shift+Enter starts a new line.
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) handleSend(event);

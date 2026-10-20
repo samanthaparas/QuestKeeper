@@ -598,3 +598,34 @@
   color: var(--qk-terracotta-hover);
   font-weight: 700;
 }
+
+/* "Seen by DM" under your newest message. */
+.table-messages__receipt {
+  display: block;
+  margin-top: 2px;
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+/* A picture dragged over the box: a dashed outline says "drop it here". */
+.table-messages__composer--dragging {
+  outline: 2px dashed var(--qk-terracotta);
+  outline-offset: 4px;
+  border-radius: var(--qk-radius-control);
+}
+
+/* A small preview of the picture you're about to send. */
+.table-messages__attached {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+}
+
+.table-messages__attached-preview {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--qk-radius-small);
+  object-fit: cover;
+}

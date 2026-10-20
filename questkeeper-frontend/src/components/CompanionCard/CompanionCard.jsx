@@ -358,7 +358,14 @@ function CompanionCard({
           {onPortraitUpload && (
             <PortraitUpload
               userId={userId}
-              characterId={`${characterId}-companion`}
+              // Each companion's picture is its own file. The first (and any
+              // companion from before there could be several) keeps the
+              // original "-companion" name, so its picture stays put.
+              characterId={
+                companion.id && companion.id !== "companion-1"
+                  ? `${characterId}-companion-${companion.id}`
+                  : `${characterId}-companion`
+              }
               name={name}
               portraitUrl={companion.portraitUrl}
               onUpload={onPortraitUpload}
