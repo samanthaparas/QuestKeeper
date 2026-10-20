@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
+  getItemSpellBonuses,
+  getSpellNumbers,
   getAbilityModifier,
   getProficiencyBonus,
   applyRaceBonuses,
@@ -4096,5 +4098,59 @@ describe("several companions", () => {
     // The party strip's server data before its update: only the old field.
     const oldData = { companionMode: "creature", companionCreature: sheet.companionCreature, concentration: sheet.concentration };
     expect(toCompanionRows(oldData).map((row) => row.name)).toEqual(["Ash"]);
+  });
+});
+
+describe("item spell bonuses", () => {
+  const caster = (equipment) => ({
+    level: 5,
+    class: { spellcastingAbility: "wisdom" },
+    abilityScores: { wisdom: 16 },
+    equipment,
+  });
+  const sickle = { name: "Moon Sickle", requiresAttunement: true, attuned: true, spellDcBonus: 1, spellAttackBonus: 1 };
+
+  it("counts an attuned item in the save DC and spell attack", () => {
+    // 8 + 3 proficiency + 3 Wisdom = 14, then +1 from the sickle.
+    expect(getSpellNumbers(caster([sickle]))).toMatchObject({ saveDc: 15, spellAttack: 7 });
+  });
+
+  it("skips an item that needs attunement but isn't attuned", () => {
+    expect(getSpellNumbers(caster([{ ...sickle, attuned: false }]))).toMatchObject({ saveDc: 14, spellAttack: 6 });
+  });
+
+  it("counts items that need no attunement and adds several together", () => {
+    const rod = { name: "Rod", spellAttackBonus: 2 };
+    const bonuses = getItemSpellBonuses(caster([sickle, rod, { name: "Rope" }]));
+    expect(bonuses).toMatchObject({ dc: 1, attack: 3 });
+    expect(bonuses.sources.map((source) => source.name)).toEqual(["Moon Sickle", "Rod"]);
+  });
+
+  it("returns nothing for a character who can't cast", () => {
+    expect(getSpellNumbers({ class: {}, abilityScores: {} })).toBeNull();
+  });
+
+  it("keeps item editor bonuses between +1 and +5", () => {
+    const details = cleanMagicDetails({ spellDcBonus: "2", spellAttackBonus: "9" });
+    expect(details.spellDcBonus).toBe(2);
+    expect(details.spellAttackBonus).toBe(5); // capped at +5
+  });
+});
+
+describe("the DM's summary card counts item spell bonuses", () => {
+  it("shows the save DC and spell attack with an attuned Moon Sickle", async () => {
+    const { createElement } = await import("react");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { default: CharacterSummaryCard } = await import("../components/CharacterSummaryCard/CharacterSummaryCard");
+    const sheet = {
+      name: "Test Druid",
+      level: 5,
+      class: { name: "Druid", spellcastingAbility: "wisdom" },
+      abilityScores: { wisdom: 16 },
+      equipment: [{ name: "Moon Sickle", requiresAttunement: true, attuned: true, spellDcBonus: 1, spellAttackBonus: 1 }],
+    };
+    const html = renderToStaticMarkup(createElement(CharacterSummaryCard, { sheet, playerName: "Sam" }));
+    expect(html).toContain("Spell save DC <b>15</b>");
+    expect(html).toContain("Spell attack <b>+7</b>");
   });
 });

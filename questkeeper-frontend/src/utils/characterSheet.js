@@ -2788,6 +2788,12 @@ function cleanItemNumber(mode, value, { min, max }) {
   return Number.isFinite(number) && String(value ?? "").trim() !== "" ? Math.max(min, Math.min(max, number)) : undefined;
 }
 
+// "+1" from the editor's bonus boxes, kept to 1 to 5; blank or 0 is none.
+function cleanBonus(value) {
+  const number = Math.round(Number(String(value ?? "").replace("+", "")));
+  return Number.isFinite(number) && number > 0 ? Math.min(5, number) : undefined;
+}
+
 // The DC and spell attack an item uses: { saveDc, spellAttack }, each a
 // number or null (not used). mine: the character's own { saveDc,
 // spellAttack }, or null when they don't cast spells; then a "use mine"
@@ -2795,6 +2801,51 @@ function cleanItemNumber(mode, value, { min, max }) {
 export function itemSpellNumbers(item, mine = null) {
   const pick = (value, own) => (value === "mine" ? (own ?? null) : typeof value === "number" ? value : null);
   return { saveDc: pick(item?.saveDc, mine?.saveDc), spellAttack: pick(item?.spellAttack, mine?.spellAttack) };
+}
+
+// --- Items that raise your spell save DC and spell attack ---------------------------
+//
+// A Moon Sickle, a Wand of the War Mage or an Amulet of the Devout adds to
+// the wielder's own spell attack rolls and/or spell save DC. Such an item
+// has spellAttackBonus and/or spellDcBonus (+1, +2...). It counts while it's
+// attuned, or always for one that doesn't need attunement; unattune it and
+// it stops. Two items do add up (the rules allow it; the DM can say no).
+
+const itemBonusActive = (item) => (item?.requiresAttunement ? Boolean(item.attuned) : true);
+
+// { dc, attack, sources: [{ name, dc, attack }] } from the items that count.
+export function getItemSpellBonuses(sheet) {
+  const sources = (sheet?.equipment ?? [])
+    .filter(itemBonusActive)
+    .map((item) => ({
+      name: item.name,
+      dc: Number(item.spellDcBonus) || 0,
+      attack: Number(item.spellAttackBonus) || 0,
+    }))
+    .filter((source) => source.dc || source.attack);
+  return {
+    dc: sources.reduce((sum, source) => sum + source.dc, 0),
+    attack: sources.reduce((sum, source) => sum + source.attack, 0),
+    sources,
+  };
+}
+
+// The character's spell save DC and spell attack, everything counted (the
+// spellcasting ability, proficiency, and items above). One place, so the
+// Spells tab, "Use mine" items, a summon's attack and the DM's card agree.
+// null when the character has no spellcasting ability.
+export function getSpellNumbers(sheet) {
+  const ability = sheet?.class?.spellcastingAbility ?? getSpellcastingAbility(sheet?.class ?? null);
+  if (!ability) return null;
+  const score = sheet?.abilityScores?.[ability] ?? 10;
+  const proficiency = getProficiencyBonus(sheet?.level ?? 1);
+  const bonuses = getItemSpellBonuses(sheet);
+  return {
+    ability,
+    saveDc: getSpellSaveDC(score, proficiency) + bonuses.dc,
+    spellAttack: getSpellAttackModifier(score, proficiency) + bonuses.attack,
+    bonuses,
+  };
 }
 
 // The item's magic details tidied for saving: blank ones are left off, so
@@ -2811,6 +2862,8 @@ export function cleanMagicDetails(values = {}) {
     attunementBy: attunementBy || undefined,
     saveDc: cleanItemNumber(values.saveDcMode, values.saveDcValue, { min: 1, max: 30 }),
     spellAttack: cleanItemNumber(values.attackMode, values.attackValue, { min: -5, max: 20 }),
+    spellDcBonus: cleanBonus(values.spellDcBonus),
+    spellAttackBonus: cleanBonus(values.spellAttackBonus),
   };
 }
 
