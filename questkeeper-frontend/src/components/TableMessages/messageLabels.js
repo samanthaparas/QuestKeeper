@@ -36,3 +36,24 @@ export function messageTime(iso, now = new Date()) {
   const time = date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   return sameDay ? time : `${date.toLocaleDateString([], { weekday: "short" })} ${time}`;
 }
+
+// "Seen by" for a message I sent: who else in the conversation has read up
+// to it (their last read is at or after it). people: everyone at the table
+// [{ userId, name }]; in a whole-table conversation they're all in it, else
+// only its members. Returns { text, seenAll } or null (nobody else is in it).
+export function readReceipt(conversation, message, people, myId) {
+  if (!conversation || !message) return null;
+  const others = (conversation.everyone ? people.map((person) => person.userId) : conversation.memberIds ?? []).filter(
+    (userId) => userId && userId !== myId,
+  );
+  if (others.length === 0) return null;
+  const readAt = new Map((conversation.members ?? []).map((member) => [member.userId, member.lastReadAt]));
+  const seen = others.filter((userId) => readAt.get(userId) && readAt.get(userId) >= message.created_at);
+  const nameOf = (userId) => people.find((person) => person.userId === userId)?.name ?? "Someone";
+  let text;
+  if (seen.length === 0) text = "Not seen yet";
+  else if (seen.length === others.length) text = others.length === 1 ? `Seen by ${nameOf(seen[0])}` : "Seen by everyone";
+  else if (seen.length <= 2) text = `Seen by ${seen.map(nameOf).join(" and ")}`;
+  else text = `Seen by ${seen.length} of ${others.length}`;
+  return { text, seenAll: seen.length === others.length };
+}

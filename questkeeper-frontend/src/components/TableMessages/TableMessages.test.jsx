@@ -4,6 +4,10 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import TableMessages from "./TableMessages";
 import * as store from "../../utils/messageStore";
+import { readReceipt } from "./messageLabels";
+import { shrinkPlan } from "../../utils/portraits";
+
+vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
 
 vi.mock("../../utils/messageStore", () => ({
   listMyTables: vi.fn(),
@@ -125,10 +129,10 @@ describe("TableMessages", () => {
 
     const input = within(drawer).getByLabelText("Add a picture");
     fireEvent.change(input, { target: { files: [new File(["x"], "notes.txt", { type: "text/plain" })] } });
-    expect(within(drawer).getByRole("alert")).toHaveTextContent("PNG, JPG, WebP or GIF");
+    expect(await within(drawer).findByRole("alert")).toHaveTextContent("PNG, JPG, WebP or GIF");
 
     fireEvent.change(input, { target: { files: [new File(["x"], "map.png", { type: "image/png" })] } });
-    expect(within(drawer).getByText(/Picture: map.png/)).toBeInTheDocument();
+    expect(await within(drawer).findByText(/Picture: map.png/)).toBeInTheDocument();
     store.uploadMessageImage.mockResolvedValue("c1/abc.png");
     await userEvent.click(within(drawer).getByRole("button", { name: "Send" }));
     expect(store.sendMessage).toHaveBeenCalledWith("c1", { body: "", imagePath: "c1/abc.png" });
@@ -251,5 +255,111 @@ describe("The Messages button and new messages", () => {
     // The one that was already there isn't marked.
     expect(within(within(drawer).getByText("Earlier").closest("li")).queryByText(/· New/)).toBeNull();
   });
+
+  it("attaches a screenshot pasted into the message box, and keeps pasting text normal", async () => {
+    store.listConversations.mockResolvedValue([
+      { id: "c1", tableId: "t1", everyone: true, memberIds: [], unread: 0, lastMessage: null },
+    ]);
+    const drawer = await openDrawer();
+    await userEvent.click(within(drawer).getByRole("button", { name: /Everyone at the table/ }));
+    const box = within(drawer).getByLabelText("Your message");
+    const shot = new File(["png"], "Screenshot.png", { type: "image/png" });
+    fireEvent.paste(box, {
+      clipboardData: { items: [{ kind: "file", type: "image/png", getAsFile: () => shot }], getData: () => "" },
+    });
+    expect(await within(drawer).findByText(/Picture: Screenshot.png/)).toBeInTheDocument();
+    // Text only: nothing attached (the Remove button is the attached picture's).
+    await userEvent.click(within(drawer).getByRole("button", { name: "Remove" }));
+    fireEvent.paste(box, { clipboardData: { items: [{ kind: "string", type: "text/plain" }], getData: () => "hi" } });
+    expect(within(drawer).queryByText(/Picture:/)).toBeNull();
+  });
+
+  it("shows who has seen your newest message", async () => {
+    const sent = new Date(Date.now() - 60000).toISOString();
+    const later = new Date().toISOString();
+    store.listConversations.mockResolvedValue([
+      {
+        id: "c1",
+        tableId: "t1",
+        everyone: false,
+        memberIds: [ME, "dm"],
+        members: [
+          { userId: ME, lastReadAt: later },
+          { userId: "dm", lastReadAt: later },
+        ],
+        unread: 0,
+        lastMessage: null,
+      },
+    ]);
+    store.listMessages.mockResolvedValue([
+      { id: "m1", sender_id: ME, body: "Is the door trapped?", image_path: null, created_at: sent },
+    ]);
+    const drawer = await openDrawer();
+    await userEvent.click(within(drawer).getByRole("button", { name: /DM/ }));
+    expect(await within(drawer).findByText("Seen by DM")).toBeInTheDocument();
+  });
 });
+
+describe("read receipts", () => {
+  const people = [
+    { userId: "dm", name: "DM" },
+    { userId: "me", name: "Billie" },
+    { userId: "p2", name: "Rook" },
+    { userId: "p3", name: "Wren" },
+  ];
+  const message = { created_at: "2026-10-19T20:00:00Z" };
+  const read = (at) => at;
+  it("says who has read up to the message, for private and whole-table conversations", () => {
+    const privateOne = { everyone: false, memberIds: ["me", "dm"], members: [{ userId: "dm", lastReadAt: read("2026-10-19T19:00:00Z") }] };
+    expect(readReceipt(privateOne, message, people, "me")).toEqual({ text: "Not seen yet", seenAll: false });
+    privateOne.members[0].lastReadAt = "2026-10-19T20:00:05Z";
+    expect(readReceipt(privateOne, message, people, "me")).toEqual({ text: "Seen by DM", seenAll: true });
+
+    const everyone = {
+      everyone: true,
+      memberIds: [],
+      members: [
+        { userId: "dm", lastReadAt: "2026-10-19T20:01:00Z" },
+        { userId: "p2", lastReadAt: "2026-10-19T20:02:00Z" },
+      ],
+    };
+    expect(readReceipt(everyone, message, people, "me").text).toBe("Seen by DM and Rook");
+    everyone.members.push({ userId: "p3", lastReadAt: "2026-10-19T20:03:00Z" });
+    expect(readReceipt(everyone, message, people, "me")).toEqual({ text: "Seen by everyone", seenAll: true });
+  });
+
+  it("counts when more than two have seen it, and is empty with nobody else in it", () => {
+    const big = [...people, { userId: "p4", name: "Ash" }, { userId: "p5", name: "Moss" }];
+    const everyone = {
+      everyone: true,
+      members: ["dm", "p2", "p3"].map((userId) => ({ userId, lastReadAt: "2026-10-19T20:05:00Z" })),
+    };
+    expect(readReceipt(everyone, message, big, "me").text).toBe("Seen by 3 of 5");
+    expect(readReceipt({ everyone: false, memberIds: ["me"], members: [] }, message, people, "me")).toBeNull();
+  });
+});
+
+describe("shrinking big pictures", () => {
+  it("leaves small pictures and GIFs alone", () => {
+    expect(shrinkPlan({ width: 1200, height: 800, size: 400_000, type: "image/png" })).toEqual({ shrink: false });
+    expect(shrinkPlan({ width: 4000, height: 3000, size: 9_000_000, type: "image/gif" })).toEqual({ shrink: false });
+  });
+
+  it("shrinks a Retina screenshot to 2000px on its long side, keeping its shape", () => {
+    expect(shrinkPlan({ width: 3456, height: 2234, size: 6_500_000, type: "image/png" })).toEqual({
+      shrink: true,
+      width: 2000,
+      height: 1293,
+    });
+  });
+
+  it("re-saves a heavy picture that's already small enough in size on screen", () => {
+    expect(shrinkPlan({ width: 1800, height: 1200, size: 3_000_000, type: "image/png" })).toEqual({
+      shrink: true,
+      width: 1800,
+      height: 1200,
+    });
+  });
+});
+
 
