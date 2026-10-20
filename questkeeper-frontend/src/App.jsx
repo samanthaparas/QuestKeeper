@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Routes, Route, Link, Navigate, useLocation } from "react-router-dom";
 import Header from "./components/Header/Header";
 import Home from "./pages/Home/Home";
@@ -28,6 +28,7 @@ import SampleCharacterPage from "./pages/Samples/SampleCharacterPage";
 import SampleTablePage from "./pages/Samples/SampleTablePage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import { getPageTitle } from "./utils/pageTitle";
+import { CURRENT_BUILD, fetchDeployedBuild, isNewerBuild } from "./utils/api";
 
 function NotFound() {
   return (
@@ -71,11 +72,79 @@ function SkipLink() {
   );
 }
 
+// How often an open page checks for a newer version (and also whenever the
+// tab comes back into view, like after waking the computer).
+const UPDATE_CHECK_MS = 60 * 1000;
+const UPDATE_LATER_KEY = "qk-update-later";
+
+// "QuestKeeper was updated", a small card in the bottom corner when a newer
+// version is live. It never reloads by itself (that could interrupt a roll or
+// an unsent message) and doesn't move anything on the page: Refresh when
+// you're ready, or Later to hide it until the next update.
+function UpdateBanner() {
+  const [newBuild, setNewBuild] = useState(null);
+  const [laterFor, setLaterFor] = useState(() => {
+    try {
+      return window.sessionStorage.getItem(UPDATE_LATER_KEY);
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    let stopped = false;
+    async function check() {
+      const deployed = await fetchDeployedBuild();
+      if (!stopped && isNewerBuild(CURRENT_BUILD, deployed)) setNewBuild(deployed);
+    }
+    const onVisible = () => document.visibilityState === "visible" && check();
+    const first = setTimeout(check, 5000);
+    const timer = setInterval(check, UPDATE_CHECK_MS);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      stopped = true;
+      clearTimeout(first);
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, []);
+
+  if (!newBuild || laterFor === newBuild) return null;
+
+  function later() {
+    setLaterFor(newBuild);
+    try {
+      window.sessionStorage.setItem(UPDATE_LATER_KEY, newBuild);
+    } catch {
+      // Storage blocked: it just stays hidden until the page is reloaded.
+    }
+  }
+
+  return (
+    <aside className="update-banner" role="status" aria-label="QuestKeeper update">
+      <span className="update-banner__text">
+        <span aria-hidden="true">✨</span> QuestKeeper has a fresh update. Refresh when you&apos;re ready.
+      </span>
+      <span className="update-banner__actions">
+        <button type="button" className="update-banner__refresh" onClick={() => window.location.reload()}>
+          Refresh
+        </button>
+        <button type="button" className="update-banner__later" onClick={later}>
+          Later
+        </button>
+      </span>
+    </aside>
+  );
+}
+
 function App() {
   return (
     <>
       <PageTitle />
       <SkipLink />
+      <UpdateBanner />
       <Header />
       {/* "← Back to your quiz results" and the like, when a link set one. */}
       <BackLink />

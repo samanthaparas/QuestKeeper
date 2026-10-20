@@ -471,3 +471,27 @@ export function getFeatureDetails(featureId) {
     `Failed to fetch feature details for ID ${featureId}:`,
   );
 }
+
+// --- Is a newer version of QuestKeeper live? ------------------------------------------
+//
+// The build this page was loaded from, and the one the server has now (from
+// /version.json, written at build time; see vite.config.js). Asked fresh
+// every time, never from a cache. null when it can't tell (offline, or in
+// development where there's no version.json).
+export const CURRENT_BUILD = import.meta.env.VITE_BUILD_ID ?? "";
+
+export async function fetchDeployedBuild() {
+  try {
+    const response = await fetch(`/version.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok || !String(response.headers.get("content-type") ?? "").includes("json")) return null;
+    const data = await response.json();
+    return typeof data?.buildId === "string" && data.buildId ? data.buildId : null;
+  } catch {
+    return null;
+  }
+}
+
+// A different build is live (and both are known).
+export function isNewerBuild(current, deployed) {
+  return Boolean(current && deployed && current !== deployed);
+}
