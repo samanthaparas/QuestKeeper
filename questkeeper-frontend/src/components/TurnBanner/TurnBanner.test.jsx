@@ -44,6 +44,26 @@ describe("TurnBanner", () => {
     expect(screen.getByText(/That hits!/)).toBeInTheDocument();
   });
 
+  it("tells the player who goes next to get ready, and no one else", () => {
+    // makeCombat: Billie (me) is first in the "next" list.
+    render(<TurnBanner combat={makeCombat()} onApplyDamage={vi.fn()} />);
+    expect(screen.getByText("Get ready: plan your move.")).toBeInTheDocument();
+  });
+
+  it("doesn't say get ready when the player is two turns away, or it's their turn", () => {
+    const { unmount } = render(
+      <TurnBanner
+        combat={makeCombat({ next: { id: "c-thorn", name: "Thorn" }, upcoming: [{ id: "c-thorn", name: "Thorn" }, { id: "c-me", name: "Billie" }] })}
+        onApplyDamage={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("Get ready: plan your move.")).not.toBeInTheDocument();
+    unmount();
+
+    render(<TurnBanner combat={makeCombat({ isMyTurn: true, now: { id: "c-me", name: "Billie" } })} onApplyDamage={vi.fn()} />);
+    expect(screen.queryByText("Get ready: plan your move.")).not.toBeInTheDocument();
+  });
+
   it("shows how many attacks the current player has made this turn", () => {
     const combat = makeCombat({
       now: { id: "c-thorn", name: "Thorn", kind: "player", attacks_this_turn: 2 },

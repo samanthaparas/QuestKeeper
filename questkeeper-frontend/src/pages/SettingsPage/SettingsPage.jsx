@@ -10,6 +10,7 @@ import {
 } from "../../utils/account";
 import { getMotionPreference, setMotionPreference } from "../../utils/motionPreference";
 import { getThemePreference, setThemePreference } from "../../utils/themePreference";
+import { getHeadsUpPreference, setHeadsUpPreference } from "../../utils/turnHeadsUp";
 import "./SettingsPage.css";
 
 const MIN_PASSWORD = 6; // Supabase's own minimum
@@ -50,6 +51,7 @@ function SettingsPage() {
 
   const [motion, setMotion] = useState(getMotionPreference);
   const [theme, setTheme] = useState(getThemePreference);
+  const [headsUp, setHeadsUp] = useState(getHeadsUpPreference);
 
   const [email, setEmail] = useState("");
   const [emailState, saveEmail] = useSaveState();
@@ -62,6 +64,11 @@ function SettingsPage() {
     const value = event.target.checked ? "reduce" : "device";
     setMotion(value);
     setMotionPreference(value);
+  }
+
+  function handleHeadsUp(event) {
+    setHeadsUp(event.target.checked);
+    setHeadsUpPreference(event.target.checked);
   }
 
   function handleTheme(value) {
@@ -149,6 +156,20 @@ function SettingsPage() {
             </label>
           ))}
         </div>
+      </section>
+
+      <section className="settings-page__card" aria-labelledby="settings-headsup-heading">
+        <h2 className="settings-page__heading" id="settings-headsup-heading">
+          Turn heads-up
+        </h2>
+        <p className="settings-page__hint">
+          In a fight, when you&apos;re next to go (and when it&apos;s your turn), your phone gives one short buzz and
+          this tab&apos;s title says so while you&apos;re looking at something else. No sound. Saved on this device.
+        </p>
+        <label className="settings-page__switch">
+          <input type="checkbox" checked={headsUp} onChange={handleHeadsUp} />
+          <span>Give me a heads-up</span>
+        </label>
       </section>
 
       <section className="settings-page__card" aria-labelledby="settings-motion-heading">

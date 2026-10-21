@@ -112,3 +112,29 @@
 .turn-banner__end {
   min-height: 36px;
 }
+
+/* You're next: a thicker terracotta edge and a short line, so it's hard to
+   miss on a phone while staying quiet. */
+.turn-banner--soon {
+  border-bottom: 4px solid var(--qk-terracotta);
+}
+
+.turn-banner__ready {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font-size: 14px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .turn-banner--soon {
+    animation: turn-banner-soon 1.6s ease-in-out 2;
+  }
+}
+
+@keyframes turn-banner-soon {
+  50% {
+    filter: brightness(1.12);
+  }
+}

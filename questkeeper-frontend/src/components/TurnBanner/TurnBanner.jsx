@@ -2,6 +2,7 @@ import { useState } from "react";
 import { resolveDamageRequest } from "../../utils/tableStore";
 import { describeUpcoming } from "../../utils/initiative";
 import Button from "../Button/Button";
+import TurnHeadsUp from "../TurnHeadsUp/TurnHeadsUp";
 import "./TurnBanner.css";
 
 // Sits at the top of a player's character sheet while their table is in combat.
@@ -17,6 +18,8 @@ function TurnBanner({ combat, onApplyDamage }) {
     combat.upcoming ?? (next ? [next] : []),
     combat.myCombatant?.id,
   );
+  // This player goes after whoever is going now: time to plan their move.
+  const isNextUp = Boolean(combat.myCombatant && next && next.id === combat.myCombatant.id && !isMyTurn);
 
   async function handleEndTurn() {
     setError("");
@@ -42,7 +45,7 @@ function TurnBanner({ combat, onApplyDamage }) {
   return (
     <div className="turn-banner-wrap">
       <div
-        className={`turn-banner${isMyTurn ? " turn-banner--mine" : ""}`}
+        className={`turn-banner${isMyTurn ? " turn-banner--mine" : ""}${isNextUp ? " turn-banner--soon" : ""}`}
         role="status"
         aria-live="polite"
       >
@@ -77,6 +80,8 @@ function TurnBanner({ combat, onApplyDamage }) {
           </span>
         )}
         {upcomingText && <span className="turn-banner__next">{upcomingText}</span>}
+        {isNextUp && <span className="turn-banner__ready">Get ready: plan your move.</span>}
+        <TurnHeadsUp isMyTurn={isMyTurn} isNext={isNextUp} />
         {isMyTurn && combat.endTurn && (
           <Button variant="secondary" className="turn-banner__end" onClick={handleEndTurn}>
             End my turn
