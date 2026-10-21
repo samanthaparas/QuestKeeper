@@ -3328,3 +3328,40 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   outline: 2px solid var(--qk-focus);
   outline-offset: 2px;
 }
+
+/* A concentration spell's one-tap 🎯 button, and the question before it
+   would end the spell you're already holding. */
+.character-sheet__concentrate-button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.character-sheet__concentrate-button:hover {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+}
+
+.character-sheet__concentrate-button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.character-sheet__concentrate-ask {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--qk-brass);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-brass-soft);
+  font-size: 13px;
+  font-weight: 700;
+}

@@ -84,6 +84,46 @@ function ordinal(level) {
   return `${level}${level === 1 ? "st" : level === 2 ? "nd" : level === 3 ? "rd" : "th"}`;
 }
 
+const sameSpellName = (a, b) => String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
+
+// "🎯 Concentrate" on a spell that needs it. Already holding this one: a quiet
+// "Concentrating" tag. Holding another: asks before switching.
+function ConcentrateButton({ spell, current, isAsking, onAsk, onCancel, onStart }) {
+  if (current && sameSpellName(current, spell.name)) {
+    return (
+      <span className="character-sheet__resource-reset" title="You're concentrating on this now">
+        🎯 Concentrating
+      </span>
+    );
+  }
+  if (isAsking) {
+    return (
+      <span className="character-sheet__concentrate-ask" role="group" aria-label={`Switch concentration to ${spell.name}?`}>
+        <span>
+          You&apos;re concentrating on {current}. Casting {spell.name} ends it.
+        </span>
+        <button type="button" className="character-sheet__concentrate-button" onClick={onStart}>
+          Switch to {spell.name}
+        </button>
+        <button type="button" className="character-sheet__concentrate-button" onClick={onCancel}>
+          Keep {current}
+        </button>
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="character-sheet__concentrate-button"
+      aria-label={`Concentrate on ${spell.name}`}
+      title={current ? `Would end your concentration on ${current}` : "Start concentrating on this spell"}
+      onClick={current ? onAsk : onStart}
+    >
+      🎯 Concentrate
+    </button>
+  );
+}
+
 function CharacterSheetSpellsTab({
   spellcasting,
   spellcastingAbility,
@@ -116,7 +156,14 @@ function CharacterSheetSpellsTab({
   onCastEffect = () => "",
   activeEffects = [],
   onEndEffect = () => {},
+  // The spell the character is concentrating on now ("" for none), and
+  // onConcentrate(name) to start concentrating on another. A concentration
+  // spell's 🎯 button warns before it would end the one you're holding.
+  concentratingOn = "",
+  onConcentrate = null,
 }) {
+  // The spell whose "this ends your other concentration" question is open.
+  const [swappingIndex, setSwappingIndex] = useState(null);
   // The spell whose cast panel is open (by its index), or null.
   const [castingIndex, setCastingIndex] = useState(null);
   const [allSpells, setAllSpells] = useState([]);
@@ -566,6 +613,22 @@ function CharacterSheetSpellsTab({
             {/* Spells the sheet can cast for you: a filled Cast button,
                 last on the row so it sits at the far right. Always shown
                 (no hover needed), so it works on phones too. */}
+            {/* Concentration spells (without their own Cast button): one tap to
+                start concentrating, and a question first when it would end the
+                spell already being held, so nobody stacks two by accident. */}
+            {spell.concentration && onConcentrate && !castOptionsFor(spell.name) && (
+              <ConcentrateButton
+                spell={spell}
+                current={concentratingOn}
+                isAsking={swappingIndex === spell.index}
+                onAsk={() => setSwappingIndex(spell.index)}
+                onCancel={() => setSwappingIndex(null)}
+                onStart={() => {
+                  setSwappingIndex(null);
+                  onConcentrate(spell.name);
+                }}
+              />
+            )}
             {castOptionsFor(spell.name) && (
               <button
                 type="button"
