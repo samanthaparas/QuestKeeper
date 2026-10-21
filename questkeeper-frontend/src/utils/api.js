@@ -224,6 +224,19 @@ export function getBackgroundDetails(backgroundId, edition) {
   );
 }
 
+// The SRD monsters for the DM's encounter helper: the list has name, challenge
+// rating, XP, type and size; one monster's entry has its whole stat block.
+export function getMonsters() {
+  return requestJson("/monsters", "Failed to fetch monsters:");
+}
+
+export function getMonsterDetails(monsterId) {
+  return requestJson(
+    `/monsters/${encodeURIComponent(monsterId)}`,
+    `Failed to fetch monster details for ID ${monsterId}:`,
+  );
+}
+
 export function getSpells() {
   return requestJson("/spells", "Failed to fetch spells:");
 }
