@@ -259,3 +259,9 @@
 .character-summary__entry .character-summary__note-lines {
   margin-top: 4px;
 }
+
+/* A spell in their book or list that isn't prepared today. */
+.character-summary__spell--resting {
+  color: var(--qk-text-muted);
+  border-style: dashed;
+}

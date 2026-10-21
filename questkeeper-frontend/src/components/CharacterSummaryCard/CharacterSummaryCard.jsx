@@ -11,6 +11,10 @@ import {
   getSpellcastingAbility,
   getSpellSlots,
   getAttunedCount,
+  getPreparedLimit,
+  countPreparedSpells,
+  countsTowardSpellsKnown,
+  isSpellPrepared,
 } from "../../utils/characterSheet";
 import { describeDamageParts, getActiveEffects, getEffectiveAttack, getOnHitFeatures } from "../../utils/combatEffects";
 import { toCompanionRow } from "../../utils/partyStrip";
@@ -111,6 +115,11 @@ function SpellcastingSummary({ sheet }) {
           <span>{ABILITY_NAMES[ability] ?? ability}</span>
         </p>
       )}
+      {getPreparedLimit(sheet) && (
+        <p className="character-summary__slots">
+          Prepared spells: <b>{countPreparedSpells(sheet.spellcasting)}</b>/{getPreparedLimit(sheet).limit}
+        </p>
+      )}
       {slots.length > 0 && (
         <p className="character-summary__slots">
           Slots left:{" "}
@@ -141,7 +150,7 @@ function SpellcastingSummary({ sheet }) {
 
 // Known spells grouped by level. Tap a spell to read the player's own note on
 // it, and its full rules text, without leaving the table.
-function SpellsByLevel({ spellcasting }) {
+function SpellsByLevel({ spellcasting, prepares = false }) {
   const [openKey, setOpenKey] = useState(null);
   const detailView = useSrdDetailView();
   const panelId = useId();
@@ -172,18 +181,24 @@ function SpellsByLevel({ spellcasting }) {
             <span className="character-summary__spell-chips">
               {spells
                 .filter((spell) => (Number(spell?.level) || 0) === level)
-                .map((spell) => (
+                .map((spell) => {
+                  // A caster who prepares: spells not ready today are dimmed.
+                  const resting = prepares && (Number(spell.level) || 0) > 0 && countsTowardSpellsKnown(spell) && !isSpellPrepared(spell);
+                  return (
                   <button
                     key={keyOf(spell)}
                     type="button"
-                    className="character-summary__spell"
+                    className={`character-summary__spell${resting ? " character-summary__spell--resting" : ""}`}
+                    title={resting ? "In their spellbook or list, but not prepared today" : undefined}
                     aria-expanded={keyOf(spell) === openKey}
                     aria-controls={panelId}
                     onClick={() => setOpenKey(keyOf(spell) === openKey ? null : keyOf(spell))}
                   >
                     {itemName(spell)}
+                    {resting ? " (not prepared)" : ""}
                   </button>
-                ))}
+                  );
+                })}
             </span>
           </li>
         ))}
@@ -327,7 +342,7 @@ function CharacterSummaryCard({ sheet, playerName }) {
           </p>
         ))}
         <SpellcastingSummary sheet={sheet} />
-        <SpellsByLevel spellcasting={spellcasting} />
+        <SpellsByLevel spellcasting={spellcasting} prepares={Boolean(getPreparedLimit(sheet))} />
         {(sheet.attacks ?? []).length === 0 && !spellcasting && (
           <p className="character-summary__empty">Nothing listed.</p>
         )}

@@ -28,6 +28,8 @@ import {
   formatModifier,
   buildLevelUpSummary,
   createResource,
+  getPreparedLimit,
+  isSpellPrepared,
   resourceMaxFrom,
   withResourceMaxes,
   cleanRegain,
@@ -1650,6 +1652,17 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, spellcasting });
   }
 
+  // Prepared / not prepared, for casters who ready only some of their spells.
+  function handleSpellPreparedToggle(spell) {
+    const spellcasting = updateSpell(
+      sheet.spellcasting,
+      findSpellListKey(spell.index),
+      spell.index,
+      { prepared: !isSpellPrepared(spell) },
+    );
+    persistSheet({ ...sheet, spellcasting });
+  }
+
   // " Elemental Weapon ended." for the rest message.
   const effectsEndedNote = (names) => (names.length ? ` ${names.join(" and ")} ended.` : "");
 
@@ -2885,6 +2898,8 @@ function CharacterSheetPage() {
                       onSpellUpdate={handleSpellUpdate}
                       onSpellRemove={handleSpellRemove}
                       onSpellLockToggle={handleSpellLockToggle}
+                      preparedLimit={getPreparedLimit(sheet)}
+                      onPreparedToggle={handleSpellPreparedToggle}
                       spellsStartAt={getSpellsStartAt(sheet.class, sheet.level)}
                       onFillComponents={handleFillComponents}
                       castOptionsFor={castOptionsFor}

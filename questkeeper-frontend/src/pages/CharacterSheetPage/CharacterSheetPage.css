@@ -3273,3 +3273,58 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   box-shadow: 0 0 0 2px var(--qk-surface);
   vertical-align: middle;
 }
+
+/* ---------- Prepared spells ---------- */
+/* "Prepared spells: 4 / 6", under the Spellcasting heading. Turns warm when
+   there are too many. */
+.character-sheet__prepared-count {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  align-items: baseline;
+  margin: 6px 0 10px;
+  padding: 6px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface-muted);
+  font-size: 14px;
+}
+
+.character-sheet__prepared-count span {
+  color: var(--qk-text-muted);
+}
+
+.character-sheet__prepared-count--over {
+  border-color: var(--qk-warning);
+  background-color: var(--qk-brass-soft);
+}
+
+.character-sheet__prepared-count--over span {
+  color: var(--qk-text);
+}
+
+/* The Prepare / Prepared pill on a spell row: filled when ready. */
+.character-sheet__prepared-toggle {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.character-sheet__prepared-toggle--on {
+  border-color: var(--qk-moss);
+  background-color: var(--qk-moss-soft);
+  color: var(--qk-text);
+}
+
+.character-sheet__prepared-toggle:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
