@@ -1,0 +1,131 @@
+/* Table rules: the DM's editor on the Prep tab, and the players' short,
+   collapsed card on their game page. */
+.table-rules {
+  display: grid;
+  gap: 10px;
+  padding: 16px 20px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.table-rules__title {
+  margin: 0;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 20px;
+}
+
+.table-rules__hint {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.table-rules__input {
+  width: 100%;
+  min-height: 110px;
+  padding: 10px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-input-bg);
+  color: var(--qk-text);
+  font: inherit;
+  resize: vertical;
+}
+
+.table-rules__starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.table-rules__starter {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px dashed var(--qk-border);
+  border-radius: 999px;
+  background: none;
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.table-rules__starter:hover:not(:disabled) {
+  border-color: var(--qk-terracotta);
+  color: var(--qk-text);
+}
+
+.table-rules__starter:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.table-rules__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.table-rules__save {
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-rules__save:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.table-rules__message {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.table-rules__starter:focus-visible,
+.table-rules__save:focus-visible,
+.table-rules__summary:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* Players: one quiet line until opened. */
+.table-rules--read {
+  gap: 0;
+  padding: 10px 16px;
+}
+
+.table-rules__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  color: var(--qk-text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-rules__new {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+  font-size: 12px;
+}
+
+.table-rules__list {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+}
