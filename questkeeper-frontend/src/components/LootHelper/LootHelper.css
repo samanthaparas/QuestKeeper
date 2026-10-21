@@ -1,0 +1,158 @@
+/* The DM's loot ideas: one collapsed line on the Prep tab until opened. */
+.loot-helper {
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.loot-helper__summary {
+  padding: 14px 20px;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.loot-helper__summary:focus-visible,
+.loot-helper__button:focus-visible,
+.loot-helper__pill:focus-visible,
+.loot-helper__link:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.loot-helper__body {
+  display: grid;
+  gap: 14px;
+  padding: 0 20px 18px;
+}
+
+.loot-helper__hint {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.loot-helper__error {
+  margin: 0;
+  color: var(--qk-danger);
+  font-size: 14px;
+}
+
+.loot-helper__setup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.loot-helper__number {
+  width: 64px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-input-bg);
+  color: var(--qk-text);
+  font: inherit;
+}
+
+.loot-helper__pills {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+}
+
+.loot-helper__pill {
+  min-height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.loot-helper__pill[aria-checked="true"] {
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+.loot-helper__idea {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface-muted);
+}
+
+.loot-helper__title {
+  margin: 0;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 16px;
+}
+
+.loot-helper__button {
+  justify-self: start;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.loot-helper__button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.loot-helper__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.loot-helper__result {
+  margin: 0;
+}
+
+.loot-helper__list {
+  margin: 0 0 4px;
+  padding-left: 20px;
+}
+
+.loot-helper__meta {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.loot-helper__link {
+  min-height: 28px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.loot-helper__message {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
