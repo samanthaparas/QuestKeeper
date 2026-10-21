@@ -1,6 +1,14 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { signIn, signUp } from "../../utils/auth";
+import {
+  getRememberedEmail,
+  requestPasswordReset,
+  setRememberedEmail,
+  signIn,
+  signUp,
+} from "../../utils/auth";
+import { useAuth } from "../../context/useAuth";
+import { updatePassword } from "../../utils/account";
 import {
   clearDestination,
   describeDestination,
@@ -11,14 +19,24 @@ import {
 import Button from "../../components/Button/Button";
 import "./AuthPage.css";
 
-// Log in or sign up. It says why an account is needed and what happens
+// Log in, sign up, or get back in when the password is forgotten (an emailed
+// link, then "Choose a new password" here). It says why an account is needed and what happens
 // next, and takes the player back to where they were headed (with their
 // quiz build) once they're in, even after a reload or after confirming
 // their email in another tab (see continueAfterLogin.js).
 function AuthPage() {
+  // "login" | "signup" | "forgot" (ask for the reset email)
   const [mode, setMode] = useState("login");
-  const [email, setEmail] = useState("");
+  // "Remember my email" fills the email box next time (never the password).
+  const [email, setEmail] = useState(getRememberedEmail);
+  const [rememberEmail, setRememberEmail] = useState(() => Boolean(getRememberedEmail()));
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [repeatPassword, setRepeatPassword] = useState("");
+  // The reset email has been sent.
+  const [resetSent, setResetSent] = useState(false);
+  // Opened from a reset-password email link: choose a new password.
+  const { isRecovering = false, finishRecovery } = useAuth();
   const [error, setError] = useState("");
   // After signing up when the account still needs its email confirmed.
   const [confirmSent, setConfirmSent] = useState(false);
@@ -38,6 +56,45 @@ function AuthPage() {
   // Where they were going: this tab's history first, then this device's note.
   const destination = safeDestination(location.state) ?? readDestination();
   const reason = describeDestination(destination);
+
+  async function handleForgot(e) {
+    e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+    const { error: resetError } = await requestPasswordReset(email);
+    setIsSubmitting(false);
+    if (resetError) {
+      setError(
+        resetError.status === 429 || /rate limit/i.test(resetError.message ?? "")
+          ? "Too many emails were sent just now. Wait a few minutes and try again."
+          : resetError.message,
+      );
+      return;
+    }
+    setResetSent(true);
+  }
+
+  async function handleNewPassword(e) {
+    e.preventDefault();
+    setError("");
+    if (newPassword !== repeatPassword) {
+      setError("The two passwords don't match.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await updatePassword(newPassword);
+    } catch (updateError) {
+      setIsSubmitting(false);
+      setError(updateError.message);
+      return;
+    }
+    setIsSubmitting(false);
+    finishRecovery?.();
+    navigate(destination ? destination.from : "/characters", {
+      state: destination ? destination.fromState : null,
+    });
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -62,10 +119,81 @@ function AuthPage() {
       return;
     }
 
+    if (mode === "login") setRememberedEmail(rememberEmail ? email : "");
+
     clearDestination();
     navigate(destination ? destination.from : "/characters", {
       state: destination ? destination.fromState : null,
     });
+  }
+
+  // They came from the reset email: just the new password, nothing else.
+  if (isRecovering) {
+    return (
+      <main className="auth-page">
+        <h1 className="auth-page__title">Choose a new password</h1>
+        <form className="auth-page__form" onSubmit={handleNewPassword} aria-describedby={error ? errorId : undefined}>
+          <label className="auth-page__label" htmlFor="auth-new-password">
+            New password
+          </label>
+          <input
+            id="auth-new-password"
+            className="auth-page__input"
+            type="password"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            minLength={6}
+            required
+          />
+          <p className="auth-page__hint">At least 6 characters.</p>
+          <label className="auth-page__label" htmlFor="auth-repeat-password">
+            Type it again
+          </label>
+          <input
+            id="auth-repeat-password"
+            className="auth-page__input"
+            type="password"
+            autoComplete="new-password"
+            value={repeatPassword}
+            onChange={(e) => setRepeatPassword(e.target.value)}
+            minLength={6}
+            required
+          />
+          {error && (
+            <p className="auth-page__error" id={errorId} role="alert">
+              {error}
+            </p>
+          )}
+          <Button type="submit" large disabled={isSubmitting}>
+            {isSubmitting ? "Please wait..." : "Save new password"}
+          </Button>
+        </form>
+      </main>
+    );
+  }
+
+  if (resetSent) {
+    return (
+      <main className="auth-page">
+        <h1 className="auth-page__title">Check your email</h1>
+        <div className="auth-page__notice" role="status">
+          <p>
+            If there&apos;s an account for <strong>{email}</strong>, we&apos;ve sent a link to choose a new
+            password. It can take a minute, and it may land in spam.
+          </p>
+        </div>
+        <Button
+          large
+          onClick={() => {
+            setResetSent(false);
+            setMode("login");
+          }}
+        >
+          Back to log in
+        </Button>
+      </main>
+    );
   }
 
   if (confirmSent) {
@@ -99,7 +227,9 @@ function AuthPage() {
 
   return (
     <main className="auth-page">
-      <h1 className="auth-page__title">{mode === "login" ? "Log In" : "Sign Up"}</h1>
+      <h1 className="auth-page__title">
+        {mode === "login" ? "Log In" : mode === "signup" ? "Sign Up" : "Forgot your password?"}
+      </h1>
 
       {/* Why an account, and what happens once you're in. */}
       <section className="auth-page__why" aria-labelledby="auth-why-title">
@@ -130,7 +260,16 @@ function AuthPage() {
         </p>
       </section>
 
-      <form className="auth-page__form" onSubmit={handleSubmit} aria-describedby={error ? errorId : undefined}>
+      <form
+        className="auth-page__form"
+        onSubmit={mode === "forgot" ? handleForgot : handleSubmit}
+        aria-describedby={error ? errorId : undefined}
+      >
+        {mode === "forgot" && (
+          <p className="auth-page__hint">
+            Type the email you signed up with and we&apos;ll send you a link to choose a new password.
+          </p>
+        )}
         <label className="auth-page__label" htmlFor="auth-email">
           Email
         </label>
@@ -146,24 +285,51 @@ function AuthPage() {
           required
         />
 
-        <label className="auth-page__label" htmlFor="auth-password">
-          Password
-        </label>
-        <input
-          id="auth-password"
-          className="auth-page__input"
-          type="password"
-          autoComplete={mode === "login" ? "current-password" : "new-password"}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          minLength={6}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={[passwordHintId, error ? errorId : null].filter(Boolean).join(" ")}
-          required
-        />
-        <p className="auth-page__hint" id={passwordHintId}>
-          At least 6 characters.
-        </p>
+        {mode !== "forgot" && (
+          <>
+          <label className="auth-page__label" htmlFor="auth-password">
+            Password
+          </label>
+          <input
+            id="auth-password"
+            className="auth-page__input"
+            type="password"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={6}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={[passwordHintId, error ? errorId : null].filter(Boolean).join(" ")}
+            required
+          />
+          <p className="auth-page__hint" id={passwordHintId}>
+            At least 6 characters.
+          </p>
+
+            {mode === "login" && (
+              <>
+                <label className="auth-page__remember">
+                  <input
+                    type="checkbox"
+                    checked={rememberEmail}
+                    onChange={(e) => setRememberEmail(e.target.checked)}
+                  />
+                  Remember my email on this device
+                </label>
+                <button
+                  type="button"
+                  className="auth-page__forgot"
+                  onClick={() => {
+                    setMode("forgot");
+                    setError("");
+                  }}
+                >
+                  Forgot your password?
+                </button>
+              </>
+            )}
+          </>
+        )}
 
         {error && (
           <p className="auth-page__error" id={errorId} role="alert">
@@ -172,7 +338,13 @@ function AuthPage() {
         )}
 
         <Button type="submit" large disabled={isSubmitting}>
-          {isSubmitting ? "Please wait..." : mode === "login" ? "Log In" : "Sign Up"}
+          {isSubmitting
+            ? "Please wait..."
+            : mode === "login"
+              ? "Log In"
+              : mode === "signup"
+                ? "Sign Up"
+                : "Send reset link"}
         </Button>
       </form>
 
@@ -184,7 +356,7 @@ function AuthPage() {
           setError("");
         }}
       >
-        {mode === "login" ? "Need an account? Sign up" : "Already have an account? Log in"}
+        {mode === "login" ? "Need an account? Sign up" : mode === "signup" ? "Already have an account? Log in" : "Back to log in"}
       </button>
 
       <p className="auth-page__sample">

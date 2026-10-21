@@ -1,10 +1,19 @@
 import { useEffect, useState } from "react";
 import { AuthContext } from "./AuthContext";
-import { supabase } from "../utils/supabaseClient";
+import { useNavigate } from "react-router-dom";
+import { openedFromRecoveryLink, supabase } from "../utils/supabaseClient";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  // They opened a reset-password link: the login page shows "Choose a new
+  // password" until it's done (see AuthPage).
+  const [isRecovering, setIsRecovering] = useState(openedFromRecoveryLink);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isRecovering) navigate("/login", { replace: true });
+  }, [isRecovering, navigate]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -13,7 +22,8 @@ export function AuthProvider({ children }) {
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        if (event === "PASSWORD_RECOVERY") setIsRecovering(true);
         setUser(session?.user ?? null);
       },
     );
@@ -22,7 +32,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, isRecovering, finishRecovery: () => setIsRecovering(false) }}
+    >
       {children}
     </AuthContext.Provider>
   );

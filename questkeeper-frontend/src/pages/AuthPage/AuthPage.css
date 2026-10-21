@@ -150,3 +150,35 @@
     padding: 24px 18px;
   }
 }
+
+/* "Remember my email on this device": a tick under the password box. */
+.auth-page__remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--qk-text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.auth-page__remember input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--qk-terracotta);
+}
+
+/* "Forgot your password?": a quiet link-looking button, a comfortable tap
+   target. */
+.auth-page__forgot {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 4px;
+  background: none;
+  border: none;
+  color: var(--qk-text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+}
