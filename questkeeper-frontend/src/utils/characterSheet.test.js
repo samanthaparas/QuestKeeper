@@ -27,6 +27,9 @@ import {
   getSafeSpellLink,
   getBookSpellChoice,
   createResource,
+  getPreparedLimit,
+  countPreparedSpells,
+  isSpellPrepared,
   resourceMaxFrom,
   withResourceMaxes,
   createCompanionCreature,
@@ -420,6 +423,62 @@ describe("resources whose max follows the proficiency bonus or a modifier", () =
     const resources = [{ id: "r1", name: "X", max: 3, current: 3, maxFrom: "proficiency" }];
     expect(updateResource(resources, "r1", { notes: "hi" })[0].maxFrom).toBe("proficiency");
     expect(updateResource(resources, "r1", { max: 2, maxFrom: "" })[0].maxFrom).toBeUndefined();
+  });
+});
+
+describe("prepared spells", () => {
+  const caster = (classId, level, scoreKey, score, spellsKnown = []) => ({
+    class: { id: classId },
+    level,
+    abilityScores: { [scoreKey]: score },
+    spellcasting: { cantripsKnown: [], spellsKnown },
+  });
+
+  it("limits a Wizard to level plus Intelligence modifier, at least 1", () => {
+    expect(getPreparedLimit(caster("wizard", 1, "intelligence", 16))).toMatchObject({ limit: 4 });
+    expect(getPreparedLimit(caster("wizard", 5, "intelligence", 18))).toMatchObject({ limit: 9 });
+    expect(getPreparedLimit(caster("wizard", 1, "intelligence", 6))).toMatchObject({ limit: 1 });
+  });
+
+  it("uses Wisdom for Clerics and Druids, and half the level for a Paladin", () => {
+    expect(getPreparedLimit(caster("cleric", 3, "wisdom", 16)).limit).toBe(6);
+    expect(getPreparedLimit(caster("druid", 2, "wisdom", 12)).limit).toBe(3);
+    expect(getPreparedLimit(caster("paladin", 5, "charisma", 14)).limit).toBe(2 + 2);
+    expect(getPreparedLimit(caster("paladin", 1, "charisma", 8)).limit).toBe(1);
+  });
+
+  it("has no limit for casters who know a fixed list", () => {
+    expect(getPreparedLimit(caster("sorcerer", 5, "charisma", 16))).toBeNull();
+    expect(getPreparedLimit(caster("fighter", 5, "strength", 16))).toBeNull();
+  });
+
+  it("counts levelled, non-bonus prepared spells; no mark means prepared", () => {
+    const spells = [
+      { index: "a", level: 1 },
+      { index: "b", level: 2, prepared: true },
+      { index: "c", level: 1, prepared: false },
+      { index: "d", level: 1, bonusSpell: true },
+      { index: "e", level: 2, grantedBy: "Domain" },
+    ];
+    expect(countPreparedSpells({ spellsKnown: spells })).toBe(2);
+    expect(isSpellPrepared({ index: "x" })).toBe(true);
+    expect(isSpellPrepared({ index: "x", prepared: false })).toBe(false);
+  });
+
+  it("puts a Wizard's starting and manual spells in the spellbook, not on the prepared list", () => {
+    const starting = buildStartingSpellcasting(
+      { id: "wizard", spellcastingType: "prepared" },
+      [{ index: "fire-bolt", name: "Fire Bolt", level: 0 }],
+      [{ index: "shield", name: "Shield", level: 1 }],
+    );
+    expect(starting.spellsKnown[0].prepared).toBe(false);
+    expect(starting.cantripsKnown[0].prepared).toBeUndefined();
+
+    const added = addManualSpell({ class: { id: "wizard" }, spellcasting: starting }, { name: "Sleep", level: 1 });
+    expect(added.spellsKnown.at(-1).prepared).toBe(false);
+
+    const cleric = addManualSpell({ class: { id: "cleric" }, spellcasting: null }, { name: "Bless", level: 1 });
+    expect(cleric.spellsKnown[0].prepared).toBeUndefined();
   });
 });
 

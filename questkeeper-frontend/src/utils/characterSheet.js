@@ -234,6 +234,8 @@ export function buildStartingSpellcasting(
     level: spell.level,
     notes: "",
     components: Array.isArray(spell.components) ? spell.components.join(", ") : (spell.components ?? ""),
+    // A Wizard's starting spells are the spellbook; they prepare some later.
+    ...(keepsSpellbook(classRef) && spell.level > 0 ? { prepared: false } : {}),
   });
 
   return applySpellSlotProgression(
@@ -1060,6 +1062,35 @@ const CANTRIPS_KNOWN_BY_LEVEL = {
 // A Wizard copies two new spells into their spellbook every level.
 const WIZARD_SPELLBOOK_SPELLS_PER_LEVEL = 2;
 
+// --- Prepared spells ---------------------------------------------------------
+// Wizards, Clerics, Druids and Paladins (and homebrew "prepared" classes) can
+// know or reach many spells but have only some ready at a time: class level
+// (half for a half-caster like the Paladin) plus the spellcasting ability's
+// modifier, at least 1. Cantrips and free bonus spells don't count. A spell
+// with no mark counts as prepared, so older sheets look the same as before;
+// only an explicit "not prepared" (a Wizard's spellbook spells) is off.
+export const isSpellPrepared = (spell) => spell?.prepared !== false;
+
+// The Wizard keeps a spellbook: new spells go in it, not into "prepared".
+const keepsSpellbook = (classRef) => classRules(classRef).id === "wizard";
+
+// { limit, ability } for a prepared caster, or null for everyone else.
+export function getPreparedLimit(sheet) {
+  const rules = classRules(sheet?.class ?? null);
+  if (rules.type !== "prepared" || !rules.ability) return null;
+  const level = Number(sheet?.level) || 1;
+  const base = rules.progression === "half" ? Math.floor(level / 2) : rules.progression === "third" ? Math.floor(level / 3) : level;
+  const modifier = getAbilityModifier(Number(sheet?.abilityScores?.[rules.ability]) || 10);
+  return { limit: Math.max(1, base + modifier), ability: rules.ability };
+}
+
+// Levelled spells that are ready and count toward the limit.
+export function countPreparedSpells(spellcasting) {
+  return (spellcasting?.spellsKnown ?? []).filter(
+    (spell) => countsTowardSpellsKnown(spell) && isSpellPrepared(spell),
+  ).length;
+}
+
 // Whether a spell on the sheet counts toward the class's spells (or cantrips)
 // known. Spells from a race (Tiefling's Thaumaturgy), and ones the player
 // ticked "Doesn't count toward spells known" (a Fey Wanderer's Misty Step, a
@@ -1249,7 +1280,7 @@ export function applyAbilityScoreChoice(abilityScores, choice) {
 // One spell picked on level-up, in the shape the sheet stores. A book spell
 // has no SRD index, so it gets a made-up one (like Add Spell on the Spells
 // tab), and keeps its book link if it has a safe one.
-function toSpellEntry(choice, acquiredAtLevel = null) {
+function toSpellEntry(choice, acquiredAtLevel = null, spellbook = false) {
   const link = getSafeSpellLink(choice.link);
   return {
     // The level it was learned at, so the sheet knows where each spell came from.
@@ -1262,6 +1293,8 @@ function toSpellEntry(choice, acquiredAtLevel = null) {
     // School, duration and so on, when the wizard looked them up.
     ...(choice.facts ?? {}),
     ...(link ? { link } : {}),
+    // A Wizard copies it into the spellbook; preparing it is a separate choice.
+    ...(spellbook && choice.level > 0 ? { prepared: false } : {}),
   };
 }
 
@@ -1323,7 +1356,7 @@ export function applyLevelUpSpellChoices(spellcasting, characterClass, choices, 
 
   picks.forEach((choice) => {
     if (choice.level === 0) cantripsKnown = [...cantripsKnown, toSpellEntry(choice, targetLevel)];
-    else spellsKnown = [...spellsKnown, toSpellEntry(choice, targetLevel)];
+    else spellsKnown = [...spellsKnown, toSpellEntry(choice, targetLevel, keepsSpellbook(characterClass))];
   });
 
   return { ...base, cantripsKnown, spellsKnown };
@@ -3091,6 +3124,8 @@ export function addManualSpell(sheet, { name, level, notes, components, bonusSpe
     ...facts,
     ...(bonusSpell ? { bonusSpell: true } : {}),
     ...(link ? { link } : {}),
+    // A Wizard's new spell goes in the spellbook, not on the prepared list.
+    ...(keepsSpellbook(sheet.class) && numericLevel > 0 && !bonusSpell ? { prepared: false } : {}),
   };
 
   if (numericLevel === 0) {

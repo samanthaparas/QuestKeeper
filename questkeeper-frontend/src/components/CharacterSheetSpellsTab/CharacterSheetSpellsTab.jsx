@@ -13,6 +13,9 @@ import {
   getSpellSlots,
   formatModifier,
   getSafeSpellLink,
+  countPreparedSpells,
+  countsTowardSpellsKnown,
+  isSpellPrepared,
 } from "../../utils/characterSheet";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
 import {
@@ -97,6 +100,10 @@ function CharacterSheetSpellsTab({
   onSpellUpdate,
   onSpellRemove,
   onSpellLockToggle,
+  // Casters who ready only some of their spells (Wizard, Cleric, Druid,
+  // Paladin): { limit, ability } and the toggle. Null for everyone else.
+  preparedLimit = null,
+  onPreparedToggle = () => {},
   // When the class's own spellcasting hasn't started yet (a level 1 Ranger):
   // { className, level }. Null otherwise.
   spellsStartAt = null,
@@ -176,6 +183,7 @@ function CharacterSheetSpellsTab({
     );
   }
 
+  const preparedCount = countPreparedSpells(spellcasting);
   const slots = getSpellSlots(spellcasting);
   // Slots' Max boxes, Hide and "+ Level N" show only while editing.
   const [isEditingSlots, setIsEditingSlots] = useState(false);
@@ -221,6 +229,26 @@ function CharacterSheetSpellsTab({
             </div>
           )}
         </div>
+
+        {/* How many of the levelled spells are ready right now. It warns, it
+            never blocks: house rules and features can change the number. */}
+        {preparedLimit && (
+          <p
+            className={`character-sheet__prepared-count${
+              preparedCount > preparedLimit.limit ? " character-sheet__prepared-count--over" : ""
+            }`}
+            role="status"
+          >
+            <b>Prepared spells: {preparedCount} / {preparedLimit.limit}</b>
+            <span>
+              {preparedCount > preparedLimit.limit
+                ? ` · ${preparedCount - preparedLimit.limit} over. Untick one, or ignore this if a feature lets you prepare more.`
+                : preparedCount < preparedLimit.limit
+                  ? ` · ${preparedLimit.limit - preparedCount} more to prepare. Cantrips and free bonus spells don't count.`
+                  : " · all prepared. Cantrips and free bonus spells don't count."}
+            </span>
+          </p>
+        )}
 
         {spellcastingAbility && spellsStartAt && (
           <p className="character-sheet__spells-not-yet" role="note">
@@ -350,7 +378,15 @@ function CharacterSheetSpellsTab({
         items={[...(spellcasting?.cantripsKnown ?? []), ...(spellcasting?.spellsKnown ?? [])]}
         viewKey="spells"
         sortOptions={SPELL_SORTS}
-        filterOptions={SPELL_FILTERS}
+        filterOptions={
+          preparedLimit
+            ? [
+                { key: "prepared", label: "Prepared", match: (spell) => spell.level > 0 && countsTowardSpellsKnown(spell) && isSpellPrepared(spell) },
+                { key: "notPrepared", label: "Not prepared", match: (spell) => spell.level > 0 && countsTowardSpellsKnown(spell) && !isSpellPrepared(spell) },
+                ...SPELL_FILTERS,
+              ]
+            : SPELL_FILTERS
+        }
         getItemId={(item) => item.index}
         fields={[
           {
@@ -472,6 +508,22 @@ function CharacterSheetSpellsTab({
         }}
         extraRowContent={(spell, { isEditMode: isEditingSpells } = {}) => (
           <>
+            {/* Ready for today: levelled spells of a caster who prepares.
+                Cantrips and free bonus spells are always ready. */}
+            {preparedLimit && spell.level > 0 && countsTowardSpellsKnown(spell) && (
+              <button
+                type="button"
+                className={`character-sheet__prepared-toggle${
+                  isSpellPrepared(spell) ? " character-sheet__prepared-toggle--on" : ""
+                }`}
+                aria-pressed={isSpellPrepared(spell)}
+                aria-label={`${spell.name} prepared`}
+                title={isSpellPrepared(spell) ? "Prepared. Tap to take it off today's list." : "Not prepared. Tap to prepare it."}
+                onClick={() => onPreparedToggle(spell)}
+              >
+                {isSpellPrepared(spell) ? "✓ Prepared" : "Prepare"}
+              </button>
+            )}
 
             {/* Where a spell came from always shows; a plain lock only
                 matters while editing. */}
