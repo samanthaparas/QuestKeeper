@@ -27,6 +27,8 @@ import {
   getSafeSpellLink,
   getBookSpellChoice,
   createResource,
+  resourceMaxFrom,
+  withResourceMaxes,
   createCompanionCreature,
   createCompanionAbilityScores,
   getCompanionNotes,
@@ -370,6 +372,54 @@ describe("createResource", () => {
     expect(resource.current).toBe(1);
     expect(resource.resetOn).toBe("long");
     expect(resource.id).toBeTruthy();
+  });
+});
+
+describe("resources whose max follows the proficiency bonus or a modifier", () => {
+  const sheet = (level, intelligence, resources) => ({
+    level,
+    abilityScores: { intelligence },
+    resources,
+  });
+
+  it("works out the max from the proficiency bonus or an ability modifier (at least 1)", () => {
+    expect(resourceMaxFrom("proficiency", sheet(5, 10))).toBe(3);
+    expect(resourceMaxFrom("intelligence", sheet(1, 16))).toBe(3);
+    expect(resourceMaxFrom("intelligence", sheet(1, 8))).toBe(1);
+    expect(resourceMaxFrom("", sheet(1, 16))).toBeNull();
+  });
+
+  it("only remembers a source it knows", () => {
+    expect(createResource({ name: "A", max: 2, maxFrom: "proficiency" }).maxFrom).toBe("proficiency");
+    expect(createResource({ name: "A", max: 2, maxFrom: "nonsense" }).maxFrom).toBeUndefined();
+    expect(createResource({ name: "A", max: 2 }).maxFrom).toBeUndefined();
+  });
+
+  it("adds the new uses when a level-up raises the proficiency bonus, keeping the used ones used", () => {
+    const resource = { id: "r1", name: "Bardic Inspiration", max: 2, current: 1, maxFrom: "proficiency" };
+    const next = withResourceMaxes(sheet(5, 10, [resource]));
+    expect(next.resources[0]).toMatchObject({ max: 3, current: 2 });
+  });
+
+  it("follows an ability modifier up and down, cutting uses left to the new max", () => {
+    const resource = { id: "r1", name: "Arcane Thing", max: 4, current: 4, maxFrom: "intelligence" };
+    const lower = withResourceMaxes(sheet(1, 12, [resource]));
+    expect(lower.resources[0]).toMatchObject({ max: 1, current: 1 });
+    const higher = withResourceMaxes(sheet(1, 18, [lower.resources[0]]));
+    expect(higher.resources[0]).toMatchObject({ max: 4, current: 4 });
+  });
+
+  it("leaves typed-number resources and an unchanged sheet alone", () => {
+    const typed = sheet(5, 10, [{ id: "r1", name: "Second Wind", max: 1, current: 0 }]);
+    expect(withResourceMaxes(typed)).toBe(typed);
+    const same = sheet(5, 10, [{ id: "r2", name: "X", max: 3, current: 1, maxFrom: "proficiency" }]);
+    expect(withResourceMaxes(same)).toBe(same);
+  });
+
+  it("forgets the source when edited back to a typed number, but not on other edits", () => {
+    const resources = [{ id: "r1", name: "X", max: 3, current: 3, maxFrom: "proficiency" }];
+    expect(updateResource(resources, "r1", { notes: "hi" })[0].maxFrom).toBe("proficiency");
+    expect(updateResource(resources, "r1", { max: 2, maxFrom: "" })[0].maxFrom).toBeUndefined();
   });
 });
 

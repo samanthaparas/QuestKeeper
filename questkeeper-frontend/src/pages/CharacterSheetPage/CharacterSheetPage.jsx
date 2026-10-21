@@ -28,6 +28,8 @@ import {
   formatModifier,
   buildLevelUpSummary,
   createResource,
+  resourceMaxFrom,
+  withResourceMaxes,
   cleanRegain,
   applyDawn,
   undoDawn,
@@ -665,9 +667,11 @@ function CharacterSheetPage() {
   const weaponDetailsOrLoading = (name) => gearDetails[normalizeItemName(name)];
   function withCurrentNumbers(before, next) {
     // Initiative follows Dexterity too (see withAutoInitiative).
-    return withAutoInitiative(
-      before,
-      withAutoArmorClass(refreshWeaponAttacks(before, next, weaponDetailsFor), gearDetailsFor),
+    return withResourceMaxes(
+      withAutoInitiative(
+        before,
+        withAutoArmorClass(refreshWeaponAttacks(before, next, weaponDetailsFor), gearDetailsFor),
+      ),
     );
   }
 
@@ -1413,7 +1417,8 @@ function CharacterSheetPage() {
   function handleResourceAdd(values) {
     const resource = createResource({
       name: values.name.trim(),
-      max: Number(values.max),
+      max: resourceMaxFrom(values.maxFrom, sheet) ?? Number(values.max),
+      maxFrom: values.maxFrom,
       resetOn: values.resetOn,
       regain: values.regain,
       notes: values.notes.trim(),
@@ -1430,7 +1435,8 @@ function CharacterSheetPage() {
       // Charges left are kept (only cut down to a lower maximum).
       resources: updateResource(sheet.resources, id, {
         name: values.name.trim(),
-        max: Number(values.max),
+        max: resourceMaxFrom(values.maxFrom, sheet) ?? Number(values.max),
+        maxFrom: values.maxFrom,
         resetOn: values.resetOn,
         regain: values.resetOn === "dawn" ? cleanRegain(values.regain) || undefined : undefined,
         notes: values.notes.trim(),

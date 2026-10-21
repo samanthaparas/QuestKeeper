@@ -41,7 +41,7 @@ function FieldHint({ text }) {
   );
 }
 
-function EditableItemField({ field, value, onChange }) {
+function EditableItemField({ field, value, onChange, values }) {
   // A tick box with its label beside it (a spell's "Doesn't count toward
   // spells known"). Its value is true or false, not text.
   if (field.type === "checkbox") {
@@ -87,6 +87,9 @@ function EditableItemField({ field, value, onChange }) {
         placeholder={field.placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        // A box that isn't needed right now (the max, when it follows the
+        // proficiency bonus).
+        disabled={field.disabledWhen?.(values) ?? false}
         min={field.type === "number" ? field.min : undefined}
         list={field.datalistId}
         autoComplete="off"
@@ -358,6 +361,7 @@ function EditableItemList({
                   field={field}
                   value={values[field.key]}
                   onChange={(value) => handleFieldChange(field.key, value)}
+                  values={values}
                 />
               </label>
             ) : (
@@ -366,6 +370,7 @@ function EditableItemList({
                 field={field}
                 value={values[field.key]}
                 onChange={(value) => handleFieldChange(field.key, value)}
+                values={values}
               />
             ),
           )}
