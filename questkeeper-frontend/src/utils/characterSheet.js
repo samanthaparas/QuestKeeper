@@ -1595,18 +1595,63 @@ export const RESET_OPTIONS = [
 ];
 
 
-export function createResource({ name, max, resetOn, notes, regain = "", itemIndex = null }) {
+export function createResource({ name, max, resetOn, notes, regain = "", itemIndex = null, maxFrom = "" }) {
   const reset = RESET_ON.includes(resetOn) ? resetOn : "long";
   return {
     id: crypto.randomUUID(),
     name,
     max,
     current: max,
+    // What the max follows, if not a typed number (see RESOURCE_MAX_SOURCES).
+    ...(isMaxSource(maxFrom) ? { maxFrom } : {}),
     resetOn: reset,
     ...(reset === "dawn" && cleanRegain(regain) ? { regain: cleanRegain(regain) } : {}),
     ...(itemIndex ? { itemIndex } : {}),
     notes: notes || "",
   };
+}
+
+// What a resource's max uses can follow instead of a typed number: the
+// proficiency bonus (Bardic Inspiration at some levels, "proficiency bonus
+// times per day") or an ability modifier (Wizard's Arcane Recovery style
+// features). Either way it changes on its own with level and scores.
+export const RESOURCE_MAX_SOURCES = [
+  { value: "", label: "A number I type" },
+  { value: "proficiency", label: "Proficiency bonus" },
+  ...ABILITY_SCORES.map((ability) => ({ value: ability, label: `${ABILITY_LABELS[ability]} modifier (at least 1)` })),
+];
+
+const isMaxSource = (source) => RESOURCE_MAX_SOURCES.some((option) => option.value && option.value === source);
+
+// The max uses a source gives right now, or null for a typed number.
+export function resourceMaxFrom(source, sheet) {
+  if (!isMaxSource(source)) return null;
+  if (source === "proficiency") return getProficiencyBonus(Number(sheet?.level) || 1);
+  return Math.max(1, getAbilityModifier(Number(sheet?.abilityScores?.[source]) || 10));
+}
+
+// Words for the row: "Max follows Proficiency bonus".
+export function describeMaxFrom(source) {
+  const option = RESOURCE_MAX_SOURCES.find((item) => item.value && item.value === source);
+  return option ? option.label.replace(" (at least 1)", "") : "";
+}
+
+// Resources that follow the proficiency bonus or a modifier get their max
+// worked out again (after a level-up or a changed score). A higher max adds
+// the new uses to the ones left; a lower one cuts them down.
+export function withResourceMaxes(sheet) {
+  const resources = sheet?.resources;
+  if (!resources?.some((resource) => resource.maxFrom)) return sheet;
+  let changed = false;
+  const next = resources.map((resource) => {
+    const max = resourceMaxFrom(resource.maxFrom, sheet);
+    if (max === null || max === resource.max) return resource;
+    changed = true;
+    const gained = Math.max(0, max - (Number(resource.max) || 0));
+    const current = Math.min(max, (Number(resource.current) || 0) + gained);
+    return { ...resource, max, current };
+  });
+  return changed ? { ...sheet, resources: next } : sheet;
 }
 
 // "1d6 + 4" -> "1d6+4"; a plain number or NdM(+/-K). Anything else is "",
@@ -2155,6 +2200,8 @@ export function updateResource(resources, id, updates) {
   return (resources ?? []).map((resource) => {
     if (resource.id !== id) return resource;
     const updated = { ...resource, ...updates };
+    // Back to a typed number: forget what it used to follow.
+    if ("maxFrom" in updates && !updates.maxFrom) delete updated.maxFrom;
     if (updates.max !== undefined) {
       updated.current = Math.min(resource.current, updates.max);
     }

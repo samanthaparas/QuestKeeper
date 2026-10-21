@@ -1,7 +1,7 @@
 import UsePips, { MAX_PIPS } from "../UsePips/UsePips";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import Button from "../Button/Button";
-import { RESET_OPTIONS, describeReset } from "../../utils/characterSheet";
+import { RESET_OPTIONS, RESOURCE_MAX_SOURCES, describeMaxFrom, describeReset } from "../../utils/characterSheet";
 
 // The regain box, shown only for "Daily at dawn": a number, dice like
 // 1d3 or 1d6+4, or blank for all of them.
@@ -104,6 +104,18 @@ function CharacterSheetResourcesTab({
           placeholder: "Max",
           width: "small",
           min: 1,
+          // Not needed while the max follows the proficiency bonus or a modifier.
+          disabledWhen: (values) => Boolean(values.maxFrom),
+        },
+        {
+          key: "maxFrom",
+          type: "select",
+          label: "Max uses",
+          defaultValue: "",
+          options: RESOURCE_MAX_SOURCES.map((option) => ({
+            value: option.value,
+            label: option.value ? `Max = ${option.label}` : "Max = a number I type",
+          })),
         },
         {
           key: "resetOn",
@@ -169,6 +181,12 @@ function CharacterSheetResourcesTab({
           )}
           <span className="character-sheet__resource-reset">
             {describeReset(resource)}
+            {resource.maxFrom && (
+              <span title="The most uses follows this, and changes on its own with level and scores">
+                {" "}
+                · max follows {describeMaxFrom(resource.maxFrom)}
+              </span>
+            )}
             {/* Charges of an inventory item: the same numbers show there. */}
             {itemFor(resource) && (
               <span className="character-sheet__resource-item" title={`The charges of ${itemFor(resource).name} in your inventory`}>
