@@ -64,6 +64,7 @@ import TableJournal from "../../components/TableJournal/TableJournal";
 import TableHandouts from "../../components/TableHandouts/TableHandouts";
 import TableRules from "../../components/TableRules/TableRules";
 import EncounterHelper from "../../components/EncounterHelper/EncounterHelper";
+import LootHelper from "../../components/LootHelper/LootHelper";
 import { addJournalEntry, getTablePortraits } from "../../utils/journalStore";
 import "./TablePage.css";
 
@@ -1599,6 +1600,11 @@ function TablePage() {
             levels={characters.map((sheet) => Number(sheet.level) || 1)}
             onAdd={handleAddCombatants}
           />
+        )}
+
+        {/* And ideas for what the fight leaves behind. */}
+        {isDm && dmTab === "prep" && (
+          <LootHelper levels={characters.map((sheet) => Number(sheet.level) || 1)} />
         )}
 
         {isDm && (dmTab === "prep" || (dmTab === "combat" && table.combat_active && showMonsterForm)) && (
