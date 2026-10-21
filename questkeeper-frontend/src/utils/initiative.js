@@ -21,8 +21,10 @@ export function sortCombatants(combatants) {
     });
 }
 
-// Who actually gets a turn: defeated monsters are skipped.
+// Who actually gets a turn: defeated monsters are skipped, and so is anyone
+// the DM has marked away (they keep their place for when they're back).
 function takesTurns(combatant) {
+  if (combatant.away) return false;
   return !(combatant.kind === "monster" && combatant.status === "down");
 }
 

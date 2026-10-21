@@ -37,6 +37,7 @@ import {
   setCombatantInitiative,
   setMyInitiative,
   setShareParty,
+  setCombatantAway,
   startCombat,
 } from "../../utils/tableStore";
 import { isSameTemplate, pieceNames, readStatBlock, recentEventsFor, savesOf } from "../../utils/statBlock";
@@ -307,6 +308,7 @@ function CombatantRow({
   onSetInitiative,
   onDamage,
   onDeny,
+  onAway = null,
   onResolve,
   pendingCalls = [],
   combatActive = false,
@@ -420,6 +422,7 @@ function CombatantRow({
                 {isMe && <span className="table-page__tag">You</span>}
                 {isMonster && <span className="table-page__tag table-page__tag--monster">Enemy</span>}
                 {combatant.kind === "ally" && <span className="table-page__tag">Ally</span>}
+                {combatant.away && <span className="table-page__tag table-page__tag--away">Away</span>}
               </span>
 
               {combatant.attacks_this_turn > 0 && (
@@ -651,13 +654,30 @@ function CombatantRow({
                     </span>
                   </span>
                 ) : (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setConfirmingRemove(true)}
-                  >
-                    Remove
-                  </Button>
+                  <>
+                    {!isNpc && onAway && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        aria-pressed={Boolean(combatant.away)}
+                        title={
+                          combatant.away
+                            ? "Put them back in the turn order"
+                            : "Skip their turns until you bring them back"
+                        }
+                        onClick={() => onAway(combatant, !combatant.away)}
+                      >
+                        {combatant.away ? "Back" : "Mark away"}
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setConfirmingRemove(true)}
+                    >
+                      Remove
+                    </Button>
+                  </>
                 )}
               </div>
             )}
@@ -1019,7 +1039,8 @@ function TablePage() {
   const npcs = combatants.filter((combatant) => combatant.kind !== "player");
   const amUp = Boolean(now && now.kind === "player" && now.user_id === user?.id);
   const myCombatant = players.find((player) => player.user_id === user?.id);
-  const waitingPlayers = waiting.filter((combatant) => combatant.kind === "player");
+  // (Someone marked away isn't waited on or nudged.)
+  const waitingPlayers = waiting.filter((combatant) => combatant.kind === "player" && !combatant.away);
   // The player still has to roll initiative: shown as "!" on their Combat tab.
   const needsMyRoll = Boolean(
     myCombatant &&
@@ -1203,6 +1224,7 @@ function TablePage() {
         }
         onDamage={(target, amount) => run(() => applyDamage(target.id, amount))}
         onDeny={denyAttack}
+        onAway={(target, away) => run(() => setCombatantAway(target.id, away))}
         pendingCalls={awaitingCall.filter((player) => player.attack_target === combatant.id)}
         combatActive={table.combat_active}
         targets={combatants.filter((other) => other.id !== combatant.id)}
@@ -1533,6 +1555,12 @@ function TablePage() {
             </p>
           )}
 
+          {!isDm && myCombatant?.away && (
+            <p className="table-page__hint" role="status">
+              Your DM has marked you away, so your turns are skipped. Ask them to bring you back when you&apos;re
+              ready.
+            </p>
+          )}
           {!isDm && playerTip && <p className="table-page__hint">{playerTip}</p>}
 
           {/* Listed first: these are who the table is waiting on. */}

@@ -280,6 +280,12 @@ export async function editCombatant({ id, name, maxHp, currentHp, armorClass, st
   );
 }
 
+// DM: mark a player away (their turns are skipped) or back (see
+// 20261021_away_players.sql).
+export async function setCombatantAway(combatantId, away) {
+  unwrap(await supabase.from("combatants").update({ away: Boolean(away) }).eq("id", combatantId));
+}
+
 // A dice roll in the table's activity log, for everyone at the table.
 export async function logRoll(tableId, { who, label, detail, total }) {
   unwrap(
