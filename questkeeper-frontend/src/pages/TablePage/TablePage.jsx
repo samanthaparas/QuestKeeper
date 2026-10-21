@@ -29,6 +29,7 @@ import {
   postPlayerDamage,
   removeCombatant,
   removeMember,
+  setTableRules,
   banMember,
   unbanMember,
   listBans,
@@ -60,6 +61,7 @@ import PartyStrip from "../../components/PartyStrip/PartyStrip";
 import DmStoryTab from "../../components/DmStoryTab/DmStoryTab";
 import TableJournal from "../../components/TableJournal/TableJournal";
 import TableHandouts from "../../components/TableHandouts/TableHandouts";
+import TableRules from "../../components/TableRules/TableRules";
 import { addJournalEntry, getTablePortraits } from "../../utils/journalStore";
 import "./TablePage.css";
 
@@ -1276,6 +1278,9 @@ function TablePage() {
           <PlayerCharacterCard sheet={mySheet} characterId={myMember.character_id} />
         )}
 
+        {/* The DM's table rules, for players to read (nothing if there are none). */}
+        {!isDm && <TableRules tableId={table.id} rules={table.table_rules} />}
+
         {(isDm ? characters.length > 0 : partyRows.length > 0) && (
           <section className="table-page__party" aria-labelledby="party-title">
             <div className="table-page__party-head">
@@ -1351,6 +1356,16 @@ function TablePage() {
               </p>
             )}
           </div>
+        )}
+
+        {isDm && dmTab === "prep" && (
+          <TableRules
+            key={table.id}
+            tableId={table.id}
+            rules={table.table_rules}
+            isDm
+            onSave={(text) => setTableRules(table.id, text)}
+          />
         )}
 
         {isDm && dmTab === "prep" && table.combat_active && (

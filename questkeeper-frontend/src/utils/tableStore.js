@@ -48,6 +48,19 @@ export async function setShareParty(tableId, share) {
   );
 }
 
+// DM's table rules: a few lines players see on their game page (see
+// 20261021_table_rules.sql). Blank clears them.
+export const TABLE_RULES_MAX = 1500;
+
+export async function setTableRules(tableId, text) {
+  unwrap(
+    await supabase
+      .from("game_tables")
+      .update({ table_rules: String(text ?? "").trim().slice(0, TABLE_RULES_MAX) })
+      .eq("id", tableId),
+  );
+}
+
 // The party strip's mini sheets (see 20261014_party_strip.sql). Only works
 // for the DM, or for players once the DM has shared the party.
 export async function getPartyStrip(tableId) {
