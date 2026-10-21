@@ -1,3 +1,4 @@
+import { useId, useState } from "react";
 import {
   getInitials,
   ABILITY_SCORES,
@@ -14,12 +15,41 @@ import {
 import { describeDamageParts, getActiveEffects, getEffectiveAttack, getOnHitFeatures } from "../../utils/combatEffects";
 import { toCompanionRow } from "../../utils/partyStrip";
 import ConditionBadges from "../ConditionBadges/ConditionBadges";
+import RulesText from "../RulesText/RulesText";
+import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
+import { useSrdDetailView } from "../../hooks/useSrdDetailView";
+import { getSpellDetails, getSpells } from "../../utils/api";
+import { findSrdMatches, formatSpellDetails } from "../../utils/srdDetails";
 import "./CharacterSummaryCard.css";
 
 function itemName(item) {
   return typeof item === "string" ? item : (item?.name ?? "Unnamed");
 }
 
+// The player's own note on a spell, item or feature (one line per bullet).
+// Only these notes are shown here, never their personal journal.
+function noteLinesOf(item) {
+  const text = typeof item === "string" ? "" : (item?.description ?? item?.notes ?? "");
+  return String(text)
+    .split("\n")
+    .map((line) => line.trim().replace(/^[-•]\s*/, ""))
+    .filter(Boolean);
+}
+
+function NoteLines({ lines }) {
+  return (
+    <ul className="character-summary__note-lines">
+      {lines.map((line, index) => (
+        <li key={index}>
+          <RulesText text={line} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Names, with the player's own note opening under any item or feature that
+// has one, so the DM can read it without asking.
 function NameList({ title, items }) {
   if (!items || items.length === 0) return null;
 
@@ -27,13 +57,22 @@ function NameList({ title, items }) {
     <div className="character-summary__block">
       <h4 className="character-summary__block-title">{title}</h4>
       <ul className="character-summary__list">
-        {items.map((item, index) => (
-          <li key={item?.id ?? `${itemName(item)}-${index}`}>
-            {itemName(item)}
-            {item?.quantity > 1 ? ` x${item.quantity}` : ""}
-            {item?.attuned ? " (attuned)" : ""}
-          </li>
-        ))}
+        {items.map((item, index) => {
+          const label = `${itemName(item)}${item?.quantity > 1 ? ` x${item.quantity}` : ""}${item?.attuned ? " (attuned)" : ""}`;
+          const lines = noteLinesOf(item);
+          return (
+            <li key={item?.id ?? `${itemName(item)}-${index}`}>
+              {lines.length > 0 ? (
+                <details className="character-summary__entry">
+                  <summary>{label}</summary>
+                  <NoteLines lines={lines} />
+                </details>
+              ) : (
+                label
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -100,11 +139,29 @@ function SpellcastingSummary({ sheet }) {
   );
 }
 
-// Known spells grouped by level ("1st: Absorb Elements, Ensnaring Strike").
+// Known spells grouped by level. Tap a spell to read the player's own note on
+// it, and its full rules text, without leaving the table.
 function SpellsByLevel({ spellcasting }) {
+  const [openKey, setOpenKey] = useState(null);
+  const detailView = useSrdDetailView();
+  const panelId = useId();
   const spells = [...(spellcasting?.cantripsKnown ?? []), ...(spellcasting?.spellsKnown ?? [])];
   if (spells.length === 0) return null;
   const levels = [...new Set(spells.map((spell) => Number(spell?.level) || 0))].sort((a, b) => a - b);
+  const keyOf = (spell) => `${Number(spell?.level) || 0}:${spell?.index ?? itemName(spell)}`;
+  const open = spells.find((spell) => keyOf(spell) === openKey) ?? null;
+
+  // The SRD's text, fetched only when asked for (the list loads on tap, so
+  // a table with many players doesn't fetch it for every card).
+  function openRules(spell) {
+    detailView.open(itemName(spell), async () => {
+      const matches = findSrdMatches(itemName(spell), await getSpells());
+      if (matches.length === 0) throw new Error("Not an SRD spell");
+      return Promise.all(matches.map((match) => getSpellDetails(match.index).then(formatSpellDetails)));
+    });
+  }
+
+  const noteLines = open ? noteLinesOf(open) : [];
   return (
     <div className="character-summary__block">
       <h4 className="character-summary__block-title">Spells</h4>
@@ -112,13 +169,46 @@ function SpellsByLevel({ spellcasting }) {
         {levels.map((level) => (
           <li key={level}>
             <b>{level === 0 ? "Cantrips" : ORDINALS[level]}:</b>{" "}
-            {spells
-              .filter((spell) => (Number(spell?.level) || 0) === level)
-              .map(itemName)
-              .join(", ")}
+            <span className="character-summary__spell-chips">
+              {spells
+                .filter((spell) => (Number(spell?.level) || 0) === level)
+                .map((spell) => (
+                  <button
+                    key={keyOf(spell)}
+                    type="button"
+                    className="character-summary__spell"
+                    aria-expanded={keyOf(spell) === openKey}
+                    aria-controls={panelId}
+                    onClick={() => setOpenKey(keyOf(spell) === openKey ? null : keyOf(spell))}
+                  >
+                    {itemName(spell)}
+                  </button>
+                ))}
+            </span>
           </li>
         ))}
       </ul>
+      {open && (
+        <div id={panelId} className="character-summary__spell-detail" role="region" aria-label={`${itemName(open)} details`}>
+          <p className="character-summary__spell-title">
+            <b>{itemName(open)}</b> · {(Number(open.level) || 0) === 0 ? "Cantrip" : `${ORDINALS[Number(open.level)]} level`}
+          </p>
+          {open.components && (
+            <p className="character-summary__slots">
+              Components: {Array.isArray(open.components) ? open.components.join(", ") : open.components}
+            </p>
+          )}
+          {noteLines.length > 0 ? (
+            <NoteLines lines={noteLines} />
+          ) : (
+            <p className="character-summary__empty">No note from the player on this spell.</p>
+          )}
+          <button type="button" className="character-summary__rules-button" onClick={() => openRules(open)}>
+            Full spell text
+          </button>
+        </div>
+      )}
+      <SrdDetailDialog view={detailView.view} onClose={detailView.close} />
     </div>
   );
 }
