@@ -2906,6 +2906,8 @@ function CharacterSheetPage() {
                       onCastEffect={handleCastEffect}
                       activeEffects={getActiveEffects(sheet)}
                       onEndEffect={handleEndEffect}
+                      concentratingOn={sheet.concentration?.spell ?? ""}
+                      onConcentrate={handleConcentrationStart}
                     />
                   )}
 
