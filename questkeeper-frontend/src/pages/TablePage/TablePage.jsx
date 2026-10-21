@@ -63,6 +63,7 @@ import DmStoryTab from "../../components/DmStoryTab/DmStoryTab";
 import TableJournal from "../../components/TableJournal/TableJournal";
 import TableHandouts from "../../components/TableHandouts/TableHandouts";
 import TableRules from "../../components/TableRules/TableRules";
+import EncounterHelper from "../../components/EncounterHelper/EncounterHelper";
 import { addJournalEntry, getTablePortraits } from "../../utils/journalStore";
 import "./TablePage.css";
 
@@ -1590,6 +1591,14 @@ function TablePage() {
             </p>
           )}
         </section>
+        )}
+
+        {/* Ideas for a fight that suits the party, from the free SRD monsters. */}
+        {isDm && dmTab === "prep" && (
+          <EncounterHelper
+            levels={characters.map((sheet) => Number(sheet.level) || 1)}
+            onAdd={handleAddCombatants}
+          />
         )}
 
         {isDm && (dmTab === "prep" || (dmTab === "combat" && table.combat_active && showMonsterForm)) && (
