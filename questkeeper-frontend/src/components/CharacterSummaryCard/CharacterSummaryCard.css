@@ -183,3 +183,79 @@
   color: var(--qk-text);
   font-size: 14px;
 }
+
+/* Spells the DM can tap to read: small pill buttons, then a panel under the
+   list with the player's note and a button for the full rules text. */
+.character-summary__spell-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  vertical-align: middle;
+}
+
+.character-summary__spell {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.character-summary__spell:hover,
+.character-summary__spell[aria-expanded="true"] {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+}
+
+.character-summary__spell:focus-visible,
+.character-summary__rules-button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.character-summary__spell-detail {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface-muted);
+  display: grid;
+  gap: 6px;
+}
+
+.character-summary__spell-title {
+  margin: 0;
+}
+
+.character-summary__note-lines {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+}
+
+.character-summary__rules-button {
+  justify-self: start;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* An item or feature the player wrote a note on: the name opens to read it. */
+.character-summary__entry summary {
+  cursor: pointer;
+}
+
+.character-summary__entry .character-summary__note-lines {
+  margin-top: 4px;
+}
