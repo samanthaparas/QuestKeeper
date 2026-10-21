@@ -137,6 +137,20 @@ describe("getNextTurn", () => {
     expect(getNextTurn(defeated, "Billie", 1)).toEqual({ currentId: "Thorn", round: 1 });
   });
 
+  it("skips a player the DM marked away, and brings them back into the order when they return", () => {
+    const away = fight.map((c) => (c.name === "Kobold" ? { ...c, away: true } : c));
+    expect(getNextTurn(away, "Billie", 1)).toEqual({ currentId: "Thorn", round: 1 });
+    expect(getTurnOrder(away).map((c) => c.name)).not.toContain("Kobold");
+
+    const back = away.map((c) => ({ ...c, away: false }));
+    expect(getNextTurn(back, "Billie", 1)).toEqual({ currentId: "Kobold", round: 1 });
+  });
+
+  it("still advances when the player whose turn it is gets marked away", () => {
+    const away = fight.map((c) => (c.name === "Billie" ? { ...c, away: true } : c));
+    expect(getNextTurn(away, "Billie", 1)).toEqual({ currentId: "Kobold", round: 1 });
+  });
+
   it("still advances when the current monster was defeated on its own turn", () => {
     const defeated = fight.map((c) => (c.name === "Kobold" ? { ...c, status: "down" } : c));
     expect(getNextTurn(defeated, "Kobold", 1)).toEqual({ currentId: "Thorn", round: 1 });

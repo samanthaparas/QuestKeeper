@@ -23,6 +23,7 @@ import {
   resetEncounter,
   getPartyStrip,
   setShareParty,
+  setCombatantAway,
   removeMember,
   banMember,
   unbanMember,
@@ -79,6 +80,7 @@ vi.mock("../../utils/tableStore", () => ({
   endMyTurn: vi.fn().mockResolvedValue(undefined),
   getPartyStrip: vi.fn().mockResolvedValue([]),
   setShareParty: vi.fn().mockResolvedValue(undefined),
+  setCombatantAway: vi.fn().mockResolvedValue(undefined),
   listTemplates: vi.fn().mockResolvedValue([]),
   applyDamage: vi.fn().mockResolvedValue(undefined),
   deleteTable: vi.fn(),
@@ -569,6 +571,15 @@ describe("TablePage", () => {
 
       expect(screen.getByText("Add monsters and NPCs")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "+ Add monster" })).not.toBeInTheDocument();
+    });
+
+    it("lets the DM mark a player away, so their turns are skipped, and bring them back", async () => {
+      renderPage();
+      const row = rowFor("Billie");
+
+      await userEvent.click(within(row).getByRole("button", { name: "Mark away" }));
+      expect(setCombatantAway).toHaveBeenCalledWith(expect.any(String), true);
+      expect(removeMember).not.toHaveBeenCalled();
     });
 
     it("asks before removing a player, with the choice to remove them for good", async () => {

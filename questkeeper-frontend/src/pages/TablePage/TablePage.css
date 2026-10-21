@@ -286,6 +286,11 @@
   color: var(--qk-terracotta-hover);
 }
 
+.table-page__tag--away {
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+}
+
 .table-page__status {
   font-size: 14px;
 }
