@@ -4,17 +4,27 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import AuthPage from "./AuthPage";
 import ProtectedRoute from "../../components/ProtectedRoute/ProtectedRoute";
-import { signIn, signUp } from "../../utils/auth";
+import { requestPasswordReset, signIn, signUp } from "../../utils/auth";
+import { updatePassword } from "../../utils/account";
 import { readDestination } from "../../utils/continueAfterLogin";
 import { installFakeStorage } from "../../test/fakeStorage";
 
-vi.mock("../../utils/auth", () => ({
+vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
+vi.mock("../../utils/auth", async (importOriginal) => ({
+  ...(await importOriginal()),
   signIn: vi.fn(),
   signUp: vi.fn(),
+  requestPasswordReset: vi.fn(),
 }));
-const auth = vi.hoisted(() => ({ user: null }));
+vi.mock("../../utils/account", () => ({ updatePassword: vi.fn() }));
+const auth = vi.hoisted(() => ({ user: null, isRecovering: false, finishRecovery: vi.fn() }));
 vi.mock("../../context/useAuth", () => ({
-  useAuth: () => ({ user: auth.user, isLoading: false }),
+  useAuth: () => ({
+    user: auth.user,
+    isLoading: false,
+    isRecovering: auth.isRecovering,
+    finishRecovery: auth.finishRecovery,
+  }),
 }));
 
 const SIGNED_IN = { data: { session: { user: { id: "u1" } } }, error: null };
@@ -52,7 +62,7 @@ function renderAt(entry) {
 }
 
 async function fillIn() {
-  await userEvent.type(screen.getByLabelText(/email/i), "me@example.com");
+  await userEvent.type(screen.getByLabelText(/^email$/i), "me@example.com");
   await userEvent.type(screen.getByLabelText(/^password/i), "secret-test-pass");
 }
 
@@ -60,8 +70,80 @@ describe("AuthPage", () => {
   beforeEach(() => {
     installFakeStorage();
     auth.user = null;
+    auth.isRecovering = false;
+    auth.finishRecovery.mockReset();
+    requestPasswordReset.mockReset().mockResolvedValue({ error: null });
+    updatePassword.mockReset().mockResolvedValue({});
     signIn.mockReset().mockResolvedValue(SIGNED_IN);
     signUp.mockReset().mockResolvedValue(SIGNED_IN);
+  });
+
+  it("remembers only the email on this device when asked, and fills it in next time", async () => {
+    const { unmount } = renderAt("/login");
+    await fillIn();
+    await userEvent.click(screen.getByLabelText("Remember my email on this device"));
+    await userEvent.click(screen.getByRole("button", { name: "Log In" }));
+    await screen.findByTestId("landed");
+    expect(window.localStorage.getItem("qk-remembered-email")).toBe("me@example.com");
+    expect(window.localStorage.getItem("qk-remembered-email")).not.toContain("secret");
+    unmount();
+
+    renderAt("/login");
+    expect(screen.getByLabelText(/^email$/i)).toHaveValue("me@example.com");
+    expect(screen.getByLabelText("Remember my email on this device")).toBeChecked();
+    expect(screen.getByLabelText(/^password/i)).toHaveValue("");
+  });
+
+  it("forgets the email when the tick is off", async () => {
+    window.localStorage.setItem("qk-remembered-email", "old@example.com");
+    renderAt("/login");
+    await userEvent.click(screen.getByLabelText("Remember my email on this device"));
+    await userEvent.type(screen.getByLabelText(/^password/i), "secret-test-pass");
+    await userEvent.click(screen.getByRole("button", { name: "Log In" }));
+    await screen.findByTestId("landed");
+    expect(window.localStorage.getItem("qk-remembered-email")).toBeNull();
+  });
+
+  it("sends a reset link from Forgot your password", async () => {
+    renderAt("/login");
+    await userEvent.click(screen.getByRole("button", { name: "Forgot your password?" }));
+    expect(screen.queryByLabelText(/^password/i)).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/^email$/i), "me@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Send reset link" }));
+
+    expect(requestPasswordReset).toHaveBeenCalledWith("me@example.com");
+    expect(await screen.findByText(/If there.s an account for/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Back to log in" }));
+    expect(screen.getByRole("heading", { name: "Log In" })).toBeInTheDocument();
+  });
+
+  it("explains when too many reset emails were sent", async () => {
+    requestPasswordReset.mockResolvedValue({ error: { status: 429, message: "email rate limit exceeded" } });
+    renderAt("/login");
+    await userEvent.click(screen.getByRole("button", { name: "Forgot your password?" }));
+    await userEvent.type(screen.getByLabelText(/^email$/i), "me@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Send reset link" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Too many emails were sent just now");
+  });
+
+  it("shows Choose a new password after the emailed link, and saves it", async () => {
+    auth.isRecovering = true;
+    renderAt("/login");
+    expect(screen.getByRole("heading", { name: "Choose a new password" })).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("New password"), "brand-new-pass");
+    await userEvent.type(screen.getByLabelText("Type it again"), "different-pass");
+    await userEvent.click(screen.getByRole("button", { name: "Save new password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The two passwords don't match.");
+    expect(updatePassword).not.toHaveBeenCalled();
+
+    await userEvent.clear(screen.getByLabelText("Type it again"));
+    await userEvent.type(screen.getByLabelText("Type it again"), "brand-new-pass");
+    await userEvent.click(screen.getByRole("button", { name: "Save new password" }));
+    expect(updatePassword).toHaveBeenCalledWith("brand-new-pass");
+    expect(auth.finishRecovery).toHaveBeenCalled();
+    expect(await screen.findByTestId("landed")).toHaveTextContent("/characters");
   });
 
   it("says why an account is needed, even with nowhere in particular to go", () => {
@@ -133,7 +215,7 @@ describe("AuthPage", () => {
     await fillIn();
     await userEvent.click(screen.getByRole("button", { name: "Log In" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Invalid login credentials");
-    expect(screen.getByLabelText(/email/i)).toHaveAccessibleDescription("Invalid login credentials");
+    expect(screen.getByLabelText(/^email$/i)).toHaveAccessibleDescription("Invalid login credentials");
     expect(screen.getByLabelText(/^password/i)).toHaveAttribute("aria-invalid", "true");
   });
 
