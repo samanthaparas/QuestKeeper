@@ -65,6 +65,7 @@ import TableHandouts from "../../components/TableHandouts/TableHandouts";
 import TableRules from "../../components/TableRules/TableRules";
 import EncounterHelper from "../../components/EncounterHelper/EncounterHelper";
 import LootHelper from "../../components/LootHelper/LootHelper";
+import TurnHeadsUp from "../../components/TurnHeadsUp/TurnHeadsUp";
 import { addJournalEntry, getTablePortraits } from "../../utils/journalStore";
 import "./TablePage.css";
 
@@ -1270,6 +1271,14 @@ function TablePage() {
         <Link className="table-page__back" to={isDm ? "/dm" : "/games"}>
           {isDm ? "← DM Screen" : "← My Games"}
         </Link>
+
+        {/* A player's quiet heads-up when their turn is next or here. */}
+        {!isDm && table.combat_active && (
+          <TurnHeadsUp
+            isMyTurn={amUp}
+            isNext={Boolean(myCombatant && !amUp && upcoming[0]?.id === myCombatant.id)}
+          />
+        )}
 
         <header className="table-page__header">
           <div>

@@ -53,6 +53,19 @@ describe("SettingsPage", () => {
     expect(window.localStorage.getItem("qk-theme")).toBeNull();
   });
 
+  it("lets a player turn the turn heads-up off, and remembers it on this device", async () => {
+    render(<SettingsPage />);
+    const box = screen.getByLabelText("Give me a heads-up");
+    expect(box).toBeChecked();
+
+    await userEvent.click(box);
+    expect(box).not.toBeChecked();
+    expect(window.localStorage.getItem("qk-turn-heads-up")).toBe("off");
+
+    await userEvent.click(box);
+    expect(window.localStorage.getItem("qk-turn-heads-up")).toBeNull();
+  });
+
   it("turns Reduce Motion on for this device", async () => {
     render(<SettingsPage />);
     await userEvent.click(screen.getByLabelText("Reduce motion"));
