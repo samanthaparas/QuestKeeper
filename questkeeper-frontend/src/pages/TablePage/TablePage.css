@@ -3414,3 +3414,856 @@
 .table-page--dm .campaign-tools__summary {
   color: var(--qk-text);
 }
+
+/* ======== The DM's Story tab: party clues | journal | handouts ======== */
+
+.table-page__story-grid {
+  display: grid;
+  gap: 12px;
+  align-items: start;
+}
+
+.table-page__story-clues,
+.table-page__story-journal,
+.table-page__story-handouts {
+  display: grid;
+  min-width: 0;
+}
+
+/* The player's page keeps its own order and look. */
+.table-page__story-plain {
+  display: grid;
+  gap: 32px;
+}
+
+/* Journal panel: filters in a row, notes scroll, the note box under them. */
+.table-page--dm .table-journal__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+}
+
+.table-page--dm .table-journal__filters .table-journal__lookback {
+  margin: 0;
+}
+
+.table-page--dm .table-journal__scroll {
+  display: grid;
+  gap: 10px;
+}
+
+.table-page--dm .table-journal > .table-journal__composer {
+  padding-top: 10px;
+  border-top: 1px solid var(--dm-panel-edge);
+}
+
+.table-page--dm .table-journal__hint {
+  font-size: 13.5px;
+}
+
+.table-page--dm .table-journal__entry {
+  border-color: var(--dm-panel-edge);
+}
+
+/* Handout lines: a small preview, the title and a visibility badge. */
+.table-page--dm .table-handouts__list {
+  gap: 8px;
+}
+
+.table-page--dm .table-handouts__card {
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--qk-border);
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 28%, transparent);
+}
+
+.table-page--dm .table-handouts__card--hidden {
+  border-style: dashed;
+  background-color: transparent;
+}
+
+.table-page--dm .table-handouts__summary {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+}
+
+.table-handouts__thumb {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border: 1px solid var(--qk-border);
+  border-radius: 8px;
+  background-color: var(--qk-surface-muted);
+}
+
+.table-handouts__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.table-handouts__thumb img.table-handouts__thumb-neutral {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
+.table-handouts__summary-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.table-page--dm .table-handouts__name {
+  font-size: 16px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.table-page--dm .table-handouts__status {
+  display: inline-block;
+  justify-self: start;
+  padding: 0 8px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  color: var(--qk-text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.table-page--dm .table-handouts__status--everyone {
+  border-color: var(--qk-moss);
+  background-color: color-mix(in srgb, var(--qk-moss) 16%, transparent);
+}
+
+.table-page--dm .table-handouts__status--chosen {
+  border-color: var(--dm-gold);
+  background-color: color-mix(in srgb, var(--dm-gold) 14%, transparent);
+}
+
+.table-page--dm .table-handouts__status--hidden {
+  border-style: dashed;
+}
+
+.table-page--dm .table-handouts__actions {
+  gap: 5px;
+}
+
+/* ---- Wide screens: three panels side by side, each scrolling inside itself ---- */
+@media (min-width: 900px) and (min-height: 620px) {
+  .table-page__story-grid {
+    height: max(calc(100vh - var(--dm-combat-top, 262px) - 14px), 440px);
+    grid-template-columns: minmax(0, 1fr) 330px;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "journal clues"
+      "journal handouts";
+  }
+
+  .table-page__story-clues {
+    grid-area: clues;
+  }
+
+  .table-page__story-journal {
+    grid-area: journal;
+  }
+
+  .table-page__story-handouts {
+    grid-area: handouts;
+  }
+
+  .table-page__story-clues,
+  .table-page__story-journal,
+  .table-page__story-handouts {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .table-page--dm .table-page__story-grid > div > :is(.dm-story, .table-journal, .table-handouts) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .table-page--dm .dm-story > .dm-story__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  .table-page--dm .table-handouts__list,
+  .table-page--dm .table-journal__flow {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 3px 3px;
+    scrollbar-width: thin;
+  }
+
+  .table-page--dm .table-journal > :not(.table-journal__flow),
+  .table-page--dm .table-handouts > :not(.table-handouts__list):not(.table-handouts__head) {
+    flex: 0 0 auto;
+  }
+
+}
+
+@media (min-width: 1360px) and (min-height: 620px) {
+  .table-page__story-grid {
+    grid-template-columns: 310px minmax(0, 1fr) 340px;
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas: "clues journal handouts";
+  }
+}
+
+/* Tablet portrait and below: normal page flow, the clues fold behind Show. */
+@media (max-width: 899px) {
+  .table-page__story-clues .dm-story__toggle {
+    display: inline-flex;
+  }
+}
+
+/* Party clues: the character list is a short scroll box, so the picked
+   character's clues are always in view under it. */
+.table-page--dm .dm-story__picker {
+  max-height: 210px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.table-page--dm .dm-story__pick-text .table-page__summary-status {
+  padding: 2px 0 0;
+}
+
+.table-page--dm .dm-story__pick-text .table-page__chip {
+  font-size: 12px;
+}
+
+@media (max-width: 899px) {
+  .table-page--dm .dm-story__picker {
+    max-height: none;
+  }
+}
+
+.table-journal__help summary {
+  display: inline-block;
+  min-height: 30px;
+  padding: 4px 0;
+  color: var(--qk-terracotta-hover);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-journal__help summary:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* In the Story journal the current-session box and the filters share a line, and the
+   recap and campaign folds stay short, so the notes get the room. */
+.table-page--dm .table-journal__current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: 14px;
+}
+
+.table-page--dm .table-journal__scroll {
+  min-height: 90px;
+}
+
+.table-page--dm .table-journal .table-journal__input {
+  min-height: 64px;
+}
+
+/* The Journal's own header stays at the top of its scrolling area. */
+.table-page--dm .table-journal__flow {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.table-page--dm .table-journal__flow > .table-journal__head {
+  order: -1;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0 -14px;
+  background-color: var(--qk-surface);
+}
+
+.table-page--dm .table-journal__scroll {
+  min-height: 0;
+}
+
+.table-page--dm .table-journal__flow > :not(.table-journal__head) {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.table-page--dm .table-journal > .table-journal__flow > .table-recap:first-child {
+  margin-top: 0;
+}
+
+/* Story journal: shorter folds and a one-line "current session + help" row so
+   the notes get most of the height. */
+.table-page--dm .table-journal__flow .table-recap,
+.table-page--dm .table-journal__flow .campaign-tools {
+  margin: 0;
+}
+
+.table-page--dm .table-journal__flow {
+  gap: 6px;
+}
+
+.table-page--dm .table-journal__current {
+  justify-content: space-between;
+}
+
+.table-page--dm .table-journal__flow > .table-journal__help {
+  margin-top: -4px;
+}
+
+.table-page--dm .table-journal > .table-journal__composer {
+  gap: 6px;
+  padding-top: 6px;
+}
+
+.table-page--dm .table-journal .table-journal__input {
+  min-height: 48px;
+  rows: 2;
+}
+
+.table-page--dm .table-handouts__hint {
+  font-size: 13px;
+}
+
+/* Readable small text in the Story panels. */
+.table-page--dm :is(.dm-story__pick-sub, .dm-story__pick-passives, .dm-story__summary, .dm-story__facts dt, .table-handouts__empty) {
+  color: color-mix(in srgb, var(--qk-text-muted) 40%, var(--qk-text));
+}
+
+.table-page--dm .table-journal__link:not(.table-journal__link--danger) {
+  color: var(--qk-terracotta-hover);
+}
+
+.table-page--dm :is(.table-journal__session-day, .table-journal__stamp, .table-journal__empty) {
+  color: color-mix(in srgb, var(--qk-text-muted) 40%, var(--qk-text));
+}
+
+/* ======== Story, second pass: journal feed, party clues, handout cards ======== */
+
+/* ----- Journal as a feed: header, recap strip, one filter row, notes, note box ----- */
+.table-page--dm .table-journal--feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  min-height: 0;
+}
+
+.table-page--dm .table-journal--feed > .table-journal__head {
+  margin: 0;
+}
+
+.table-journal__top {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 6px;
+  max-height: 46%;
+  padding: 8px 12px 6px;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--dm-panel-edge);
+}
+
+.table-journal__top .table-recap {
+  margin: 0;
+  border-color: var(--dm-panel-edge);
+}
+
+/* The recap as one modest strip: "Previously on… · Session 2 · No recap yet". */
+.table-journal__top .table-recap__summary {
+  min-height: 38px;
+  padding: 4px 12px;
+  gap: 4px 10px;
+  align-items: center;
+  font-size: 15px;
+}
+
+.table-journal__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.table-journal__bar .table-journal__lookback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.table-journal__bar .table-journal__lookback label {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.table-journal__bar .table-journal__select {
+  min-height: 36px;
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+.table-journal__toggle {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-journal__toggle[aria-expanded="true"] {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+}
+
+.table-journal__toggle:hover {
+  background-color: var(--qk-terracotta-soft);
+}
+
+.table-journal__toggle:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.table-journal__toggle:last-of-type {
+  margin-left: auto;
+}
+
+.table-journal__panel {
+  display: grid;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--dm-panel-edge);
+  border-radius: var(--qk-radius-control);
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 30%, transparent);
+}
+
+.table-journal__panel[hidden] {
+  display: none;
+}
+
+.table-journal__panel .campaign-tools {
+  margin: 0;
+}
+
+/* The notes: the one scrolling area, between the filters and the note box. */
+.table-page--dm .table-journal--feed > .table-journal__scroll {
+  display: grid;
+  flex: 1 1 0;
+  align-content: start;
+  gap: 8px;
+  min-height: 120px;
+  padding: 8px 12px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.table-page--dm .table-journal--feed > .table-journal__composer {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--dm-panel-edge);
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 22%, transparent);
+}
+
+/* Lighter notes: small portrait, one wrapping metadata row, normal body text. */
+.table-page--dm .table-journal__entries {
+  gap: 6px;
+}
+
+.table-page--dm .table-journal__entry {
+  gap: 2px 10px;
+  padding: 8px 12px;
+  border-color: var(--qk-border);
+}
+
+.table-page--dm .table-journal__avatar--note {
+  width: 34px;
+  height: 34px;
+  margin: 1px 0 0;
+  border-width: 2px;
+  font-size: 12px;
+}
+
+.table-page--dm .table-journal__entry-main {
+  gap: 2px;
+}
+
+.table-page--dm .table-journal__byline {
+  gap: 0 10px;
+}
+
+.table-page--dm .table-journal__author {
+  font-size: 15px;
+}
+
+.table-page--dm .table-journal__stamp,
+.table-page--dm .table-journal__private {
+  font-size: 13px;
+}
+
+.table-page--dm .table-journal__private {
+  padding: 0 8px;
+  border: 1px dashed var(--qk-text-muted);
+  border-radius: 999px;
+  color: var(--qk-text);
+}
+
+.table-page--dm .table-journal__entry--private {
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 35%, transparent);
+}
+
+.table-page--dm .table-journal__actions {
+  gap: 10px;
+  font-size: 13px;
+}
+
+.table-page--dm .table-journal__entry-head {
+  gap: 0 12px;
+}
+
+.table-page--dm .table-journal__session-title {
+  font-size: 16px;
+}
+
+/* ----- Party clues: a useful list, details folded below ----- */
+.table-page--dm .dm-story__picker {
+  max-height: none;
+  overflow: visible;
+}
+
+.table-page--dm .dm-story__pick {
+  min-height: 0;
+  padding: 5px 9px;
+}
+
+.dm-story__selected {
+  display: block;
+  padding: 0;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 30%, transparent);
+}
+
+.dm-story__selected-summary {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dm-story__selected-summary:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: -3px;
+  border-radius: var(--qk-radius-control);
+}
+
+.dm-story__selected-body {
+  display: grid;
+  gap: 4px;
+  padding: 0 12px 10px;
+}
+
+/* ----- Handout cards: preview, title and badge, one action row, Options ----- */
+.table-page--dm .table-handouts__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-page--dm .table-handouts__actions .qk-button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13.5px;
+}
+
+.table-handouts__options-toggle {
+  min-height: 34px;
+  margin-left: auto;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--qk-radius-control);
+  background: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.table-handouts__options-toggle[aria-expanded="true"] {
+  border-color: var(--qk-border);
+}
+
+.table-handouts__options-toggle:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.table-handouts__options {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px dashed var(--qk-border);
+  border-radius: var(--qk-radius-control);
+}
+
+.table-handouts__options .qk-button {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13.5px;
+}
+
+.table-handouts__recipients {
+  margin: 6px 0 0;
+  font-size: 13.5px;
+  color: color-mix(in srgb, var(--qk-text-muted) 40%, var(--qk-text));
+}
+
+/* ----- Consistent slim headers across the three Story panels ----- */
+.table-page--dm :is(.dm-story .table-page__slim-head, .table-journal__head, .table-handouts__head) {
+  min-height: 46px;
+  padding: 6px 12px;
+}
+
+/* ----- Layout: only the notes and the clues/handout lists scroll ----- */
+@media (min-width: 900px) and (min-height: 620px) {
+  .table-page__story-journal > .table-journal--feed {
+    height: 100%;
+  }
+
+  .table-page--dm .dm-story > .dm-story__body {
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 899px) {
+  .table-page--dm .table-journal--feed > .table-journal__scroll {
+    overflow: visible;
+  }
+
+  .table-journal__top {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* Two-column laptop layout: the clues get the larger share of the right column. */
+@media (min-width: 900px) and (max-width: 1359px) and (min-height: 620px) {
+  .table-page__story-grid {
+    grid-template-rows: minmax(0, 1.45fr) minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 900px) and (max-height: 800px) {
+  /* On short windows the handouts' one-line explanation gives way to the list. */
+  .table-page--dm .table-handouts__hint {
+    display: none;
+  }
+
+  .table-page--dm .table-journal--feed > .table-journal__composer {
+    padding: 6px 12px 8px;
+  }
+}
+
+.table-page--dm .table-journal__avatar {
+  color: var(--qk-text);
+}
+
+/* ======== Story correction: the journal in normal page flow, and handout focus ======== */
+
+/* By default (tablet, phone, and short laptop windows) the journal is plain
+   page flow: the notes take the room they need and the note box follows them.
+   Only on tall, wide windows is the notes area a bounded scroll box, with the
+   note box anchored under it. Before this, the notes box kept a flex size of
+   zero while its content overflowed (overflow was visible), so the notes ran
+   underneath the note box. */
+.table-page--dm .table-journal--feed > .table-journal__scroll {
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.table-journal__top {
+  max-height: none;
+  overflow: visible;
+}
+
+/* One solid surface for the whole note box (padding, buttons and all), so
+   nothing can show through it. */
+.table-page--dm .table-journal--feed > .table-journal__composer {
+  position: relative;
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 22%, var(--qk-surface));
+}
+
+.table-journal__composer-row {
+  flex-wrap: wrap;
+}
+
+@media (min-width: 900px) and (min-height: 620px) {
+  .table-page--dm .table-journal--feed > .table-journal__scroll {
+    flex: 1 1 0;
+    min-height: 120px;
+    overflow-y: auto;
+  }
+
+  .table-journal__top {
+    max-height: 46%;
+    overflow-y: auto;
+  }
+}
+
+/* Room above and below a focused control inside the handouts list, so its
+   focus ring is never clipped by the list's edge. */
+.table-page--dm .table-handouts__list {
+  scroll-padding: 10px;
+}
+
+/* A long handout title shows two lines in the list (the full title is in the
+   card's tooltip and its Options label), so one handout stays short enough to
+   fit in the list with room around it. */
+.table-page--dm .table-handouts__name {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* Options opens Edit and Delete in the same row as the sharing buttons. */
+.table-handouts__actions .table-handouts__options {
+  display: contents;
+}
+
+.table-handouts__actions .table-handouts__options .qk-button {
+  min-height: 34px;
+}
+
+/* On short laptop windows the right column gives Handouts a little more. */
+@media (min-width: 900px) and (max-width: 1359px) and (max-height: 800px) and (min-height: 620px) {
+  .table-page__story-grid {
+    grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr);
+  }
+}
+
+/* Short windows: a tighter handout card (smaller preview, less padding), so a
+   whole handout, its title and its buttons, fits in the handouts list. */
+@media (min-width: 900px) and (max-height: 800px) {
+  .table-page--dm .table-handouts__summary {
+    grid-template-columns: 40px minmax(0, 1fr);
+    min-height: 40px;
+    gap: 8px;
+  }
+
+  .table-handouts__thumb {
+    width: 40px;
+    height: 40px;
+  }
+
+  .table-page--dm .table-handouts__card {
+    gap: 4px;
+    padding: 6px 8px;
+  }
+
+  .table-page--dm .table-handouts__name {
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  .table-page--dm .table-handouts__actions .qk-button,
+  .table-handouts__options-toggle {
+    min-height: 30px;
+  }
+}
+
+@media (min-width: 900px) and (max-height: 800px) {
+  .table-page--dm .table-handouts__actions {
+    gap: 4px;
+  }
+
+  .table-page--dm .table-handouts__actions .qk-button {
+    padding: 0 8px;
+    font-size: 13px;
+  }
+
+  .table-handouts__options-toggle {
+    margin-left: 0;
+    padding: 0 6px;
+    font-size: 13px;
+  }
+}
+
+/* "Show full title" opens a cut-off title out in the card; "Show less" folds it back. */
+.table-page--dm .table-handouts__name.table-handouts__name--full {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+.table-handouts__title-toggle {
+  justify-self: start;
+  min-height: 30px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--qk-terracotta-hover);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.table-handouts__title-toggle:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* When the page scrolls to a control the keyboard just reached, leave a little
+   room so its focus ring isn't cut off at the very edge of the window. This
+   matters most when the browser is zoomed in and the window is short. */
+html:has(.table-page--dm) {
+  scroll-padding-block: 12px;
+}
+
+/* The note box and the little session fields are marked out only by their edge,
+   so on the DM screen that edge is darker than the usual soft tan (at least 3:1
+   against the panel behind it). */
+.table-page--dm .table-journal__input,
+.table-page--dm .table-journal__number,
+.table-page--dm .table-journal__select {
+  border-color: color-mix(in srgb, var(--qk-text) 66%, var(--qk-surface));
+}

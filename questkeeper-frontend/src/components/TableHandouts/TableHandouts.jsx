@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import Button from "../Button/Button";
 import ImageLightbox from "../ImageLightbox/ImageLightbox";
 import {
@@ -11,6 +11,7 @@ import {
   updateHandout,
   validateHandoutImage,
 } from "../../utils/handoutStore";
+import { getActivityIcon } from "../../utils/icons";
 import "./TableHandouts.css";
 
 const POLL_MS = 15000;
@@ -33,13 +34,52 @@ function writeSeen(tableId, seen) {
 }
 
 // "Hidden (only you)", "Shown to everyone" or "Shown to Rook and Billie".
-function describeAudience(handout, players) {
-  if (handout.shown_to_all) return "Shown to everyone";
-  const names = (handout.shown_to ?? [])
+function recipientNames(handout, players) {
+  return (handout.shown_to ?? [])
     .map((id) => players.find((player) => player.userId === id)?.name)
     .filter(Boolean);
-  if (names.length === 0) return "Hidden (only you can see it)";
+}
+
+function describeAudience(handout, players) {
+  if (handout.shown_to_all) return "Shown to everyone";
+  const names = recipientNames(handout, players);
+  if (names.length === 0) return "Hidden · Only you";
+  // A long list is summarised here; the full list is in a disclosure under the badge.
+  if (names.length > 3) return `Shown to ${names.length} players`;
   return `Shown to ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`}`;
+}
+
+// "everyone", "chosen" or "hidden": which badge picture goes with the words.
+function audienceKind(handout) {
+  if (handout.shown_to_all) return "everyone";
+  return (handout.shown_to ?? []).length > 0 ? "chosen" : "hidden";
+}
+
+const AUDIENCE_GLYPHS = { everyone: "🌐", chosen: "👥", hidden: "🔒" };
+
+// A small picture in a handout's line: the real picture when there is one,
+// otherwise a neutral "document" icon. It is only a preview. Whether anyone
+// can see the handout is decided by who it was revealed to, never by this.
+function HandoutThumb({ path }) {
+  const [url, setUrl] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+    if (!path) return undefined;
+    getHandoutImageUrl(path)
+      .then((signed) => !ignore && setUrl(signed))
+      .catch(() => !ignore && setUrl(null));
+    return () => {
+      ignore = true;
+    };
+  }, [path]);
+
+  const neutral = getActivityIcon("handout");
+  return (
+    <span className="table-handouts__thumb" aria-hidden="true">
+      {path && url ? <img src={url} alt="" /> : neutral && <img className="table-handouts__thumb-neutral" src={neutral} alt="" />}
+    </span>
+  );
 }
 
 // A handout's picture, fetched through a short-lived private link. Tap to
@@ -172,9 +212,80 @@ function TableHandouts({ tableId, isDm, players = [], onSharedWithEveryone }) {
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [choosingId, setChoosingId] = useState(null);
+  // Edit and Delete live behind a small "Options" button, one handout at a time.
+  const [optionsId, setOptionsId] = useState(null);
   const [chosen, setChosen] = useState([]);
   const [seen, setSeen] = useState(() => readSeen(tableId));
   const titleId = useId();
+  const listRef = useRef(null);
+  // A long title shows two lines in a compact card. These track which titles
+  // are cut off (so only those get a "Show full title" button) and which the
+  // DM has opened out.
+  const [truncated, setTruncated] = useState(() => new Set());
+  const [fullTitles, setFullTitles] = useState(() => new Set());
+
+  // When a handout's list is its own scroll box (the DM's Story panel on a
+  // wide screen), the browser only scrolls a focused button to the very edge,
+  // which clips its focus ring and can leave the handout's title out of view.
+  // So when focus lands in a handout, scroll this list (never the page) until
+  // the whole handout is showing with a little room around it; a handout
+  // taller than the box shows its title, unless that would hide the focused
+  // control.
+  function keepHandoutInView(event) {
+    const list = listRef.current;
+    if (!list || list.scrollHeight <= list.clientHeight + 1) return;
+    // Only for keyboard focus: a click or tap never moves the list under the pointer.
+    if (!event.target.matches?.(":focus-visible")) return;
+    placeInList(event.currentTarget, event.target);
+  }
+
+  function placeInList(cardEl, targetEl) {
+    const list = listRef.current;
+    if (!list) return;
+    const pad = 8;
+    const box = list.getBoundingClientRect();
+    const card = cardEl.getBoundingClientRect();
+    const target = targetEl.getBoundingClientRect();
+    let delta = 0;
+    if (card.height + pad * 2 <= box.height) {
+      if (card.top < box.top + pad) delta = card.top - (box.top + pad);
+      else if (card.bottom > box.bottom - pad) delta = card.bottom - (box.bottom - pad);
+    } else {
+      delta = card.top - (box.top + pad);
+      if (target.bottom - delta > box.bottom - pad) delta = target.bottom - (box.bottom - pad);
+    }
+    if (delta) list.scrollTop += delta;
+  }
+
+  // Which titles are cut off by the two-line limit. Measured after each
+  // render and whenever the list changes size (a titles that are already
+  // opened out keep their button so they can be closed again).
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list) return undefined;
+    function measure() {
+      const next = new Set();
+      for (const name of list.querySelectorAll("[data-handout-title]")) {
+        const id = name.getAttribute("data-handout-title");
+        if (name.classList.contains("table-handouts__name--full")) {
+          if (truncatedRef.current.has(id)) next.add(id);
+        } else if (name.scrollHeight > name.clientHeight + 1) {
+          next.add(id);
+        }
+      }
+      const same = next.size === truncatedRef.current.size && [...next].every((id) => truncatedRef.current.has(id));
+      if (!same) {
+        truncatedRef.current = next;
+        setTruncated(next);
+      }
+    }
+    measure();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    return () => observer.disconnect();
+  });
+  const truncatedRef = useRef(new Set());
 
   const load = useCallback(() => {
     listHandouts(tableId)
@@ -278,7 +389,7 @@ function TableHandouts({ tableId, isDm, players = [], onSharedWithEveryone }) {
         </p>
       )}
 
-      <ul className="table-handouts__list">
+      <ul className="table-handouts__list" ref={listRef}>
         {shown.map((handout) => {
           const isShown = handout.shown_to_all || (handout.shown_to ?? []).length > 0;
           const isNew = !isDm && !seen.has(handout.id);
@@ -303,6 +414,7 @@ function TableHandouts({ tableId, isDm, players = [], onSharedWithEveryone }) {
             <li
               key={handout.id}
               className={`table-handouts__card${isDm && !isShown ? " table-handouts__card--hidden" : ""}`}
+              onFocus={keepHandoutInView}
             >
               <details
                 className="table-handouts__details"
@@ -310,25 +422,71 @@ function TableHandouts({ tableId, isDm, players = [], onSharedWithEveryone }) {
                 onToggle={(event) => event.currentTarget.open && markSeen(handout.id)}
               >
                 <summary className="table-handouts__summary">
-                  <span className="table-handouts__name">📜 {handout.title}</span>
-                  {isNew && <span className="table-handouts__new">New</span>}
-                  {isDm && (
+                  {isDm && <HandoutThumb path={handout.image_path} />}
+                  <span className="table-handouts__summary-text">
                     <span
-                      className={`table-handouts__status${isShown ? " table-handouts__status--shown" : ""}`}
+                      className={`table-handouts__name${fullTitles.has(handout.id) ? " table-handouts__name--full" : ""}`}
+                      data-handout-title={handout.id}
+                      title={handout.title}
                     >
-                      {describeAudience(handout, players)}
+                      {isDm ? "" : "📜 "}
+                      {handout.title}
                     </span>
-                  )}
+                    {isNew && <span className="table-handouts__new">New</span>}
+                    {isDm && (
+                      <span
+                        className={`table-handouts__status table-handouts__status--${audienceKind(handout)}${
+                          isShown ? " table-handouts__status--shown" : ""
+                        }`}
+                      >
+                        <span aria-hidden="true">{AUDIENCE_GLYPHS[audienceKind(handout)]} </span>
+                        {describeAudience(handout, players)}
+                      </span>
+                    )}
+                  </span>
                 </summary>
+                {isDm && recipientNames(handout, players).length > 3 && (
+                  <p className="table-handouts__recipients">Shown to {recipientNames(handout, players).join(", ")}</p>
+                )}
                 <div className="table-handouts__content">
                   {handout.image_path && <HandoutImage path={handout.image_path} title={handout.title} />}
                   {handout.body && <p className="table-handouts__body">{handout.body}</p>}
                 </div>
               </details>
 
+              {/* Only a title that is cut off gets this, so short cards stay compact. */}
+              {isDm && (truncated.has(handout.id) || fullTitles.has(handout.id)) && (
+                <button
+                  type="button"
+                  className="table-handouts__title-toggle"
+                  aria-expanded={fullTitles.has(handout.id)}
+                  onClick={(event) => {
+                    const button = event.currentTarget;
+                    setFullTitles((current) => {
+                      const next = new Set(current);
+                      if (next.has(handout.id)) next.delete(handout.id);
+                      else next.add(handout.id);
+                      return next;
+                    });
+                    // The card just changed height: if that pushed this button out of
+                    // the list's box, bring it back (once; the reader can then scroll freely).
+                    requestAnimationFrame(() => {
+                      const list = listRef.current;
+                      if (!list || !button.isConnected) return;
+                      const box = list.getBoundingClientRect();
+                      const at = button.getBoundingClientRect();
+                      if (at.top < box.top + 4 || at.bottom > box.bottom - 4) placeInList(button.closest("li"), button);
+                    });
+                  }}
+                >
+                  {fullTitles.has(handout.id) ? "Show less" : "Show full title"}
+                </button>
+              )}
+
               {isDm && (
                 <div className="table-handouts__actions">
-                  {!handout.shown_to_all && (
+                  {/* One compact row of sharing actions that fits the handout's state. */}
+                  {handout.shown_to_all ? null : (
                     <Button onClick={() => revealToEveryone(handout)}>Reveal to everyone</Button>
                   )}
                   <Button
@@ -339,7 +497,7 @@ function TableHandouts({ tableId, isDm, players = [], onSharedWithEveryone }) {
                       setChosen(handout.shown_to ?? []);
                     }}
                   >
-                    Choose players
+                    {!handout.shown_to_all && (handout.shown_to ?? []).length > 0 ? "Change players" : "Choose players"}
                   </Button>
                   {isShown && (
                     <Button
@@ -349,12 +507,31 @@ function TableHandouts({ tableId, isDm, players = [], onSharedWithEveryone }) {
                       Hide again
                     </Button>
                   )}
-                  <Button variant="secondary" onClick={() => setEditingId(handout.id)}>
+                  <button
+                    type="button"
+                    className="table-handouts__options-toggle"
+                    aria-expanded={optionsId === handout.id}
+                    aria-label={`Options for ${handout.title}`}
+                    onClick={() => setOptionsId(optionsId === handout.id ? null : handout.id)}
+                  >
+                    Options
+                  </button>
+                  {optionsId === handout.id && (
+                <div className="table-handouts__options" role="group" aria-label={`Options for ${handout.title}`}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setOptionsId(null);
+                      setEditingId(handout.id);
+                    }}
+                  >
                     Edit
                   </Button>
                   <Button variant="secondary" onClick={() => remove(handout)}>
                     Delete
                   </Button>
+                </div>
+                  )}
                 </div>
               )}
 

@@ -19,7 +19,7 @@ import {
   sessionChoices,
   wasEdited,
 } from "../../utils/journal";
-import { getInitials } from "../../utils/characterSheet";
+import CharacterAvatar from "../CharacterAvatar/CharacterAvatar";
 import TableRecap from "../TableRecap/TableRecap";
 import CampaignTools from "../CampaignTools/CampaignTools";
 import { campaignLabel, campaignNumbers, campaignOf, sessionLabel } from "../../utils/campaigns";
@@ -93,7 +93,17 @@ function VisibilityChoice({ value, onChange, name }) {
 // journal opens on the current campaign, and a Campaign list reads the older
 // ones. campaignNumber / campaignNames are the table's current campaign and the
 // names the DM gave them.
-function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber = 1, campaignNames = {} }) {
+function TableJournal({
+  tableId,
+  userId,
+  isDm,
+  sessionNumber = 1,
+  campaignNumber = 1,
+  campaignNames = {},
+  // The DM screen's Story panel lays the journal out as a feed with the note box underneath.
+  composerLast = false,
+  avatarCharacters = null,
+}) {
   const [allEntries, setEntries] = useState([]);
   // Which campaign is being read (null: the current one).
   const [viewCampaign, setViewCampaign] = useState(null);
@@ -272,72 +282,8 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber
     if (sessions.length === 0) sessions = [{ session: wanted, startedAt: null, entries: [] }];
   }
 
-  return (
-    <section className="table-journal" aria-labelledby={`${draftId}-title`}>
-      {/* The group's "Previously on..." recap, written and edited by everyone. */}
-      <TableRecap
-        key={shownCampaign}
-        tableId={tableId}
-        entries={entries}
-        currentSession={viewSession}
-        campaign={shownCampaign}
-        showCampaign={hasSeveral}
-      />
-      {/* Anyone at the table can sort the notes into campaigns. */}
-      <CampaignTools
-        tableId={tableId}
-        entries={allEntries}
-        campaignNumber={campaignNumber}
-        campaignNames={campaignNames}
-        onChanged={load}
-      />
-      <div className="table-journal__head">
-        <h2 id={`${draftId}-title`} className="table-journal__title">
-          Journal
-        </h2>
-        {isDm && isCurrentCampaign && (
-          <Button variant="secondary" onClick={startSession}>
-            Start session {sessionLabel(campaignNumber, sessionNumber + 1, hasSeveral)}
-          </Button>
-        )}
-      </div>
-      {isDm && isCurrentCampaign && (
-        <form className="table-journal__current" onSubmit={changeCurrentSession} noValidate>
-          <label htmlFor={`${draftId}-current`}>
-            Current session is {sessionLabel(campaignNumber, sessionNumber, hasSeveral)}. Set it to:
-          </label>
-          <input
-            id={`${draftId}-current`}
-            className="table-journal__number"
-            type="number"
-            min="1"
-            max="9999"
-            placeholder={String(sessionNumber)}
-            value={currentInput}
-            onChange={(event) => setCurrentInput(event.target.value)}
-          />
-          <Button type="submit" variant="secondary" disabled={currentInput.trim() === ""}>
-            Set
-          </Button>
-        </form>
-      )}
-      <p className="table-journal__hint">
-        Notes and recaps for the whole table. Each note is signed{" "}
-        {isDm ? "“DM”" : "with your character's name"} and the time. Pick{" "}
-        <strong>Just me</strong> for a private note only you can read.
-      </p>
-
-      {!isCurrentCampaign && (
-        <p className="table-journal__hint table-journal__campaign-note" role="status">
-          You&apos;re reading {campaignLabel(campaignNames, shownCampaign)}. New notes go into{" "}
-          {campaignLabel(campaignNames, campaignNumber)}.{" "}
-          <button type="button" className="table-journal__link" onClick={() => setViewCampaign(null)}>
-            Back to the current campaign
-          </button>
-        </p>
-      )}
-
-      {isCurrentCampaign && (
+  // The note box (shown under the notes on the DM's Story panel, and above them elsewhere).
+  const composer = isCurrentCampaign && (
       <form className="table-journal__composer" onSubmit={post} noValidate>
         <label className="table-journal__visually-hidden" htmlFor={draftId}>
           New note
@@ -347,7 +293,7 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber
           className="table-journal__input"
           value={draft}
           maxLength={MAX_LENGTH}
-          rows={3}
+          rows={composerLast ? 2 : 3}
           placeholder="What happened? Names, clues, loot, who owes who a favour..."
           onChange={(event) => setDraft(event.target.value)}
         />
@@ -374,57 +320,18 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber
                 : `Add to session ${noteSession.trim() || sessionNumber}`}
           </Button>
         </div>
-        <p className="table-journal__hint">
-          Leave Session as it is for the current session, or type another number to write about an earlier
-          one (or start a new one).
-        </p>
+        {!composerLast && (
+          <p className="table-journal__hint">
+            Leave Session as it is for the current session, or type another number to write about an earlier
+            one (or start a new one).
+          </p>
+        )}
       </form>
-      )}
+  );
 
-      {/* Read an earlier campaign (only when the table has more than one). */}
-      {hasSeveral && (
-        <div className="table-journal__lookback">
-          <label htmlFor={`${draftId}-campaign`}>Campaign</label>
-          <select
-            id={`${draftId}-campaign`}
-            className="table-journal__select"
-            value={shownCampaign}
-            onChange={(event) => {
-              setViewCampaign(Number(event.target.value));
-              setView("recent");
-              setShowAll(false);
-            }}
-          >
-            {campaigns.map((number) => (
-              <option key={number} value={number}>
-                {campaignLabel(campaignNames, number)}
-                {number === campaignNumber ? " (current)" : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Look back at any earlier session, in full. */}
-      <div className="table-journal__lookback">
-        <label htmlFor={`${draftId}-view`}>Look back at</label>
-        <select
-          id={`${draftId}-view`}
-          className="table-journal__select"
-          value={view}
-          onChange={(event) => setView(event.target.value)}
-        >
-          <option value="recent">Newest notes</option>
-          <option value="all">Every session</option>
-          {choices.map(({ session, count }) => (
-            <option key={session} value={String(session)}>
-              Session {sessionLabel(shownCampaign, session, hasSeveral)} ({count} {count === 1 ? "note" : "notes"})
-              {session === viewSession && isCurrentCampaign ? ", current" : ""}
-            </option>
-          ))}
-        </select>
-      </div>
-
+  // The notes themselves (errors, loading, each session's entries, the "show all" button).
+  const entriesBlock = (
+    <>
       {error && (
         <p className="table-journal__error" role="alert">
           {error}
@@ -460,11 +367,7 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber
                   >
                     {/* The writer's picture (or initials, like "DM"), then the note. */}
                     <span className="table-journal__avatar table-journal__avatar--note" aria-hidden="true">
-                      {portraits.get(entry.author_id) ? (
-                        <img src={portraits.get(entry.author_id)} alt="" loading="lazy" />
-                      ) : (
-                        getInitials(entry.author_name)
-                      )}
+                      <CharacterAvatar character={avatarCharacters?.get(entry.author_id)} name={entry.author_name} portraitUrl={portraits.get(entry.author_id)} />
                     </span>
 
                     <div className="table-journal__entry-main">
@@ -626,6 +529,182 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber
           {showAll ? "Show only the newest notes" : `Show all ${entries.length} notes`}
         </Button>
       )}
+    </>
+  );
+
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const recapStrip = (
+    <TableRecap
+      key={shownCampaign}
+      tableId={tableId}
+      entries={entries}
+      currentSession={viewSession}
+      campaign={shownCampaign}
+      showCampaign={hasSeveral}
+    />
+  );
+  const campaignTools = (
+    <CampaignTools
+      tableId={tableId}
+      entries={allEntries}
+      campaignNumber={campaignNumber}
+      campaignNames={campaignNames}
+      onChanged={load}
+    />
+  );
+  const currentSessionForm = isDm && isCurrentCampaign && (
+    <form className="table-journal__current" onSubmit={changeCurrentSession} noValidate>
+      <label htmlFor={`${draftId}-current`}>
+        Current session is {sessionLabel(campaignNumber, sessionNumber, hasSeveral)}. Set it to:
+      </label>
+      <input
+        id={`${draftId}-current`}
+        className="table-journal__number"
+        type="number"
+        min="1"
+        max="9999"
+        placeholder={String(sessionNumber)}
+        value={currentInput}
+        onChange={(event) => setCurrentInput(event.target.value)}
+      />
+      <Button type="submit" variant="secondary" disabled={currentInput.trim() === ""}>
+        Set
+      </Button>
+    </form>
+  );
+  const startSessionButton = isDm && isCurrentCampaign && (
+    <Button variant="secondary" onClick={startSession}>
+      Start session {sessionLabel(campaignNumber, sessionNumber + 1, hasSeveral)}
+    </Button>
+  );
+  const campaignNote = !isCurrentCampaign && (
+    <p className="table-journal__hint table-journal__campaign-note" role="status">
+      You&apos;re reading {campaignLabel(campaignNames, shownCampaign)}. New notes go into{" "}
+      {campaignLabel(campaignNames, campaignNumber)}.{" "}
+      <button type="button" className="table-journal__link" onClick={() => setViewCampaign(null)}>
+        Back to the current campaign
+      </button>
+    </p>
+  );
+  const campaignPicker = hasSeveral && (
+    <div className="table-journal__lookback">
+      <label htmlFor={`${draftId}-campaign`}>Campaign</label>
+      <select
+        id={`${draftId}-campaign`}
+        className="table-journal__select"
+        value={shownCampaign}
+        onChange={(event) => {
+          setViewCampaign(Number(event.target.value));
+          setView("recent");
+          setShowAll(false);
+        }}
+      >
+        {campaigns.map((number) => (
+          <option key={number} value={number}>
+            {campaignLabel(campaignNames, number)}
+            {number === campaignNumber ? " (current)" : ""}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+  const sessionPicker = (
+    <div className="table-journal__lookback">
+      <label htmlFor={`${draftId}-view`}>Look back at</label>
+      <select
+        id={`${draftId}-view`}
+        className="table-journal__select"
+        value={view}
+        onChange={(event) => setView(event.target.value)}
+      >
+        <option value="recent">Newest notes</option>
+        <option value="all">Every session</option>
+        {choices.map(({ session, count }) => (
+          <option key={session} value={String(session)}>
+            Session {sessionLabel(shownCampaign, session, hasSeveral)} ({count} {count === 1 ? "note" : "notes"})
+            {session === viewSession && isCurrentCampaign ? ", current" : ""}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+
+  // The DM's Story panel: a slim header with Start session, a compact recap
+  // strip, one filter row, the scrolling notes, and the note box at the bottom.
+  // Campaigns and the manual "current session" box sit in "Session options".
+  if (composerLast) {
+    return (
+      <section className="table-journal table-journal--feed" aria-labelledby={`${draftId}-title`}>
+        <div className="table-journal__head">
+          <h2 id={`${draftId}-title`} className="table-journal__title">
+            Journal
+          </h2>
+          {startSessionButton}
+        </div>
+        <div className="table-journal__top">
+          {recapStrip}
+          <div className="table-journal__bar">
+            {campaignPicker}
+            {sessionPicker}
+            <button
+              type="button"
+              className="table-journal__toggle"
+              aria-expanded={optionsOpen}
+              aria-controls={`${draftId}-options`}
+              onClick={() => setOptionsOpen((open) => !open)}
+            >
+              Session options
+            </button>
+            <button
+              type="button"
+              className="table-journal__toggle"
+              aria-expanded={helpOpen}
+              aria-controls={`${draftId}-help`}
+              onClick={() => setHelpOpen((open) => !open)}
+            >
+              How notes work
+            </button>
+          </div>
+          <div id={`${draftId}-options`} className="table-journal__panel" hidden={!optionsOpen}>
+            {currentSessionForm}
+            {campaignTools}
+          </div>
+          <p id={`${draftId}-help`} className="table-journal__hint table-journal__panel" hidden={!helpOpen}>
+            Notes and recaps for the whole table. Each note is signed “DM” and the time. Pick{" "}
+            <strong>Just me</strong> for a private note only you can read. Leave Session as it is for the
+            current session, or type another number to write about an earlier one (or start a new one).
+          </p>
+          {campaignNote}
+        </div>
+        <div className="table-journal__scroll">{entriesBlock}</div>
+        {composer}
+      </section>
+    );
+  }
+
+  return (
+    <section className="table-journal" aria-labelledby={`${draftId}-title`}>
+      {recapStrip}
+      {campaignTools}
+      <div className="table-journal__head">
+        <h2 id={`${draftId}-title`} className="table-journal__title">
+          Journal
+        </h2>
+        {startSessionButton}
+      </div>
+      {currentSessionForm}
+      <p className="table-journal__hint">
+        Notes and recaps for the whole table. Each note is signed{" "}
+        {isDm ? "“DM”" : "with your character's name"} and the time. Pick{" "}
+        <strong>Just me</strong> for a private note only you can read.
+      </p>
+      {campaignNote}
+      {composer}
+      {campaignPicker}
+      {sessionPicker}
+      {entriesBlock}
     </section>
   );
 }

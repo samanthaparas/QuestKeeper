@@ -101,6 +101,19 @@ export function getActivityIcon(kind) {
   return activityIcons[`../assets/icons/activity-app/${kind}.png`];
 }
 
+// Small (72px) pictures for the DM screen's Story and Prep tabs: a magnifier
+// for party clues, speech bubbles for languages, an eye for senses, a chest for
+// loot. They are decoration beside real text, never information on their own.
+const dmSupportIcons = import.meta.glob("../assets/icons/dm-support-app/*.png", {
+  eager: true,
+  import: "default",
+});
+export const DM_SUPPORT_ICONS = ["party-clues", "languages", "senses", "loot"];
+export function getDmSupportIcon(name) {
+  if (!DM_SUPPORT_ICONS.includes(name)) return undefined;
+  return dmSupportIcons[`../assets/icons/dm-support-app/${name}.png`];
+}
+
 export function getUiIcon(iconId) {
   return uiIcons[`../assets/icons/ui/${normalizeId(iconId)}.png`];
 }

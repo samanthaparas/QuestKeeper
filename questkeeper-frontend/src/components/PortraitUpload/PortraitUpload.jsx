@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { getInitials } from "../../utils/characterSheet";
+import CharacterAvatar from "../CharacterAvatar/CharacterAvatar";
 import { shrinkImage, uploadPortrait, validatePortraitFile } from "../../utils/portraits";
 import "./PortraitUpload.css";
 
@@ -13,6 +13,7 @@ function PortraitUpload({
   characterId,
   name,
   portraitUrl,
+  character,
   onUpload,
   size = "small",
   uploadLabel,
@@ -57,15 +58,7 @@ function PortraitUpload({
         disabled={isUploading}
         aria-label={uploadLabel ?? (portraitUrl ? "Change portrait" : "Upload portrait")}
       >
-        {portraitUrl ? (
-          <img
-            className="portrait-upload__image"
-            src={portraitUrl}
-            alt={`${name}'s portrait`}
-          />
-        ) : (
-          <span className="portrait-upload__initials">{getInitials(name)}</span>
-        )}
+        <CharacterAvatar character={character} name={name} portraitUrl={portraitUrl} decorative={false} />
         <span className="portrait-upload__overlay">
           {isUploading ? "Uploading..." : "Edit"}
         </span>

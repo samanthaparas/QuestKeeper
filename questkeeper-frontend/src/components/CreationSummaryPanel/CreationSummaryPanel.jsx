@@ -3,8 +3,8 @@ import {
   ABILITY_SCORES,
   getAbilityModifier,
   formatModifier,
-  getInitials,
 } from "../../utils/characterSheet";
+import CharacterAvatar from "../CharacterAvatar/CharacterAvatar";
 import "./CreationSummaryPanel.css";
 
 // "Your hero so far": one slim strip under the steps that fills in as you go.
@@ -29,7 +29,7 @@ function CreationSummaryPanel({
   return (
     <aside className="creation-summary" aria-label="Your hero so far">
       <div className="creation-summary__header">
-        <div className="creation-summary__avatar">{getInitials(name)}</div>
+        <div className="creation-summary__avatar" aria-hidden="true"><CharacterAvatar character={{ name, race, class: characterClass, background }} /></div>
         <div className="creation-summary__identity">
           <p className="creation-summary__eyebrow">Your hero so far</p>
           <p className="creation-summary__name">{name || "Unnamed Hero"}</p>

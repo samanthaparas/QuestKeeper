@@ -1,6 +1,5 @@
 import { useId, useState } from "react";
 import {
-  getInitials,
   ABILITY_SCORES,
   ABILITY_ABBREVIATIONS,
   getAbilityModifier,
@@ -24,6 +23,7 @@ import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
 import { getSpellDetails, getSpells } from "../../utils/api";
 import { findSrdMatches, formatSpellDetails } from "../../utils/srdDetails";
+import CharacterAvatar from "../CharacterAvatar/CharacterAvatar";
 import "./CharacterSummaryCard.css";
 
 function itemName(item) {
@@ -245,7 +245,7 @@ function CharacterSummaryCard({ sheet, playerName, bannedChoices = [] }) {
       <header className="character-summary__header">
         {/* The character's portrait, or their initials without one. */}
         <span className="character-summary__portrait" aria-hidden="true">
-          {sheet.portraitUrl ? <img src={sheet.portraitUrl} alt="" /> : getInitials(sheet.name ?? "")}
+          <CharacterAvatar character={sheet} />
         </span>
         <div className="character-summary__who">
           <h3 className="character-summary__name">{sheet.name}</h3>

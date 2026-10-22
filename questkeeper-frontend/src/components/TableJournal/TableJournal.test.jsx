@@ -368,3 +368,59 @@ describe("TableJournal", () => {
     });
   });
 });
+
+describe("TableJournal as the DM's Story feed", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installFakeStorage();
+    listJournal.mockResolvedValue(NOTES);
+  });
+
+  const renderFeed = () =>
+    render(<TableJournal tableId="t1" userId="dm" isDm sessionNumber={1} campaignNumber={1} composerLast />);
+
+  it("keeps Start session in the header and the note box after the notes", async () => {
+    renderFeed();
+    await screen.findByText("Recap: you reached Phandalin.");
+    const section = document.querySelector(".table-journal--feed");
+    expect(within(section.querySelector(".table-journal__head")).getByRole("button", { name: /Start session/ })).toBeInTheDocument();
+    const notes = section.querySelector(".table-journal__scroll");
+    const composer = section.querySelector(".table-journal__composer");
+    expect(notes.compareDocumentPosition(composer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("hides the current-session box and campaign tools in Session options until opened, and the help in its own toggle", async () => {
+    renderFeed();
+    await screen.findByText("Recap: you reached Phandalin.");
+    const options = screen.getByRole("button", { name: "Session options" });
+    expect(options).toHaveAttribute("aria-expanded", "false");
+    expect(document.getElementById(options.getAttribute("aria-controls"))).toHaveAttribute("hidden");
+
+    await userEvent.click(options);
+    expect(options).toHaveAttribute("aria-expanded", "true");
+    const panel = document.getElementById(options.getAttribute("aria-controls"));
+    expect(panel).not.toHaveAttribute("hidden");
+    expect(within(panel).getByText(/Current session is/)).toBeInTheDocument();
+
+    const help = screen.getByRole("button", { name: "How notes work" });
+    expect(help).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(help);
+    expect(help).toHaveAttribute("aria-expanded", "true");
+    expect(document.getElementById(help.getAttribute("aria-controls"))).toHaveTextContent("Just me");
+  });
+
+  it("still filters by session and keeps Whole table and Just me explicit", async () => {
+    renderFeed();
+    await screen.findByText("Recap: you reached Phandalin.");
+    expect(screen.getByLabelText("Look back at")).toBeInTheDocument();
+    expect(screen.getByText(/Whole table/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Just me/).length).toBeGreaterThan(0);
+  });
+
+  it("leaves the player's journal layout alone (no feed, note box on top)", async () => {
+    render(<TableJournal tableId="t1" userId="me" isDm={false} sessionNumber={1} campaignNumber={1} />);
+    await screen.findByText("Recap: you reached Phandalin.");
+    expect(document.querySelector(".table-journal--feed")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Session options" })).not.toBeInTheDocument();
+  });
+});

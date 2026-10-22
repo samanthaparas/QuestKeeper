@@ -16,7 +16,7 @@ import {
   sessionChoices,
   wasEdited,
 } from "../../utils/journal";
-import { getInitials } from "../../utils/characterSheet";
+import CharacterAvatar from "../CharacterAvatar/CharacterAvatar";
 import "../TableJournal/TableJournal.css";
 import "./PersonalJournal.css";
 
@@ -62,7 +62,7 @@ const SHARE_CHOICES = [
 // characterId: whose journal. table: { id, name } when the character is at a
 // table, so notes can be brought in; null otherwise. name and portraitUrl:
 // the character's, shown beside the title.
-function PersonalJournal({ characterId, table = null, name = "", portraitUrl = "" }) {
+function PersonalJournal({ characterId, table = null, name = "", portraitUrl = "", character }) {
   const [entries, setEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -217,7 +217,7 @@ function PersonalJournal({ characterId, table = null, name = "", portraitUrl = "
         <h2 id={`${draftId}-title`} className="table-journal__title personal-journal__title">
           {(portraitUrl || name) && (
             <span className="table-journal__avatar table-journal__avatar--large" aria-hidden="true">
-              {portraitUrl ? <img src={portraitUrl} alt="" /> : getInitials(name)}
+              <CharacterAvatar character={character} name={name} portraitUrl={portraitUrl} />
             </span>
           )}
           My journal

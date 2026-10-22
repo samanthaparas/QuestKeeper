@@ -1,45 +1,151 @@
-.dm-story {
-  display: grid;
-  gap: 16px;
+/* The Story tab's "Party clues" panel. The panel frame and slim header come
+   from the DM screen's shared styles (TablePage.css); this is what's inside. */
+.dm-story__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.dm-story__tip,
+.dm-story__title-icon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.dm-story__body {
+  display: none;
+  gap: 10px;
+  padding: 10px 12px 12px;
+}
+
+.dm-story__body--open {
+  display: grid;
+}
+
+@media (min-width: 900px) {
+  .dm-story__body {
+    display: grid;
+    min-height: 0;
+  }
+
+  .dm-story__toggle {
+    display: none;
+  }
+}
+
 .dm-story__empty {
   margin: 0;
-  max-width: var(--qk-reading-width);
   color: var(--qk-text-muted);
-  line-height: 1.5;
 }
 
-.dm-story__cards {
+.dm-story__picker {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  gap: 5px;
   margin: 0;
-  padding: 0;
+  padding: 4px;
   list-style: none;
 }
 
-.dm-story__card {
+.dm-story__pick {
   display: grid;
-  gap: 8px;
-  align-content: start;
-  padding: 16px 18px;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 10px;
   border: 1px solid var(--qk-border);
-  border-radius: var(--qk-radius-card);
-  background-color: var(--qk-surface);
+  border-radius: var(--qk-radius-control);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dm-story__pick:hover {
+  background-color: color-mix(in srgb, var(--qk-terracotta-soft) 55%, transparent);
+}
+
+.dm-story__pick:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 1px;
+}
+
+/* Whoever's clues are open: a copper bar and outline (also named for screen readers by aria-pressed). */
+.dm-story__pick--active {
+  border-color: var(--qk-terracotta);
+  box-shadow: inset 5px 0 0 var(--qk-terracotta);
+}
+
+.dm-story__avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border: 2px solid var(--qk-border);
+  border-radius: 10px;
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.dm-story__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dm-story__pick-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.dm-story__pick-name {
+  font-family: var(--qk-font-display);
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+
+.dm-story__pick-sub {
+  color: var(--qk-text-muted);
+  font-size: 12.5px;
+}
+
+.dm-story__pick-passives {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 10px;
+  color: var(--qk-text-muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dm-story__selected {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 30%, transparent);
 }
 
 .dm-story__name {
   margin: 0;
   font-family: var(--qk-font-display);
-  font-size: 20px;
+  font-size: 18px;
+  line-height: 1.2;
 }
 
 .dm-story__summary {
   margin: 0;
   color: var(--qk-text-muted);
-  font-size: 14px;
+  font-size: 13.5px;
 }
 
 .dm-story__facts {
@@ -48,34 +154,66 @@
   margin: 4px 0 0;
 }
 
-.dm-story__facts div {
+.dm-story__facts > div {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 112px minmax(0, 1fr);
   gap: 8px;
+  align-items: start;
 }
 
 .dm-story__facts dt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   color: var(--qk-text-muted);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding-top: 2px;
+}
+
+.dm-story__facts dt img {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
 }
 
 .dm-story__facts dd {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
-.dm-story__more summary {
-  cursor: pointer;
-  color: var(--qk-terracotta);
+.dm-story__more,
+.dm-story__tip {
+  border-top: 1px solid var(--qk-border);
+  font-size: 14px;
+}
+
+.dm-story__more summary,
+.dm-story__tip summary {
+  min-height: 34px;
+  padding: 6px 0;
   font-weight: 700;
+  cursor: pointer;
 }
 
-.dm-story__more p {
-  margin: 6px 0 0;
-  white-space: pre-line;
+.dm-story__more summary:focus-visible,
+.dm-story__tip summary:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.dm-story__more p,
+.dm-story__tip p {
+  margin: 0 0 8px;
   line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.dm-story__tip {
+  align-self: end;
 }

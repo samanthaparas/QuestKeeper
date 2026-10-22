@@ -2226,6 +2226,7 @@ function CharacterSheetPage() {
                         userId={user.id}
                         characterId={sheet.id}
                         name={sheet.name}
+                        character={sheet}
                         portraitUrl={sheet.portraitUrl}
                         onUpload={handlePortraitUpload}
                         size="tiny"
@@ -3154,12 +3155,14 @@ function CharacterSheetPage() {
                             userId={user.id}
                             isDm={false}
                             sessionNumber={roller.tableSession}
+                            avatarCharacters={new Map([[user.id, sheet]])}
                           />
                         </>
                       ) : (
                         <PersonalJournal
                           characterId={sheet.id}
                           name={sheet.name}
+                          character={sheet}
                           portraitUrl={sheet.portraitUrl}
                           table={roller.tableId ? { id: roller.tableId, name: roller.tableName } : null}
                         />
@@ -3195,6 +3198,7 @@ function CharacterSheetPage() {
                     userId={user.id}
                     characterId={sheet.id}
                     name={sheet.name}
+                    character={sheet}
                     portraitUrl={sheet.portraitUrl}
                     onUpload={handlePortraitUpload}
                     size="large"

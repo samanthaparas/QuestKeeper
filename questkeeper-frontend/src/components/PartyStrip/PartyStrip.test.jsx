@@ -12,7 +12,7 @@ const base = {
 };
 
 describe("PartyStrip portraits", () => {
-  it("shows each character's portrait, or their initials without one", () => {
+  it("shows uploaded portraits first and a class emblem with initials when ancestry is unavailable", () => {
     const { container } = render(
       <PartyStrip
         rows={[
@@ -23,9 +23,10 @@ describe("PartyStrip portraits", () => {
     );
 
     const images = container.querySelectorAll(".party-strip__portrait img");
-    expect(images).toHaveLength(1);
+    expect(images).toHaveLength(2);
     expect(images[0]).toHaveAttribute("src", "https://example.com/billie.png");
     expect(screen.getByText("DR")).toBeInTheDocument();
+    expect(container.querySelectorAll('.character-avatar__badge--class img')).toHaveLength(1);
   });
 
   it("shows a downed character's death saves and who is concentrating", () => {

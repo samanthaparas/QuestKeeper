@@ -82,7 +82,10 @@ export function toPartyRow(sheet, { withPassives = false } = {}) {
   return {
     id: sheet.id,
     name: sheet.name ?? "Adventurer",
-    // Empty when there's no picture; the strip shows initials instead.
+    // Keep identity beside the picture so a missing upload can use the avatar.
+    race: sheet.race,
+    class: sheet.class,
+    background: sheet.background,
     portraitUrl: typeof sheet.portraitUrl === "string" ? sheet.portraitUrl : "",
     summary: [sheet.level ? `Level ${sheet.level}` : "", sheet.class?.name ?? ""]
       .filter(Boolean)
