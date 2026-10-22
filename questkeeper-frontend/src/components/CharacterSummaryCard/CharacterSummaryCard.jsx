@@ -230,7 +230,9 @@ function SpellsByLevel({ spellcasting, prepares = false }) {
 
 // A READ-ONLY summary of a player's character for the DM. There is nothing
 // editable here on purpose; DMs can see everything but never change a sheet.
-function CharacterSummaryCard({ sheet, playerName }) {
+// bannedChoices: what this character uses that the DM's table doesn't allow
+// (see utils/contentRules.js), flagged at the top.
+function CharacterSummaryCard({ sheet, playerName, bannedChoices = [] }) {
   const hitPoints = sheet.combat?.hitPoints ?? {
     current: 0,
     max: 0,
@@ -258,6 +260,12 @@ function CharacterSummaryCard({ sheet, playerName }) {
         </div>
         <span className="character-summary__badge">View only</span>
       </header>
+
+      {bannedChoices.length > 0 && (
+        <p className="character-summary__flag" role="note">
+          ⚠ Uses options not allowed at this table: {bannedChoices.map((item) => `${item.name} (${item.label})`).join(", ")}
+        </p>
+      )}
 
       {/* Conditions the player has marked (Prone, Poisoned...). */}
       <ConditionBadges conditions={sheet.conditions ?? []} readOnly />

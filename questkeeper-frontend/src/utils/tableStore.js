@@ -61,6 +61,13 @@ export async function setTableRules(tableId, text) {
   );
 }
 
+// DM's allowed-content list: names of races, classes, backgrounds, feats and
+// spells the table doesn't allow (see 20261023_content_rules.sql). Players
+// read it from the table row; an empty list restricts nothing.
+export async function setBannedContent(tableId, banned) {
+  unwrap(await supabase.from("game_tables").update({ banned_content: banned }).eq("id", tableId));
+}
+
 // The party strip's mini sheets (see 20261014_party_strip.sql). Only works
 // for the DM, or for players once the DM has shared the party.
 export async function getPartyStrip(tableId) {

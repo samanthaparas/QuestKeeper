@@ -1,0 +1,52 @@
+/* What isn't allowed at the table: a quiet line for players, with a heads-up
+   when their own character uses something on the list. */
+.content-notice {
+  display: grid;
+  gap: 8px;
+}
+
+.content-notice__heads-up {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--qk-brass);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+  font-size: 14px;
+}
+
+.content-notice__details {
+  padding: 10px 16px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.content-notice__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  color: var(--qk-text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.content-notice__summary:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.content-notice__count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background-color: var(--qk-brass-soft);
+  font-size: 12px;
+}
+
+.content-notice__list {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+}
