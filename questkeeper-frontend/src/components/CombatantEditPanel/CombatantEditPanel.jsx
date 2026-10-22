@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   PIECE_ICONS,
   cleanStatBlock,
+  creatureIdOf,
   readStatBlock,
   splitIcon,
   withIcon,
@@ -44,7 +45,11 @@ function CombatantEditPanel({ combatant, secret, onSave, onCancel }) {
         maxHp: max,
         currentHp: current,
         armorClass: armorClass === "" ? null : Number(armorClass),
-        statBlock: cleanStatBlock(statBlock),
+        // Editing keeps which SRD creature this is, so its portrait stays.
+        statBlock: {
+          ...cleanStatBlock(statBlock),
+          ...(creatureIdOf(secret?.stat_block) ? { creature: creatureIdOf(secret.stat_block) } : {}),
+        },
       });
     } catch (saveError) {
       setError(saveError.message ?? "Could not save.");

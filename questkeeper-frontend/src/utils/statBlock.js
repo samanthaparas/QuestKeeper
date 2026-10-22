@@ -45,6 +45,13 @@ export function readStatBlock(raw) {
   };
 }
 
+// The creature's SRD id ("kobold") when it was added from the SRD, else "".
+// It's kept apart from the editable fields, and editing a creature carries it
+// along (see CombatantEditPanel).
+export function creatureIdOf(raw) {
+  return typeof raw?.creature === "string" ? raw.creature : "";
+}
+
 // The saves a monster has, as [{ key, short, bonus }], only the ones typed.
 export function savesOf(statBlock) {
   return SAVE_ABILITIES.flatMap(([key, short]) => {

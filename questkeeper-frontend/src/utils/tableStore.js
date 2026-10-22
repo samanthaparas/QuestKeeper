@@ -325,8 +325,14 @@ export async function listCharacterTables(characterId) {
   return [...tables].sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
 }
 
-// A free-form line in the activity log from the DM.
-export async function dmLog(tableId, message) {
+// A free-form line in the activity log from the DM. `kind` (optional) says
+// what sort of line it is, for the little icon on the DM screen. Before the
+// database has the kinds update, the line is written without one.
+export async function dmLog(tableId, message, kind = null) {
+  if (kind) {
+    const { error } = await supabase.rpc("dm_log", { p_table_id: tableId, p_message: message, p_kind: kind });
+    if (!error) return;
+  }
   unwrap(await supabase.rpc("dm_log", { p_table_id: tableId, p_message: message }));
 }
 

@@ -167,6 +167,22 @@ function rowFor(name) {
   );
 }
 
+// The DM's controls panel for one creature (only the picked one is shown).
+function detailFor(name) {
+  return Array.from(document.querySelectorAll("[data-detail-for]")).find(
+    (el) =>
+      [...(el.querySelector(".table-page__row-name")?.childNodes ?? [])].find(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim(),
+      )?.textContent === name,
+  );
+}
+
+// Picks a creature in the DM's list, and returns its controls panel.
+async function pick(name) {
+  await userEvent.click(rowFor(name).querySelector(".table-page__row-select"));
+  return detailFor(name);
+}
+
 const ally = {
   id: "c-pip",
   kind: "ally",
@@ -386,7 +402,7 @@ describe("TablePage", () => {
     it("tells the DM what to do on the current monster's turn", () => {
       renderPage();
 
-      expect(rowFor("Kobold")).toHaveTextContent(
+      expect(detailFor("Kobold")).toHaveTextContent(
         "Kobold's turn: tap Attack to have it attack, then tap Next turn.",
       );
       expect(rowFor("Billie")).not.toHaveTextContent("'s turn:");
@@ -398,7 +414,7 @@ describe("TablePage", () => {
       );
       renderPage();
 
-      expect(rowFor("Kobold")).toHaveTextContent(
+      expect(detailFor("Kobold")).toHaveTextContent(
         "Kobold has attacked. Attack again if it has more attacks, or tap Next turn.",
       );
     });
@@ -408,7 +424,7 @@ describe("TablePage", () => {
         { id: "e1", message: "Kobold hits Billie for 3!", created_at: "2026-10-03T00:01:00Z" },
       ];
       const { rerender } = renderPage();
-      expect(rowFor("Kobold")).toHaveTextContent("Earlier: Kobold hits Billie for 3!");
+      expect(detailFor("Kobold")).toHaveTextContent("Earlier: Kobold hits Billie for 3!");
 
       useTable.mockReturnValue({
         ...currentTable,
@@ -419,7 +435,7 @@ describe("TablePage", () => {
       });
       rerender(pageTree());
 
-      const lines = Array.from(rowFor("Kobold").querySelectorAll(".table-page__last-action")).map(
+      const lines = Array.from(detailFor("Kobold").querySelectorAll(".table-page__last-action")).map(
         (line) => line.textContent,
       );
       expect(lines).toEqual(["Kobold hits Billie for 4!", "Earlier: Kobold hits Billie for 3!"]);
@@ -427,7 +443,7 @@ describe("TablePage", () => {
 
     it("keeps a monster's history under its buttons, and opens Attack in a right-hand panel", async () => {
       renderPage();
-      const row = rowFor("Kobold");
+      const row = detailFor("Kobold");
       const left = row.querySelector(".table-page__row-left");
 
       expect(row).not.toHaveClass("table-page__row--split");
@@ -582,7 +598,7 @@ describe("TablePage", () => {
 
     it("lets the DM mark a player away, so their turns are skipped, and bring them back", async () => {
       renderPage();
-      const row = rowFor("Billie");
+      const row = await pick("Billie");
 
       await userEvent.click(within(row).getByRole("button", { name: "Mark away" }));
       expect(setCombatantAway).toHaveBeenCalledWith(expect.any(String), true);
@@ -591,7 +607,7 @@ describe("TablePage", () => {
 
     it("asks before removing a player, with the choice to remove them for good", async () => {
       renderPage();
-      const row = rowFor("Billie");
+      const row = await pick("Billie");
 
       await userEvent.click(within(row).getByRole("button", { name: "Remove" }));
       expect(row).toHaveTextContent("Remove Billie from the table?");
@@ -663,8 +679,10 @@ describe("TablePage", () => {
       vi.spyOn(window, "confirm").mockReturnValue(true);
       renderPage();
 
-      expect(screen.getByText("2 attacks this turn")).toBeInTheDocument();
-      await userEvent.click(screen.getByRole("button", { name: "Deny last attack" }));
+      expect(rowFor("Billie")).not.toHaveTextContent("Deny last attack");
+      const billie = await pick("Billie");
+      expect(within(billie).getByText("2 attacks this turn")).toBeInTheDocument();
+      await userEvent.click(within(billie).getByRole("button", { name: "Deny last attack" }));
 
       expect(dmDenyAttack).toHaveBeenCalledWith("c-billie");
     });
@@ -681,7 +699,8 @@ describe("TablePage", () => {
       vi.spyOn(window, "confirm").mockReturnValue(false);
       renderPage();
 
-      await userEvent.click(screen.getByRole("button", { name: "Deny last attack" }));
+      const billie = await pick("Billie");
+      await userEvent.click(within(billie).getByRole("button", { name: "Deny last attack" }));
 
       expect(dmDenyAttack).not.toHaveBeenCalled();
     });
@@ -689,28 +708,30 @@ describe("TablePage", () => {
     it("lets the DM send an enemy hit to a player", async () => {
       renderPage();
 
-      await userEvent.type(screen.getByLabelText("Who is attacking"), "Kobold");
-      await userEvent.type(screen.getByLabelText("Damage to the player"), "5");
-      await userEvent.click(screen.getByRole("button", { name: /^Send 5 damage to / }));
+      await userEvent.type(screen.getByLabelText("Attacker"), "Kobold");
+      await userEvent.type(screen.getByLabelText("Amount"), "5");
+      await userEvent.click(screen.getByRole("button", { name: /^Send 5 damage to .* to apply$/ }));
 
       expect(postPlayerDamage).toHaveBeenCalledWith("t1", "player-1", 5, "Kobold");
     });
 
-    it("shows a friendly NPC with its hidden HP and the same controls as an enemy", () => {
+    it("shows a friendly NPC with its hidden HP and the same controls as an enemy", async () => {
       withAlly();
       renderPage();
 
+      // One short line in the list, with its controls in the panel once picked.
       const row = rowFor("Sir Pip");
       expect(row).toHaveTextContent("Ally");
-      expect(row).toHaveTextContent("DM only: 18/20 HP · AC 16");
+      expect(row).toHaveTextContent("18/20 HP · AC 16");
       expect(row).toHaveTextContent("Healthy");
-      expect(screen.getByLabelText("Damage or healing for Sir Pip")).toBeInTheDocument();
+      const detail = await pick("Sir Pip");
+      expect(within(detail).getByLabelText("Damage amount for Sir Pip")).toBeInTheDocument();
     });
 
     it("lets the DM edit a monster's HP and AC", async () => {
       renderPage();
 
-      const kobold = rowFor("Kobold");
+      const kobold = detailFor("Kobold");
       await userEvent.click(within(kobold).getByRole("button", { name: "Edit Kobold" }));
       await userEvent.clear(screen.getByLabelText("Edit max HP"));
       await userEvent.type(screen.getByLabelText("Edit max HP"), "30");
@@ -727,7 +748,7 @@ describe("TablePage", () => {
       withAlly();
       renderPage();
 
-      const row = rowFor("Sir Pip");
+      const row = await pick("Sir Pip");
       await userEvent.click(within(row).getByRole("button", { name: "Attack" }));
 
       expect(screen.getByRole("region", { name: "Sir Pip attacks" })).toBeInTheDocument();
@@ -744,7 +765,7 @@ describe("TablePage", () => {
       });
       renderPage();
 
-      const kobold = rowFor("Kobold");
+      const kobold = detailFor("Kobold");
       expect(kobold).toHaveTextContent("Dangit deals 4 damage to Kobold.");
       expect(kobold).not.toHaveTextContent("Thorn ends their turn.");
     });
@@ -834,10 +855,51 @@ describe("TablePage", () => {
     it("applies damage to an enemy", async () => {
       renderPage();
 
-      await userEvent.type(screen.getByLabelText("Damage or healing for Kobold"), "4");
-      await userEvent.click(screen.getByRole("button", { name: "Take damage" }));
+      await userEvent.type(screen.getByLabelText("Damage amount for Kobold"), "4");
+      // Typing changes nothing until the box's own button is pressed.
+      expect(applyDamage).not.toHaveBeenCalled();
+      await userEvent.click(screen.getByRole("button", { name: "Apply damage to Kobold" }));
 
       expect(applyDamage).toHaveBeenCalledWith("c-kobold", 4);
+    });
+
+    it("heals an enemy from its own box, and the two amounts are separate and start blank", async () => {
+      renderPage();
+
+      expect(screen.getByLabelText("Damage amount for Kobold")).toHaveValue(null);
+      expect(screen.getByLabelText("Healing amount for Kobold")).toHaveValue(null);
+      await userEvent.type(screen.getByLabelText("Healing amount for Kobold"), "3");
+      expect(screen.getByLabelText("Damage amount for Kobold")).toHaveValue(null);
+      await userEvent.click(screen.getByRole("button", { name: "Apply healing to Kobold" }));
+
+      expect(applyDamage).toHaveBeenCalledWith("c-kobold", -3);
+      expect(screen.getByLabelText("Healing amount for Kobold")).toHaveValue(null);
+    });
+
+    it("steps an amount with minus and plus without changing the creature's HP", async () => {
+      renderPage();
+
+      const kobold = detailFor("Kobold");
+      await userEvent.click(within(kobold).getByRole("button", { name: "Increase damage amount" }));
+      await userEvent.click(within(kobold).getByRole("button", { name: "Increase damage amount" }));
+      expect(screen.getByLabelText("Damage amount for Kobold")).toHaveValue(2);
+      await userEvent.click(within(kobold).getByRole("button", { name: "Decrease damage amount" }));
+      expect(screen.getByLabelText("Damage amount for Kobold")).toHaveValue(1);
+      // It never goes below nothing.
+      await userEvent.click(within(kobold).getByRole("button", { name: "Decrease damage amount" }));
+      await userEvent.click(within(kobold).getByRole("button", { name: "Decrease damage amount" }));
+      expect(screen.getByLabelText("Damage amount for Kobold")).toHaveValue(null);
+      expect(applyDamage).not.toHaveBeenCalled();
+    });
+
+    it("shows the weapon, to-hit bonus and damage on the Attack box before it opens", async () => {
+      withAlly();
+      renderPage();
+
+      const pip = await pick("Sir Pip");
+      const attack = within(pip).getByRole("button", { name: "Attack" });
+      expect(attack).toHaveAccessibleDescription("Sword · +5 to hit · 1d8+3");
+      expect(attack).toHaveAttribute("aria-expanded", "false");
     });
   });
 });
@@ -896,7 +958,7 @@ describe("rolling initiative for monsters", () => {
     setupFight();
     renderPage();
 
-    await screen.findByText("Goblin 1");
+    await waitFor(() => expect(rowFor("Goblin 1")).toBeTruthy());
     await userEvent.click(within(rowFor("Goblin 1")).getByRole("button", { name: "Roll d20" }));
 
     await waitFor(() => expect(setCombatantInitiative).toHaveBeenCalledWith("c-g1", 13));
@@ -933,7 +995,7 @@ describe("rolling initiative for monsters", () => {
     mockTable({ isDm: true, combatActive: false, currentId: null });
     renderPage();
 
-    await screen.findByText("Kobold");
+    await waitFor(() => expect(rowFor("Kobold")).toBeTruthy());
     expect(screen.queryByRole("button", { name: /Roll initiative for/ })).not.toBeInTheDocument();
   });
 });
@@ -1214,17 +1276,27 @@ describe("monster row layout", () => {
   it("puts Edit and Remove as icons in the corner, then Attack and the monster's own HP controls", async () => {
     renderPage();
 
-    const row = await waitFor(() => rowFor("Kobold"));
+    const row = await waitFor(() => detailFor("Kobold"));
     const names = within(row)
       .getAllByRole("button")
       .map((button) => button.getAttribute("aria-label") ?? button.textContent);
-    expect(names).toEqual(["Edit Kobold", "Remove Kobold", "Attack", "Take damage", "Heal"]);
+    expect(names).toEqual([
+      "Edit Kobold",
+      "Remove Kobold",
+      "Attack",
+      "Decrease damage amount",
+      "Increase damage amount",
+      "Apply damage to Kobold",
+      "Decrease healing amount",
+      "Increase healing amount",
+      "Apply healing to Kobold",
+    ]);
   });
 
   it("asks before removing a monster, and Keep leaves it alone", async () => {
     renderPage();
 
-    const row = await waitFor(() => rowFor("Kobold"));
+    const row = await waitFor(() => detailFor("Kobold"));
     await userEvent.click(within(row).getByRole("button", { name: "Remove Kobold" }));
     expect(removeCombatant).not.toHaveBeenCalled();
     expect(row).toHaveTextContent("Remove Kobold from the fight?");
@@ -1241,11 +1313,13 @@ describe("monster row layout", () => {
   it("labels Damage and Heal as changing that monster's HP", async () => {
     renderPage();
 
-    const row = await waitFor(() => rowFor("Kobold"));
-    const hp = within(row).getByRole("group", { name: "Change Kobold's HP" });
-    expect(within(hp).getByRole("button", { name: "Take damage" })).toBeInTheDocument();
-    expect(within(hp).getByRole("button", { name: "Heal" })).toBeInTheDocument();
-    expect(within(hp).queryByRole("button", { name: "Attack" })).not.toBeInTheDocument();
+    const row = await waitFor(() => detailFor("Kobold"));
+    const damage = within(row).getByRole("group", { name: "Take damage: Kobold" });
+    const heal = within(row).getByRole("group", { name: "Heal: Kobold" });
+    expect(within(damage).getByRole("button", { name: "Apply damage to Kobold" })).toBeInTheDocument();
+    expect(within(heal).getByRole("button", { name: "Apply healing to Kobold" })).toBeInTheDocument();
+    expect(within(damage).queryByRole("button", { name: "Attack" })).not.toBeInTheDocument();
+    expect(within(row).getByRole("group", { name: "Controls for Kobold" })).toBeInTheDocument();
   });
 });
 
@@ -1288,9 +1362,9 @@ describe("party strip", () => {
     getCharactersByIds.mockResolvedValue([billieSheet]);
     renderPage();
 
-    await userEvent.click(
-      await screen.findByRole("checkbox", { name: /Let players see the party/ }),
-    );
+    // The sharing checkbox sits behind the "Stats hidden" disclosure in the Party header.
+    await userEvent.click(await screen.findByRole("button", { name: /Stats hidden/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /Let players see the party/ }));
     expect(setShareParty).toHaveBeenCalledWith("t1", true);
   });
 
@@ -1511,7 +1585,7 @@ describe("table journal placement", () => {
         visibility: "table",
       }),
     );
-    expect(dmLog).toHaveBeenCalledWith("t1", "📜 The DM shared a handout: The Old Map");
+    expect(dmLog).toHaveBeenCalledWith("t1", "📜 The DM shared a handout: The Old Map", "handout");
   });
 
 });
@@ -1621,3 +1695,527 @@ describe("other players' portraits in the turn order", () => {
   });
 });
 
+
+
+describe("TablePage, DM Combat tab: compact rows, the party summary and the damage form", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const sheet = (id, name, current) => ({
+    id,
+    name,
+    level: 4,
+    class: { name: "Rogue" },
+    combat: { hitPoints: { current, max: 24, temporary: 0 }, armorClass: 12 },
+    abilityScores: {},
+  });
+
+  it("lists everyone as one short line, with one panel of controls for the picked creature", () => {
+    mockTable({ isDm: true });
+    withAlly();
+    renderPage();
+
+    // No big cards in the list: no Attack or HP boxes inside the rows.
+    for (const row of document.querySelectorAll("li.table-page__row")) {
+      expect(within(row).queryByRole("button", { name: "Attack" })).not.toBeInTheDocument();
+    }
+    // The panel shows whoever is up (the Kobold), and says so.
+    expect(screen.getByRole("heading", { name: "Selected · Kobold" })).toBeInTheDocument();
+    expect(screen.getByText("Following the turn")).toBeInTheDocument();
+    expect(within(detailFor("Kobold")).getByRole("button", { name: "Attack" })).toBeInTheDocument();
+    expect(detailFor("Sir Pip")).not.toBeVisible();
+  });
+
+  it("picks a creature without changing whose turn it is, and can go back to following the turn", async () => {
+    mockTable({ isDm: true });
+    withAlly();
+    renderPage();
+
+    await userEvent.click(rowFor("Sir Pip").querySelector(".table-page__row-select"));
+    expect(screen.getByRole("heading", { name: "Selected · Sir Pip" })).toBeInTheDocument();
+    expect(screen.getByText("Picked by you")).toBeInTheDocument();
+    expect(rowFor("Sir Pip").querySelector(".table-page__row-select")).toHaveAttribute("aria-pressed", "true");
+    // The turn itself is untouched: the Kobold is still the one up.
+    expect(rowFor("Kobold")).toHaveClass("table-page__row--current");
+    expect(rowFor("Sir Pip")).not.toHaveClass("table-page__row--current");
+    expect(within(detailFor("Sir Pip")).getByRole("button", { name: "Attack" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Follow the turn" }));
+    expect(screen.getByRole("heading", { name: "Selected · Kobold" })).toBeInTheDocument();
+  });
+
+  it("keeps who you picked, and what you typed for them, when a live update arrives", async () => {
+    mockTable({ isDm: true });
+    withAlly();
+    const view = renderPage();
+
+    const pip = await pick("Sir Pip");
+    await userEvent.type(within(pip).getByLabelText("Damage amount for Sir Pip"), "7");
+
+    // The turn moves on to Sir Pip's neighbour and someone hit the Kobold.
+    withAlly({
+      table: { ...currentTable.table, current_combatant_id: "c-billie" },
+      combatants: [combatants[0], { ...combatants[1], damage_taken: 14 }, ally],
+    });
+    view.rerender(pageTree());
+
+    expect(screen.getByRole("heading", { name: "Selected · Sir Pip" })).toBeInTheDocument();
+    expect(within(detailFor("Sir Pip")).getByLabelText("Damage amount for Sir Pip")).toHaveValue(7);
+    // And an amount typed for the Kobold before is still there too.
+    expect(rowFor("Billie")).toHaveClass("table-page__row--current");
+  });
+
+  it("keeps the keyboard focus on the row you pressed, and a button jumps to the controls", async () => {
+    mockTable({ isDm: true });
+    withAlly();
+    renderPage();
+
+    const select = rowFor("Sir Pip").querySelector(".table-page__row-select");
+    select.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(select).toHaveFocus();
+    expect(select).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(screen.getByRole("button", { name: "Go to the controls for Sir Pip" }));
+    expect(document.getElementById("detail-panel")).toHaveFocus();
+  });
+
+  it("shows a pending player attack on the creature's own line", () => {
+    mockTable({ isDm: true });
+    withAlly({
+      combatants: [
+        { ...combatants[0], attack_state: "awaiting_dm", attack_target: "c-pip", attack_name: "Dagger" },
+        combatants[1],
+        ally,
+      ],
+    });
+    renderPage();
+    // The request is right on the creature's line, flagged, with Hit, Miss and Deny.
+    expect(rowFor("Sir Pip")).toHaveTextContent("Needs your call");
+    expect(within(rowFor("Sir Pip")).getByRole("button", { name: "Hit" })).toBeInTheDocument();
+    expect(within(rowFor("Sir Pip")).getByRole("button", { name: "Deny" })).toBeInTheDocument();
+  });
+
+  it("keeps the initiative boxes on each line before the fight", () => {
+    mockTable({ isDm: true, combatActive: false });
+    withAlly();
+    renderPage();
+    expect(within(rowFor("Sir Pip")).getByLabelText("Initiative for Sir Pip")).toBeInTheDocument();
+    expect(within(rowFor("Sir Pip")).getByRole("button", { name: "Roll d20" })).toBeInTheDocument();
+  });
+
+  it("keeps a player's page as it was: whole rows, no list-and-panel, no creature pictures", () => {
+    mockTable({ isDm: false });
+    renderPage();
+    expect(document.querySelector(".table-page__row--summary")).toBeNull();
+    expect(document.querySelector("[data-detail-for]")).toBeNull();
+    expect(document.querySelector(".table-page__row-portrait--creature")).toBeNull();
+  });
+
+  it("shows a portrait only for a creature added from the SRD, by its exact id", () => {
+    mockTable({ isDm: true });
+    withAlly({
+      enemyHp: {
+        // Named "Kobold" and added from the SRD: its picture. The ally is
+        // named like a kobold but has no SRD id: a neutral badge, not a guess.
+        "c-kobold": { current_hp: 9, max_hp: 20, armor_class: 12, stat_block: { creature: "kobold" } },
+        "c-pip": { current_hp: 18, max_hp: 20, armor_class: 16, stat_block: {} },
+      },
+      combatants: [combatants[0], combatants[1], { ...ally, name: "Kobold Friend" }],
+    });
+    renderPage();
+    expect(rowFor("Kobold").querySelector(".table-page__row-portrait--creature img")).not.toBeNull();
+    expect(rowFor("Kobold Friend").querySelector(".table-page__row-portrait--creature img")).toBeNull();
+    expect(rowFor("Kobold Friend").querySelector(".table-page__row-portrait--creature svg")).not.toBeNull();
+  });
+
+  it("folds the party into 'Party · 4 players' that opens on a button", async () => {
+    mockTable({ isDm: true });
+    getCharactersByIds.mockResolvedValue([
+      sheet("s1", "Dangit", 22),
+      sheet("s2", "Branwen", 10),
+      sheet("s3", "Torren", 24),
+      sheet("s4", "Lira", 0),
+    ]);
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Party · 4 players" })).toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: /1 bloodied · 1 down/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(document.getElementById("party-body")).toHaveClass("table-page__party-body--open");
+  });
+
+  it("labels every box in the damage form and tucks the long help away", async () => {
+    mockTable({ isDm: true });
+    getCharactersByIds.mockResolvedValue([sheet("s1", "Billie", 20)]);
+    renderPage();
+
+    expect(screen.getByLabelText("Attacker")).toBeVisible();
+    expect(screen.getByLabelText("Target")).toBeVisible();
+    expect(screen.getByLabelText("Amount")).toBeVisible();
+    expect(screen.getByRole("button", { name: /to apply$/ })).toHaveTextContent("Send to player to apply");
+    expect(screen.getByText("This sends a damage request to the player. It does not change their HP directly.")).toBeVisible();
+    const help = screen.getByText("How does this work?").closest("details");
+    expect(help).not.toHaveAttribute("open");
+  });
+});
+
+describe("TablePage, DM Combat tab: statuses on the initiative line", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const sheetWith = (id, name, extra = {}) => ({
+    id,
+    name,
+    level: 4,
+    class: { name: "Rogue" },
+    combat: { hitPoints: { current: 20, max: 24, temporary: 0 }, armorClass: 12 },
+    abilityScores: {},
+    conditions: [],
+    ...extra,
+  });
+  const billie = sheetWith("char-1", "Billie", {
+    conditions: [{ key: "poisoned", rounds: 2 }],
+    concentration: { spell: "Bless", rounds: 8 },
+  });
+  // A second player at the table who isn't in the initiative order.
+  const mira = sheetWith("char-2", "Mira", { conditions: [{ key: "prone" }] });
+
+  function setup(sheets = [billie, mira]) {
+    mockTable({ isDm: true });
+    currentTable.members = [
+      { user_id: "player-1", character_id: "char-1" },
+      { user_id: "player-2", character_id: "char-2" },
+    ];
+    useTable.mockReturnValue(currentTable);
+    getCharactersByIds.mockResolvedValue(sheets);
+  }
+
+  it("shows conditions and concentration as readable labels on the character's initiative line", async () => {
+    setup();
+    renderPage();
+
+    const row = await waitFor(() => {
+      const found = rowFor("Billie");
+      expect(found).toHaveTextContent("Poisoned");
+      return found;
+    });
+    expect(row).toHaveTextContent("Concentrating: Bless");
+    // A creature has no sheet, so no status line.
+    expect(rowFor("Kobold").querySelector(".table-page__summary-status")).toBeNull();
+  });
+
+  it("doesn't repeat them on the Party card, but keeps them for someone not in the initiative order", async () => {
+    setup();
+    renderPage();
+
+    const strip = await screen.findByRole("list", { name: "Party" });
+    await waitFor(() => expect(within(strip).getByText("Prone")).toBeInTheDocument());
+    // Billie is in the initiative order, so her card leaves them to her line.
+    expect(within(strip).queryByText("Poisoned")).not.toBeInTheDocument();
+    expect(within(strip).queryByText(/Bless/)).not.toBeInTheDocument();
+    // Death saves, HP and AC stay on the card.
+    expect(within(strip).getByText(/Billie/)).toBeInTheDocument();
+  });
+
+  it("explains each status, with the time left, in the picked character's panel", async () => {
+    setup();
+    renderPage();
+    await waitFor(() => expect(rowFor("Billie")).toHaveTextContent("Poisoned"));
+
+    const panel = await pick("Billie");
+    expect(panel).toHaveTextContent("Poisoned · 2 rounds left");
+    expect(panel).toHaveTextContent("Disadvantage on attack rolls and ability checks.");
+    expect(panel).toHaveTextContent("Concentrating: Bless · 8 rounds left");
+  });
+
+  it("brings a status change to both the initiative line and the panel on the next refresh", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      setup();
+      renderPage();
+      await waitFor(() => expect(rowFor("Billie")).toHaveTextContent("Poisoned"));
+      const panel = await pick("Billie");
+      expect(panel).not.toHaveTextContent("Frightened");
+
+      // The player picks up a new condition and drops concentration.
+      getCharactersByIds.mockResolvedValue([
+        sheetWith("char-1", "Billie", { conditions: [{ key: "poisoned" }, { key: "frightened" }] }),
+        mira,
+      ]);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10500);
+      });
+
+      await waitFor(() => expect(rowFor("Billie")).toHaveTextContent("Frightened"));
+      expect(rowFor("Billie")).not.toHaveTextContent("Concentrating");
+      expect(detailFor("Billie")).toHaveTextContent("Frightened");
+      expect(detailFor("Billie")).not.toHaveTextContent("Concentrating");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the statuses on the line when the tablet Party panel is folded", async () => {
+    setup();
+    renderPage();
+    await waitFor(() => expect(rowFor("Billie")).toHaveTextContent("Poisoned"));
+    // The Party panel is folded by default on narrow screens (its body is hidden by CSS),
+    // and the line above is outside it.
+    expect(document.getElementById("party-body")).not.toContainElement(rowFor("Billie"));
+    expect(screen.getByRole("button", { name: /Show/ })).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
+describe("TablePage, DM Combat tab: party visibility, selection marker and waiting calls", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const sheet = (id, name) => ({
+    id,
+    name,
+    level: 4,
+    class: { name: "Rogue" },
+    combat: { hitPoints: { current: 20, max: 24, temporary: 0 }, armorClass: 12 },
+    abilityScores: {},
+  });
+
+  it("folds party visibility to one line, and opening it never changes who can see the party", async () => {
+    mockTable({ isDm: true });
+    currentTable.table = { ...currentTable.table, share_party: false };
+    useTable.mockReturnValue(currentTable);
+    getCharactersByIds.mockResolvedValue([sheet("char-1", "Billie")]);
+    renderPage();
+
+    const toggle = await screen.findByRole("button", { name: /Stats hidden/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("checkbox", { name: /Let players see the party/ })).not.toBeInTheDocument();
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const box = screen.getByRole("checkbox", { name: /Let players see the party/ });
+    expect(box).not.toBeChecked();
+    // Opening and closing the fold changed nothing.
+    expect(setShareParty).not.toHaveBeenCalled();
+    await userEvent.click(toggle);
+    expect(setShareParty).not.toHaveBeenCalled();
+
+    await userEvent.click(toggle);
+    await userEvent.click(screen.getByRole("checkbox", { name: /Let players see the party/ }));
+    expect(setShareParty).toHaveBeenCalledWith("t1", true);
+  });
+
+  it("says 'Stats shared' when the party is shared", async () => {
+    mockTable({ isDm: true });
+    currentTable.table = { ...currentTable.table, share_party: true };
+    useTable.mockReturnValue(currentTable);
+    getCharactersByIds.mockResolvedValue([sheet("char-1", "Billie")]);
+    renderPage();
+
+    expect(await screen.findByRole("button", { name: /Stats shared/ })).toBeInTheDocument();
+  });
+
+  it("marks the picked creature with a 'Selected' tag when it isn't the one up, and the turn with 'Turn'", async () => {
+    mockTable({ isDm: true });
+    withAlly();
+    renderPage();
+
+    expect(rowFor("Kobold")).toHaveTextContent("Turn");
+    expect(rowFor("Sir Pip")).not.toHaveTextContent("Selected");
+    await pick("Sir Pip");
+    expect(rowFor("Sir Pip")).toHaveTextContent("Selected");
+    expect(rowFor("Kobold")).toHaveTextContent("Turn");
+    expect(rowFor("Kobold")).not.toHaveTextContent("Selected");
+  });
+
+  it("gives a waiting attack a button that jumps to its row, flagged 'Needs your call'", async () => {
+    mockTable({ isDm: true });
+    withAlly({
+      combatants: [
+        { ...combatants[0], attack_state: "awaiting_dm", attack_target: "c-pip", attack_name: "Dagger" },
+        combatants[1],
+        ally,
+      ],
+    });
+    renderPage();
+
+    const jump = screen.getByRole("button", { name: /1 attack needs your call/ });
+    await userEvent.click(jump);
+    expect(rowFor("Sir Pip")).toHaveTextContent("Needs your call");
+    expect(within(rowFor("Sir Pip")).getByRole("button", { name: /Sir Pip/ })).toHaveFocus();
+  });
+
+  it("keeps a player's page free of the new jump button and tags", () => {
+    mockTable({ isDm: false });
+    renderPage();
+    expect(document.querySelector(".table-page__call-jump")).toBeNull();
+    expect(document.querySelector(".table-page__order-head")).toBeNull();
+    expect(document.querySelector(".table-page__party-visibility")).toBeNull();
+  });
+});
+
+describe("TablePage, DM Combat tab: header rows, gold turn, and the slim panels", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const sheet = (id, name) => ({
+    id,
+    name,
+    level: 4,
+    class: { name: "Rogue" },
+    combat: { hitPoints: { current: 20, max: 24, temporary: 0 }, armorClass: 12 },
+    abilityScores: {},
+  });
+
+  it("puts the title with Add monster and End combat in a slim header, and the turn summary, New encounter and Next turn in a toolbar under it", () => {
+    mockTable({ isDm: true });
+    renderPage();
+
+    const header = document.querySelector(".table-page__combat .table-page__slim-head");
+    expect(within(header).getByRole("heading", { level: 2, name: "Combat" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "+ Add monster" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "End combat" })).toBeInTheDocument();
+    const toolbar = document.querySelector(".table-page__combat .table-page__toolbar");
+    expect(toolbar).toHaveTextContent("Round 2");
+    expect(within(toolbar).getAllByRole("button").map((b) => b.textContent)).toEqual(["New encounter", "Next turn"]);
+  });
+
+  it("shows Start combat in the same far-right place before the fight", () => {
+    mockTable({ isDm: true, combatActive: false });
+    renderPage();
+
+    const toolbar = document.querySelector(".table-page__combat .table-page__toolbar");
+    expect(within(toolbar).getAllByRole("button").map((b) => b.textContent).at(-1)).toBe("Start combat");
+    expect(screen.queryByRole("button", { name: "End combat" })).not.toBeInTheDocument();
+  });
+
+  it("marks whose turn it is on the Party card too, for a player's turn", async () => {
+    mockTable({ isDm: true, currentId: "c-billie" });
+    currentTable.members = [{ user_id: "player-1", character_id: "char-1" }];
+    useTable.mockReturnValue(currentTable);
+    getCharactersByIds.mockResolvedValue([sheet("char-1", "Billie")]);
+    renderPage();
+
+    const strip = await screen.findByRole("list", { name: "Party" });
+    const card = await waitFor(() => {
+      const found = strip.querySelector(".party-strip__row--turn");
+      expect(found).not.toBeNull();
+      return found;
+    });
+    // Not by colour alone: the card also carries a labelled mark.
+    expect(within(card).getByRole("img", { name: "Their turn" })).toBeInTheDocument();
+    expect(rowFor("Billie")).toHaveClass("table-page__row--current");
+  });
+
+  it("gives a monster's turn a gold current row, and no card in the party is marked", async () => {
+    mockTable({ isDm: true });
+    getCharactersByIds.mockResolvedValue([sheet("char-1", "Billie")]);
+    renderPage();
+
+    await screen.findByRole("list", { name: "Party" });
+    expect(rowFor("Kobold")).toHaveClass("table-page__row--current");
+    expect(document.querySelector(".party-strip__row--turn")).toBeNull();
+  });
+
+  it("shows an Activity icon only for a line with an explicit kind, never guessed from its words, and keeps text and time", () => {
+    mockTable({ isDm: true });
+    currentTable.events = [
+      { id: "e1", message: "The torches flicker.", created_at: "2026-10-03T16:21:00Z", kind: "attack" },
+      // Sounds like an attack, but carries no kind: no icon, no empty box.
+      { id: "e2", message: "A bite lands on Billie.", created_at: "2026-10-03T16:22:00Z" },
+      // An unknown kind is ignored too.
+      { id: "e3", message: "Something else.", created_at: "2026-10-03T16:23:00Z", kind: "mystery" },
+    ];
+    useTable.mockReturnValue(currentTable);
+    renderPage();
+
+    const withIcon = screen.getByText("The torches flicker.").closest("li");
+    const icon = withIcon.querySelector("img.table-page__log-icon");
+    expect(icon).not.toBeNull();
+    expect(icon).toHaveAttribute("alt", "");
+    expect(withIcon.querySelector("time")).toHaveAttribute("datetime", "2026-10-03T16:21:00.000Z");
+    for (const text of ["A bite lands on Billie.", "Something else."]) {
+      const plain = screen.getByText(text).closest("li");
+      expect(plain.querySelector(".table-page__log-icon")).toBeNull();
+      expect(plain.querySelector("time")).not.toBeNull();
+    }
+    expect(screen.getByRole("list", { name: "Activity log" })).toBeInTheDocument();
+  });
+
+  it("folds the how-to line and the earlier history into small disclosures in the creature's panel", () => {
+    mockTable({ isDm: true });
+    renderPage();
+
+    const panel = detailFor("Kobold");
+    const folds = panel.querySelectorAll("details.table-page__note-fold");
+    expect([...folds].map((d) => d.querySelector("summary").textContent)).toEqual([
+      "What to do this turn",
+      "Earlier (1)",
+    ]);
+    for (const fold of folds) expect(fold).not.toHaveAttribute("open");
+    expect(panel).toHaveTextContent("Kobold's turn: tap Attack");
+  });
+
+  it("leaves Activity as plain lines on a player's page", () => {
+    mockTable({ isDm: false });
+    renderPage();
+    expect(document.querySelector(".table-page__log-icon")).toBeNull();
+    expect(document.querySelector(".table-page__slim-head")).toBeNull();
+    expect(document.querySelector(".table-page__combat-head--dm")).toBeNull();
+  });
+
+  it("puts Send damage under a slim header with Attacker, Target and Amount, then a full-width button", async () => {
+    mockTable({ isDm: true });
+    getCharactersByIds.mockResolvedValue([sheet("char-1", "Billie")]);
+    renderPage();
+
+    const panel = screen.getByRole("heading", { name: "Send damage to a player" }).closest("section");
+    expect(panel.querySelector(".table-page__slim-head")).not.toBeNull();
+    const labels = [...panel.querySelectorAll(".table-page__field-label")].map((el) => el.textContent);
+    expect(labels).toEqual(["Attacker", "Target", "Amount"]);
+    const button = within(panel).getByRole("button", { name: /to apply$/ });
+    expect(button).toHaveTextContent("Send to player to apply");
+    expect(button).toBeDisabled();
+  });
+});
+
+describe("TablePage, DM Combat tab: the narrow-screen Party fold", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("keeps the button's expanded state in step with the fold, and never touches sharing or characters", async () => {
+    mockTable({ isDm: true });
+    getCharactersByIds.mockResolvedValue([
+      { id: "char-1", name: "Billie", level: 4, class: { name: "Rogue" }, combat: { hitPoints: { current: 20, max: 24, temporary: 0 }, armorClass: 12 }, abilityScores: {} },
+    ]);
+    renderPage();
+
+    const toggle = await screen.findByRole("button", { name: /Show$/ });
+    const body = document.getElementById("party-body");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveAttribute("aria-controls", "party-body");
+    expect(body).not.toHaveClass("table-page__party-body--open");
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(toggle).toHaveTextContent("Hide");
+    expect(body).toHaveClass("table-page__party-body--open");
+
+    toggle.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(body).not.toHaveClass("table-page__party-body--open");
+    await userEvent.keyboard(" ");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    expect(setShareParty).not.toHaveBeenCalled();
+    expect(editCombatant).not.toHaveBeenCalled();
+  });
+});

@@ -5,6 +5,8 @@ import "./PartyStrip.css";
 
 const HEALTH_LABELS = { bloodied: "Bloodied", down: "Down" };
 const PASSIVE_LABELS = { perception: "Perception", insight: "Insight", investigation: "Investigation" };
+// Shorter forms for a tight card; screen readers still get the full words.
+const PASSIVE_SHORT = { perception: "Perc", insight: "Ins", investigation: "Inv" };
 
 // The whole party at a glance: one row per character with an HP bar, AC and
 // conditions, plus passive scores for the DM. Read-only.
@@ -24,7 +26,19 @@ function deathSaveWord({ successes, failures }) {
   return "";
 }
 
-function PartyStrip({ rows, onSelect, selectedId }) {
+// compact: a tighter card for the DM's Combat tab (short passive-score names).
+// hideStatusFor: ids of characters whose conditions and concentration are
+// shown somewhere else (on their initiative line), so the card doesn't repeat
+// them. Anyone not listed keeps theirs on the card. The data is the same
+// either way: this only decides where it's drawn.
+// A name that won't fit beside the picture and the AC badge on one line: its
+// card gives the name the full width (see PartyStrip.css) instead of cutting it.
+function isLongName(name) {
+  const words = String(name ?? "").split(/[\s-]+/);
+  return String(name ?? "").length > 15 || words.some((word) => word.length > 11);
+}
+
+function PartyStrip({ rows, onSelect, selectedId, compact = false, hideStatusFor = null, currentId = null }) {
   if (rows.length === 0) return null;
 
   return (
@@ -34,6 +48,8 @@ function PartyStrip({ rows, onSelect, selectedId }) {
           key={row.id}
           className={`party-strip__row party-strip__row--${row.health}${
             row.id === selectedId ? " party-strip__row--selected" : ""
+          }${currentId && row.id === currentId ? " party-strip__row--turn" : ""}${
+            compact && isLongName(row.name) ? " party-strip__row--long-name" : ""
           }`}
         >
           {/* The name sits right next to it, so the picture itself is decoration. */}
@@ -59,6 +75,11 @@ function PartyStrip({ rows, onSelect, selectedId }) {
               <span className="party-strip__name">{row.name}</span>
             )}
             {row.summary && <span className="party-strip__summary">{row.summary}</span>}
+            {currentId && row.id === currentId && (
+              <span className="party-strip__turn-mark" role="img" aria-label="Their turn">
+                ♛
+              </span>
+            )}
           </div>
 
           <div className="party-strip__hp">
@@ -78,6 +99,17 @@ function PartyStrip({ rows, onSelect, selectedId }) {
           </div>
 
           <span className="party-strip__ac">
+            {compact && (
+              <svg className="party-strip__shield" viewBox="0 0 36 42" aria-hidden="true" focusable="false">
+                <path
+                  d="M18 2 L33 7 V20 C33 30 26 37 18 40 C10 37 3 30 3 20 V7 Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
             <span className="party-strip__label">AC</span> {row.armorClass}
           </span>
 
@@ -99,7 +131,7 @@ function PartyStrip({ rows, onSelect, selectedId }) {
             </span>
           )}
 
-          {row.concentration && (
+          {row.concentration && !hideStatusFor?.has(row.id) && (
             <span className="party-strip__concentration" title="Concentrating on this spell">
               🎯 {row.concentration}
               {row.concentrationRounds !== null && (
@@ -112,11 +144,12 @@ function PartyStrip({ rows, onSelect, selectedId }) {
 
           {/* Spells changing their attacks, so the DM knows where the
               extra damage comes from. */}
-          {row.effects?.map((effect) => (
-            <span className="party-strip__concentration" key={effect} title="Active spell effect">
-              ✨ {effect}
-            </span>
-          ))}
+          {!hideStatusFor?.has(row.id) &&
+            row.effects?.map((effect) => (
+              <span className="party-strip__concentration" key={effect} title="Active spell effect">
+                ✨ {effect}
+              </span>
+            ))}
 
           {row.passives.length > 0 && (
             <span
@@ -126,13 +159,26 @@ function PartyStrip({ rows, onSelect, selectedId }) {
               <span className="party-strip__label">Passive</span>
               {row.passives.map(({ skill, score }) => (
                 <span key={skill} className="party-strip__passive">
-                  {PASSIVE_LABELS[skill]} {score}
+                  {compact ? (
+                    <>
+                      <span aria-hidden="true">
+                        {PASSIVE_SHORT[skill]} {score}
+                      </span>
+                      <span className="party-strip__sr">
+                        {PASSIVE_LABELS[skill]} {score}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {PASSIVE_LABELS[skill]} {score}
+                    </>
+                  )}
                 </span>
               ))}
             </span>
           )}
 
-          {row.conditions.length > 0 && (
+          {row.conditions.length > 0 && !hideStatusFor?.has(row.id) && (
             <ul className="party-strip__conditions" aria-label={`${row.name}'s conditions`}>
               {row.conditions.map((condition) => {
                 const word = conditionWord(condition.key);

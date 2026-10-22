@@ -297,3 +297,29 @@
 .party-strip__companion--healthy .party-strip__bar-fill {
   background-color: var(--qk-moss);
 }
+
+/* Words for screen readers only (a short on-screen form has the full words here). */
+.party-strip__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+/* The turn mark (a small crown) beside the name of whoever is up. */
+.party-strip__turn-mark {
+  color: var(--qk-brass);
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ----- Tight cards (DM Combat tab): a long name gets the room ----- */
+
+/* Names break at spaces and hyphens first; only a string with no break point
+   at all is split, as a last resort. */
+.party-strip__row--long-name .party-strip__name {
+  overflow-wrap: break-word;
+  word-break: normal;
+}

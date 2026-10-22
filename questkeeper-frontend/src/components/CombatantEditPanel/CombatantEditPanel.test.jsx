@@ -123,4 +123,14 @@ describe("CombatantEditPanel", () => {
     expect(screen.getByLabelText("Edit icon")).toHaveValue("🐧");
     expect(screen.getByLabelText("Edit name")).toHaveValue("Goblin 2");
   });
+
+  it("keeps which SRD creature it is when saved, so its portrait stays", async () => {
+    const props = setup({
+      secret: { ...secret, stat_block: { ...secret.stat_block, creature: "goblin" } },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(props.onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ statBlock: expect.objectContaining({ creature: "goblin" }) }),
+    );
+  });
 });

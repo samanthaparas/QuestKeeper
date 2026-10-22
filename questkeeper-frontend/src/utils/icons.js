@@ -26,6 +26,13 @@ const uiIcons = import.meta.glob("../assets/icons/ui/*.png", {
   eager: true,
   import: "default",
 });
+// Small (160px) copies of the creature portraits, named by the creature's
+// own SRD id, so a portrait is only ever chosen by an exact id (never by
+// guessing from a name). The full-size originals stay out of the app.
+const creaturePortraits = import.meta.glob("../assets/icons/creature-portraits/*.png", {
+  eager: true,
+  import: "default",
+});
 
 function normalizeId(id) {
   return (id ?? "")
@@ -73,6 +80,25 @@ export function getSpellEffectIcon(effectId) {
   return spellEffectIcons[
     `../assets/icons/spell-effects/${normalizeId(effectId)}.png`
   ];
+}
+
+// A creature's portrait from its exact SRD id ("kobold"), or undefined when
+// it has none (the DM screen then shows a neutral badge instead).
+export function getCreaturePortrait(srdId) {
+  if (typeof srdId !== "string") return undefined;
+  return creaturePortraits[`../assets/icons/creature-portraits/${srdId}.png`];
+}
+
+// Small (72px) Activity-log icons, by the log line's explicit kind. Only these
+// six kinds exist; anything else (or no kind) has no icon at all.
+const activityIcons = import.meta.glob("../assets/icons/activity-app/*.png", {
+  eager: true,
+  import: "default",
+});
+export const ACTIVITY_KINDS = ["attack", "damage", "healing", "spell", "turn", "handout"];
+export function getActivityIcon(kind) {
+  if (!ACTIVITY_KINDS.includes(kind)) return undefined;
+  return activityIcons[`../assets/icons/activity-app/${kind}.png`];
 }
 
 export function getUiIcon(iconId) {

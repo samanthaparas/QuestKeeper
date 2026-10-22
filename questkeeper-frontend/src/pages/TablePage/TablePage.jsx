@@ -41,7 +41,9 @@ import {
   setCombatantAway,
   startCombat,
 } from "../../utils/tableStore";
-import { isSameTemplate, pieceNames, readStatBlock, recentEventsFor, savesOf } from "../../utils/statBlock";
+import { creatureIdOf, isSameTemplate, pieceNames, readStatBlock, recentEventsFor, savesOf } from "../../utils/statBlock";
+import { getActivityIcon, getCreaturePortrait } from "../../utils/icons";
+import { conditionWord } from "../../utils/conditions";
 import {
   NEW_ENCOUNTER_MESSAGE,
   getDmPrepSteps,
@@ -71,6 +73,7 @@ import ContentRules from "../../components/ContentRules/ContentRules";
 import ContentNotice from "../../components/ContentNotice/ContentNotice";
 import { bannedChoicesOf, cleanBanned } from "../../utils/contentRules";
 import { addJournalEntry, getTablePortraits } from "../../utils/journalStore";
+import lanternArt from "../../assets/hero/inn-lantern.webp";
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
@@ -244,7 +247,33 @@ function InitiativePrompt({ combatant, dexterity, onSet, nudgeId = null }) {
 const ICON_PATHS = {
   edit: "M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4",
   remove: "M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13M10 11v6M14 11v6",
+  // Chevrons for opening and closing a row's details.
+  open: "M6 9l6 6 6-6",
+  close: "M6 15l6-6 6 6",
 };
+
+// A neutral badge for a creature with no portrait of its own (anything not
+// added from the SRD, or an SRD creature we don't have a picture for yet).
+function CreatureBadge({ src }) {
+  return (
+    <span className="table-page__row-portrait table-page__row-portrait--creature" aria-hidden="true">
+      {src ? (
+        <img src={src} alt="" />
+      ) : (
+        <svg viewBox="0 0 24 24" width="20" height="20" focusable="false">
+          <path
+            d="M5 4l5 5M19 4l-5 5M4 20l8-9 8 9M9 4h6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+    </span>
+  );
+}
 
 // The DM's save buttons for a monster or ally: one per save the DM typed
 // ("DEX +2"). A tap rolls it and shows the result here only, on the DM's
@@ -281,9 +310,10 @@ function MonsterSaves({ name, statBlock }) {
   );
 }
 
-function IconButton({ icon, label, onClick, pressed }) {
+function IconButton({ id, icon, label, onClick, pressed }) {
   return (
     <button
+      id={id}
       type="button"
       className={`table-page__icon-button table-page__icon-button--${icon}`}
       aria-label={label}
@@ -305,6 +335,339 @@ function IconButton({ icon, label, onClick, pressed }) {
   );
 }
 
+// One of the picked creature's HP boxes: "Take damage" or "Heal". It has its
+// own blank amount with minus and plus buttons (which only change the number
+// typed, never the HP) and its own apply button, named for the creature.
+function AmountBox({ creature, kind, value, onChange, onApply }) {
+  const isDamage = kind === "damage";
+  const word = isDamage ? "damage" : "healing";
+  function step(delta) {
+    const next = Math.max(0, (Number(value) || 0) + delta);
+    onChange(next === 0 ? "" : String(next));
+  }
+  return (
+    <div
+      className={`table-page__ctl-box table-page__ctl-box--${kind}`}
+      role="group"
+      aria-label={`${isDamage ? "Take damage" : "Heal"}: ${creature}`}
+    >
+      <span className="table-page__ctl-title">{isDamage ? "Take damage" : "Heal"}</span>
+      <div className="table-page__stepper">
+        <button type="button" aria-label={`Decrease ${word} amount`} onClick={() => step(-1)}>
+          &minus;
+        </button>
+        <input
+          type="number"
+          min="0"
+          aria-label={`${isDamage ? "Damage" : "Healing"} amount for ${creature}`}
+          placeholder="0"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <button type="button" aria-label={`Increase ${word} amount`} onClick={() => step(1)}>
+          +
+        </button>
+      </div>
+      <Button
+        type="button"
+        variant={isDamage ? "danger" : "secondary"}
+        aria-label={`Apply ${word} to ${creature}`}
+        onClick={onApply}
+      >
+        Apply {word}
+      </Button>
+    </div>
+  );
+}
+
+// What a character is under right now, read from their party row (so it is the
+// same data the Party card uses, never a second copy): conditions, the spell
+// they're concentrating on, and spell effects on their attacks.
+function statusOf(row) {
+  if (!row) return null;
+  const conditions = (row.conditions ?? [])
+    .map((condition) => {
+      const word = conditionWord(condition.key);
+      if (!word) return null;
+      return {
+        key: condition.key,
+        label: `${word.name}${condition.key === "exhaustion" ? ` ${condition.level ?? 1}` : ""}`,
+        rounds: typeof condition.rounds === "number" ? condition.rounds : null,
+        meaning: word.meaning,
+      };
+    })
+    .filter(Boolean);
+  const concentration = row.concentration
+    ? { spell: row.concentration, rounds: row.concentrationRounds ?? null }
+    : null;
+  const effects = row.effects ?? [];
+  if (conditions.length === 0 && !concentration && effects.length === 0) return null;
+  return { conditions, concentration, effects };
+}
+
+// "2 rounds left", for a timed condition or spell.
+function roundsLeft(rounds) {
+  return rounds === null ? "" : `${rounds} ${rounds === 1 ? "round" : "rounds"} left`;
+}
+
+// A second line under a character's name in the initiative list: short labels
+// like "Poisoned" and "Concentrating: Bless". The full explanations and
+// durations are in the controls panel when they're picked.
+function StatusLine({ name, status }) {
+  if (!status) return null;
+  return (
+    <ul className="table-page__summary-status" aria-label={`${name}'s conditions and concentration`}>
+      {status.conditions.map((condition) => (
+        <li key={condition.key} className="table-page__chip table-page__chip--condition">
+          {condition.label}
+        </li>
+      ))}
+      {status.concentration && (
+        <li className="table-page__chip table-page__chip--spell">Concentrating: {status.concentration.spell}</li>
+      )}
+      {status.effects.map((effect) => (
+        <li key={effect} className="table-page__chip table-page__chip--spell">
+          {effect}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// The same statuses in full, in the picked character's panel: what each one
+// does and how long is left.
+function StatusDetails({ status }) {
+  if (!status) return null;
+  return (
+    <div className="table-page__status-block">
+      <h4 className="table-page__status-title">Conditions and spells</h4>
+      <ul className="table-page__status-list">
+        {status.conditions.map((condition) => (
+          <li key={condition.key}>
+            <strong>{condition.label}</strong>
+            {condition.rounds !== null && <> · {roundsLeft(condition.rounds)}</>}
+            <span className="table-page__status-meaning"> {condition.meaning}</span>
+          </li>
+        ))}
+        {status.concentration && (
+          <li>
+            <strong>Concentrating: {status.concentration.spell}</strong>
+            {status.concentration.rounds !== null && <> · {roundsLeft(status.concentration.rounds)}</>}
+            <span className="table-page__status-meaning">
+              {" "}
+              Taking damage means a Constitution save to keep it. Only one spell at a time.
+            </span>
+          </li>
+        )}
+        {status.effects.map((effect) => (
+          <li key={effect}>
+            <strong>{effect}</strong>
+            <span className="table-page__status-meaning"> A spell changing their attacks.</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// One short line in the DM's initiative list: initiative, picture, name,
+// status, and how it's doing (HP and AC, for the DM's eyes). Pressing it picks
+// that creature, and its full controls show in the panel under the list. A
+// pending player attack and the initiative boxes (before the fight) stay right
+// here on the line, so nothing important is hidden behind a click.
+function CombatantSummaryRow({
+  combatant,
+  isCurrent,
+  selected,
+  onSelect,
+  hp,
+  playerStats = null,
+  statusRow = null,
+  portraitUrl = "",
+  combatActive = false,
+  pendingCalls = [],
+  onSetInitiative,
+  onResolve,
+  onDeny,
+  onNudge = null,
+  nudged = false,
+  nudgeCooling = false,
+}) {
+  const [initiativeInput, setInitiativeInput] = useState("");
+  const [rollNote, setRollNote] = useState("");
+  const isNpc = combatant.kind !== "player";
+  const isMonster = combatant.kind === "monster";
+  const initiativeBonus = Number(readStatBlock(hp?.stat_block).initiativeBonus) || 0;
+  // The DM can set anyone's initiative before the fight, or fill a gap in it.
+  const canEditInitiative = !combatActive || combatant.initiative === null;
+  const creatureArt = isNpc ? getCreaturePortrait(creatureIdOf(hp?.stat_block)) : undefined;
+  // HP for the DM's eyes: a creature's secret HP, or a player's sheet.
+  const stats = isNpc
+    ? hp
+      ? { current_hp: hp.current_hp, max_hp: hp.max_hp, armor_class: hp.armor_class }
+      : null
+    : playerStats;
+
+  function submitInitiative(event) {
+    event.preventDefault();
+    const value = Number(initiativeInput);
+    if (initiativeInput === "" || Number.isNaN(value)) return;
+    onSetInitiative(combatant, value);
+    setInitiativeInput("");
+  }
+
+  function rollForNpc() {
+    const { roll, modifier, total } = rollMonsterInitiative(initiativeBonus);
+    setRollNote(`Rolled ${roll} ${modifier >= 0 ? "+" : "-"} ${Math.abs(modifier)} = ${total}`);
+    onSetInitiative(combatant, total);
+  }
+
+  return (
+    <li
+      className={`table-page__row table-page__row--summary${isCurrent ? " table-page__row--current" : ""}${
+        selected ? " table-page__row--selected" : ""
+      }${combatant.status === "down" ? " table-page__row--down" : ""}${
+        pendingCalls.length > 0 ? " table-page__row--awaiting" : ""
+      }${
+        combatant.initiative === null || combatant.initiative === undefined
+          ? " table-page__row--needs-initiative"
+          : ""
+      }`}
+    >
+      <div className="table-page__summary-line">
+        <button
+          type="button"
+          className="table-page__row-select"
+          aria-pressed={selected}
+          aria-controls="detail-panel"
+          onClick={() => onSelect(combatant.id)}
+        >
+          <span className="table-page__initiative">{combatant.initiative ?? "—"}</span>
+          {isNpc ? (
+            <CreatureBadge src={creatureArt} />
+          ) : (
+            <span className="table-page__row-portrait table-page__row-portrait--small" aria-hidden="true">
+              {portraitUrl ? <img src={portraitUrl} alt="" /> : getInitials(combatant.name ?? "")}
+            </span>
+          )}
+          <span className="table-page__compact-name">
+            <span className="table-page__row-name">
+              {combatant.name}
+              {isMonster && <span className="table-page__tag table-page__tag--monster">Enemy</span>}
+              {combatant.kind === "ally" && <span className="table-page__tag">Ally</span>}
+              {isCurrent && <span className="table-page__tag table-page__tag--turn">Turn</span>}
+              {selected && !isCurrent && <span className="table-page__tag table-page__tag--selected">Selected</span>}
+              {combatant.away && <span className="table-page__tag table-page__tag--away">Away</span>}
+              {pendingCalls.length > 0 && (
+                <span className="table-page__tag table-page__tag--call">⚠ Needs your call</span>
+              )}
+            </span>
+            {isNpc && (
+              <span className={`table-page__status table-page__status--${combatant.status}`}>
+                {STATUS_LABELS[combatant.status]}
+                {combatant.damage_taken > 0 && ` · ${combatant.damage_taken} damage taken`}
+              </span>
+            )}
+          </span>
+          {stats && (
+            <span className="table-page__compact-hp">
+              <span className="table-page__visually-hidden">{isNpc ? "DM only: " : ""}</span>
+              {stats.current_hp}/{stats.max_hp} HP{stats.armor_class ? ` · AC ${stats.armor_class}` : ""}
+              {stats.max_hp > 0 && (
+                <span className={`table-page__hp-bar table-page__hp-bar--${hpBarLevel(stats)}`} aria-hidden="true">
+                  <span className="table-page__hp-bar-fill" style={{ width: `${hpBarPercent(stats)}%` }} />
+                </span>
+              )}
+            </span>
+          )}
+        </button>
+
+        {selected && (
+          <button
+            type="button"
+            className="table-page__row-jump"
+            aria-label={`Go to the controls for ${combatant.name}`}
+            title="Go to the controls below"
+            onClick={() => {
+              const panel = document.getElementById("detail-panel");
+              panel?.focus();
+              panel?.scrollIntoView?.({ block: "nearest" });
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+              <path d={ICON_PATHS.open} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        )}
+
+        {onNudge && (
+          <Button type="button" variant="secondary" disabled={nudgeCooling} onClick={() => onNudge(combatant)}>
+            {nudgeCooling ? "Nudged ✓" : nudged ? "🔔 Nudge again" : "🔔 Nudge"}
+          </Button>
+        )}
+
+        {canEditInitiative && (
+          <form className="table-page__inline-form table-page__summary-initiative" onSubmit={submitInitiative}>
+            <input
+              className="table-page__number"
+              type="number"
+              aria-label={`Initiative for ${combatant.name}`}
+              placeholder="Init"
+              value={initiativeInput}
+              onChange={(event) => setInitiativeInput(event.target.value)}
+            />
+            <Button type="submit" variant="secondary">
+              Set
+            </Button>
+            {isNpc && (
+              <Button type="button" onClick={rollForNpc}>
+                Roll d20
+              </Button>
+            )}
+            {isNpc && rollNote && <span className="table-page__roll-note">{rollNote}</span>}
+          </form>
+        )}
+      </div>
+
+      {/* Conditions and concentration, right on the line (players only). */}
+      <StatusLine name={combatant.name} status={statusOf(statusRow)} />
+
+      {pendingCalls.length > 0 && (
+        <div className="table-page__row-call" role="alert">
+          {pendingCalls.map((attacker) => (
+            <div className="table-page__call" key={attacker.id}>
+              <span>
+                <strong>{attacker.name}</strong> attacked {combatant.name} with{" "}
+                {attacker.attack_name ?? "an attack"}
+                {attacker.attack_natural != null && (
+                  <>
+                    {" "}and rolled{" "}
+                    <strong>{attacker.attack_natural + (attacker.attack_bonus ?? 0)}</strong>{" "}
+                    ({attacker.attack_natural} {(attacker.attack_bonus ?? 0) >= 0 ? "+" : "-"}{" "}
+                    {Math.abs(attacker.attack_bonus ?? 0)})
+                  </>
+                )}
+                . Does it hit?
+              </span>
+              <div className="table-page__inline-form">
+                <Button type="button" onClick={() => onResolve(attacker, true)}>
+                  Hit
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => onResolve(attacker, false)}>
+                  Miss
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => onDeny(attacker)}>
+                  Deny
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </li>
+  );
+}
+
 function CombatantRow({
   combatant,
   isCurrent,
@@ -316,7 +679,6 @@ function CombatantRow({
   onDamage,
   onDeny,
   onAway = null,
-  onResolve,
   pendingCalls = [],
   combatActive = false,
   targets = [],
@@ -329,8 +691,14 @@ function CombatantRow({
   onNudge = null,
   nudged = false,
   nudgeCooling = false,
+  // "row": the whole row on a player's page. "detail": the DM's controls for
+  // the one creature picked in the list (see CombatantSummaryRow).
+  variant = "row",
+  selected = false,
+  statusRow = null,
 }) {
-  const [amount, setAmount] = useState("");
+  const [damageAmount, setDamageAmount] = useState("");
+  const [healAmount, setHealAmount] = useState("");
   const [initiativeInput, setInitiativeInput] = useState("");
   const [rollNote, setRollNote] = useState("");
   const initiativeBonus = Number(readStatBlock(hp?.stat_block).initiativeBonus) || 0;
@@ -386,12 +754,24 @@ function CombatantRow({
     onSetInitiative(combatant, total);
   }
 
-  function submitDamage(sign) {
-    const value = Math.abs(Number(amount));
+  // Applies what was typed in one of the two boxes: damage takes HP away,
+  // healing gives it back. Nothing changes until its apply button is pressed.
+  function applyHp(kind) {
+    const value = Math.abs(Number(kind === "damage" ? damageAmount : healAmount));
     if (!value) return;
-    onDamage(combatant, sign * value);
-    setAmount("");
+    onDamage(combatant, kind === "damage" ? value : -value);
+    if (kind === "damage") setDamageAmount("");
+    else setHealAmount("");
   }
+
+  // What the Attack box says before it opens: the first saved attack.
+  const savedAttacks = readStatBlock(hp?.stat_block).attacks;
+  const firstAttack = savedAttacks[0];
+  const attackSummary = firstAttack
+    ? `${firstAttack.name}${firstAttack.toHit !== "" ? ` · ${formatModifier(Number(firstAttack.toHit) || 0)} to hit` : ""}${
+        firstAttack.damage ? ` · ${firstAttack.damage}` : ""
+      }${savedAttacks.length > 1 ? ` · +${savedAttacks.length - 1} more` : ""}`
+    : "No attack saved: type one in";
 
   // What this monster has done lately (the newest first).
   const history = recentEvents.map((entry) => (
@@ -410,6 +790,17 @@ function CombatantRow({
   // screens stack them.
   const isSplit = isDm && isNpc;
   const hasSide = isSplit && ((canAttack && showAttack) || showEdit);
+  const creatureArt = isSplit ? getCreaturePortrait(creatureIdOf(hp?.stat_block)) : undefined;
+
+  const turnBanner = (
+    <span className="table-page__turn-banner">
+      {!isNpc
+        ? `${combatant.name}'s turn: they attack from their sheet. Tap Next turn when they're done.`
+        : combatant.attacks_this_turn > 0
+          ? `${combatant.name} has attacked. Attack again if it has more attacks, or tap Next turn.`
+          : `${combatant.name}'s turn: tap Attack to have it attack, then tap Next turn.`}
+    </span>
+  );
 
   const mainAndActions = (
     <>
@@ -425,6 +816,7 @@ function CombatantRow({
                     {portraitUrl ? <img src={portraitUrl} alt="" /> : getInitials(combatant.name ?? "")}
                   </span>
                 )}
+                {isSplit && <CreatureBadge src={creatureArt} />}
                 {combatant.name}
                 {isMe && <span className="table-page__tag">You</span>}
                 {isMonster && <span className="table-page__tag table-page__tag--monster">Enemy</span>}
@@ -474,15 +866,7 @@ function CombatantRow({
 
               {/* DM only: what to do on this turn, so it's clear the monster
                   hasn't acted yet (its history below may be from earlier). */}
-              {isDm && isCurrent && (
-                <span className="table-page__turn-banner">
-                  {!isNpc
-                    ? `${combatant.name}'s turn: they attack from their sheet. Tap Next turn when they're done.`
-                    : combatant.attacks_this_turn > 0
-                      ? `${combatant.name} has attacked. Attack again if it has more attacks, or tap Next turn.`
-                      : `${combatant.name}'s turn: tap Attack to have it attack, then tap Next turn.`}
-                </span>
-              )}
+              {isDm && isCurrent && variant !== "detail" && turnBanner}
 
               {/* Monsters and allies ask before they go, since it can't be undone. */}
               {isNpc && isDm && confirmingRemove && (
@@ -526,8 +910,10 @@ function CombatantRow({
             )}
           </div>
 
+          {variant === "detail" && <StatusDetails status={statusOf(statusRow)} />}
+
           <div className="table-page__row-actions">
-            {onNudge && (
+            {variant === "row" && onNudge && (
               <Button
                 type="button"
                 variant="secondary"
@@ -537,7 +923,7 @@ function CombatantRow({
                 {nudgeCooling ? "Nudged ✓" : nudged ? "🔔 Nudge again" : "🔔 Nudge"}
               </Button>
             )}
-            {canEditInitiative && (
+            {variant === "row" && canEditInitiative && (
               <form className="table-page__inline-form" onSubmit={submitInitiative}>
                 <input
                   className="table-page__number"
@@ -565,48 +951,45 @@ function CombatantRow({
               </form>
             )}
 
-            {(isMe || (isDm && isNpc)) && rollNote && (
+            {variant === "row" && (isMe || (isDm && isNpc)) && rollNote && (
               <span className="table-page__roll-note">{rollNote}</span>
             )}
 
-            {/* In play order: the monster attacks, then its own HP changes, then
-                the rarely used Edit and Remove. */}
-            {canAttack && (
-              <Button
-                type="button"
-                aria-expanded={showAttack}
-                onClick={() => setShowAttack((open) => !open)}
-              >
-                Attack
-              </Button>
-            )}
-
+            {/* Three separate boxes, in play order: the monster attacks, takes
+                damage, or is healed. Each says which creature it affects. */}
             {isDm && isNpc && (
-              <div
-                className="table-page__inline-form table-page__hp-group"
-                role="group"
-                aria-label={`Change ${combatant.name}'s HP`}
-              >
-                {/* Changes this monster's own HP: when a player hits it, type
-                    the damage and tap Take damage. */}
-                <span className="table-page__hp-label" aria-hidden="true">
-                  {combatant.name}&rsquo;s HP
-                </span>
-                <input
-                  className="table-page__number table-page__number--amount"
-                  type="number"
-                  min="0"
-                  aria-label={`Damage or healing for ${combatant.name}`}
-                  placeholder="Amount"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
+              <div className="table-page__ctl-boxes" role="group" aria-label={`Controls for ${combatant.name}`}>
+                {canAttack && (
+                  <div className="table-page__ctl-box table-page__ctl-box--attack">
+                    <button
+                      type="button"
+                      className="table-page__ctl-attack"
+                      aria-label="Attack"
+                      aria-describedby={`attack-summary-${combatant.id}`}
+                      aria-expanded={showAttack}
+                      onClick={() => setShowAttack((open) => !open)}
+                    >
+                      <span className="table-page__ctl-title">Attack</span>
+                      <span id={`attack-summary-${combatant.id}`} className="table-page__ctl-weapon">
+                        {attackSummary}
+                      </span>
+                    </button>
+                  </div>
+                )}
+                <AmountBox
+                  creature={combatant.name}
+                  kind="damage"
+                  value={damageAmount}
+                  onChange={setDamageAmount}
+                  onApply={() => applyHp("damage")}
                 />
-                <Button type="button" variant="danger" onClick={() => submitDamage(1)}>
-                  Take damage
-                </Button>
-                <Button type="button" variant="secondary" onClick={() => submitDamage(-1)}>
-                  Heal
-                </Button>
+                <AmountBox
+                  creature={combatant.name}
+                  kind="heal"
+                  value={healAmount}
+                  onChange={setHealAmount}
+                  onApply={() => applyHp("heal")}
+                />
               </div>
             )}
 
@@ -721,9 +1104,11 @@ function CombatantRow({
     </>
   );
 
+  const Container = variant === "detail" ? "div" : "li";
   return (
-    <li
-      className={`table-page__row${hasSide ? " table-page__row--split" : ""}${isCurrent ? " table-page__row--current" : ""}${
+    <Container
+      {...(variant === "detail" ? { hidden: !selected, "data-detail-for": combatant.id } : {})}
+      className={`table-page__row${variant === "detail" ? " table-page__row--detail" : ""}${hasSide ? " table-page__row--split" : ""}${isCurrent ? " table-page__row--current" : ""}${
         combatant.status === "down" ? " table-page__row--down" : ""
       }${pendingCalls.length > 0 ? " table-page__row--awaiting" : ""}${
         combatant.initiative === null || combatant.initiative === undefined
@@ -735,10 +1120,32 @@ function CombatantRow({
         <>
           <div className="table-page__row-left">
             {mainAndActions}
-            {recentEvents.length > 0 && (
-              <div className="table-page__row-history" aria-label={`What ${combatant.name} did lately`}>
-                {history}
+            {/* In the panel, the how-to line and the recent history fold into
+                small disclosures, so the creature's controls and the list get
+                the room. Each says what it holds in its own summary. */}
+            {variant === "detail" ? (
+              <div className="table-page__detail-notes">
+                {isDm && isCurrent && (
+                  <details className="table-page__note-fold">
+                    <summary>What to do this turn</summary>
+                    {turnBanner}
+                  </details>
+                )}
+                {recentEvents.length > 0 && (
+                  <details className="table-page__note-fold">
+                    <summary>Earlier ({recentEvents.length})</summary>
+                    <div className="table-page__row-history" aria-label={`What ${combatant.name} did lately`}>
+                      {history}
+                    </div>
+                  </details>
+                )}
               </div>
+            ) : (
+              recentEvents.length > 0 && (
+                <div className="table-page__row-history" aria-label={`What ${combatant.name} did lately`}>
+                  {history}
+                </div>
+              )
             )}
           </div>
           {hasSide && <div className="table-page__row-side">{panels}</div>}
@@ -749,40 +1156,7 @@ function CombatantRow({
           {panels}
         </>
       )}
-
-      {isDm && pendingCalls.length > 0 && (
-        <div className="table-page__row-call" role="alert">
-          {pendingCalls.map((attacker) => (
-            <div className="table-page__call" key={attacker.id}>
-              <span>
-                <strong>{attacker.name}</strong> attacked {combatant.name} with{" "}
-                {attacker.attack_name ?? "an attack"}
-                {attacker.attack_natural != null && (
-                  <>
-                    {" "}and rolled{" "}
-                    <strong>{attacker.attack_natural + (attacker.attack_bonus ?? 0)}</strong>{" "}
-                    ({attacker.attack_natural} {(attacker.attack_bonus ?? 0) >= 0 ? "+" : "-"}{" "}
-                    {Math.abs(attacker.attack_bonus ?? 0)})
-                  </>
-                )}
-                . Does it hit?
-              </span>
-              <div className="table-page__inline-form">
-                <Button type="button" onClick={() => onResolve(attacker, true)}>
-                  Hit
-                </Button>
-                <Button type="button" variant="secondary" onClick={() => onResolve(attacker, false)}>
-                  Miss
-                </Button>
-                <Button type="button" variant="secondary" onClick={() => onDeny(attacker)}>
-                  Deny
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </li>
+    </Container>
   );
 }
 
@@ -814,6 +1188,34 @@ function TablePage() {
 
   const [templates, setTemplates] = useState([]);
   const [showMonsterForm, setShowMonsterForm] = useState(false);
+  // On narrow screens the party folds into one "Party · 4 players" line.
+  const [partyOpen, setPartyOpen] = useState(false);
+  // The "Party visibility" setting folds into one line (open or closed here
+  // never changes who can see the party; only the checkbox inside does).
+  const [shareOpen, setShareOpen] = useState(false);
+  // The Combat panel is sized to the room left under the banner and tabs
+  // (TablePage.css reads --dm-combat-top). Measured, never guessed.
+  const combatRef = useRef(null);
+  const measureCombatTop = useRef(null);
+  useEffect(() => {
+    function measure() {
+      const el = combatRef.current;
+      if (!el) return;
+      const top = Math.round(el.getBoundingClientRect().top + window.scrollY);
+      el.style.setProperty("--dm-combat-top", `${top}px`);
+    }
+    measureCombatTop.current = measure;
+    window.addEventListener("resize", measure);
+    document.fonts?.ready?.then(measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+  useEffect(() => {
+    measureCombatTop.current?.();
+  });
+  // Which creature's controls the DM has picked in the initiative list. Null
+  // means "follow the turn" (the panel shows whoever is up). Picking someone
+  // is separate from whose turn it is, and stays put as turns advance.
+  const [pickedId, setPickedId] = useState(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [myRollNote, setMyRollNote] = useState("");
@@ -1211,67 +1613,669 @@ function TablePage() {
     }
   }
 
-  function renderRow(combatant) {
+  function rowProps(combatant) {
     const isMe = combatant.kind === "player" && combatant.user_id === user?.id;
 
+    return {
+      combatant,
+      isCurrent: table.combat_active && combatant.id === table.current_combatant_id,
+      portraitUrl: portraitByUser.get(combatant.user_id) ?? "",
+      isDm,
+      isMe,
+      hp: enemyHp[combatant.id],
+      myDexterity,
+      onSetInitiative: (target, value) =>
+        run(() =>
+          isMe ? setMyInitiative(table.id, value) : setCombatantInitiative(target.id, value),
+        ),
+      onDamage: (target, amount) => run(() => applyDamage(target.id, amount)),
+      onDeny: denyAttack,
+      onAway: (target, away) => run(() => setCombatantAway(target.id, away)),
+      pendingCalls: awaitingCall.filter((player) => player.attack_target === combatant.id),
+      combatActive: table.combat_active,
+      targets: combatants.filter((other) => other.id !== combatant.id),
+      recentEvents: recentEventsFor(events, combatant.name).map((entry) => ({
+        ...entry,
+        isEarlier: turnMarker.after !== null && entry.created_at <= turnMarker.after,
+      })),
+      tableId: table.id,
+      onChanged: refresh,
+      onEdit: async (changes) => {
+        await editCombatant(changes);
+        await refresh();
+      },
+      onResolve: (attacker, hit) => run(() => dmResolveAttack(attacker.id, hit)),
+      onNudge: isDm && combatant.kind === "player" && combatant.initiative == null ? nudge : null,
+      nudged: combatant.kind === "player" && hasActiveNudge(events, combatant.name),
+      nudgeCooling,
+      onRemove: (target, { forGood = false } = {}) => {
+        if (target.kind === "player") {
+          run(async () => {
+            if (forGood) {
+              await banMember(table.id, target.user_id);
+              await loadBans();
+            } else {
+              await removeMember(table.id, target.user_id);
+            }
+          });
+        } else {
+          run(() => removeCombatant(target.id));
+        }
+      },
+    };
+  }
+
+  // A player's page: the whole row, as it has always been.
+  function renderRow(combatant) {
+    return <CombatantRow key={combatant.id} {...rowProps(combatant)} />;
+  }
+
+  // The DM's list: one short line each, and one panel of controls underneath
+  // for the creature picked (or, by default, whoever's turn it is).
+  const currentId = table.combat_active ? table.current_combatant_id : null;
+  // Each player's party row, by character: the one source for their conditions
+  // and concentration, used by the Party card, the initiative line and the
+  // picked character's panel alike.
+  const partyRowById = new Map(partyRows.map((row) => [row.id, row]));
+  const sheetOfCombatant = (combatant) =>
+    combatant.kind === "player"
+      ? characters.find((entry) =>
+          members.some((m) => m.user_id === combatant.user_id && m.character_id === entry.id),
+        )
+      : null;
+  // Characters whose statuses show on their initiative line, so their Party
+  // card doesn't repeat them. Anyone not in the initiative order keeps theirs
+  // on the card.
+  const currentSheetId = sheetOfCombatant(combatants.find((c) => c.id === currentId) ?? {})?.id ?? null;
+  const statusOnInitiative = new Set(
+    combatants.map((combatant) => sheetOfCombatant(combatant)?.id).filter(Boolean),
+  );
+  const selectedId = combatants.some((c) => c.id === pickedId)
+    ? pickedId
+    : (combatants.find((c) => c.id === currentId)?.id ?? ordered[0]?.id ?? combatants[0]?.id ?? null);
+  const selectedCombatant = combatants.find((c) => c.id === selectedId) ?? null;
+
+  function renderSummary(combatant) {
+    const props = rowProps(combatant);
+    const sheet = sheetOfCombatant(combatant);
     return (
-      <CombatantRow
+      <CombatantSummaryRow
         key={combatant.id}
-        combatant={combatant}
-        isCurrent={table.combat_active && combatant.id === table.current_combatant_id}
-        portraitUrl={portraitByUser.get(combatant.user_id) ?? ""}
-        isDm={isDm}
-        isMe={isMe}
-        hp={enemyHp[combatant.id]}
-        myDexterity={myDexterity}
-        onSetInitiative={(target, value) =>
-          run(() =>
-            isMe ? setMyInitiative(table.id, value) : setCombatantInitiative(target.id, value),
-          )
-        }
-        onDamage={(target, amount) => run(() => applyDamage(target.id, amount))}
-        onDeny={denyAttack}
-        onAway={(target, away) => run(() => setCombatantAway(target.id, away))}
-        pendingCalls={awaitingCall.filter((player) => player.attack_target === combatant.id)}
-        combatActive={table.combat_active}
-        targets={combatants.filter((other) => other.id !== combatant.id)}
-        recentEvents={recentEventsFor(events, combatant.name).map((entry) => ({
-          ...entry,
-          isEarlier: turnMarker.after !== null && entry.created_at <= turnMarker.after,
-        }))}
-        tableId={table.id}
-        onChanged={refresh}
-        onEdit={async (changes) => {
-          await editCombatant(changes);
-          await refresh();
-        }}
-        onResolve={(attacker, hit) => run(() => dmResolveAttack(attacker.id, hit))}
-        onNudge={
-          isDm && combatant.kind === "player" && combatant.initiative == null ? nudge : null
-        }
-        nudged={combatant.kind === "player" && hasActiveNudge(events, combatant.name)}
-        nudgeCooling={nudgeCooling}
-        onRemove={(target, { forGood = false } = {}) => {
-          if (target.kind === "player") {
-            run(async () => {
-              if (forGood) {
-                await banMember(table.id, target.user_id);
-                await loadBans();
-              } else {
-                await removeMember(table.id, target.user_id);
+        {...props}
+        selected={combatant.id === selectedId}
+        statusRow={sheet ? partyRowById.get(sheet.id) : null}
+        // Picking whoever is up goes back to following the turn.
+        onSelect={(id) => setPickedId(id === currentId ? null : id)}
+        playerStats={
+          sheet?.combat?.hitPoints
+            ? {
+                current_hp: sheet.combat.hitPoints.current ?? 0,
+                max_hp: sheet.combat.hitPoints.max ?? 0,
+                armor_class: toPartyRow(sheet).armorClass,
               }
-            });
-          } else {
-            run(() => removeCombatant(target.id));
-          }
-        }}
+            : null
+        }
       />
     );
   }
 
+  // On the DM's Combat tab, wide screens lay these out in three panels:
+  // the party, the fight, and the damage form with the activity log. Other
+  // tabs (and narrow screens) show them one after another as before.
+  const dmCombatLayout = isDm && dmTab === "combat";
+  const playerCount = partyRows.length;
+  const partyHurt = partyRows.filter((row) => row.health === "bloodied").length;
+  const partyDown = partyRows.filter((row) => row.health === "down").length;
+  const partyGlance =
+    partyDown + partyHurt === 0
+      ? "Everyone is healthy"
+      : [partyHurt > 0 ? `${partyHurt} bloodied` : "", partyDown > 0 ? `${partyDown} down` : ""]
+          .filter(Boolean)
+          .join(" · ");
+  const shareLabel = isDm && (
+    <label className="table-page__party-share">
+      <input
+        type="checkbox"
+        checked={partyShared}
+        onChange={(event) => run(() => setShareParty(table.id, event.target.checked))}
+      />
+      Let players see the party&apos;s HP, AC and conditions
+    </label>
+  );
+  const partyInner = (
+    <>
+      {isDm && (
+        <div id="party-visibility" className="table-page__party-visibility" hidden={!shareOpen}>
+          {shareLabel}
+        </div>
+      )}
+      <PartyStrip
+        rows={partyRows}
+        onSelect={isDm ? showPlayerCard : undefined}
+        selectedId={isDm && selectedPlayerId !== "all" ? selectedSheet?.id : undefined}
+        compact={dmCombatLayout}
+        hideStatusFor={dmCombatLayout ? statusOnInitiative : null}
+        currentId={dmCombatLayout ? currentSheetId : null}
+      />
+    </>
+  );
+  const partyBlock = (isDm ? characters.length > 0 : partyRows.length > 0) && (
+          <section
+            className={`table-page__party${isDm ? " table-page__section--panel table-page__party--panel" : ""}${
+              partyOpen ? " table-page__party--open" : ""
+            }`}
+            aria-labelledby="party-title"
+          >
+            {isDm ? (
+              /* The same slim header bar as the other panels. */
+              <header className="table-page__slim-head table-page__slim-head--bar">
+                <h2 id="party-title" className="table-page__slim-title">
+                  Party · {playerCount} {playerCount === 1 ? "player" : "players"}
+                </h2>
+                {isDm && (
+                  <button
+                    type="button"
+                    className="table-page__party-visibility-toggle"
+                    aria-expanded={shareOpen}
+                    aria-controls="party-visibility"
+                    onClick={() => setShareOpen((open) => !open)}
+                  >
+                    <span className="table-page__visually-hidden">Party visibility: </span>
+                    {partyShared ? "Stats shared" : "Stats hidden"}
+                    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+                      <path d={shareOpen ? ICON_PATHS.close : ICON_PATHS.open} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                )}
+                {/* Narrow screens: the party folds away behind this button (wide
+                    screens always show it, and the button is hidden). */}
+                <button
+                  type="button"
+                  className="table-page__party-toggle"
+                  aria-expanded={partyOpen}
+                  aria-controls="party-body"
+                  onClick={() => setPartyOpen((open) => !open)}
+                >
+                  <span className="table-page__party-glance">{partyGlance}</span>
+                  <span className="table-page__party-toggle-word">{partyOpen ? "Hide" : "Show"}</span>
+                </button>
+              </header>
+            ) : (
+              <div className="table-page__party-head">
+                <h2 id="party-title" className="table-page__section-title">
+                  Party
+                </h2>
+                {shareLabel}
+              </div>
+            )}
+            {isDm ? (
+              <div
+                id="party-body"
+                className={`table-page__party-body table-page__slim-body${partyOpen ? " table-page__party-body--open" : ""}`}
+              >
+                {partyInner}
+              </div>
+            ) : (
+              partyInner
+            )}
+          </section>
+        );
+  // The list scrolls inside its box, so a waiting attack gets its own way to be
+  // reached: this takes the DM straight to it.
+  const callJump = isDm && awaitingCall.length > 0 && (
+    <button
+      type="button"
+      className="table-page__call-jump"
+      onClick={() => {
+        const row = document.querySelector(".table-page__row--awaiting");
+        row?.scrollIntoView?.({ block: "nearest" });
+        row?.querySelector("button")?.focus();
+      }}
+    >
+      ⚠ {awaitingCall.length === 1 ? "1 attack needs your call" : `${awaitingCall.length} attacks need your call`}
+      : go to it
+    </button>
+  );
+  const combatBlock = (onTab("combat") || (dmTab === "prep" && !table.combat_active)) && (
+        <section className={`table-page__combat${isDm ? " table-page__section--panel table-page__combat--panel" : ""}`} ref={combatRef}>
+          {isDm && (
+            <>
+              {/* The same slim header bar as the other panels: the title, with
+                  adding a monster and ending the fight beside it. */}
+              <header className="table-page__slim-head table-page__slim-head--bar">
+                <h2 className="table-page__slim-title">Combat</h2>
+                <div className="table-page__combat-buttons">
+                  {table.combat_active && (
+                    <Button
+                      variant="secondary"
+                      aria-expanded={showMonsterForm}
+                      onClick={() => setShowMonsterForm((open) => !open)}
+                    >
+                      {showMonsterForm ? "Hide monster form" : "+ Add monster"}
+                    </Button>
+                  )}
+                  {table.combat_active && (
+                    <Button variant="secondary" onClick={() => run(() => endCombat(table.id))}>
+                      End combat
+                    </Button>
+                  )}
+                </div>
+              </header>
+              {/* The toolbar right under it: the round and whose turn it is,
+                  New encounter, and Next turn at the far right. */}
+              <div className="table-page__toolbar">
+                {table.combat_active ? (
+                  <p className="table-page__turn-line">
+                    <strong>Round {table.round}</strong>
+                    {now && <> · Now: <strong>{now.name}</strong></>}
+                    {now && now.attacks_this_turn > 0 && (
+                      <> ({now.attacks_this_turn} {now.attacks_this_turn === 1 ? "attack" : "attacks"})</>
+                    )}
+                    {upcoming.length > 0 && (
+                      <>
+                        {" · "}
+                        {describeUpcoming(upcoming, myCombatant?.id)}
+                      </>
+                    )}
+                  </p>
+                ) : (
+                  <p className="table-page__turn-line">No fight in progress.</p>
+                )}
+                <div className="table-page__combat-buttons">
+                  {unrolledNpcCount > 0 && (
+                    <Button variant="secondary" onClick={rollForAllNpcs}>
+                      {`Roll initiative for ${unrolledLabel}`}
+                    </Button>
+                  )}
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "Clear all monsters and everyone's initiative for a new encounter?",
+                        )
+                      ) {
+                        run(async () => {
+                          await resetEncounter(table.id);
+                          await dmLog(table.id, NEW_ENCOUNTER_MESSAGE);
+                        });
+                      }
+                    }}
+                  >
+                    New encounter
+                  </Button>
+                  {table.combat_active ? (
+                    <Button className="table-page__next-turn" onClick={() => run(() => advanceTurn(table, combatants))}>
+                      Next turn
+                    </Button>
+                  ) : (
+                    <Button
+                      className="table-page__next-turn"
+                      disabled={!canStart}
+                      onClick={() => run(() => startCombat(table.id, combatants))}
+                    >
+                      Start combat
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+          {!isDm && (
+          <div className="table-page__combat-head">
+            <h2 className="table-page__section-title">Combat</h2>
+
+            {table.combat_active ? (
+              <p className="table-page__turn-line">
+                <strong>Round {table.round}</strong>
+                {now && <> · Now: <strong>{now.name}</strong></>}
+                {now && now.attacks_this_turn > 0 && (
+                  <> ({now.attacks_this_turn} {now.attacks_this_turn === 1 ? "attack" : "attacks"})</>
+                )}
+                {upcoming.length > 0 && (
+                  <>
+                    {" · "}
+                    {describeUpcoming(upcoming, myCombatant?.id)}
+                  </>
+                )}
+              </p>
+            ) : (
+              <p className="table-page__turn-line">No fight in progress.</p>
+            )}
+
+            {!isDm && table.combat_active && amUp && (
+              <div className="table-page__combat-buttons">
+                <Button onClick={() => run(() => endMyTurn(table.id))}>End my turn</Button>
+              </div>
+            )}
+
+
+          </div>
+          )}
+
+          {isDm && !canStart && (
+            <p className="table-page__hint">
+              Set at least one initiative (yours, a player's, or a monster's) to start combat.
+            </p>
+          )}
+
+          {isDm && unrolledNpcCount > 0 && (
+            <p className="table-page__hint">
+              Rolling for a boss yourself? Set its initiative first, then use the roll button
+              for the rest. Anyone who already has an initiative is left alone.
+            </p>
+          )}
+
+          {!isDm && myCombatant && myCombatant.initiative == null && (
+            <InitiativePrompt
+              combatant={myCombatant}
+              dexterity={myDexterity}
+              nudgeId={findActiveNudge(events, myCombatant.name)?.id ?? null}
+              onSet={(total, note) => {
+                setMyRollNote(note);
+                run(() => setMyInitiative(table.id, total));
+              }}
+            />
+          )}
+
+          {!isDm && myRollNote && myCombatant?.initiative != null && (
+            <p className="table-page__hint" role="status">
+              Your initiative: {myRollNote}.
+            </p>
+          )}
+
+          {!isDm && myCombatant?.away && (
+            <p className="table-page__hint" role="status">
+              Your DM has marked you away, so your turns are skipped. Ask them to bring you back when you&apos;re
+              ready.
+            </p>
+          )}
+          {!isDm && playerTip && <p className="table-page__hint">{playerTip}</p>}
+
+          {/* Listed first: these are who the table is waiting on. */}
+          {waiting.length > 0 && (
+            <>
+              <h3 className="table-page__subtitle table-page__subtitle--order">
+                Waiting for initiative ({waiting.length})
+              </h3>
+              <ul className={`table-page__order${isDm ? " table-page__order--waiting" : ""}`} aria-label="Waiting for initiative">
+                {waiting.map(isDm ? renderSummary : renderRow)}
+              </ul>
+            </>
+          )}
+
+          {ordered.length > 0 &&
+            (isDm ? (
+              <div className="table-page__order-head">
+                <h3 className="table-page__subtitle table-page__subtitle--order">Initiative order</h3>
+                {callJump}
+              </div>
+            ) : (
+              <h3 className="table-page__subtitle table-page__subtitle--order">Initiative order</h3>
+            ))}
+          <ol className="table-page__order" aria-label="Initiative order">
+            {ordered.map(isDm ? renderSummary : renderRow)}
+          </ol>
+
+          {/* The DM's controls for the creature picked above. Every creature's
+              panel stays on the page (only the picked one is shown), so an
+              amount typed or an attack in progress is still there when the DM
+              looks at someone else and comes back. */}
+          {isDm && selectedCombatant && (
+            <section
+              id="detail-panel"
+              className="table-page__detail"
+              aria-labelledby="detail-title"
+              tabIndex={-1}
+            >
+              <div className="table-page__detail-head">
+                <h3 id="detail-title" className="table-page__detail-title">
+                  Selected · {selectedCombatant.name}
+                </h3>
+                <span className="table-page__detail-note">
+                  {pickedId === null ? "Following the turn" : "Picked by you"}
+                </span>
+                {pickedId !== null && currentId && (
+                  <Button type="button" variant="secondary" onClick={() => setPickedId(null)}>
+                    Follow the turn
+                  </Button>
+                )}
+              </div>
+              {combatants.map((combatant) => (
+                <CombatantRow
+                  key={combatant.id}
+                  {...rowProps(combatant)}
+                  variant="detail"
+                  selected={combatant.id === selectedId}
+                  statusRow={partyRowById.get(sheetOfCombatant(combatant)?.id) ?? null}
+                />
+              ))}
+            </section>
+          )}
+
+          {combatants.length === 0 && (
+            <p className="table-page__empty">
+              Nobody is here yet.{isDm ? " Share the join code with your players." : ""}
+            </p>
+          )}
+        </section>
+        );
+  const addMonsterBlock = isDm && (dmTab === "prep" || (dmTab === "combat" && table.combat_active && showMonsterForm)) && (
+          <section className="table-page__section table-page__section--panel">
+            <header className="table-page__slim-head">
+              <h2 className="table-page__slim-title">Add monsters and NPCs</h2>
+            </header>
+            <div className="table-page__slim-body">
+            <p className="table-page__hint">
+              Players see a name, a status like Bloodied, and damage taken. They never see
+              HP, AC, or a stat block. Add several at once, or pick from your library.
+              Friendly NPCs and party members you track by hand are added the same way.
+            </p>
+            <AddCombatantForm
+              onAdd={handleAddCombatants}
+              onSaveToLibrary={handleSaveToLibraryOnly}
+              templates={templates}
+            />
+            </div>
+          </section>
+        );
+  const orphanBlock = isDm && dmTab === "combat" && orphanCalls.length > 0 && (
+          <section className="table-page__section table-page__section--alert" role="alert">
+            <h2 className="table-page__section-title">Waiting for your call</h2>
+            {orphanCalls.map((player) => {
+              const target = combatants.find((c) => c.id === player.attack_target);
+              return (
+                <div className="table-page__call" key={player.id}>
+                  <span>
+                    <strong>{player.name}</strong> attacked{" "}
+                    <strong>{target?.name ?? "an enemy"}</strong> with{" "}
+                    {player.attack_name ?? "an attack"}. Does it hit?
+                  </span>
+                  <div className="table-page__inline-form">
+                    <Button onClick={() => run(() => dmResolveAttack(player.id, true))}>
+                      Hit
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => run(() => dmResolveAttack(player.id, false))}
+                    >
+                      Miss
+                    </Button>
+                    <Button variant="secondary" onClick={() => denyAttack(player)}>
+                      Deny
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </section>
+        );
+  const damageBlock = isDm && dmTab === "combat" && players.length > 0 && (
+          <section className="table-page__section table-page__section--panel">
+            <header className="table-page__slim-head">
+              <h2 className="table-page__slim-title">Send damage to a player</h2>
+            </header>
+            <div className="table-page__slim-body">
+              <form className="table-page__monster-form" onSubmit={handleHitPlayer}>
+                <div className="table-page__field-group">
+                  <label className="table-page__field" htmlFor="hit-source">
+                    <span className="table-page__field-label">Attacker</span>
+                  </label>
+                  <input
+                    id="hit-source"
+                    className="table-page__input"
+                    list="enemy-names"
+                    placeholder="Name"
+                    maxLength={80}
+                    value={hitSource}
+                    onChange={(event) => setHitSource(event.target.value)}
+                  />
+                  <datalist id="enemy-names">
+                    {npcs.map((npc) => (
+                      <option key={npc.id} value={npc.name} />
+                    ))}
+                  </datalist>
+                </div>
+                <div className="table-page__field-group">
+                  <label className="table-page__field" htmlFor="hit-target">
+                    <span className="table-page__field-label">Target</span>
+                  </label>
+                  <select
+                    id="hit-target"
+                    className="table-page__input"
+                    value={hitTargetUserId || players[0].user_id}
+                    onChange={(event) => setHitTargetUserId(event.target.value)}
+                  >
+                    {players.map((player) => (
+                      <option key={player.id} value={player.user_id}>
+                        {player.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="table-page__field-group">
+                  <label className="table-page__field" htmlFor="hit-amount">
+                    <span className="table-page__field-label">Amount</span>
+                  </label>
+                  <input
+                    id="hit-amount"
+                    className="table-page__number"
+                    type="number"
+                    min="1"
+                    placeholder="0"
+                    value={hitAmount}
+                    onChange={(event) => setHitAmount(event.target.value)}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  variant="danger"
+                  disabled={!hitAmount}
+                  aria-label={`Send${hitAmount ? ` ${hitAmount}` : ""} damage to ${
+                    players.find((player) => player.user_id === (hitTargetUserId || players[0].user_id))?.name ??
+                    "the player"
+                  } to apply`}
+                >
+                  Send to player to apply
+                </Button>
+              </form>
+              <p className="table-page__hint">
+                This sends a damage request to the player. It does not change their HP directly.
+              </p>
+              <details className="table-page__help">
+                <summary>How does this work?</summary>
+                <p>
+                  Say who hit them and for how much. The player sees it on their own sheet and
+                  taps Apply to take it. You never edit their character.
+                </p>
+              </details>
+            </div>
+          </section>
+        );
+  // When something happened, as "4:21 PM" (nothing if the time can't be read).
+  const eventTime = (entry) => {
+    const date = new Date(entry.created_at);
+    return Number.isNaN(date.getTime())
+      ? null
+      : { iso: date.toISOString(), text: date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) };
+  };
+  const activityBlock = onTab("combat") && (isDm ? (
+        <section className="table-page__section table-page__section--panel">
+          <header className="table-page__slim-head">
+            <h2 className="table-page__slim-title">Activity</h2>
+          </header>
+          <div className="table-page__slim-body">
+            {events.length === 0 ? (
+              <p className="table-page__empty">Nothing has happened yet.</p>
+            ) : (
+              <>
+                {/* A fixed space on the left of every entry is kept for an icon
+                    for each kind of activity, to come later. */}
+                <ul
+                  className={`table-page__log table-page__log--icons${showAllEvents ? " table-page__log--expanded" : ""}`}
+                  tabIndex={0}
+                  aria-label="Activity log"
+                >
+                  {visibleEvents.map((entry) => {
+                    const when = eventTime(entry);
+                    // The icon comes only from the line's explicit kind, never
+                    // from its words; no kind means no icon and no empty box.
+                    const icon = getActivityIcon(entry.kind);
+                    return (
+                      <li key={entry.id} className={icon ? "table-page__log-item--icon" : undefined}>
+                        {icon && <img className="table-page__log-icon" src={icon} alt="" width="30" height="30" />}
+                        <span className="table-page__log-text">{entry.message}</span>
+                        {when && (
+                          <time className="table-page__log-time" dateTime={when.iso}>
+                            {when.text}
+                          </time>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                {events.length > 5 && (
+                  <Button
+                    variant="secondary"
+                    className="table-page__log-toggle"
+                    onClick={() => setShowAllEvents((open) => !open)}
+                  >
+                    {showAllEvents ? "Show fewer" : `Show all ${events.length}`}
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+  ) : (
+        <section className="table-page__section">
+          <h2 className="table-page__section-title">Activity</h2>
+          {events.length === 0 ? (
+            <p className="table-page__empty">Nothing has happened yet.</p>
+          ) : (
+            <>
+              <ul className={`table-page__log${showAllEvents ? " table-page__log--expanded" : ""}`}>
+                {visibleEvents.map((entry) => (
+                  <li key={entry.id}>{entry.message}</li>
+                ))}
+              </ul>
+              {events.length > 5 && (
+                <Button
+                  variant="secondary"
+                  className="table-page__log-toggle"
+                  onClick={() => setShowAllEvents((open) => !open)}
+                >
+                  {showAllEvents ? "Show fewer" : `Show all ${events.length}`}
+                </Button>
+              )}
+            </>
+          )}
+        </section>
+  ));
+
   return (
-    <main className="table-page">
-      <div className="table-page__content">
+    <main className={`table-page${isDm ? " table-page--dm" : ""}`}>
+      <div className={`table-page__content${dmCombatLayout ? " table-page__content--wide" : ""}`}>
         <Link className="table-page__back" to={isDm ? "/dm" : "/games"}>
           {isDm ? "← DM Screen" : "← My Games"}
         </Link>
@@ -1285,8 +2289,24 @@ function TablePage() {
         )}
 
         <header className="table-page__header">
-          <div>
-            <h1 className="table-page__title">{table.name}</h1>
+          {/* The DM screen's banner picture: decoration only, behind the title. */}
+          {isDm && (
+            <img className="table-page__banner-art" src={lanternArt} alt="" width="2000" height="667" />
+          )}
+          <div className="table-page__header-text">
+            {/* The DM's join code sits right beside the table name as a small
+                pill (it wraps under a long name). */}
+            {isDm ? (
+              <div className="table-page__title-row">
+                <h1 className="table-page__title">{table.name}</h1>
+                <div className="table-page__code">
+                  <span className="table-page__code-label">Join code</span>
+                  <span className="table-page__code-value">{table.join_code}</span>
+                </div>
+              </div>
+            ) : (
+              <h1 className="table-page__title">{table.name}</h1>
+            )}
             <p className="table-page__role">
               {isDm ? "DM Screen" : "You are a player"} ·{" "}
               <Link className="table-page__guide-link" to="/guide?section=tables">
@@ -1294,13 +2314,6 @@ function TablePage() {
               </Link>
             </p>
           </div>
-
-          {isDm && (
-            <div className="table-page__code">
-              <span className="table-page__code-label">Join code</span>
-              <span className="table-page__code-value">{table.join_code}</span>
-            </div>
-          )}
 
         </header>
 
@@ -1321,32 +2334,7 @@ function TablePage() {
         {/* What the DM doesn't allow here (nothing shows if nothing is blocked). */}
         {!isDm && <ContentNotice banned={cleanBanned(table.banned_content)} sheet={mySheet} />}
 
-        {(isDm ? characters.length > 0 : partyRows.length > 0) && (
-          <section className="table-page__party" aria-labelledby="party-title">
-            <div className="table-page__party-head">
-              <h2 id="party-title" className="table-page__section-title">
-                Party
-              </h2>
-              {isDm && (
-                <label className="table-page__party-share">
-                  <input
-                    type="checkbox"
-                    checked={partyShared}
-                    onChange={(event) =>
-                      run(() => setShareParty(table.id, event.target.checked))
-                    }
-                  />
-                  Let players see the party&apos;s HP, AC and conditions
-                </label>
-              )}
-            </div>
-            <PartyStrip
-              rows={partyRows}
-              onSelect={isDm ? showPlayerCard : undefined}
-              selectedId={isDm && selectedPlayerId !== "all" ? selectedSheet?.id : undefined}
-            />
-          </section>
-        )}
+        {!dmCombatLayout && partyBlock}
 
         {(isDm || myMember) && (
           <div className="table-page__tabs-bar">
@@ -1398,6 +2386,24 @@ function TablePage() {
           </div>
         )}
 
+        {/* The DM's Combat tab: three panels side by side on wide screens (the
+            party, the fight, and damage plus activity), one after another on
+            narrow ones (TablePage.css). */}
+        {dmCombatLayout && (
+          <div className="table-page__dm-grid">
+            <div className="table-page__dm-party">{partyBlock}</div>
+            <div className="table-page__dm-main">
+              {orphanBlock}
+              {combatBlock}
+              {addMonsterBlock}
+            </div>
+            <div className="table-page__dm-side">
+              {damageBlock}
+              {activityBlock}
+            </div>
+          </div>
+        )}
+
         {isDm && dmTab === "prep" && (
           <TableRules
             key={table.id}
@@ -1422,11 +2428,13 @@ function TablePage() {
         )}
 
         {isDm && dmTab === "prep" && !table.combat_active && (
-          <section className="table-page__prep" aria-labelledby="prep-title">
-            <h2 id="prep-title" className="table-page__prep-title">
-              Before the fight
-            </h2>
-            <ol className="table-page__prep-steps">
+          <section className="table-page__prep table-page__section--panel" aria-labelledby="prep-title">
+            <header className="table-page__slim-head">
+              <h2 id="prep-title" className="table-page__slim-title">
+                Before the fight
+              </h2>
+            </header>
+            <ol className="table-page__prep-steps table-page__slim-body">
               {prepSteps.map((step) => (
                 <li
                   key={step.id}
@@ -1466,156 +2474,7 @@ function TablePage() {
 
         {/* Before a fight, Prep shows the initiative list too: setting up
             means rolling initiative and starting combat. */}
-        {(onTab("combat") || (dmTab === "prep" && !table.combat_active)) && (
-        <section className="table-page__combat">
-          <div className="table-page__combat-head">
-            <h2 className="table-page__section-title">Combat</h2>
-
-            {table.combat_active ? (
-              <p className="table-page__turn-line">
-                <strong>Round {table.round}</strong>
-                {now && <> · Now: <strong>{now.name}</strong></>}
-                {now && now.attacks_this_turn > 0 && (
-                  <> ({now.attacks_this_turn} {now.attacks_this_turn === 1 ? "attack" : "attacks"})</>
-                )}
-                {upcoming.length > 0 && (
-                  <>
-                    {" · "}
-                    {describeUpcoming(upcoming, myCombatant?.id)}
-                  </>
-                )}
-              </p>
-            ) : (
-              <p className="table-page__turn-line">No fight in progress.</p>
-            )}
-
-            {!isDm && table.combat_active && amUp && (
-              <div className="table-page__combat-buttons">
-                <Button onClick={() => run(() => endMyTurn(table.id))}>End my turn</Button>
-              </div>
-            )}
-
-            {isDm && (
-              <div className="table-page__combat-buttons">
-                {table.combat_active && (
-                  <Button
-                    variant="secondary"
-                    aria-expanded={showMonsterForm}
-                    onClick={() => setShowMonsterForm((open) => !open)}
-                  >
-                    {showMonsterForm ? "Hide monster form" : "+ Add monster"}
-                  </Button>
-                )}
-                {!table.combat_active ? (
-                  <Button
-                    disabled={!canStart}
-                    onClick={() => run(() => startCombat(table.id, combatants))}
-                  >
-                    Start combat
-                  </Button>
-                ) : (
-                  <>
-                    <Button onClick={() => run(() => advanceTurn(table, combatants))}>
-                      Next turn
-                    </Button>
-                    <Button variant="secondary" onClick={() => run(() => endCombat(table.id))}>
-                      End combat
-                    </Button>
-                  </>
-                )}
-                {unrolledNpcCount > 0 && (
-                  <Button variant="secondary" onClick={rollForAllNpcs}>
-                    {`Roll initiative for ${unrolledLabel}`}
-                  </Button>
-                )}
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Clear all monsters and everyone's initiative for a new encounter?",
-                      )
-                    ) {
-                      run(async () => {
-                        await resetEncounter(table.id);
-                        await dmLog(table.id, NEW_ENCOUNTER_MESSAGE);
-                      });
-                    }
-                  }}
-                >
-                  New encounter
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {isDm && !canStart && (
-            <p className="table-page__hint">
-              Set at least one initiative (yours, a player's, or a monster's) to start combat.
-            </p>
-          )}
-
-          {isDm && unrolledNpcCount > 0 && (
-            <p className="table-page__hint">
-              Rolling for a boss yourself? Set its initiative first, then use the roll button
-              for the rest. Anyone who already has an initiative is left alone.
-            </p>
-          )}
-
-          {!isDm && myCombatant && myCombatant.initiative == null && (
-            <InitiativePrompt
-              combatant={myCombatant}
-              dexterity={myDexterity}
-              nudgeId={findActiveNudge(events, myCombatant.name)?.id ?? null}
-              onSet={(total, note) => {
-                setMyRollNote(note);
-                run(() => setMyInitiative(table.id, total));
-              }}
-            />
-          )}
-
-          {!isDm && myRollNote && myCombatant?.initiative != null && (
-            <p className="table-page__hint" role="status">
-              Your initiative: {myRollNote}.
-            </p>
-          )}
-
-          {!isDm && myCombatant?.away && (
-            <p className="table-page__hint" role="status">
-              Your DM has marked you away, so your turns are skipped. Ask them to bring you back when you&apos;re
-              ready.
-            </p>
-          )}
-          {!isDm && playerTip && <p className="table-page__hint">{playerTip}</p>}
-
-          {/* Listed first: these are who the table is waiting on. */}
-          {waiting.length > 0 && (
-            <>
-              <h3 className="table-page__subtitle table-page__subtitle--order">
-                Waiting for initiative ({waiting.length})
-              </h3>
-              <ul className="table-page__order" aria-label="Waiting for initiative">
-                {waiting.map(renderRow)}
-              </ul>
-            </>
-          )}
-
-          {ordered.length > 0 && (
-            <h3 className="table-page__subtitle table-page__subtitle--order">
-              Initiative order
-            </h3>
-          )}
-          <ol className="table-page__order" aria-label="Initiative order">
-            {ordered.map(renderRow)}
-          </ol>
-
-          {combatants.length === 0 && (
-            <p className="table-page__empty">
-              Nobody is here yet.{isDm ? " Share the join code with your players." : ""}
-            </p>
-          )}
-        </section>
-        )}
+        {!dmCombatLayout && combatBlock}
 
         {/* Ideas for a fight that suits the party, from the free SRD monsters. */}
         {isDm && dmTab === "prep" && (
@@ -1630,104 +2489,11 @@ function TablePage() {
           <LootHelper levels={characters.map((sheet) => Number(sheet.level) || 1)} />
         )}
 
-        {isDm && (dmTab === "prep" || (dmTab === "combat" && table.combat_active && showMonsterForm)) && (
-          <section className="table-page__section">
-            <h2 className="table-page__section-title">Add monsters and NPCs</h2>
-            <p className="table-page__hint">
-              Players see a name, a status like Bloodied, and damage taken. They never see
-              HP, AC, or a stat block. Add several at once, or pick from your library.
-              Friendly NPCs and party members you track by hand are added the same way.
-            </p>
-            <AddCombatantForm
-              onAdd={handleAddCombatants}
-              onSaveToLibrary={handleSaveToLibraryOnly}
-              templates={templates}
-            />
-          </section>
-        )}
+        {!dmCombatLayout && addMonsterBlock}
 
-        {isDm && dmTab === "combat" && orphanCalls.length > 0 && (
-          <section className="table-page__section table-page__section--alert" role="alert">
-            <h2 className="table-page__section-title">Waiting for your call</h2>
-            {orphanCalls.map((player) => {
-              const target = combatants.find((c) => c.id === player.attack_target);
-              return (
-                <div className="table-page__call" key={player.id}>
-                  <span>
-                    <strong>{player.name}</strong> attacked{" "}
-                    <strong>{target?.name ?? "an enemy"}</strong> with{" "}
-                    {player.attack_name ?? "an attack"}. Does it hit?
-                  </span>
-                  <div className="table-page__inline-form">
-                    <Button onClick={() => run(() => dmResolveAttack(player.id, true))}>
-                      Hit
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => run(() => dmResolveAttack(player.id, false))}
-                    >
-                      Miss
-                    </Button>
-                    <Button variant="secondary" onClick={() => denyAttack(player)}>
-                      Deny
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </section>
-        )}
+        {!dmCombatLayout && orphanBlock}
 
-        {isDm && dmTab === "combat" && players.length > 0 && (
-          <section className="table-page__section">
-            <h2 className="table-page__section-title">Send damage to a player</h2>
-            <p className="table-page__hint">
-              Say who hit them and for how much. The player sees it on their own sheet
-              and taps Apply to take it. You never edit their character.
-            </p>
-            <form className="table-page__monster-form" onSubmit={handleHitPlayer}>
-              <input
-                className="table-page__input"
-                aria-label="Who is attacking"
-                list="enemy-names"
-                placeholder="Who hit them (e.g. Kobold)"
-                maxLength={80}
-                value={hitSource}
-                onChange={(event) => setHitSource(event.target.value)}
-              />
-              <datalist id="enemy-names">
-                {npcs.map((npc) => (
-                  <option key={npc.id} value={npc.name} />
-                ))}
-              </datalist>
-              <select
-                className="table-page__input"
-                aria-label="Which player is hit"
-                value={hitTargetUserId || players[0].user_id}
-                onChange={(event) => setHitTargetUserId(event.target.value)}
-              >
-                {players.map((player) => (
-                  <option key={player.id} value={player.user_id}>
-                    {player.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="table-page__number"
-                type="number"
-                min="1"
-                aria-label="Damage to the player"
-                placeholder="Damage"
-                value={hitAmount}
-                onChange={(event) => setHitAmount(event.target.value)}
-              />
-              <Button type="submit" variant="danger" disabled={!hitAmount}>
-                Send{hitAmount ? ` ${hitAmount}` : ""} damage to{" "}
-                {players.find((player) => player.user_id === (hitTargetUserId || players[0].user_id))?.name ?? "the player"}
-              </Button>
-            </form>
-          </section>
-        )}
+        {!dmCombatLayout && damageBlock}
 
         {isDm && dmTab === "story" && <DmStoryTab characters={characters} />}
 
@@ -1741,7 +2507,7 @@ function TablePage() {
             onSharedWithEveryone={(title) =>
               run(() =>
                 Promise.all([
-                  dmLog(table.id, `📜 The DM shared a handout: ${title}`),
+                  dmLog(table.id, `📜 The DM shared a handout: ${title}`, "handout"),
                   // Also into the journal, so the session recap shows when it appeared.
                   addJournalEntry(table.id, {
                     body: `📜 Shared a handout: ${title}`,
@@ -1766,8 +2532,11 @@ function TablePage() {
         )}
 
         {isDm && dmTab === "players" && (
-          <section className="table-page__section" ref={playersSectionRef}>
-            <h2 className="table-page__section-title">Your players</h2>
+          <section className="table-page__section table-page__section--panel" ref={playersSectionRef}>
+            <header className="table-page__slim-head">
+              <h2 className="table-page__slim-title">Your players</h2>
+            </header>
+            <div className="table-page__slim-body">
             {characters.length === 0 ? (
               <p className="table-page__empty">
                 Characters appear here when players join. You can read everything but
@@ -1844,6 +2613,7 @@ function TablePage() {
                 </ul>
               </div>
             )}
+            </div>
           </section>
         )}
 
@@ -1855,33 +2625,7 @@ function TablePage() {
         )}
 
         {/* The log is mostly about fights, so the DM sees it on Combat only. */}
-        {onTab("combat") && (
-        <section className="table-page__section">
-          <h2 className="table-page__section-title">Activity</h2>
-          {events.length === 0 ? (
-            <p className="table-page__empty">Nothing has happened yet.</p>
-          ) : (
-            <>
-              <ul
-                className={`table-page__log${showAllEvents ? " table-page__log--expanded" : ""}`}
-              >
-                {visibleEvents.map((entry) => (
-                  <li key={entry.id}>{entry.message}</li>
-                ))}
-              </ul>
-              {events.length > 5 && (
-                <Button
-                  variant="secondary"
-                  className="table-page__log-toggle"
-                  onClick={() => setShowAllEvents((open) => !open)}
-                >
-                  {showAllEvents ? "Show fewer" : `Show all ${events.length}`}
-                </Button>
-              )}
-            </>
-          )}
-        </section>
-        )}
+        {!dmCombatLayout && activityBlock}
 
         <footer className="table-page__footer">
           {isDm ? (

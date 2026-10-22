@@ -94,3 +94,17 @@ describe("cancelAttack", () => {
     await expect(cancelAttack("t1")).rejects.toMatchObject({ message: "It is not your turn" });
   });
 });
+
+describe("dmLog with an activity kind", () => {
+  it("sends the kind, and falls back to a plain line if the database doesn't have kinds yet", async () => {
+    const { supabase } = await import("./supabaseClient");
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({ data: null, error: { message: "no such parameter p_kind" } })
+      .mockResolvedValueOnce({ data: null, error: null });
+    supabase.rpc = rpc;
+    const { dmLog } = await import("./tableStore");
+    await dmLog("t1", "📜 The DM shared a handout: Map", "handout");
+    expect(rpc).toHaveBeenNthCalledWith(1, "dm_log", { p_table_id: "t1", p_message: "📜 The DM shared a handout: Map", p_kind: "handout" });
+    expect(rpc).toHaveBeenNthCalledWith(2, "dm_log", { p_table_id: "t1", p_message: "📜 The DM shared a handout: Map" });
+  });
+});

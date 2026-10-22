@@ -10,6 +10,7 @@ import {
   splitIcon,
   withIcon,
   recentEventsFor,
+  creatureIdOf,
 } from "./statBlock";
 
 describe("readStatBlock", () => {
@@ -197,5 +198,19 @@ describe("saving throws in a stat block", () => {
     const template = { kind: "monster", name: "Goblin", max_hp: 7, armor_class: 15, stat_block: { attacks: [], notes: "", saves: { dexterity: 2 } } };
     expect(isSameTemplate(template, entry)).toBe(true);
     expect(isSameTemplate({ ...template, stat_block: { attacks: [], notes: "", saves: { dexterity: 3 } } }, entry)).toBe(false);
+  });
+});
+
+describe("creatureIdOf", () => {
+  it("reads the SRD id a creature was added with, and nothing else", () => {
+    expect(creatureIdOf({ creature: "kobold", attacks: [] })).toBe("kobold");
+    expect(creatureIdOf({ attacks: [] })).toBe("");
+    expect(creatureIdOf(null)).toBe("");
+    expect(creatureIdOf({ creature: 7 })).toBe("");
+  });
+
+  it("doesn't change what the stat block form reads or saves", () => {
+    expect(Object.keys(readStatBlock({ creature: "kobold" }))).not.toContain("creature");
+    expect(cleanStatBlock(readStatBlock({ creature: "kobold" }))).not.toHaveProperty("creature");
   });
 });
