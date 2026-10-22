@@ -45,6 +45,15 @@ Signed-in pages (taken by hand in Chrome, `.webp`):
 - `journal.webp`: the table journal with a private note
 - `messages.webp`: secret DM-to-player messages
 
+## 2026-10-21 to 2026-10-23: the tavern redesign (homepage and DM screen)
+
+These folders show the redesign in progress. All of them were made from the running app with **made-up sample data** (a pretend table, a pretend returning player), not from a real signed-in session or a real table, so they show layout, not live behaviour. The earlier drafts of the redesign are kept on the maker's computer only and aren't in the repository.
+
+- [`2026-10-21-pass4/`](2026-10-21-pass4/): the homepage at 820x1180 (tablet portrait) in light and dark, with the hero artwork and text as one composition, plus the returning-player cards (`...returning-SAMPLE-DATA...`) and two "zoom 200%" stand-ins (a half-size viewport at double pixel density, not a real browser zoom).
+- [`2026-10-22-dm-pass7/`](2026-10-22-dm-pass7/): the DM screen's Combat tab at 1440x900, 1280x720 and 820x1180, both themes. Activity icons show here only because the sample events were given kinds by hand. **Known mistake:** the `...party-collapsed...` files in this folder wrongly show every Party card (a CSS bug that was fixed afterwards); use the next folder for the real fold.
+- [`2026-10-23-dm-party-fold/`](2026-10-23-dm-party-fold/): 820x1180 with the Party panel really collapsed and expanded, in both themes.
+- [`2026-10-23-dm-tabs/`](2026-10-23-dm-tabs/): the DM screen's Story, Players and Prep tabs at 1440x900 and 820x1180, both themes, full page (empty handouts and journal, no saved table rules).
+
 ## Taking a new round
 
 1. Make a folder named with today's date, for example `docs/screenshots/2026-11-20/`.
