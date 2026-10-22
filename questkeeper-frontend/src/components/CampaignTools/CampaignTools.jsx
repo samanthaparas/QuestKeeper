@@ -4,36 +4,52 @@ import {
   campaignLabel,
   campaignNumbers,
   campaignOf,
-  countSplit,
-  startOfDay,
-  suggestSplit,
-  toDateInput,
+  describeNotes,
+  fromDateTimeInput,
+  inWindow,
+  suggestOlderNotes,
+  toDateTimeInput,
 } from "../../utils/campaigns";
-import { formatDay } from "../../utils/journal";
+import { formatStamp } from "../../utils/journal";
 import "./CampaignTools.css";
 
-// The "Campaigns" panel on the Story tab, for anyone at the table. A table can run several
-// campaigns one after another ("season 2"); each keeps its own session
-// numbers (1.1 to 1.43, then 2.1, 2.2...).
+// The "Campaigns" panel on the Story tab, for anyone at the table. A table can
+// run several campaigns one after another ("season 2"); each keeps its own
+// session numbers (1.1 to 1.43, then 2.1, 2.2...).
 //
 // For a journal where two campaigns got mixed together, "Split into two
-// campaigns" picks the day the new one started: notes written before it stay
-// as the first campaign, later ones become the new current campaign. Nothing
-// is deleted or rewritten: only which campaign a note belongs to changes, and
-// it can be fixed note by note afterwards.
+// campaigns" asks WHEN the older campaign's notes were written (they may have
+// been typed in long after the newer ones, all in one evening). Notes written
+// in that window become the older campaign; every other note becomes the new,
+// current one. Nothing is deleted or rewritten: only which campaign a note
+// belongs to changes, and any single note can be moved back afterwards.
 //
-// entries: the notes the DM can see. campaignNumber / campaignNames: the
+// entries: the notes this person can see. campaignNumber / campaignNames: the
 // table's current campaign and the names given so far. onChanged(): refresh.
 
-const preview = (entry) => `${entry.author_name}, ${formatDay(entry.created_at)}: “${String(entry.body).slice(0, 60)}${String(entry.body).length > 60 ? "…" : ""}”`;
+// "15 notes by Ash Moonshade · Thu 7:22 pm to Thu 8:34 pm · sessions 1 to 1"
+function summarize(group) {
+  const writers = group.writers.slice(0, 3).map((writer) => `${writer.name} (${writer.count})`).join(", ");
+  const more = group.writers.length > 3 ? ` and ${group.writers.length - 3} more` : "";
+  const when = group.first ? ` · written ${formatStamp(group.first)}${group.last && group.last !== group.first ? ` to ${formatStamp(group.last)}` : ""}` : "";
+  const sessions =
+    group.firstSession === null
+      ? ""
+      : group.firstSession === group.lastSession
+        ? ` · session ${group.firstSession}`
+        : ` · sessions ${group.firstSession} to ${group.lastSession}`;
+  return `${group.count} ${group.count === 1 ? "note" : "notes"}${writers ? ` by ${writers}${more}` : ""}${when}${sessions}`;
+}
 
 function CampaignTools({ tableId, entries = [], campaignNumber = 1, campaignNames = {}, onChanged = () => {} }) {
   const baseId = useId();
   const numbers = campaignNumbers(entries, campaignNumber);
   const hasSeveral = numbers.length > 1;
 
-  const suggestion = suggestSplit(entries.filter((entry) => campaignOf(entry) === campaignNumber));
-  const [date, setDate] = useState("");
+  const here = entries.filter((entry) => campaignOf(entry) === campaignNumber);
+  const suggestion = suggestOlderNotes(here);
+  const [from, setFrom] = useState("");
+  const [until, setUntil] = useState("");
   const [firstName, setFirstName] = useState(String(campaignNames[String(campaignNumber)] ?? ""));
   const [secondName, setSecondName] = useState("");
   const [restart, setRestart] = useState(true);
@@ -58,22 +74,29 @@ function CampaignTools({ tableId, entries = [], campaignNumber = 1, campaignName
     }
   }
 
-  const cutoff = date ? startOfDay(date) : null;
-  const here = entries.filter((entry) => campaignOf(entry) === campaignNumber);
-  const counts = cutoff ? countSplit(here, cutoff) : null;
-  const sortedHere = [...here].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-  const lastBefore = cutoff ? [...sortedHere].reverse().find((entry) => new Date(entry.created_at) < new Date(cutoff)) : null;
-  const firstAfter = cutoff ? sortedHere.find((entry) => new Date(entry.created_at) >= new Date(cutoff)) : null;
+  const oldFrom = fromDateTimeInput(from);
+  const oldUntil = fromDateTimeInput(until, { endOfMinute: true });
+  const hasWindow = Boolean(oldFrom || oldUntil);
+  const olderNotes = hasWindow ? here.filter((entry) => inWindow(entry, oldFrom, oldUntil)) : [];
+  const newerNotes = hasWindow ? here.filter((entry) => !inWindow(entry, oldFrom, oldUntil)) : [];
+  const older = describeNotes(olderNotes);
+  const newer = describeNotes(newerNotes);
+
+  function useSuggestion() {
+    setFrom(suggestion.from ? toDateTimeInput(suggestion.from) : "");
+    // The whole minute of the last note counts, so the box shows its own minute.
+    setUntil(suggestion.until ? toDateTimeInput(suggestion.until) : "");
+  }
 
   function split() {
     const question =
-      `Split into two campaigns? Notes written before ${formatDay(cutoff)} stay as the first campaign, ` +
-      `and the rest become “${secondName.trim() || "Campaign " + (campaignNumber + 1)}”, the current one. ` +
+      `Split into two campaigns? The ${older.count} ${older.count === 1 ? "note" : "notes"} written in that window become ` +
+      `the older campaign, and the other ${newer.count} become “${secondName.trim() || "Campaign " + (campaignNumber + 1)}”, the current one. ` +
       "Nothing is deleted, and you can move any note back afterwards.";
     if (!window.confirm(question)) return;
     run(
-      () => splitCampaign(tableId, { cutoff, firstName, secondName, restartSecond: restart }),
-      (result) => `Done. ${result.kept} ${result.kept === 1 ? "note stays" : "notes stay"} in the first campaign and ${result.moved} moved to the new one.`,
+      () => splitCampaign(tableId, { oldFrom, oldUntil, firstName, secondName, restartSecond: restart }),
+      (result) => `Done. ${result.kept} ${result.kept === 1 ? "note stays" : "notes stay"} in the older campaign and ${result.moved} moved to the new one.`,
     );
   }
 
@@ -84,31 +107,51 @@ function CampaignTools({ tableId, entries = [], campaignNumber = 1, campaignName
         {!hasSeveral ? (
           <>
             <p className="campaign-tools__hint">
-              Did your group start a new campaign (a “season 2”) in this same journal? Pick the day it began and the
-              older notes move into their own campaign, still readable here. Your new notes keep their own session
-              numbers.
+              Did your group start a new campaign (a “season 2”) in this same journal? Say when the <b>older</b>{" "}
+              campaign&apos;s notes were written and they move into their own campaign, still readable here. Everything
+              else becomes your current campaign, with its own session numbers.
             </p>
 
             {suggestion && (
               <p className="campaign-tools__suggestion">
-                I found a pause of about {Math.round(suggestion.gapDays / 30) >= 2 ? `${Math.round(suggestion.gapDays / 30)} months` : `${suggestion.gapDays} days`}{" "}
-                between your notes: after {preview(suggestion.last)} and before {preview(suggestion.first)}.{" "}
-                <button type="button" className="campaign-tools__link" onClick={() => setDate(toDateInput(suggestion.first.created_at))}>
-                  Split there
-                </button>
+                {suggestion.kind === "batch" ? (
+                  <>
+                    I noticed {suggestion.count} notes by {suggestion.writer} written within about {suggestion.minutes}{" "}
+                    {suggestion.minutes === 1 ? "minute" : "minutes"} of each other. That often means an older campaign
+                    was typed in all at once.{" "}
+                  </>
+                ) : (
+                  <>
+                    I noticed a pause of about {Math.round(suggestion.gapDays / 30) >= 2 ? `${Math.round(suggestion.gapDays / 30)} months` : `${suggestion.gapDays} days`} in
+                    your notes, so everything before it might be the older campaign.{" "}
+                  </>
+                )}
+                <button type="button" className="campaign-tools__link" onClick={useSuggestion}>
+                  Use this
+                </button>{" "}
+                (then check the two groups below)
               </p>
             )}
 
             <div className="campaign-tools__fields">
-              <label htmlFor={`${baseId}-date`}>The new campaign started on</label>
+              <label htmlFor={`${baseId}-from`}>The older campaign&apos;s notes were written from</label>
               <input
-                id={`${baseId}-date`}
-                type="date"
+                id={`${baseId}-from`}
+                type="datetime-local"
                 className="campaign-tools__input"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
+                value={from}
+                onChange={(event) => setFrom(event.target.value)}
               />
-              <label htmlFor={`${baseId}-first`}>Name for the first campaign (optional)</label>
+              <label htmlFor={`${baseId}-until`}>until</label>
+              <input
+                id={`${baseId}-until`}
+                type="datetime-local"
+                className="campaign-tools__input"
+                value={until}
+                onChange={(event) => setUntil(event.target.value)}
+              />
+              <p className="campaign-tools__edge">Leave one blank for no limit, such as everything before a certain day.</p>
+              <label htmlFor={`${baseId}-first`}>Name for the older campaign (optional)</label>
               <input
                 id={`${baseId}-first`}
                 className="campaign-tools__input"
@@ -117,7 +160,7 @@ function CampaignTools({ tableId, entries = [], campaignNumber = 1, campaignName
                 value={firstName}
                 onChange={(event) => setFirstName(event.target.value)}
               />
-              <label htmlFor={`${baseId}-second`}>Name for the new campaign (optional)</label>
+              <label htmlFor={`${baseId}-second`}>Name for the current campaign (optional)</label>
               <input
                 id={`${baseId}-second`}
                 className="campaign-tools__input"
@@ -128,25 +171,32 @@ function CampaignTools({ tableId, entries = [], campaignNumber = 1, campaignName
               />
               <label className="campaign-tools__check">
                 <input type="checkbox" checked={restart} onChange={(event) => setRestart(event.target.checked)} />
-                Number the new campaign&apos;s sessions from 1
+                Number the current campaign&apos;s sessions from 1
               </label>
             </div>
 
-            {counts && (
+            {hasWindow && (
               <div className="campaign-tools__preview" role="status">
                 <p>
-                  <b>{counts.before}</b> {counts.before === 1 ? "note stays" : "notes stay"} in the first campaign, and{" "}
-                  <b>{counts.after}</b> {counts.after === 1 ? "note moves" : "notes move"} to the new one.
+                  <b>Older campaign:</b> {summarize(older)}
                 </p>
-                {lastBefore && <p className="campaign-tools__edge">Last note of the first campaign: {preview(lastBefore)}</p>}
-                {firstAfter && <p className="campaign-tools__edge">First note of the new campaign: {preview(firstAfter)}</p>}
+                <p>
+                  <b>Current campaign:</b> {summarize(newer)}
+                </p>
+                {older.count === 0 && <p className="campaign-tools__warning">No notes fall in that window. Check the dates.</p>}
+                {newer.count === 0 && <p className="campaign-tools__warning">Every note falls in that window, so nothing would be in the current campaign.</p>}
                 <p className="campaign-tools__edge">
-                  Counts include the notes you can see. Private notes by players move by date too, without being read.
+                  Counts include the notes you can see. Private notes by players are sorted by date too, without being read.
                 </p>
               </div>
             )}
 
-            <button type="button" className="campaign-tools__button campaign-tools__button--primary" onClick={split} disabled={!cutoff || isBusy}>
+            <button
+              type="button"
+              className="campaign-tools__button campaign-tools__button--primary"
+              onClick={split}
+              disabled={!hasWindow || isBusy || older.count === 0}
+            >
               {isBusy ? "Working..." : "Split into two campaigns"}
             </button>
           </>

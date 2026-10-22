@@ -78,15 +78,17 @@ export async function setSessionNumber(tableId, sessionNumber) {
 // A table can run several campaigns one after another. Notes belong to the
 // table's current campaign when written. All of these are DM only.
 
-// Splits the current campaign in two at a moment: notes written before cutoff
-// stay (now named firstName), later ones become the new current campaign
-// (named secondName), optionally with their sessions numbered from 1. Returns
-// { campaign, kept, moved }.
-export async function splitCampaign(tableId, { cutoff, firstName, secondName, restartSecond = true }) {
+// Splits the current campaign in two. The notes written between oldFrom and
+// oldUntil (either can be null for "no limit") stay and become the older
+// campaign (named firstName); every other note becomes the new current
+// campaign (named secondName), optionally with its sessions numbered from 1.
+// Returns { campaign, kept, moved }.
+export async function splitCampaign(tableId, { oldFrom, oldUntil, firstName, secondName, restartSecond = true }) {
   return unwrap(
     await supabase.rpc("split_campaign", {
       p_table_id: tableId,
-      p_cutoff: cutoff,
+      p_old_from: oldFrom,
+      p_old_until: oldUntil,
       p_first_name: firstName,
       p_second_name: secondName,
       p_restart_second: restartSecond,

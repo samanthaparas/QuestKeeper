@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatStamp, groupBySession, wasEdited, readSessionNumber, sessionChoices } from "./journal";
+import { formatDay, formatStamp, groupBySession, wasEdited, readSessionNumber, sessionChoices } from "./journal";
 
 const entry = (id, session, created_at, extra = {}) => ({
   id,
@@ -22,10 +22,19 @@ describe("journal helpers", () => {
     expect(groups[1].startedAt).toBe("2026-10-12T01:00:00Z");
   });
 
-  it("writes a short day and time", () => {
+  it("writes the day, the date and the time, so notes weeks apart can be told apart", () => {
     // A Monday evening, read in the test's own time zone.
     const local = new Date(2026, 9, 19, 20, 42);
-    expect(formatStamp(local)).toBe("Mon 8:42 pm");
+    const now = new Date(2026, 9, 22);
+    expect(formatStamp(local, now)).toBe("Mon, Oct 19, 8:42 pm");
+    expect(formatStamp(new Date(2026, 9, 15, 20, 34), now)).toBe("Thu, Oct 15, 8:34 pm");
+  });
+
+  it("adds the year only when it isn't this year", () => {
+    const now = new Date(2026, 9, 22);
+    expect(formatStamp(new Date(2024, 2, 8, 20, 0), now)).toBe("Fri, Mar 8, 2024, 8:00 pm");
+    expect(formatDay(new Date(2026, 9, 15), now)).toBe("Thu, Oct 15");
+    expect(formatDay(new Date(2024, 2, 8), now)).toBe("Fri, Mar 8, 2024");
   });
 
   it("only calls a note edited when it changed after the first minute", () => {

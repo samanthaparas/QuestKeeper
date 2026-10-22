@@ -21,23 +21,24 @@ export function groupBySession(entries) {
     });
 }
 
-// "Mon 8:42 pm"
-export function formatStamp(when) {
+// "Mon, Oct 19, 8:42 pm". The year is added only for another year ("Mon, Oct 19,
+// 2025, 8:42 pm"), so notes from last year or two years ago are clear too.
+// now: for tests.
+export function formatStamp(when, now = new Date()) {
   const date = new Date(when);
-  const day = date.toLocaleDateString("en-US", { weekday: "short" });
+  const day = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const year = date.getFullYear() === now.getFullYear() ? "" : `, ${date.getFullYear()}`;
   const time = date
     .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
     .toLowerCase();
-  return `${day} ${time}`;
+  return `${day}${year}, ${time}`;
 }
 
-// "Mon Oct 19"
-export function formatDay(when) {
-  return new Date(when).toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+// "Mon, Oct 19" ("Mon, Oct 19, 2025" for another year)
+export function formatDay(when, now = new Date()) {
+  const date = new Date(when);
+  const day = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return date.getFullYear() === now.getFullYear() ? day : `${day}, ${date.getFullYear()}`;
 }
 
 // Edited at least a minute after it was written.
