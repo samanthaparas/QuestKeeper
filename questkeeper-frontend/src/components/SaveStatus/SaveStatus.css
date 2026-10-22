@@ -1,0 +1,41 @@
+/* A calm line about saving, only when there's something to say. */
+.save-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+  font-size: 14px;
+}
+
+.save-status--warning {
+  border-color: var(--qk-brass);
+  background-color: var(--qk-brass-soft);
+}
+
+.save-status__text {
+  flex: 1 1 260px;
+  margin: 0;
+}
+
+.save-status__button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.save-status__button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
