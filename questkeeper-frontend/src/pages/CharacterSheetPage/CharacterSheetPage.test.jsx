@@ -9,6 +9,7 @@ import { dealDamage, listCharacterTables } from "../../utils/tableStore";
 import { getEquipment, getEquipmentDetails } from "../../utils/api";
 import { createCharacterSheet } from "../../utils/characterSheet";
 import { installFakeStorage } from "../../test/fakeStorage";
+import { writeSheetCache } from "../../utils/sheetCache";
 
 // --- Fakes for everything that would talk to the network ---
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -1710,5 +1711,68 @@ describe("Elemental Weapon on the sheet", () => {
     await user.click(cast);
     expect(cast).toHaveTextContent("Close");
     expect(cast).toHaveAttribute("aria-expanded", "true");
+  });
+});
+
+describe("CharacterSheetPage on a weak signal", () => {
+  function renderAt(sheetId) {
+    return render(
+      <MemoryRouter initialEntries={[`/characters/${sheetId}`]}>
+        <Routes>
+          <Route path="/characters/:id" element={<CharacterSheetPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it("says so, instead of loading forever, when the sheet can't be reached and there's no copy", async () => {
+    installFakeStorage();
+    getCharacter.mockRejectedValue(new Error("Failed to fetch"));
+    renderAt("nope");
+
+    expect(await screen.findByRole("heading", { name: "Can't reach QuestKeeper right now" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("opens the copy kept on this device when the server can't be reached", async () => {
+    installFakeStorage();
+    const sheet = makeSheet({ name: "Offline Pippa" });
+    writeSheetCache(sheet.id, { sheet, synced: true, baseUpdatedAt: "t0" });
+    getCharacter.mockRejectedValue(new Error("Failed to fetch"));
+    renderAt(sheet.id);
+
+    expect(await screen.findByRole("heading", { name: "Offline Pippa" })).toBeInTheDocument();
+    expect(screen.getByText(/Can't reach QuestKeeper right now, so this is the copy saved on this device/)).toBeInTheDocument();
+  });
+
+  it("keeps changes and says so when a save can't get through", async () => {
+    installFakeStorage();
+    const user = userEvent.setup();
+    const sheet = makeSheet({ name: "Saving Pippa", gold: 0 });
+    getCharacter.mockResolvedValue(sheet);
+    saveCharacter.mockRejectedValueOnce(new Error("Failed to fetch")).mockResolvedValue({});
+    renderAt(sheet.id);
+
+    const gold = await screen.findByLabelText("Gold");
+    await user.clear(gold);
+    await user.type(gold, "25");
+
+    expect(await screen.findByText(/Not saved yet\. Your changes are kept on this device/, {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try now" })).toBeInTheDocument();
+
+    // And "Try now" gets it through.
+    await user.click(screen.getByRole("button", { name: "Try now" }));
+    await vi.waitFor(() => expect(screen.queryByText(/Not saved yet/)).not.toBeInTheDocument());
+  });
+
+  it("brings back changes from a visit that ended before they saved", async () => {
+    installFakeStorage();
+    const server = makeSheet({ name: "Recovered Pippa", gold: 5 });
+    writeSheetCache(server.id, { sheet: { ...server, gold: 99 }, synced: false, baseUpdatedAt: server.updatedAt });
+    getCharacter.mockResolvedValue(server);
+    renderAt(server.id);
+
+    expect(await screen.findByLabelText("Gold")).toHaveValue(99);
+    expect(screen.getByText(/Changes from last time hadn't saved/)).toBeInTheDocument();
   });
 });

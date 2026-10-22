@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { clearDestination } from "./continueAfterLogin";
+import { clearAllSheetCaches } from "./sheetCache";
 
 export function signUp(email, password) {
   return supabase.auth.signUp({ email, password });
@@ -12,9 +13,12 @@ export function signIn(email, password) {
 // "local" signs out this device only. The default, "global", would sign the
 // account out everywhere, which kicks other people (or your phone) out too.
 // It also forgets any "carry on after signing in" note, so the next person
-// to sign in on this device isn't sent where you were headed.
+// to sign in on this device isn't sent where you were headed. (And it clears
+// the sheet copies kept for weak signal, so the next person never sees them.)
 export function signOut() {
   clearDestination();
+  // The copies of sheets kept on this device for weak signal go too.
+  clearAllSheetCaches();
   return supabase.auth.signOut({ scope: "local" });
 }
 

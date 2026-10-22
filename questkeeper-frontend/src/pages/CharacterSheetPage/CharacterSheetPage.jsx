@@ -13,7 +13,11 @@ import Concentration from "../../components/Concentration/Concentration";
 import { conditionWord, turnsElapsed, rollNotesFor, tickConditionRounds } from "../../utils/conditions";
 import { countMyTurnsEnded } from "../../utils/initiative";
 import { applyDamageToHitPoints } from "../../utils/attacks";
-import { getCharacter, saveCharacter } from "../../utils/characterStore";
+import { saveCharacter } from "../../utils/characterStore";
+import { loadSheet } from "../../utils/loadSheet";
+import { clearSheetCache, writeSheetCache } from "../../utils/sheetCache";
+import { useSaveQueue } from "../../hooks/useSaveQueue";
+import SaveStatus from "../../components/SaveStatus/SaveStatus";
 import {
   ABILITY_SCORES,
   ABILITY_ABBREVIATIONS,
@@ -482,17 +486,32 @@ function CharacterSheetPage() {
 
   const setupTasks = getSetupTasks(sheet, currentEntries, homebrewList);
 
-  const saveTimeoutRef = useRef(null);
-  const pendingUpdateRef = useRef(null);
+  // Saves in the background, keeps a copy on this device, and retries by
+  // itself on a weak signal (see useSaveQueue.js). The server's "last updated"
+  // time of the version being edited is kept so a copy can tell, next visit,
+  // whether the sheet changed somewhere else meanwhile.
+  const serverUpdatedAt = useRef(null);
+  const [loadNote, setLoadNote] = useState({ offline: false, recovered: false, conflict: null, failed: false });
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const queue = useSaveQueue({
+    characterId: id,
+    save: saveCharacter,
+    baseUpdatedAt: () => serverUpdatedAt.current,
+    onSaved: (saved) => {
+      if (saved?.updatedAt) serverUpdatedAt.current = saved.updatedAt;
+      setLoadNote((note) => (note.offline || note.recovered ? { ...note, offline: false } : note));
+      setSheet((current) =>
+        current?.id === saved?.id ? { ...current, updatedAt: saved.updatedAt } : current,
+      );
+    },
+  });
 
   const isLoading = loadedId !== id;
 
   useEffect(() => {
     let isCancelled = false;
 
-    getCharacter(id).then((loaded) => {
-      if (isCancelled) return;
-
+    function show(loaded) {
       setSheet(loaded);
       setLoadedId(id);
       setIsLevelingUp(false);
@@ -505,19 +524,36 @@ function CharacterSheetPage() {
             .map((slot) => slot.level),
         ),
       );
-    });
+    }
+
+    loadSheet(id)
+      .then((result) => {
+        if (isCancelled) return;
+        serverUpdatedAt.current = result.sheet?.updatedAt ?? null;
+        setLoadNote({
+          offline: result.source === "offline",
+          recovered: result.source === "recovered",
+          conflict: result.source === "conflict" ? result.mine : null,
+          failed: false,
+        });
+        show(result.sheet);
+        // Edits that hadn't saved (from an earlier visit or while offline)
+        // go back into the queue, which keeps trying.
+        if (result.unsynced && result.sheet) queue.queueSave(result.sheet);
+      })
+      .catch(() => {
+        if (isCancelled) return;
+        // No signal and no copy on this device: say so, instead of loading forever.
+        setLoadNote({ offline: false, recovered: false, conflict: null, failed: true });
+        show(null);
+      });
 
     return () => {
       isCancelled = true;
     };
-  }, [id]);
-
-  useEffect(() => {
-    return () => {
-      clearTimeout(saveTimeoutRef.current);
-      runPendingSave();
-    };
-  }, []);
+    // queue.queueSave only changes with the character; it isn't a reason to reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, loadAttempt]);
 
   // An attack made while its weapon's details were still loading (a renamed
   // weapon added and equipped in one go) gets its numbers as soon as they
@@ -534,6 +570,21 @@ function CharacterSheetPage() {
     return (
       <main className="character-sheet character-sheet--empty">
         <h1 className="character-sheet__title">Loading character...</h1>
+      </main>
+    );
+  }
+
+  if (!sheet && loadNote.failed) {
+    return (
+      <main className="character-sheet character-sheet--empty">
+        <h1 className="character-sheet__title">Can&apos;t reach QuestKeeper right now</h1>
+        <p>Check your connection. Nothing is lost: this sheet will open as soon as the connection is back.</p>
+        <button type="button" className="character-sheet__back-link" onClick={() => setLoadAttempt((count) => count + 1)}>
+          Try again
+        </button>
+        <Link className="character-sheet__back-link" to="/characters">
+          Back to Characters
+        </Link>
       </main>
     );
   }
@@ -634,31 +685,7 @@ function CharacterSheetPage() {
       return next;
     });
 
-    saveCharacter(updatedSheet)
-      .then((saved) => {
-        setSheet((current) =>
-          current?.id === saved.id
-            ? { ...current, updatedAt: saved.updatedAt }
-            : current,
-        );
-      })
-      .catch((err) => console.error("Failed to save character:", err));
-  }
-
-  function runPendingSave() {
-    const toSave = pendingUpdateRef.current;
-    pendingUpdateRef.current = null;
-    if (!toSave) return;
-
-    saveCharacter(toSave)
-      .then((saved) => {
-        setSheet((current) =>
-          current?.id === saved.id
-            ? { ...current, updatedAt: saved.updatedAt }
-            : current,
-        );
-      })
-      .catch((err) => console.error("Failed to save character:", err));
+    queue.queueSave(updatedSheet);
   }
 
   // The numbers saved on the sheet that come from its scores and level: the
@@ -776,10 +803,7 @@ function CharacterSheetPage() {
     // (see combatEffects.js): the weapon goes back to its own numbers.
     const updated = withEffectsEnded(withSummonEnded(withCurrentNumbers(sheet, next)));
     setSheet(updated);
-    pendingUpdateRef.current = updated;
-
-    clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(runPendingSave, 600);
+    queue.queueSave(updated);
   }
 
   function handlePortraitUpload(url) {
@@ -2060,6 +2084,23 @@ function CharacterSheetPage() {
     </p>
   );
 
+  // The sheet changed on another device while edits here were waiting: keep
+  // those edits (they replace the other version), or drop them.
+  function keepMyChanges() {
+    const mine = loadNote.conflict;
+    setLoadNote((note) => ({ ...note, conflict: null }));
+    if (!mine) return;
+    const merged = { ...mine, updatedAt: serverUpdatedAt.current };
+    setSheet(merged);
+    queue.queueSave(merged);
+  }
+
+  function useSavedVersion() {
+    clearSheetCache(id);
+    writeSheetCache(id, { sheet, synced: true, baseUpdatedAt: serverUpdatedAt.current });
+    setLoadNote((note) => ({ ...note, conflict: null }));
+  }
+
   const sheetPage = (
     <main className="character-sheet" onChange={stripLeadingZeros}>
       <TurnBanner
@@ -2068,6 +2109,19 @@ function CharacterSheetPage() {
       />
 
       <div className="character-sheet__content">
+        {/* Only speaks up when something isn't simply "saved": a weak signal,
+            changes waiting, or a copy kept on this device. */}
+        <SaveStatus
+          status={queue.status}
+          isOfflineCopy={loadNote.offline}
+          recovered={loadNote.recovered}
+          conflict={Boolean(loadNote.conflict)}
+          onRetry={queue.retryNow}
+          onReload={() => setLoadAttempt((count) => count + 1)}
+          onKeepMine={keepMyChanges}
+          onUseSaved={useSavedVersion}
+        />
+
         {controlsPlace !== "side" && tableLink}
 
         {isLevelingUp && (
