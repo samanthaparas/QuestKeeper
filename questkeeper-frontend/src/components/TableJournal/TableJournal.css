@@ -363,3 +363,22 @@
     font-size: 16px;
   }
 }
+
+/* Campaigns: the DM's small "Move…" list on each note, and the note shown
+   while reading an older campaign. */
+.table-journal__select--small {
+  min-height: 28px;
+  padding: 0 6px;
+  font-size: 13px;
+}
+
+.table-journal__move {
+  margin-left: auto;
+}
+
+.table-journal__campaign-note {
+  padding: 8px 12px;
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+}

@@ -6,6 +6,7 @@ import {
   getTablePortraits,
   listJournal,
   setSessionNumber,
+  moveJournalEntries,
   startNextSession,
   subscribeToJournal,
   updateJournalEntry,
@@ -20,6 +21,8 @@ import {
 } from "../../utils/journal";
 import { getInitials } from "../../utils/characterSheet";
 import TableRecap from "../TableRecap/TableRecap";
+import CampaignTools from "../CampaignTools/CampaignTools";
+import { campaignLabel, campaignNumbers, campaignOf, sessionLabel } from "../../utils/campaigns";
 import "./TableJournal.css";
 
 const POLL_MS = 15000;
@@ -85,8 +88,15 @@ function VisibilityChoice({ value, onChange, name }) {
 // session, or write about session 41 of a long campaign), and look back at any
 // session from the "Look back at" list. isDm adds "Start session N" and a box
 // to set the table's current session. sessionNumber is the table's current one.
-function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
-  const [entries, setEntries] = useState([]);
+//
+// A table can run several campaigns one after another ("season 2"): the
+// journal opens on the current campaign, and a Campaign list reads the older
+// ones. campaignNumber / campaignNames are the table's current campaign and the
+// names the DM gave them.
+function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber = 1, campaignNames = {} }) {
+  const [allEntries, setEntries] = useState([]);
+  // Which campaign is being read (null: the current one).
+  const [viewCampaign, setViewCampaign] = useState(null);
   // Each writer's portrait, from the table's members (initials where there's none).
   const [portraits, setPortraits] = useState(() => new Map());
   const [isLoading, setIsLoading] = useState(true);
@@ -103,6 +113,19 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
   const [currentInput, setCurrentInput] = useState("");
   const draftId = useId();
   const choiceName = useId();
+
+  // The campaign on screen, and its notes. A table that never uses campaigns
+  // is one campaign, so everything looks as it always did.
+  const campaigns = campaignNumbers(allEntries, campaignNumber);
+  const hasSeveral = campaigns.length > 1;
+  const shownCampaign = campaigns.includes(viewCampaign) ? viewCampaign : campaignNumber;
+  const isCurrentCampaign = shownCampaign === campaignNumber;
+  const entries = allEntries.filter((entry) => campaignOf(entry) === shownCampaign);
+  // The session counted as "current" in the campaign on screen (an older
+  // campaign's is its last one).
+  const viewSession = isCurrentCampaign
+    ? sessionNumber
+    : entries.reduce((highest, entry) => Math.max(highest, entry.session_number ?? 1), 1);
 
   function setDraft(text) {
     setDraftText(text);
@@ -211,20 +234,20 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
 
   // What's on screen: the newest few notes (the default), every session, or
   // one session in full.
-  const choices = sessionChoices(entries, sessionNumber);
+  const choices = sessionChoices(entries, viewSession);
   const newestFirst = [...entries].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const hiddenCount = view === "recent" && !showAll ? Math.max(0, entries.length - SHOWN_NOTES) : 0;
   let sessions;
   if (view === "recent") {
     sessions = groupBySession(hiddenCount ? newestFirst.slice(0, SHOWN_NOTES) : entries);
     // Show the current session's heading even before anyone writes in it.
-    if (!sessions.some((group) => group.session === sessionNumber)) {
-      sessions.unshift({ session: sessionNumber, startedAt: null, entries: [] });
+    if (!sessions.some((group) => group.session === viewSession)) {
+      sessions.unshift({ session: viewSession, startedAt: null, entries: [] });
     }
   } else if (view === "all") {
     sessions = groupBySession(entries);
-    if (!sessions.some((group) => group.session === sessionNumber)) {
-      sessions.unshift({ session: sessionNumber, startedAt: null, entries: [] });
+    if (!sessions.some((group) => group.session === viewSession)) {
+      sessions.unshift({ session: viewSession, startedAt: null, entries: [] });
     }
   } else {
     const wanted = Number(view);
@@ -235,20 +258,37 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
   return (
     <section className="table-journal" aria-labelledby={`${draftId}-title`}>
       {/* The group's "Previously on..." recap, written and edited by everyone. */}
-      <TableRecap tableId={tableId} entries={entries} currentSession={sessionNumber} />
+      <TableRecap
+        key={shownCampaign}
+        tableId={tableId}
+        entries={entries}
+        currentSession={viewSession}
+        campaign={shownCampaign}
+        showCampaign={hasSeveral}
+      />
+      {/* Anyone at the table can sort the notes into campaigns. */}
+      <CampaignTools
+        tableId={tableId}
+        entries={allEntries}
+        campaignNumber={campaignNumber}
+        campaignNames={campaignNames}
+        onChanged={load}
+      />
       <div className="table-journal__head">
         <h2 id={`${draftId}-title`} className="table-journal__title">
           Journal
         </h2>
-        {isDm && (
+        {isDm && isCurrentCampaign && (
           <Button variant="secondary" onClick={startSession}>
-            Start session {sessionNumber + 1}
+            Start session {sessionLabel(campaignNumber, sessionNumber + 1, hasSeveral)}
           </Button>
         )}
       </div>
-      {isDm && (
+      {isDm && isCurrentCampaign && (
         <form className="table-journal__current" onSubmit={changeCurrentSession} noValidate>
-          <label htmlFor={`${draftId}-current`}>Current session is {sessionNumber}. Set it to:</label>
+          <label htmlFor={`${draftId}-current`}>
+            Current session is {sessionLabel(campaignNumber, sessionNumber, hasSeveral)}. Set it to:
+          </label>
           <input
             id={`${draftId}-current`}
             className="table-journal__number"
@@ -270,6 +310,17 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
         <strong>Just me</strong> for a private note only you can read.
       </p>
 
+      {!isCurrentCampaign && (
+        <p className="table-journal__hint table-journal__campaign-note" role="status">
+          You&apos;re reading {campaignLabel(campaignNames, shownCampaign)}. New notes go into{" "}
+          {campaignLabel(campaignNames, campaignNumber)}.{" "}
+          <button type="button" className="table-journal__link" onClick={() => setViewCampaign(null)}>
+            Back to the current campaign
+          </button>
+        </p>
+      )}
+
+      {isCurrentCampaign && (
       <form className="table-journal__composer" onSubmit={post} noValidate>
         <label className="table-journal__visually-hidden" htmlFor={draftId}>
           New note
@@ -311,6 +362,31 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
           one (or start a new one).
         </p>
       </form>
+      )}
+
+      {/* Read an earlier campaign (only when the table has more than one). */}
+      {hasSeveral && (
+        <div className="table-journal__lookback">
+          <label htmlFor={`${draftId}-campaign`}>Campaign</label>
+          <select
+            id={`${draftId}-campaign`}
+            className="table-journal__select"
+            value={shownCampaign}
+            onChange={(event) => {
+              setViewCampaign(Number(event.target.value));
+              setView("recent");
+              setShowAll(false);
+            }}
+          >
+            {campaigns.map((number) => (
+              <option key={number} value={number}>
+                {campaignLabel(campaignNames, number)}
+                {number === campaignNumber ? " (current)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Look back at any earlier session, in full. */}
       <div className="table-journal__lookback">
@@ -325,8 +401,8 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
           <option value="all">Every session</option>
           {choices.map(({ session, count }) => (
             <option key={session} value={String(session)}>
-              Session {session} ({count} {count === 1 ? "note" : "notes"})
-              {session === sessionNumber ? ", current" : ""}
+              Session {sessionLabel(shownCampaign, session, hasSeveral)} ({count} {count === 1 ? "note" : "notes"})
+              {session === viewSession && isCurrentCampaign ? ", current" : ""}
             </option>
           ))}
         </select>
@@ -344,7 +420,7 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
         sessions.map((group) => (
           <section key={group.session} className="table-journal__session">
             <h3 className="table-journal__session-title">
-              Session {group.session}
+              Session {sessionLabel(shownCampaign, group.session, hasSeveral)}
               {group.startedAt && (
                 <span className="table-journal__session-day"> · {formatDay(group.startedAt)}</span>
               )}
@@ -387,6 +463,23 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
                             <span className="table-journal__private">🔒 Just me</span>
                           )}
                         </p>
+                        {hasSeveral && !isEditing && (
+                          <label className="table-journal__move">
+                            <span className="table-journal__visually-hidden">Move this note to another campaign</span>
+                            <select
+                              className="table-journal__select table-journal__select--small"
+                              aria-label="Move this note to another campaign"
+                              value={campaignOf(entry)}
+                              onChange={(event) => run(() => moveJournalEntries(tableId, [entry.id], Number(event.target.value)))}
+                            >
+                              {campaigns.map((number) => (
+                                <option key={number} value={number}>
+                                  {number === campaignOf(entry) ? "Move…" : `Move to ${campaignLabel(campaignNames, number)}`}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
                         {isMine && !isEditing && (
                           <p className="table-journal__actions">
                             <button

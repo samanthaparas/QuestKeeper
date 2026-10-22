@@ -74,6 +74,46 @@ export async function setSessionNumber(tableId, sessionNumber) {
   );
 }
 
+// --- Campaigns (see 20261022_campaigns.sql) ------------------------------------
+// A table can run several campaigns one after another. Notes belong to the
+// table's current campaign when written. All of these are DM only.
+
+// Splits the current campaign in two at a moment: notes written before cutoff
+// stay (now named firstName), later ones become the new current campaign
+// (named secondName), optionally with their sessions numbered from 1. Returns
+// { campaign, kept, moved }.
+export async function splitCampaign(tableId, { cutoff, firstName, secondName, restartSecond = true }) {
+  return unwrap(
+    await supabase.rpc("split_campaign", {
+      p_table_id: tableId,
+      p_cutoff: cutoff,
+      p_first_name: firstName,
+      p_second_name: secondName,
+      p_restart_second: restartSecond,
+    }),
+  );
+}
+
+// Starts the next campaign from session 1.
+export async function startCampaign(tableId, name) {
+  return unwrap(await supabase.rpc("start_campaign", { p_table_id: tableId, p_name: name }));
+}
+
+export async function nameCampaign(tableId, campaign, name) {
+  unwrap(await supabase.rpc("name_campaign", { p_table_id: tableId, p_campaign: campaign, p_name: name }));
+}
+
+// Moves notes to another campaign (to fix one that landed on the wrong side).
+export async function moveJournalEntries(tableId, entryIds, campaign) {
+  return unwrap(
+    await supabase.rpc("move_journal_entries", {
+      p_table_id: tableId,
+      p_entry_ids: entryIds,
+      p_campaign: campaign,
+    }),
+  );
+}
+
 // The portraits of the characters at this table, as a Map from a player's user
 // id to their picture link, so notes can show who wrote them. Notes still work
 // without it (they fall back to initials), so a failure just gives an empty Map.

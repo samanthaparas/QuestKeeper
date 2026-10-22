@@ -10,6 +10,7 @@ import {
   startNextSession,
   updateJournalEntry,
   setSessionNumber,
+  moveJournalEntries,
 } from "../../utils/journalStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -20,6 +21,10 @@ vi.mock("../../utils/journalStore", () => ({
   deleteJournalEntry: vi.fn().mockResolvedValue(undefined),
   startNextSession: vi.fn().mockResolvedValue(undefined),
   setSessionNumber: vi.fn().mockResolvedValue(undefined),
+  moveJournalEntries: vi.fn().mockResolvedValue(1),
+  splitCampaign: vi.fn(),
+  startCampaign: vi.fn(),
+  nameCampaign: vi.fn(),
   getTablePortraits: vi.fn().mockResolvedValue(new Map([["dm", "https://example.com/dm.png"]])),
   subscribeToJournal: vi.fn(() => () => {}),
 }));
@@ -283,5 +288,56 @@ describe("TableJournal", () => {
     expect(myNote.querySelector(".table-journal__avatar img")).toBeNull();
     expect(within(myNote).getByText("B")).toBeInTheDocument();
   });
-});
 
+  describe("campaigns", () => {
+    const TWO_CAMPAIGNS = [
+      { ...NOTES[0], id: "old1", campaign_number: 1, session_number: 17, body: "Old campaign: the dragon fell." },
+      { ...NOTES[0], id: "new1", campaign_number: 2, session_number: 1, body: "Season two: two years later." },
+    ];
+    const NAMES = { 1: "The first campaign", 2: "Two Years Later" };
+
+    function renderCampaigns(props = {}) {
+      listJournal.mockResolvedValue(TWO_CAMPAIGNS);
+      return renderJournal({ sessionNumber: 1, campaignNumber: 2, campaignNames: NAMES, ...props });
+    }
+
+    it("looks exactly as before when a table has only one campaign", async () => {
+      renderJournal();
+      await screen.findByText("Recap: you reached Phandalin.");
+      expect(screen.queryByLabelText("Campaign")).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /^Session 1/ })).toBeInTheDocument();
+    });
+
+    it("opens on the current campaign, labels sessions campaign.session, and keeps the old notes out of view", async () => {
+      renderCampaigns();
+      expect(await screen.findByText("Season two: two years later.")).toBeInTheDocument();
+      expect(screen.queryByText("Old campaign: the dragon fell.")).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /^Session 2\.1/ })).toBeInTheDocument();
+      expect(screen.getByLabelText("Campaign")).toHaveValue("2");
+    });
+
+    it("lets everyone read the older campaign, and says new notes go into the current one", async () => {
+      renderCampaigns();
+      await screen.findByText("Season two: two years later.");
+
+      await userEvent.selectOptions(screen.getByLabelText("Campaign"), "1");
+      expect(await screen.findByText("Old campaign: the dragon fell.")).toBeInTheDocument();
+      expect(screen.queryByText("Season two: two years later.")).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /^Session 1\.17/ })).toBeInTheDocument();
+      expect(screen.getByText(/You're reading Campaign 1: The first campaign/)).toBeInTheDocument();
+      // No composer while reading the old one.
+      expect(screen.queryByLabelText("New note")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Back to the current campaign" }));
+      expect(await screen.findByLabelText("New note")).toBeInTheDocument();
+    });
+
+    it("gives everyone at the table a Move list on each note, and the Campaigns panel", async () => {
+      renderCampaigns({ isDm: false });
+      const note = (await screen.findByText("Season two: two years later.")).closest("li");
+      await userEvent.selectOptions(within(note).getByLabelText("Move this note to another campaign"), "1");
+      expect(moveJournalEntries).toHaveBeenCalledWith("t1", ["new1"], 1);
+      expect(screen.getByText(/^Campaigns/)).toBeInTheDocument();
+    });
+  });
+});
