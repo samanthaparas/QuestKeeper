@@ -5,7 +5,7 @@ import CategoryCard from "../../components/CategoryCard/CategoryCard";
 import Footer from "../../components/Footer/Footer";
 import { useAuth } from "../../context/useAuth";
 import { getMostRecentCharacter } from "../../utils/characterStore";
-import { getInitials, getSpellSlots } from "../../utils/characterSheet";
+import { getSpellSlots } from "../../utils/characterSheet";
 import {
   getBackgroundIcon,
   getClassIcon,
@@ -19,6 +19,7 @@ import { openQuickSearch } from "../../utils/quickJump";
 import { MIN_ANSWERS } from "../../utils/quizScoring";
 import { QUESTIONS } from "../../utils/quizData";
 import hearthArt from "../../assets/hero/inn-hearth.webp";
+import CharacterAvatar from "../../components/CharacterAvatar/CharacterAvatar";
 import "./Home.css";
 
 const SUGGESTED_SEARCHES = ["Fireball", "Elf", "Wizard", "Acolyte"];
@@ -161,11 +162,7 @@ function Home() {
           {recentCharacter && (
             <section className="home__continue-card home__continue-card--character">
               <span className="home__continue-portrait" aria-hidden="true">
-                {recentCharacter.portraitUrl ? (
-                  <img src={recentCharacter.portraitUrl} alt="" />
-                ) : (
-                  getInitials(recentCharacter.name ?? "")
-                )}
+                <CharacterAvatar character={recentCharacter} />
               </span>
               <div className="home__continue-body">
                 <h2 className="home__continue-title">Welcome back, {recentCharacter.name}</h2>

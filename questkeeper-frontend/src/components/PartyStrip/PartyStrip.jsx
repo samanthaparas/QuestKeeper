@@ -1,6 +1,6 @@
 import RuleTerm from "../RulesText/RuleTerm";
 import { conditionWord } from "../../utils/conditions";
-import { getInitials } from "../../utils/characterSheet";
+import CharacterAvatar from "../CharacterAvatar/CharacterAvatar";
 import "./PartyStrip.css";
 
 const HEALTH_LABELS = { bloodied: "Bloodied", down: "Down" };
@@ -54,11 +54,7 @@ function PartyStrip({ rows, onSelect, selectedId, compact = false, hideStatusFor
         >
           {/* The name sits right next to it, so the picture itself is decoration. */}
           <span className="party-strip__portrait" aria-hidden="true">
-            {row.portraitUrl ? (
-              <img src={row.portraitUrl} alt="" loading="lazy" />
-            ) : (
-              getInitials(row.name)
-            )}
+            <CharacterAvatar character={row} />
           </span>
 
           <div className="party-strip__who">

@@ -52,7 +52,7 @@ import {
   hasActiveNudge,
   nudgeMessage,
 } from "../../utils/tableGuidance";
-import { formatModifier, getAbilityModifier, getInitials, rollDie } from "../../utils/characterSheet";
+import { formatModifier, getAbilityModifier, rollDie } from "../../utils/characterSheet";
 import { toPartyRow } from "../../utils/partyStrip";
 import { shouldReduceMotion } from "../../utils/motionPreference";
 import Button from "../../components/Button/Button";
@@ -63,6 +63,7 @@ import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEdi
 import PlayerCharacterCard from "../../components/PlayerCharacterCard/PlayerCharacterCard";
 import PartyStrip from "../../components/PartyStrip/PartyStrip";
 import DmStoryTab from "../../components/DmStoryTab/DmStoryTab";
+import CharacterAvatar from "../../components/CharacterAvatar/CharacterAvatar";
 import TableJournal from "../../components/TableJournal/TableJournal";
 import TableHandouts from "../../components/TableHandouts/TableHandouts";
 import TableRules from "../../components/TableRules/TableRules";
@@ -484,6 +485,7 @@ function CombatantSummaryRow({
   playerStats = null,
   statusRow = null,
   portraitUrl = "",
+  avatarCharacter = null,
   combatActive = false,
   pendingCalls = [],
   onSetInitiative,
@@ -547,7 +549,7 @@ function CombatantSummaryRow({
             <CreatureBadge src={creatureArt} />
           ) : (
             <span className="table-page__row-portrait table-page__row-portrait--small" aria-hidden="true">
-              {portraitUrl ? <img src={portraitUrl} alt="" /> : getInitials(combatant.name ?? "")}
+              <CharacterAvatar character={avatarCharacter} name={combatant.name} portraitUrl={portraitUrl} />
             </span>
           )}
           <span className="table-page__compact-name">
@@ -684,6 +686,7 @@ function CombatantRow({
   targets = [],
   recentEvents = [],
   portraitUrl = "",
+  avatarCharacter = null,
   tableId,
   onChanged,
   onEdit,
@@ -813,7 +816,7 @@ function CombatantRow({
                 {combatant.kind === "player" && (
                   // The character's portrait (or initials), so faces are easy to spot.
                   <span className="table-page__row-portrait" aria-hidden="true">
-                    {portraitUrl ? <img src={portraitUrl} alt="" /> : getInitials(combatant.name ?? "")}
+                    <CharacterAvatar character={avatarCharacter} name={combatant.name} portraitUrl={portraitUrl} />
                   </span>
                 )}
                 {isSplit && <CreatureBadge src={creatureArt} />}
@@ -1476,6 +1479,13 @@ function TablePage() {
   // Players' portraits for the turn order: everyone at the table gets them from
   // the table's portrait list; the DM's sheets, a player's own sheet and the
   // shared party view fill in anything it missed.
+  const avatarByUser = new Map();
+  for (const mini of partyMinis) if (mini.userId) avatarByUser.set(mini.userId, mini);
+  for (const member of members) {
+    const sheet = characters.find((entry) => entry.id === member.character_id);
+    if (sheet) avatarByUser.set(member.user_id, sheet);
+  }
+  if (user?.id && mySheet) avatarByUser.set(user.id, mySheet);
   const portraitByUser = new Map(tablePortraits);
   for (const mini of partyMinis) if (mini.userId && mini.portraitUrl) portraitByUser.set(mini.userId, mini.portraitUrl);
   for (const member of members) {
@@ -1620,6 +1630,7 @@ function TablePage() {
       combatant,
       isCurrent: table.combat_active && combatant.id === table.current_combatant_id,
       portraitUrl: portraitByUser.get(combatant.user_id) ?? "",
+      avatarCharacter: avatarByUser.get(combatant.user_id),
       isDm,
       isMe,
       hp: enemyHp[combatant.id],
@@ -2273,9 +2284,41 @@ function TablePage() {
         </section>
   ));
 
+  const handoutsPanel = onTab("story") && (
+    <TableHandouts
+      tableId={table.id}
+      isDm={isDm}
+      players={players.map((player) => ({ userId: player.user_id, name: player.name }))}
+      onSharedWithEveryone={(title) =>
+        run(() =>
+          Promise.all([
+            dmLog(table.id, `📜 The DM shared a handout: ${title}`, "handout"),
+            // Also into the journal, so the session recap shows when it appeared.
+            addJournalEntry(table.id, {
+              body: `📜 Shared a handout: ${title}`,
+              visibility: "table",
+            }),
+          ]),
+        )
+      }
+    />
+  );
+  const journalPanel = onTab("story") && (
+    <TableJournal
+      tableId={table.id}
+      userId={user?.id}
+      isDm={isDm}
+      composerLast={isDm}
+      avatarCharacters={avatarByUser}
+      sessionNumber={table.session_number ?? 1}
+      campaignNumber={table.campaign_number ?? 1}
+      campaignNames={table.campaign_names ?? {}}
+    />
+  );
+
   return (
     <main className={`table-page${isDm ? " table-page--dm" : ""}`}>
-      <div className={`table-page__content${dmCombatLayout ? " table-page__content--wide" : ""}`}>
+      <div className={`table-page__content${dmCombatLayout || (isDm && dmTab === "story") ? " table-page__content--wide" : ""}`}>
         <Link className="table-page__back" to={isDm ? "/dm" : "/games"}>
           {isDm ? "← DM Screen" : "← My Games"}
         </Link>
@@ -2334,7 +2377,7 @@ function TablePage() {
         {/* What the DM doesn't allow here (nothing shows if nothing is blocked). */}
         {!isDm && <ContentNotice banned={cleanBanned(table.banned_content)} sheet={mySheet} />}
 
-        {!dmCombatLayout && partyBlock}
+        {!dmCombatLayout && !(isDm && dmTab === "story") && partyBlock}
 
         {(isDm || myMember) && (
           <div className="table-page__tabs-bar">
@@ -2495,40 +2538,26 @@ function TablePage() {
 
         {!dmCombatLayout && damageBlock}
 
-        {isDm && dmTab === "story" && <DmStoryTab characters={characters} />}
-
         {/* Handouts: made and revealed on the DM's Story tab; players see
-            the ones revealed to them on their page. */}
+            the ones revealed to them on their page. The shared journal is on
+            the DM's Story tab and every player's page. The DM's Story tab lays
+            the party clues, journal and handouts side by side (TablePage.css). */}
         {onTab("story") && (
-          <TableHandouts
-            tableId={table.id}
-            isDm={isDm}
-            players={players.map((player) => ({ userId: player.user_id, name: player.name }))}
-            onSharedWithEveryone={(title) =>
-              run(() =>
-                Promise.all([
-                  dmLog(table.id, `📜 The DM shared a handout: ${title}`, "handout"),
-                  // Also into the journal, so the session recap shows when it appeared.
-                  addJournalEntry(table.id, {
-                    body: `📜 Shared a handout: ${title}`,
-                    visibility: "table",
-                  }),
-                ]),
-              )
-            }
-          />
-        )}
-
-        {/* The shared journal: the DM's Story tab, and every player's page. */}
-        {onTab("story") && (
-          <TableJournal
-            tableId={table.id}
-            userId={user?.id}
-            isDm={isDm}
-            sessionNumber={table.session_number ?? 1}
-            campaignNumber={table.campaign_number ?? 1}
-            campaignNames={table.campaign_names ?? {}}
-          />
+          <div className={isDm ? "table-page__story-grid" : "table-page__story-plain"} ref={isDm ? combatRef : undefined}>
+            {isDm && (
+              <div className="table-page__story-clues">
+                <DmStoryTab
+                  characters={characters}
+                  statusFor={(id) => <StatusLine name="" status={statusOf(partyRowById.get(id))} />}
+                />
+              </div>
+            )}
+            {isDm ? (
+              <div className="table-page__story-journal">{journalPanel}</div>
+            ) : null}
+            <div className={isDm ? "table-page__story-handouts" : undefined}>{handoutsPanel}</div>
+            {!isDm && journalPanel}
+          </div>
         )}
 
         {isDm && dmTab === "players" && (

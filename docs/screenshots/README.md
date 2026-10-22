@@ -54,6 +54,16 @@ These folders show the redesign in progress. All of them were made from the runn
 - [`2026-10-23-dm-party-fold/`](2026-10-23-dm-party-fold/): 820x1180 with the Party panel really collapsed and expanded, in both themes.
 - [`2026-10-23-dm-tabs/`](2026-10-23-dm-tabs/): the DM screen's Story, Players and Prep tabs at 1440x900 and 820x1180, both themes, full page (empty handouts and journal, no saved table rules).
 
+## 2026-10-24 to 2026-10-25: the DM screen's Story tab (in review, not yet merged)
+
+Both folders are made from the running app with **made-up sample data**, not a real table.
+
+- `2026-10-24-dm-story/`: the first Story pass (party clues, journal, handouts). Superseded by the next folder.
+- `2026-10-25-dm-story-pass2/`: the second Story pass: the journal as a feed (slim header, recap strip, one filter row, scrolling notes, note box at the bottom, Session options folded), party clues with the character details folded, and simpler handout cards. Includes 1440x900 and 1280x720 in both themes, 820x1180 with the clues collapsed and expanded, Session options open, handout options and character details open, and the empty states.
+
+- `2026-10-26-dm-story-correction/`: the Story tab after the tablet journal-overlap fix and the handout keyboard-focus fix: 820x1180 with the clues collapsed and expanded (journal scrolled to the last note), a 390x844 phone view, 1440x900 and 1280x720 in both themes, and a long handout with keyboard focus on a lower action. Sample data.
+- `2026-10-27-dm-story-title-zoom/`: the Story tab with the "Show full title" button on a long handout title: 1280x720 in both themes (Options open, title expanded), a 390x844 touch-sized phone view, a 820x1180 tablet view with the note box clear of every note, and real 200% browser zoom (profile zoom, not emulation) in both themes. Sample data.
+
 ## Taking a new round
 
 1. Make a folder named with today's date, for example `docs/screenshots/2026-11-20/`.

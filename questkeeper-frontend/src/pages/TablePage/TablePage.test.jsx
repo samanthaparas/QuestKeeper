@@ -1501,7 +1501,10 @@ describe("DM screen tabs", () => {
     expect(await screen.findByText("Common, Infernal")).toBeInTheDocument();
     expect(screen.getByText("Darkvision")).toBeInTheDocument();
     // Wis +2, proficiency +2: passive Perception 14.
-    expect(screen.getByText(/Perception 14 · Insight 12 · Investigation 10/)).toBeInTheDocument();
+    // (on the character's card, once: short on screen, in full for screen readers).
+    expect(screen.getByText("Perception 14")).toBeInTheDocument();
+    expect(screen.getByText("Insight 12")).toBeInTheDocument();
+    expect(screen.getByText("Investigation 10")).toBeInTheDocument();
   });
 
   it("opens a character's card on the Players tab from the party strip", async () => {

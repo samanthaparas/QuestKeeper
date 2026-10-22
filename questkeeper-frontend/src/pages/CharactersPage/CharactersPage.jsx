@@ -6,7 +6,7 @@ import {
   saveCharacterOrder,
   sortByListPosition,
 } from "../../utils/characterStore";
-import { getInitials } from "../../utils/characterSheet";
+import CharacterAvatar from "../../components/CharacterAvatar/CharacterAvatar";
 import "./CharactersPage.css";
 import Button from "../../components/Button/Button";
 
@@ -54,7 +54,7 @@ function CharacterSummary({ sheet }) {
   return (
     <>
       <span className="characters-page__portrait" aria-hidden="true">
-        {sheet.portraitUrl ? <img src={sheet.portraitUrl} alt="" /> : getInitials(sheet.name)}
+        <CharacterAvatar character={sheet} />
       </span>
 
       <span className="characters-page__item-text">

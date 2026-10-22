@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import RuleTerm from "../RulesText/RuleTerm";
-import { getInitials } from "../../utils/characterSheet";
+import CharacterAvatar from "../CharacterAvatar/CharacterAvatar";
 import { conditionWord } from "../../utils/conditions";
 import { toPartyRow } from "../../utils/partyStrip";
 import "./PlayerCharacterCard.css";
@@ -35,11 +35,7 @@ function PlayerCharacterCard({ sheet, characterId }) {
   return (
     <section className={`player-card player-card--${row.health}`} aria-label="Your character">
       <div className="player-card__portrait" aria-hidden="true">
-        {sheet.portraitUrl ? (
-          <img src={sheet.portraitUrl} alt="" />
-        ) : (
-          <span>{getInitials(sheet.name)}</span>
-        )}
+        <CharacterAvatar character={sheet} />
       </div>
 
       <div className="player-card__who">

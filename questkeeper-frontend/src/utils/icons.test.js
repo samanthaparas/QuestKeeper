@@ -140,3 +140,13 @@ describe("getActivityIcon", () => {
     expect(getActivityIcon("ATTACK")).toBeUndefined();
   });
 });
+
+describe("getDmSupportIcon", () => {
+  it("has the four small pictures for the DM screen, and nothing for any other name", async () => {
+    const { getDmSupportIcon, DM_SUPPORT_ICONS } = await import("./icons");
+    expect(DM_SUPPORT_ICONS).toEqual(["party-clues", "languages", "senses", "loot"]);
+    for (const name of DM_SUPPORT_ICONS) expect(getDmSupportIcon(name)).toBeTruthy();
+    expect(getDmSupportIcon("handout-map")).toBeUndefined();
+    expect(getDmSupportIcon(undefined)).toBeUndefined();
+  });
+});
