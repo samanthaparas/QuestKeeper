@@ -956,3 +956,2461 @@
 .table-page__save-result {
   color: var(--qk-text);
 }
+
+/* ---------- The DM screen, styled as a cosy tavern ----------
+   Warm panels with a thin brass edge, a title banner with a lantern picture,
+   and (on wide screens) the Combat tab in three panels. Only the DM screen
+   gets this (.table-page--dm); a player's game page keeps its own look. The
+   picture never sits behind combat information. */
+.table-page--dm {
+  --dm-panel-edge: color-mix(in srgb, var(--qk-brass) 55%, var(--qk-border));
+  --dm-panel-bg: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--qk-surface) 92%, var(--qk-brass)) 0%,
+    var(--qk-surface) 55%
+  );
+}
+
+.table-page--dm .table-page__combat,
+.table-page--dm .table-page__section,
+.table-page--dm .table-page__party {
+  border: 1px solid var(--dm-panel-edge);
+  background: var(--dm-panel-bg);
+  box-shadow: 0 10px 26px var(--qk-shadow);
+}
+
+.table-page--dm .table-page__section--alert {
+  border: 2px solid var(--qk-terracotta);
+  background: var(--qk-terracotta-soft);
+}
+
+.table-page--dm .table-page__party {
+  padding: 16px 18px;
+  border-radius: var(--qk-radius-card);
+}
+
+.table-page--dm .table-page__content {
+  gap: 20px;
+}
+
+/* The title banner: the lantern picture fills its right side, faded into the
+   panel colour so the title always sits on a plain background. */
+.table-page--dm .table-page__header {
+  position: relative;
+  overflow: hidden;
+  min-height: 92px;
+  padding: 16px 20px;
+  align-items: center;
+  border: 1px solid var(--dm-panel-edge);
+  border-radius: var(--qk-radius-large);
+  background: var(--qk-surface);
+  box-shadow: 0 10px 26px var(--qk-shadow);
+}
+
+.table-page__banner-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: right 44%;
+}
+
+.table-page--dm .table-page__header::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    var(--qk-surface) 0%,
+    color-mix(in srgb, var(--qk-surface) 94%, transparent) 40%,
+    color-mix(in srgb, var(--qk-surface) 50%, transparent) 58%,
+    transparent 74%
+  );
+}
+
+.table-page--dm .table-page__header > *:not(.table-page__banner-art) {
+  position: relative;
+  z-index: 1;
+}
+
+.table-page--dm .table-page__title {
+  font-size: 32px;
+}
+
+.table-page--dm .table-page__code {
+  padding: 6px 16px;
+  background-color: var(--qk-surface);
+}
+
+.table-page--dm .table-page__code-value {
+  font-size: 26px;
+}
+
+/* Tabs sit as a tidy row under the banner. */
+.table-page--dm .table-page__dm-tab--active {
+  background: var(--dm-panel-bg);
+  border-color: var(--dm-panel-edge);
+}
+
+/* The Combat tab's three panels. Stacked (party, fight, damage and activity)
+   until there's room for them side by side. */
+.table-page__dm-grid {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+}
+
+.table-page__dm-party,
+.table-page__dm-main,
+.table-page__dm-side {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* The party's rows are a little tighter in their own panel. */
+.table-page__dm-party .party-strip__row {
+  padding: 8px 12px;
+  gap: 6px 14px;
+}
+
+/* Titles a little smaller inside the narrower panels. */
+.table-page__dm-grid .table-page__section-title,
+.table-page__dm-party .table-page__section-title {
+  font-size: 21px;
+}
+
+/* Tablet portrait: the party's rows sit two across, so the fight isn't
+   pushed far down the page. */
+@media (min-width: 600px) and (max-width: 899px) {
+  .table-page__dm-party .party-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.table-page__content--wide {
+  max-width: 1480px;
+}
+
+/* Laptops and landscape tablets (up to 1359px, where three panels would
+   squeeze the fight): the fight on the left, and the party with the damage
+   form and activity in a column on the right. */
+@media (min-width: 900px) and (max-width: 1359px) {
+  .table-page__dm-grid {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-areas:
+      "main party"
+      "main side";
+  }
+
+  .table-page__dm-party {
+    grid-area: party;
+  }
+
+  .table-page__dm-main {
+    grid-area: main;
+  }
+
+  .table-page__dm-side {
+    grid-area: side;
+  }
+
+  .table-page__dm-grid .table-page__order {
+    max-height: calc(100vh - 300px);
+    min-height: 240px;
+  }
+
+  .table-page__dm-grid .table-page__log {
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+}
+
+/* Wide screens: three panels side by side. The side panels stay in view as
+   the fight list scrolls, and a long party or log scrolls inside its own
+   panel. */
+@media (min-width: 1360px) {
+  .table-page__dm-grid {
+    grid-template-columns: 290px minmax(0, 1fr) 320px;
+  }
+
+  .table-page__dm-party,
+  .table-page__dm-side {
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    align-content: start;
+    padding-right: 2px;
+  }
+
+  .table-page__dm-grid .table-page__order {
+    max-height: calc(100vh - 300px);
+    min-height: 240px;
+  }
+
+  .table-page__dm-grid .table-page__log {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+}
+
+/* In the DM's panels the turn line and the buttons wrap onto their own
+   lines instead of squeezing the words into a narrow strip. */
+.table-page__dm-grid .table-page__turn-line {
+  flex: 1 1 260px;
+}
+
+.table-page__dm-grid .table-page__combat-buttons {
+  flex-basis: 100%;
+}
+
+/* The links on the DM screen use the darker accent, so they read clearly on
+   the cream page and banner in light mode (the lighter one is only 3.9:1). */
+.table-page--dm .table-page__back,
+.table-page--dm .table-page__guide-link {
+  color: var(--qk-terracotta-hover);
+}
+
+/* ---------- Combat usability pass ---------- */
+
+/* Less empty space at the top of the DM screen, and a slimmer banner with the
+   lantern kept subtle. */
+.table-page--dm {
+  padding-top: 14px;
+  padding-bottom: 24px;
+}
+
+.table-page--dm .table-page__content {
+  gap: 14px;
+}
+
+.table-page--dm .table-page__back {
+  display: inline-block;
+  line-height: 1.2;
+}
+
+.table-page--dm .table-page__header {
+  min-height: 72px;
+  padding: 10px 20px;
+}
+
+.table-page--dm .table-page__title {
+  font-size: 28px;
+}
+
+.table-page--dm .table-page__role {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.table-page--dm .table-page__code {
+  padding: 4px 14px;
+}
+
+.table-page--dm .table-page__code-value {
+  font-size: 22px;
+}
+
+.table-page__banner-art {
+  opacity: 0.8;
+}
+
+/* The turn line and its buttons (Next turn...) stay in view while the page
+   scrolls, so the DM never has to hunt for them. */
+.table-page--dm .table-page__combat-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: -24px -24px 0;
+  padding: 14px 24px 10px;
+  border-bottom: 1px solid var(--dm-panel-edge);
+  border-radius: var(--qk-radius-card) var(--qk-radius-card) 0 0;
+  background: color-mix(in srgb, var(--qk-surface) 94%, var(--qk-brass));
+}
+
+/* Scrolling lists leave a little room all round, so a focus ring on the
+   first, last or edge control is never cut off. */
+.table-page--dm .table-page__order {
+  padding: 4px;
+}
+
+.table-page--dm .table-page__log {
+  padding: 3px;
+}
+
+.table-page__log:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 0;
+}
+
+.table-page--dm .table-page__dm-party,
+.table-page--dm .table-page__dm-side {
+  padding: 4px;
+}
+
+/* Comfortable buttons in the DM's rows. */
+.table-page--dm .table-page__icon-button {
+  width: 40px;
+  height: 40px;
+}
+
+.table-page--dm .table-page__number::placeholder,
+.table-page--dm .table-page__input::placeholder {
+  color: var(--qk-text-muted);
+  opacity: 1;
+}
+
+.table-page__compact-name {
+  display: grid;
+  min-width: 0;
+}
+
+.table-page__compact-name .table-page__row-name {
+  font-size: 16px;
+}
+
+.table-page__compact-hp {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  color: var(--qk-warning);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.table-page__compact-hp .table-page__hp-bar {
+  width: 90px;
+}
+
+.table-page__row-portrait--creature {
+  width: 36px;
+  height: 36px;
+  border-width: 2px;
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text-muted);
+}
+
+.table-page__row-portrait--creature img {
+  width: 100%;
+  height: 100%;
+  padding: 2px;
+  object-fit: contain;
+}
+
+/* Inside a row that's open, the badge sits beside the name at the same size
+   as the text line, so the row doesn't get taller. */
+.table-page__row-name .table-page__row-portrait--creature {
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* The party on narrow screens: one "Party · 4 players" line that opens. */
+.table-page__party-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--dm-panel-edge);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.table-page__party-toggle:hover {
+  background-color: var(--qk-terracotta-soft);
+}
+
+.table-page__party-toggle:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.table-page__party-glance {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.table-page__party-toggle-word {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.table-page__party-body {
+  display: none;
+  gap: 12px;
+}
+
+.table-page__party-body--open {
+  display: grid;
+}
+
+/* Wide enough for the party to sit beside the fight: always shown. */
+@media (min-width: 900px) {
+  .table-page__party-toggle {
+    display: none;
+  }
+
+  .table-page__party-body {
+    display: grid;
+  }
+}
+
+/* The damage form: a visible label above every box. */
+.table-page__dm-side .table-page__monster-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.table-page__field {
+  margin-top: 4px;
+}
+
+.table-page__field-label {
+  color: var(--qk-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.table-page__help {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.table-page__help summary {
+  display: inline-block;
+  min-height: 32px;
+  padding: 4px 0;
+  color: var(--qk-terracotta-hover);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-page__help summary:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.table-page__help p {
+  margin: 4px 0 0;
+}
+
+.table-page__dm-side .table-page__monster-form .table-page__number {
+  width: 100%;
+  text-align: left;
+}
+
+.table-page__dm-side .table-page__monster-form .qk-button {
+  width: 100%;
+  margin-top: 6px;
+}
+
+/* Stacked layouts (tablet portrait and below): the page itself scrolls, so
+   the fight list doesn't need a scroll box of its own, and the turn line with
+   Next turn stays pinned above it. */
+@media (max-width: 899px) {
+  .table-page--dm .table-page__dm-grid .table-page__order {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* Explanatory text inside the DM's tinted panels is a shade stronger than the
+   usual muted colour, so it stays comfortably readable on them. */
+.table-page--dm .table-page__hint,
+.table-page--dm .table-page__help,
+.table-page--dm .table-page__party-share,
+.table-page--dm .table-page__party-glance {
+  color: color-mix(in srgb, var(--qk-text-muted) 55%, var(--qk-text));
+}
+
+/* Readable on the DM's tinted panels in light mode: the quieter text colour is
+   a little stronger here (a mix of the main text and the page colour), and
+   the coloured status words and small tags use a deeper shade. */
+.table-page--dm .table-page__header,
+.table-page--dm .table-page__dm-tabs,
+.table-page--dm .table-page__dm-grid {
+  --qk-text-muted: color-mix(in srgb, var(--qk-text) 78%, var(--qk-background));
+}
+
+.table-page--dm .table-page__dm-grid .table-page__status--bloodied,
+.table-page--dm .table-page__dm-grid .table-page__status--down,
+.table-page--dm .table-page__dm-grid .party-strip__health {
+  color: color-mix(in srgb, var(--qk-danger) 65%, var(--qk-text));
+}
+
+.table-page--dm .table-page__dm-grid .table-page__secret-hp,
+.table-page--dm .table-page__dm-grid .table-page__compact-hp {
+  color: color-mix(in srgb, var(--qk-warning) 50%, var(--qk-text));
+}
+
+.table-page--dm .table-page__dm-grid .table-page__tag,
+.table-page--dm .table-page__dm-grid .table-page__row-portrait,
+.table-page--dm .table-page__dm-grid .party-strip__portrait {
+  color: var(--qk-text);
+}
+
+.table-page--dm .table-page__dm-grid .party-strip__death-success {
+  color: color-mix(in srgb, var(--qk-moss) 55%, var(--qk-text));
+}
+
+.table-page--dm .table-page__dm-grid .party-strip__death-failure {
+  color: color-mix(in srgb, var(--qk-danger) 65%, var(--qk-text));
+}
+
+/* Room for a focus ring at the very top or bottom of a scrolling panel, and
+   when the browser scrolls a focused control into view. */
+.table-page--dm .table-page__dm-party,
+.table-page--dm .table-page__dm-side,
+.table-page--dm .table-page__order,
+.table-page--dm .table-page__log {
+  scroll-padding: 16px;
+}
+
+.table-page--dm .table-page__dm-party,
+.table-page--dm .table-page__dm-side {
+  padding: 4px 4px 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-page--dm .qk-button {
+    transition: none;
+  }
+}
+
+/* ---------- Combat compactness pass (matches the saved mockup's proportions) ---------- */
+
+/* A row hidden with the hidden attribute stays hidden even though rows are
+   flex boxes. */
+.table-page__row[hidden] {
+  display: none;
+}
+
+/* Tighter panels, headings and gaps. */
+.table-page--dm .table-page__content {
+  gap: 12px;
+}
+
+.table-page__dm-grid,
+.table-page__dm-party,
+.table-page__dm-main,
+.table-page__dm-side {
+  gap: 12px;
+}
+
+.table-page--dm .table-page__combat,
+.table-page--dm .table-page__section {
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.table-page--dm .table-page__party {
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.table-page--dm .table-page__section-title {
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.table-page--dm .table-page__subtitle--order {
+  margin: 0;
+  font-size: 17px;
+}
+
+.table-page--dm .table-page__combat-head {
+  margin: -14px -16px 0;
+  padding: 10px 16px 8px;
+  gap: 6px 16px;
+}
+
+.table-page--dm .table-page__hint {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* The title banner: the join code is a small pill right beside the name,
+   wrapping under it when the name is long. The right side stays clear for the
+   lantern. */
+.table-page--dm .table-page__header-text {
+  max-width: min(100%, 640px);
+}
+
+.table-page__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+}
+
+.table-page--dm .table-page__code {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 12px;
+  border: 1.5px dashed var(--qk-brass);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+}
+
+.table-page--dm .table-page__code-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.table-page--dm .table-page__code-value {
+  font-size: 18px;
+  letter-spacing: 0.14em;
+}
+
+.table-page--dm .table-page__header {
+  min-height: 64px;
+  padding: 8px 18px;
+}
+
+.table-page--dm .table-page__title {
+  font-size: 26px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+/* ----- The initiative list: one short line per creature ----- */
+.table-page--dm .table-page__order {
+  gap: 6px;
+}
+
+.table-page--dm .table-page__row--summary {
+  display: block;
+  padding: 0;
+  border-radius: var(--qk-radius-control);
+}
+
+.table-page__summary-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.table-page__row-select {
+  display: grid;
+  flex: 1 1 280px;
+  grid-template-columns: 34px 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--qk-radius-control);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.table-page__row-select:hover {
+  background-color: color-mix(in srgb, var(--qk-terracotta-soft) 55%, transparent);
+}
+
+.table-page__row-select:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: -3px;
+}
+
+.table-page__row--summary .table-page__initiative {
+  min-width: 0;
+  font-size: 20px;
+}
+
+.table-page__row-portrait--small {
+  width: 34px;
+  height: 34px;
+  border-width: 2px;
+  font-size: 13px;
+}
+
+.table-page__row-portrait--small img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.table-page__row--summary .table-page__row-portrait--creature {
+  width: 34px;
+  height: 34px;
+}
+
+.table-page__row--summary .table-page__row-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.table-page__row--summary .table-page__status {
+  font-size: 13px;
+}
+
+.table-page__row--summary .table-page__compact-hp .table-page__hp-bar {
+  width: 80px;
+}
+
+/* Whose turn it is: a warm tint and a "Turn" tag. Who is picked: an accent
+   bar and a ring. They are separate things and can be on different rows. */
+.table-page__row--summary.table-page__row--current {
+  background: var(--qk-terracotta-soft);
+  border-color: var(--qk-terracotta);
+}
+
+.table-page__row--summary.table-page__row--selected {
+  box-shadow: inset 5px 0 0 var(--qk-terracotta), 0 0 0 2px var(--qk-terracotta);
+}
+
+.table-page__tag--turn {
+  background-color: var(--qk-terracotta);
+  color: var(--qk-on-accent);
+}
+
+.table-page__tag--call {
+  background-color: var(--qk-danger);
+  color: var(--qk-surface);
+}
+
+.table-page--dm .table-page__dm-grid .table-page__tag--turn,
+.table-page--dm .table-page__dm-grid .table-page__tag--call {
+  color: var(--qk-on-accent);
+}
+
+.table-page__row-jump {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-control);
+  background: transparent;
+  color: var(--qk-text);
+  cursor: pointer;
+}
+
+.table-page__row-jump:hover {
+  background-color: var(--qk-terracotta-soft);
+}
+
+.table-page__row-jump:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.table-page__summary-initiative {
+  padding: 0 10px 6px;
+}
+
+.table-page__summary-line > .qk-button {
+  margin: 0 10px 6px;
+}
+
+.table-page__row--summary .table-page__row-call {
+  margin: 0 10px 8px;
+}
+
+/* ----- The picked creature's controls, under the list ----- */
+.table-page__detail {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--qk-terracotta);
+  border-left-width: 5px;
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-input-bg);
+}
+
+.table-page__detail:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.table-page__detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.table-page__detail-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.table-page__detail-note {
+  flex: 1;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.table-page__row--detail {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Wide screens: the list is a scroll box (about seven lines tall) with the
+   controls underneath; the page scrolls below that. */
+@media (min-width: 900px) {
+  .table-page--dm .table-page__dm-grid .table-page__order {
+    max-height: min(400px, calc(100vh - 420px));
+    min-height: 200px;
+  }
+}
+
+/* ----- Compact party cards: picture | name and class | AC, with HP and a slim
+   bar under the name, and the passive scores on a small line of their own. ----- */
+.table-page__dm-party .party-strip {
+  gap: 6px;
+}
+
+.table-page__dm-party .party-strip__row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1px 10px;
+  padding: 7px 10px;
+  border-left-width: 4px;
+}
+
+.table-page__dm-party .party-strip__portrait {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 40px;
+  height: 40px;
+  border-width: 2px;
+  font-size: 14px;
+}
+
+.table-page__dm-party .party-strip__who {
+  display: flex;
+  grid-column: 2;
+  grid-row: 1;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.table-page__dm-party .party-strip__name {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.table-page__dm-party .party-strip__summary {
+  font-size: 12px;
+}
+
+.table-page__dm-party .party-strip__hp {
+  display: flex;
+  grid-column: 2;
+  grid-row: 2;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: none;
+}
+
+.table-page__dm-party .party-strip__hp-text {
+  flex: 0 1 auto;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.table-page__dm-party .party-strip__bar {
+  flex: 1 1 36px;
+  min-width: 36px;
+  height: 6px;
+}
+
+.table-page__dm-party .party-strip__ac {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.table-page__dm-party .party-strip__ac .party-strip__label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.table-page__dm-party .party-strip__passives {
+  grid-column: 1 / -1;
+  margin-top: 3px;
+  gap: 0 10px;
+  font-size: 12px;
+}
+
+.table-page__dm-party .party-strip__death-saves,
+.table-page__dm-party .party-strip__concentration,
+.table-page__dm-party .party-strip__conditions,
+.table-page__dm-party .party-strip__companion {
+  grid-column: 1 / -1;
+}
+
+.table-page__dm-party .party-strip__companion {
+  margin-left: 0;
+}
+
+/* ----- The damage form: fields side by side where there's room ----- */
+.table-page__dm-side .table-page__monster-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  align-items: end;
+  gap: 8px;
+}
+
+.table-page__field-group {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.table-page__field-group .table-page__input,
+.table-page__field-group .table-page__number {
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+
+.table-page__dm-side .table-page__monster-form .qk-button {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+}
+
+.table-page__field {
+  margin: 0;
+}
+
+/* ----- Activity: compact ----- */
+.table-page--dm .table-page__log {
+  gap: 4px;
+}
+
+.table-page--dm .table-page__log li {
+  padding: 5px 10px;
+  font-size: 14px;
+}
+
+/* The picked creature's panel already says who it is in its heading and the
+   list shows their initiative, so the repeated name and number stay for
+   screen readers only. */
+.table-page__row--detail .table-page__row-name,
+.table-page__row--detail .table-page__row-main > .table-page__initiative {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.table-page__row--detail .table-page__row-main {
+  gap: 0;
+}
+
+/* Attacker | Target on one line, then Damage beside the Send button (in the
+   narrow side column); the whole form on one line plus the button when it has
+   the full width (stacked layouts). */
+.table-page__dm-side .table-page__monster-form {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: end;
+}
+
+.table-page__dm-side .table-page__monster-form .table-page__field-group--wide {
+  grid-column: auto;
+}
+
+.table-page__dm-side .table-page__monster-form .qk-button {
+  grid-column: 2;
+  align-self: end;
+  min-height: 40px;
+  margin-top: 0;
+  padding: 4px 10px;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+@media (max-width: 899px) {
+  .table-page__dm-side .table-page__monster-form {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.3fr) minmax(90px, 0.7fr);
+  }
+
+  .table-page__dm-side .table-page__monster-form .qk-button {
+    grid-column: 1 / -1;
+  }
+}
+
+
+/* Condition words in the DM's party cards: a deeper purple on the pale pill. */
+.table-page__dm-party .party-strip__condition,
+.table-page__dm-party .party-strip__condition .rule-term__word {
+  color: #2a1a3b;
+}
+
+/* ---------- Shorter Party cards, with statuses on the initiative line ---------- */
+
+/* Picture | name and class | AC, HP and a slim bar under the name, and the
+   passive scores on one small line. No fixed height: a downed character's
+   death saves, or a long name, simply make that card a little taller. */
+.table-page__dm-party .party-strip {
+  gap: 5px;
+}
+
+.table-page__dm-party .party-strip__row {
+  gap: 0 10px;
+  padding: 6px 10px;
+}
+
+.table-page__dm-party .party-strip__portrait {
+  width: 38px;
+  height: 38px;
+  font-size: 13px;
+}
+
+.table-page__dm-party .party-strip__name {
+  font-size: 15.5px;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
+}
+
+.table-page__dm-party .party-strip__hp-text {
+  font-size: 13.5px;
+  line-height: 1.25;
+}
+
+.table-page__dm-party .party-strip__bar {
+  height: 5px;
+}
+
+.table-page__dm-party .party-strip__ac {
+  font-size: 16px;
+}
+
+.table-page__dm-party .party-strip__passives {
+  margin-top: 1px;
+  gap: 0 8px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.table-page__dm-party .party-strip__passives .party-strip__label {
+  font-size: 10px;
+}
+
+.party-strip__passive {
+  position: relative;
+}
+
+/* Conditions and concentration on the initiative line: a readable second line
+   under the name, under the same indent as the name. */
+.table-page__summary-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0;
+  padding: 0 10px 7px 98px;
+  list-style: none;
+}
+
+.table-page__chip {
+  padding: 1px 9px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.table-page__chip--condition {
+  border-color: #7a5a9a;
+  background-color: #ece3f3;
+  color: #2a1a3b;
+}
+
+.table-page__chip--spell {
+  border-color: #3f6f8f;
+  background-color: #e1edf5;
+  color: #1f4660;
+}
+
+@media (max-width: 460px) {
+  .table-page__summary-status {
+    padding-left: 10px;
+  }
+}
+
+/* In the picked character's panel: each status with what it does. */
+.table-page__status-block {
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--qk-border);
+}
+
+.table-page__status-title {
+  margin: 0;
+  font-size: 14px;
+}
+
+.table-page__status-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.table-page__status-meaning {
+  color: var(--qk-text-muted);
+}
+
+/* ---------- Vertical balance, quieter borders, clearer portraits ---------- */
+
+/* Ordinary panels and rows get a thin, muted edge; the banner keeps its
+   brass one. Only state (the turn, the pick, a waiting call) stands out. */
+.table-page--dm {
+  --dm-banner-edge: color-mix(in srgb, var(--qk-brass) 55%, var(--qk-border));
+  --dm-panel-edge: color-mix(in srgb, var(--qk-brass) 18%, var(--qk-border));
+}
+
+.table-page--dm .table-page__header {
+  border-color: var(--dm-banner-edge);
+}
+
+.table-page--dm .table-page__combat,
+.table-page--dm .table-page__section,
+.table-page--dm .table-page__party {
+  box-shadow: 0 6px 16px var(--qk-shadow);
+}
+
+.table-page--dm .table-page__row--summary {
+  border-color: var(--qk-border);
+}
+
+/* The turn: a tint, a copper bar on the left and the "Turn" tag. One edge,
+   not a second outline. */
+.table-page__row--summary.table-page__row--current {
+  border-color: var(--qk-border);
+  box-shadow: inset 5px 0 0 var(--qk-terracotta);
+}
+
+/* The pick: a thin outline of its own, with a "Selected" tag when it isn't
+   also the turn. Keyboard focus stays a different, thicker ring (inside the
+   row button). */
+.table-page__row--summary.table-page__row--selected {
+  outline: 2px solid color-mix(in srgb, var(--qk-text) 60%, transparent);
+  outline-offset: -2px;
+}
+
+.table-page__row--summary.table-page__row--current.table-page__row--selected {
+  box-shadow: inset 5px 0 0 var(--qk-terracotta);
+}
+
+.table-page__tag--selected {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: var(--qk-text);
+}
+
+/* A waiting player attack is the one loud thing. */
+.table-page--dm .table-page__row--summary.table-page__row--awaiting {
+  border: 2px solid var(--qk-danger);
+}
+
+.table-page__call-jump {
+  justify-self: start;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 2px solid var(--qk-danger);
+  border-radius: var(--qk-radius-control);
+  background: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-page__call-jump:hover {
+  background-color: var(--qk-danger-soft);
+}
+
+.table-page__call-jump:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* Creature pictures: the badge keeps its size, but the picture fills it (the
+   drawings already have a clear margin around ears and horns, so a slightly
+   larger image keeps all of it). A rounded square, not a circle, so nothing
+   is cut. */
+.table-page__row-portrait--creature,
+.table-page__row--summary .table-page__row-portrait--creature {
+  position: relative;
+  overflow: visible;
+  border-width: 1px;
+  border-radius: 8px;
+}
+
+.table-page__row-portrait--creature img {
+  position: absolute;
+  inset: -9%;
+  width: 118%;
+  height: 118%;
+  padding: 0;
+  object-fit: contain;
+}
+
+/* ----- Party visibility folds to one line ----- */
+.table-page__party-visibility {
+  display: grid;
+  gap: 4px;
+}
+
+.table-page__party-visibility-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-page__party-visibility-toggle:hover {
+  background-color: var(--qk-terracotta-soft);
+}
+
+.table-page__party-visibility-toggle:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.table-page__party-visibility [hidden] {
+  display: none;
+}
+
+/* ----- The Combat workspace: toolbar, scrolling list, controls ----- */
+
+/* Detail controls laid out compactly so identity, Attack and HP fit together. */
+.table-page__row--detail .table-page__row-info {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 14px;
+}
+
+.table-page__row--detail .table-page__turn-banner {
+  flex-basis: 100%;
+}
+
+.table-page__detail {
+  gap: 6px;
+  padding: 8px 12px 10px;
+}
+
+.table-page__row--detail .table-page__row-left {
+  gap: 6px;
+}
+
+.table-page__row--detail .table-page__row-actions {
+  gap: 6px 8px;
+}
+
+/* A scroll cue: a soft shadow shows at the edge where more is hidden. */
+.table-page--dm .table-page__order,
+.table-page--dm .table-page__detail {
+  --cue-bg: color-mix(in srgb, var(--qk-surface) 94%, var(--qk-brass));
+}
+
+.table-page--dm .table-page__detail {
+  --cue-bg: var(--qk-input-bg);
+}
+
+/* Wide, tall-enough screens: the panel is as tall as the room under the
+   banner and tabs. The toolbar stays on top, the list takes what's left (and
+   scrolls), and the picked creature's controls sit underneath, so Attack and
+   the HP boxes are on screen with the list. If the controls need more room
+   (Attack open), the list gives way, down to a few rows, and then the
+   controls scroll. On short screens, narrow ones and at high zoom none of
+   this applies: everything flows down the page as usual. */
+@media (min-width: 900px) and (min-height: 620px) {
+  .table-page--dm .table-page__dm-grid .table-page__combat {
+    display: flex;
+    flex-direction: column;
+    height: max(calc(100vh - var(--dm-combat-top, 262px) - 14px), 430px);
+    min-height: 0;
+  }
+
+  .table-page--dm .table-page__dm-grid .table-page__combat > * {
+    flex: 0 0 auto;
+  }
+
+  .table-page--dm .table-page__dm-grid .table-page__order {
+    max-height: none;
+    padding: 4px;
+    overflow-y: auto;
+    background:
+      linear-gradient(var(--cue-bg) 30%, transparent) top / 100% 18px no-repeat local,
+      linear-gradient(transparent, var(--cue-bg) 70%) bottom / 100% 18px no-repeat local,
+      radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, 0.3), transparent) top / 100% 8px no-repeat scroll,
+      radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, 0.3), transparent) bottom / 100% 8px no-repeat scroll;
+  }
+
+  .table-page--dm .table-page__dm-grid .table-page__order--waiting {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 132px;
+  }
+
+  .table-page--dm .table-page__dm-grid ol.table-page__order {
+    flex: 1 1 0;
+    min-height: 96px;
+  }
+
+  .table-page--dm .table-page__dm-grid .table-page__detail {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    background:
+      linear-gradient(var(--cue-bg) 30%, transparent) top / 100% 18px no-repeat local,
+      linear-gradient(transparent, var(--cue-bg) 70%) bottom / 100% 18px no-repeat local,
+      radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, 0.3), transparent) top / 100% 8px no-repeat scroll,
+      radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, 0.3), transparent) bottom / 100% 8px no-repeat scroll,
+      var(--qk-input-bg);
+  }
+
+  /* The heading and toolbar stay put (they are no longer sticky, since the
+     panel itself is the fixed frame). */
+  .table-page--dm .table-page__dm-grid .table-page__combat-head {
+    position: static;
+    margin: -14px -16px 0;
+  }
+}
+
+.table-page__order-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.table-page__call-jump {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.table-page__row--detail .table-page__row-history {
+  gap: 1px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+@media (min-width: 900px) and (min-height: 620px) {
+  .table-page--dm .table-page__dm-grid ol.table-page__order {
+    min-height: 124px;
+  }
+}
+
+/* A little tighter inside the Combat panel, so the list gets more of the height. */
+.table-page--dm .table-page__dm-grid .table-page__combat {
+  gap: 6px;
+  padding: 10px 14px;
+}
+
+.table-page--dm .table-page__dm-grid .table-page__combat-head {
+  margin: -10px -14px 0;
+  padding: 8px 14px 6px;
+  gap: 4px 14px;
+}
+
+.table-page--dm .table-page__combat-buttons .qk-button {
+  min-height: 40px;
+}
+
+.table-page__call-jump {
+  min-height: 30px;
+  font-size: 13px;
+}
+
+.table-page__row-select {
+  min-height: 48px;
+  padding: 4px 10px;
+}
+
+.table-page__detail {
+  padding: 6px 12px 8px;
+}
+
+/* With Attack (or Edit) open beside the creature, the list gives way a little
+   more, so the panel has the room. */
+@media (min-width: 900px) and (min-height: 620px) {
+  .table-page--dm .table-page__dm-grid .table-page__combat:has(.table-page__row--detail.table-page__row--split:not([hidden])) ol.table-page__order {
+    min-height: 92px;
+  }
+}
+
+/* ---------- Mockup finish: gold turn, shield AC, three control boxes, slim panels ---------- */
+
+.table-page--dm {
+  /* A gold deep enough to show as an outline on cream and on dark brown. */
+  --dm-gold: color-mix(in srgb, var(--qk-brass) 80%, var(--qk-text));
+}
+
+/* ----- Party cards: square rounded portrait, details beside it, AC in a shield ----- */
+.table-page__dm-party .party-strip__row {
+  grid-template-columns: 44px minmax(0, 1fr) 40px;
+  gap: 1px 10px;
+  padding: 7px 8px 7px 8px;
+}
+
+.table-page__dm-party .party-strip__portrait {
+  grid-row: 1 / span 3;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.table-page__dm-party .party-strip__portrait img {
+  border-radius: 8px;
+}
+
+.table-page__dm-party .party-strip__who {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.table-page__dm-party .party-strip__hp {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.table-page__dm-party .party-strip__passives {
+  grid-column: 2;
+  grid-row: 3;
+  margin-top: 1px;
+}
+
+.table-page__dm-party .party-strip__ac {
+  position: relative;
+  display: flex;
+  grid-column: 3;
+  grid-row: 1 / span 3;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: 38px;
+  height: 44px;
+  padding-top: 2px;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.table-page__dm-party .party-strip__shield {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--qk-text-muted);
+}
+
+.table-page__dm-party .party-strip__ac .party-strip__label {
+  font-size: 9px;
+  line-height: 1;
+}
+
+/* Whoever's turn it is: a solid gold outline on their card. */
+.table-page__dm-party .party-strip__row--turn {
+  outline: 2px solid var(--dm-gold);
+  outline-offset: -2px;
+}
+
+/* ----- The Combat header: two clean rows ----- */
+.table-page__combat-head--dm {
+  display: grid;
+  gap: 6px;
+}
+
+.table-page__head-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+}
+
+.table-page__combat-head--dm .table-page__turn-line {
+  flex: 1 1 240px;
+}
+
+.table-page__combat-head--dm .table-page__combat-buttons {
+  flex: 0 1 auto;
+  flex-basis: auto;
+  justify-content: flex-end;
+}
+
+.table-page--dm .table-page__dm-grid .table-page__combat-head--dm .table-page__combat-buttons {
+  flex-basis: auto;
+}
+
+.table-page__next-turn {
+  min-width: 118px;
+}
+
+/* ----- Initiative: gold for the turn, a copper bar for the pick ----- */
+.table-page--dm .table-page__row--summary.table-page__row--selected {
+  outline: none;
+  box-shadow: inset 5px 0 0 var(--qk-terracotta);
+}
+
+.table-page--dm .table-page__row--summary.table-page__row--current {
+  border-color: var(--dm-gold);
+  outline: 2px solid var(--dm-gold);
+  outline-offset: -2px;
+  background-color: color-mix(in srgb, var(--dm-gold) 9%, transparent);
+}
+
+.table-page--dm .table-page__row--summary.table-page__row--current.table-page__row--selected {
+  box-shadow: inset 5px 0 0 var(--qk-terracotta);
+}
+
+.table-page--dm .table-page__row--summary.table-page__row--awaiting {
+  border: 2px solid var(--qk-danger);
+}
+
+.table-page--dm .table-page__tag--turn {
+  background-color: var(--dm-gold);
+  color: var(--qk-background);
+}
+
+/* ----- Three control boxes: Attack, Take damage, Heal ----- */
+.table-page__ctl-boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.table-page__ctl-box {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 35%, transparent);
+}
+
+.table-page__ctl-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.table-page__ctl-box--attack {
+  padding: 0;
+}
+
+.table-page__ctl-attack {
+  display: grid;
+  gap: 3px;
+  align-content: start;
+  width: 100%;
+  min-height: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.table-page__ctl-attack:hover {
+  background-color: var(--qk-terracotta-soft);
+}
+
+.table-page__ctl-attack[aria-expanded="true"] {
+  background-color: var(--qk-terracotta-soft);
+}
+
+.table-page__ctl-attack:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: -3px;
+}
+
+.table-page__ctl-attack .table-page__ctl-title {
+  color: var(--qk-terracotta-hover);
+}
+
+.table-page__ctl-weapon {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.table-page__stepper {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  gap: 4px;
+}
+
+.table-page__stepper button {
+  min-height: 40px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background: var(--qk-input-bg);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-page__stepper button:hover {
+  border-color: var(--qk-terracotta);
+}
+
+.table-page__stepper button:focus-visible,
+.table-page__stepper input:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 1px;
+}
+
+.table-page__stepper input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 6px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background: var(--qk-input-bg);
+  color: var(--qk-text);
+  font: inherit;
+  text-align: center;
+}
+
+.table-page__stepper input::placeholder {
+  color: var(--qk-text-muted);
+  opacity: 1;
+}
+
+.table-page__ctl-box > .qk-button {
+  width: 100%;
+  min-height: 40px;
+}
+
+/* With Attack open, its panel sits under the three boxes (full width). */
+.table-page__row--detail.table-page__row--split {
+  display: block;
+}
+
+.table-page__row--detail.table-page__row--split .table-page__row-side {
+  margin-top: 8px;
+  padding: 8px 0 0;
+  border-top: 1px dashed var(--qk-border);
+  border-left: 0;
+}
+
+.table-page__row--detail.table-page__row--split .table-page__row-left {
+  border-right: 0;
+}
+
+/* ----- Slim headers for "Send damage" and "Activity" ----- */
+.table-page--dm .table-page__section--panel {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.table-page__slim-head {
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--dm-panel-edge);
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 45%, transparent);
+}
+
+.table-page__slim-title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.table-page__slim-body {
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px 12px;
+}
+
+.table-page__dm-side .table-page__monster-form,
+.table-page__dm-side .table-page__monster-form .table-page__field-group {
+  min-width: 0;
+}
+
+.table-page__dm-side .table-page__monster-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(64px, 0.7fr);
+  align-items: end;
+  gap: 6px 8px;
+}
+
+.table-page__dm-side .table-page__monster-form .qk-button {
+  grid-column: 1 / -1;
+  align-self: stretch;
+  width: 100%;
+  min-height: 42px;
+  padding: 4px 12px;
+  font-size: 15px;
+}
+
+.table-page__dm-side .table-page__monster-form .table-page__input,
+.table-page__dm-side .table-page__monster-form .table-page__number {
+  padding: 0 8px;
+}
+
+/* ----- Activity: icon space, text, time ----- */
+.table-page__log--icons li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-left: 0;
+}
+
+.table-page__log-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background-color: color-mix(in srgb, var(--qk-brass) 22%, transparent);
+}
+
+.table-page__log-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.table-page__log-time {
+  color: var(--qk-text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Party card touch-ups: the shield takes two rows so the passive scores can
+   run under it, the bar yields before the shield does, and the DM's
+   "picked" ring (used on the Players tab) isn't needed on Combat. */
+.table-page__dm-party .party-strip__ac {
+  grid-row: 1 / span 2;
+}
+
+.table-page__dm-party .party-strip__passives {
+  grid-column: 2 / -1;
+}
+
+.table-page__dm-party .party-strip__hp {
+  overflow: hidden;
+}
+
+.table-page__dm-party .party-strip__hp-text {
+  min-width: 0;
+}
+
+.table-page__dm-party .party-strip__bar {
+  flex: 1 1 18px;
+  min-width: 18px;
+}
+
+.table-page__dm-party .party-strip__row--selected {
+  box-shadow: none;
+}
+
+.table-page__log-icon {
+  width: 20px;
+  height: 20px;
+  background-color: color-mix(in srgb, var(--qk-brass) 16%, transparent);
+}
+
+.table-page__log--icons li {
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+/* HP: the bar goes onto its own line rather than under the state word, and a
+   very long name may break inside a word as a last resort. */
+.table-page__dm-party .party-strip__hp {
+  flex-wrap: wrap;
+  gap: 2px 8px;
+}
+
+.table-page__dm-party .party-strip__bar {
+  flex: 1 1 44px;
+  min-width: 44px;
+}
+
+.table-page__dm-party .party-strip__who {
+  overflow-wrap: anywhere;
+}
+
+/* Short desktop windows (up to about 800px tall): each HP box puts its apply
+   button on the title line, so the boxes are about 40px shorter and the
+   initiative list keeps more rows. */
+@media (min-width: 900px) {
+  .table-page__ctl-box:not(.table-page__ctl-box--attack) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title apply"
+      "stepper stepper";
+    align-items: center;
+    gap: 4px 8px;
+    padding: 6px 10px 8px;
+  }
+
+  .table-page__ctl-box:not(.table-page__ctl-box--attack) .table-page__ctl-title {
+    grid-area: title;
+  }
+
+  .table-page__ctl-box:not(.table-page__ctl-box--attack) .table-page__stepper {
+    grid-area: stepper;
+  }
+
+  .table-page__ctl-box:not(.table-page__ctl-box--attack) > .qk-button {
+    grid-area: apply;
+    width: auto;
+    min-height: 36px;
+    padding: 2px 10px;
+    font-size: 14px;
+  }
+
+  .table-page__stepper button,
+  .table-page__stepper input {
+    min-height: 36px;
+  }
+
+  .table-page--dm .table-page__combat-buttons .qk-button {
+    min-height: 36px;
+  }
+
+  .table-page--dm .table-page__dm-grid ol.table-page__order {
+    min-height: 150px;
+  }
+
+  .table-page--dm .table-page__dm-grid .table-page__combat-head {
+    padding-top: 6px;
+  }
+}
+
+@media (min-width: 900px) and (max-height: 800px) {
+  .table-page--dm .table-page__combat-buttons .qk-button {
+    min-height: 34px;
+  }
+
+  .table-page__stepper button,
+  .table-page__stepper input {
+    min-height: 34px;
+  }
+
+  .table-page__ctl-box:not(.table-page__ctl-box--attack) > .qk-button {
+    min-height: 32px;
+  }
+
+  .table-page__detail {
+    padding: 4px 10px 6px;
+    gap: 4px;
+  }
+
+  .table-page__detail-title {
+    font-size: 17px;
+  }
+
+  .table-page--dm .table-page__dm-grid .table-page__combat {
+    gap: 4px;
+  }
+
+  .table-page__order-head {
+    gap: 2px 12px;
+  }
+}
+
+/* A long single word in a name breaks inside the card, never under the shield. */
+.table-page__dm-party .party-strip__who {
+  min-width: 0;
+}
+
+.table-page__dm-party .party-strip__name {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* With Attack open on a wide panel, the attack workflow sits beside the three
+   boxes (not below them), so the boxes stay in view while attacking. */
+@media (min-width: 1100px) {
+  .table-page__row--detail.table-page__row--split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 14px;
+    align-items: start;
+  }
+
+  .table-page__row--detail.table-page__row--split .table-page__row-side {
+    margin-top: 0;
+    padding: 0 0 0 14px;
+    border-top: 0;
+    border-left: 1px dashed var(--qk-border);
+  }
+
+  .table-page__row--detail.table-page__row--split .table-page__ctl-boxes {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+/* Contrast: dark text on the gold "Turn" tag, and a stronger help line. */
+.table-page--dm .table-page__tag--turn {
+  color: var(--qk-text);
+  background-color: color-mix(in srgb, var(--dm-gold) 55%, var(--qk-surface));
+}
+
+.table-page--dm .table-page__dm-grid .table-page__tag--turn {
+  color: var(--qk-text);
+}
+
+.table-page__help p {
+  color: color-mix(in srgb, var(--qk-text-muted) 40%, var(--qk-text));
+}
+
+/* The "Turn" tag: main text colour on a light gold tint with a gold edge, so
+   it reads in both themes. */
+.table-page--dm .table-page__tag--turn,
+.table-page--dm .table-page__dm-grid .table-page__tag--turn {
+  border: 1.5px solid var(--dm-gold);
+  background-color: color-mix(in srgb, var(--dm-gold) 22%, var(--qk-surface));
+  color: var(--qk-text);
+}
+
+/* ======== Final pass: matching panel headers, rebalance, icons, long names ======== */
+
+/* One slim header bar, shared by Party, Combat, Send damage and Activity. */
+.table-page--dm .table-page__section--panel {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.table-page__slim-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--dm-panel-edge);
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 45%, transparent);
+}
+
+.table-page__slim-head .table-page__slim-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.table-page__slim-head--bar {
+  min-height: 46px;
+}
+
+.table-page__slim-head .qk-button,
+.table-page__slim-head .table-page__party-visibility-toggle,
+.table-page__slim-head .table-page__party-toggle {
+  min-height: 34px;
+}
+
+.table-page__slim-head .qk-button {
+  padding: 2px 12px;
+  font-size: 14px;
+}
+
+.table-page__combat--panel > .table-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--dm-panel-edge);
+}
+
+.table-page__combat--panel > .table-page__toolbar .table-page__turn-line {
+  flex: 1 1 220px;
+  margin: 0;
+}
+
+.table-page__combat--panel > :not(.table-page__slim-head):not(.table-page__toolbar) {
+  margin-left: 14px;
+  margin-right: 14px;
+}
+
+.table-page__combat--panel > ol,
+.table-page__combat--panel > ul {
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+.table-page__combat--panel {
+  padding-bottom: 12px;
+}
+
+.table-page__party--panel .table-page__slim-body {
+  padding: 8px 10px 10px;
+}
+
+/* Party header on wide screens: title and the Stats disclosure side by side;
+   the Show/Hide fold is for narrow screens only. */
+@media (min-width: 900px) {
+  .table-page__party--panel .table-page__slim-head .table-page__party-toggle {
+    display: none;
+  }
+}
+
+/* On narrow screens the Stats disclosure is only offered once the party is open. */
+@media (max-width: 899px) {
+  .table-page__party--panel:not(.table-page__party--open) .table-page__party-visibility-toggle {
+    display: none;
+  }
+}
+
+/* ----- The selected creature's notes: folded ----- */
+.table-page__detail-notes {
+  display: grid;
+  gap: 2px;
+}
+
+.table-page__note-fold {
+  font-size: 13.5px;
+}
+
+.table-page__note-fold summary {
+  display: inline-block;
+  min-height: 28px;
+  padding: 3px 0;
+  color: var(--qk-terracotta-hover);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-page__note-fold summary:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.table-page__note-fold .table-page__turn-banner {
+  display: block;
+  margin: 2px 0 4px;
+}
+
+/* Initiative rows: the status chip line is part of the row, so a row is a
+   little more than 60px; the list scrolls, and shows about four rows. */
+@media (min-width: 900px) and (min-height: 620px) {
+  .table-page--dm .table-page__dm-grid ol.table-page__order {
+    min-height: 220px;
+  }
+}
+
+/* ----- Attack open: side by side only with room both ways; otherwise one
+   stacked, clearly scrollable detail area ----- */
+@media (min-width: 1100px) and (min-height: 860px) {
+  .table-page__row--detail.table-page__row--split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 14px;
+    align-items: start;
+  }
+}
+
+@media not all and ((min-width: 1100px) and (min-height: 860px)) {
+  .table-page__row--detail.table-page__row--split {
+    display: block;
+  }
+
+  .table-page__row--detail.table-page__row--split .table-page__row-side {
+    margin-top: 8px;
+    padding: 8px 0 0;
+    border-top: 1px dashed var(--qk-border);
+    border-left: 0;
+  }
+}
+
+/* The detail area shows a real, thin scrollbar whenever it needs one, so it's
+   clear it scrolls (on top of the soft edge shadows). */
+@media (min-width: 900px) and (min-height: 620px) {
+  .table-page--dm .table-page__dm-grid .table-page__detail {
+    overflow-y: scroll;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--qk-text) 45%, transparent) transparent;
+    scroll-padding: 12px;
+    scrollbar-gutter: stable;
+  }
+
+  .table-page--dm .table-page__dm-grid .table-page__detail::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .table-page--dm .table-page__dm-grid .table-page__detail::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-color: color-mix(in srgb, var(--qk-text) 45%, transparent);
+    background-clip: content-box;
+  }
+}
+
+/* ----- Party card: a long name gets the full width, and the badge moves down ----- */
+.table-page__dm-party .party-strip__row--long-name .party-strip__who {
+  grid-column: 2 / -1;
+  display: block;
+}
+
+.table-page__dm-party .party-strip__row--long-name .party-strip__name {
+  display: block;
+}
+
+.table-page__dm-party .party-strip__row--long-name .party-strip__summary {
+  display: block;
+}
+
+.table-page__dm-party .party-strip__row--long-name .party-strip__ac {
+  grid-row: 2 / span 2;
+}
+
+.table-page__dm-party .party-strip__row--long-name .party-strip__hp,
+.table-page__dm-party .party-strip__row--long-name .party-strip__passives {
+  grid-row: auto;
+}
+
+.table-page__dm-party .party-strip__row--long-name .party-strip__portrait {
+  grid-row: 1 / span 4;
+  align-self: start;
+}
+
+.table-page__dm-party .party-strip__name {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* ----- Activity icons ----- */
+.table-page__log--icons li {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.table-page__log--icons li.table-page__log-item--icon {
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+}
+
+.table-page__log-icon {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border-radius: 0;
+  background: none;
+  object-fit: contain;
+}
+
+.table-page__log--icons li {
+  min-height: 34px;
+}
+
+.table-page__dm-party .party-strip__row--long-name .party-strip__passives {
+  grid-column: 2;
+}
+
+/* Buttons in the header bar and toolbar sit beside the title, not under it. */
+.table-page--dm .table-page__dm-grid .table-page__slim-head .table-page__combat-buttons,
+.table-page--dm .table-page__dm-grid .table-page__toolbar .table-page__combat-buttons {
+  flex: 0 0 auto;
+  flex-basis: auto;
+  justify-content: flex-end;
+}
+
+.table-page__slim-head .table-page__slim-title {
+  flex: 1 1 auto;
+  font-size: 16px;
+}
+
+.table-page__party--panel .table-page__slim-head {
+  padding: 6px 10px 6px 12px;
+}
+
+.table-page__party--panel .table-page__party-visibility-toggle {
+  min-height: 32px;
+  padding: 0 9px;
+  font-size: 12.5px;
+}
+
+.table-page__party--panel .table-page__party-visibility {
+  padding: 0 2px 6px;
+}
+
+.table-page__slim-head--bar {
+  min-height: 44px;
+}
+
+@media (min-width: 900px) {
+  .table-page__ctl-box:not(.table-page__ctl-box--attack) .table-page__ctl-title {
+    white-space: nowrap;
+  }
+
+  .table-page__ctl-box:not(.table-page__ctl-box--attack) > .qk-button {
+    padding: 2px 8px;
+    font-size: 13.5px;
+    white-space: nowrap;
+  }
+}
+
+/* The Combat panel's header and toolbar run edge to edge like the others. */
+.table-page--dm .table-page__dm-grid .table-page__combat.table-page__combat--panel {
+  gap: 0;
+  padding: 0 0 12px;
+}
+
+.table-page--dm .table-page__dm-grid .table-page__combat--panel > .table-page__order {
+  margin-top: 6px;
+}
+
+/* Party fold (narrow screens). An earlier rule that gave every panel body
+   "display: grid" was winning over the fold, so the cards never hid. This one
+   is more specific: folded means display none (which also takes the hidden
+   cards and controls out of the keyboard order), open means the grid. */
+.table-page__party--panel > .table-page__party-body.table-page__slim-body {
+  display: none;
+}
+
+.table-page__party--panel > .table-page__party-body.table-page__slim-body.table-page__party-body--open {
+  display: grid;
+}
+
+@media (min-width: 900px) {
+  .table-page__party--panel > .table-page__party-body.table-page__slim-body {
+    display: grid;
+  }
+}
+
+/* ======== Story, Players and Prep: the same panel look as Combat ========
+   Every panel on the DM screen gets the thin muted edge, the warm gradient
+   and a slim header bar. These come from the existing components, so their
+   features and places are untouched; only the look changes (DM screen only). */
+
+/* Panel body and bar for sections written with the slim-head pattern. */
+.table-page--dm .table-page__prep.table-page__section--panel {
+  display: grid;
+  border: 1px solid var(--dm-panel-edge);
+  border-radius: var(--qk-radius-card);
+  background: var(--dm-panel-bg);
+  box-shadow: 0 6px 16px var(--qk-shadow);
+}
+
+.table-page--dm .table-page__prep-steps.table-page__slim-body {
+  margin: 0;
+  list-style: none;
+}
+
+.table-page__section--panel > .table-page__slim-head:first-child {
+  border-radius: var(--qk-radius-card) var(--qk-radius-card) 0 0;
+}
+
+/* Components that are panels on their own. */
+.table-page--dm :is(.table-rules, .table-handouts, .table-journal, .content-rules, .encounter-helper, .loot-helper) {
+  border: 1px solid var(--dm-panel-edge);
+  border-radius: var(--qk-radius-card);
+  background: var(--dm-panel-bg);
+  box-shadow: 0 6px 16px var(--qk-shadow);
+  overflow: hidden;
+}
+
+/* Panels made of a title and content (not a fold): title as the header bar,
+   the rest inset to match. */
+.table-page--dm .table-rules:not(details),
+.table-page--dm .table-handouts,
+.table-page--dm .table-journal {
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+.table-page--dm .table-rules__title,
+.table-page--dm .table-handouts__head,
+.table-page--dm .table-journal__head {
+  margin: 0 -14px;
+  padding: 6px 14px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--dm-panel-edge);
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 45%, transparent);
+}
+
+.table-page--dm .table-rules__title,
+.table-page--dm .table-handouts__title,
+.table-page--dm .table-journal__title {
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.table-page--dm .table-rules__title {
+  display: flex;
+  align-items: center;
+}
+
+.table-page--dm .table-handouts__head .qk-button,
+.table-page--dm .table-journal__head .qk-button {
+  min-height: 34px;
+  padding: 2px 12px;
+  font-size: 14px;
+}
+
+/* Fold panels: the summary is the header bar. */
+.table-page--dm :is(.content-rules__summary, .encounter-helper__summary, .loot-helper__summary, .table-rules__summary) {
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 14px;
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 45%, transparent);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.table-page--dm :is(.content-rules, .encounter-helper, .loot-helper)[open] > summary {
+  border-bottom: 1px solid var(--dm-panel-edge);
+}
+
+.table-page--dm :is(.content-rules__body, .encounter-helper__body, .loot-helper__body) {
+  padding: 12px 14px 14px;
+}
+
+/* The recap and campaign folds inside the journal: quieter, same family. */
+.table-page--dm .table-recap,
+.table-page--dm .campaign-tools {
+  border-color: var(--dm-panel-edge);
+  background: transparent;
+}
+
+.table-page--dm .table-recap__summary,
+.table-page--dm .campaign-tools__summary {
+  min-height: 40px;
+  padding: 6px 12px;
+  font-size: 15px;
+}
+
+/* The Story tab's passive-score cards. */
+.table-page--dm .dm-story > :is(.dm-story__cards, .dm-story__grid) > * {
+  border-color: var(--dm-panel-edge);
+}
+
+/* Players tab: the picker pills and the sheet card. */
+.table-page__section--panel .table-page__tabs {
+  padding-bottom: 4px;
+}
+
+.table-page__section--panel .table-page__characters > * {
+  border-color: var(--dm-panel-edge);
+}
+
+/* The Party panel on these wider tabs: header bar plus the full-width rows. */
+.table-page--dm .table-page__party--panel .table-page__slim-body {
+  padding: 10px 12px 12px;
+}
+
+/* The "Removed for good" list under Players. */
+.table-page--dm .table-page__bans {
+  margin-top: 8px;
+}
+
+/* A little tighter spacing between panels on these tabs. */
+.table-page--dm .table-page__content {
+  gap: 12px;
+}
+
+/* The sharing checkbox stays folded until "Stats shared/hidden" is opened. */
+.table-page__party-visibility[hidden] {
+  display: none;
+}
+
+/* In the journal panel the recap and campaign folds come first (as always),
+   so they get a little room above them. */
+.table-page--dm .table-journal > .table-recap:first-child {
+  margin-top: 12px;
+}
+
+/* ----- Readable text on the DM screen's panels (all tabs) ----- */
+.table-page--dm input::placeholder,
+.table-page--dm textarea::placeholder {
+  color: var(--qk-text-muted);
+  opacity: 1;
+}
+
+.table-page--dm .party-strip__condition,
+.table-page--dm .party-strip__condition .rule-term__word {
+  color: #2a1a3b;
+}
+
+.table-page--dm .party-strip__portrait {
+  color: var(--qk-text);
+}
+
+.table-page--dm :is(.table-recap__hint, .campaign-tools__edge, .content-rules__hint, .content-rules__empty, .encounter-helper__hint, .encounter-helper__link, .loot-helper__hint, .table-rules__hint, .table-handouts__hint, .table-journal__hint, .character-summary__empty, .character-summary__gold) {
+  color: color-mix(in srgb, var(--qk-text-muted) 45%, var(--qk-text));
+}
+
+.table-page--dm .character-summary__stat-label,
+.table-page--dm .character-summary__badge {
+  color: color-mix(in srgb, var(--qk-text-muted) 45%, var(--qk-text));
+}
+
+/* Quieter text on a downed character's tinted card stays readable. */
+.table-page--dm .party-strip__row--down {
+  --qk-text-muted: color-mix(in srgb, var(--qk-text) 80%, var(--qk-background));
+}
+
+.table-page--dm .campaign-tools__summary {
+  color: var(--qk-text);
+}

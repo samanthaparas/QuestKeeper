@@ -135,3 +135,15 @@ describe("combatantFromMonster", () => {
     });
   });
 });
+
+describe("combatantFromMonster, creature id", () => {
+  it("keeps the SRD id so the DM screen can show the right portrait", () => {
+    const made = combatantFromMonster({ index: "kobold", name: "Kobold", hit_points: 5, armor_class: [{ value: 12 }], challenge_rating: 0.125 });
+    expect(made.statBlock.creature).toBe("kobold");
+  });
+
+  it("leaves it out when the monster has no id", () => {
+    const made = combatantFromMonster({ name: "Kobold", hit_points: 5, armor_class: [{ value: 12 }], challenge_rating: 0.125 });
+    expect(made.statBlock).not.toHaveProperty("creature");
+  });
+});

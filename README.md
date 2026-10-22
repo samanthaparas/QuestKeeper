@@ -8,7 +8,7 @@ It's designed around one idea: rules should feel like friendly guidance from an 
 
 ## Screenshots
 
-_Current as of October 15, 2026._
+_Current as of October 15, 2026, so these show the look before the tavern redesign of the homepage and DM screen. Screenshots of the redesign (made with sample data, not a real table) are listed in the [screenshot history](docs/screenshots/README.md). Screens added after October 15 (campaigns, recaps, the encounter helper, dark mode and more) aren't pictured yet._
 
 ### Home
 
@@ -123,6 +123,11 @@ The header splits the app by who you are tonight: **Explore** (reference pages),
 - **Condition badges** (Poisoned, Prone, Exhaustion levels…) with their rules on hover. Any condition can be **timed in rounds** (⏱), and it counts down by itself as the table's rounds pass.
 - **Death saves** appear at 0 HP: roll them (a 1 counts twice, a 20 brings you back) or tap the marks for real dice, and you're Stable or Dead after three. Taking damage at 0 HP adds a failure.
 - **Concentration:** track which spell you're holding. Taking damage asks for the Constitution save at the right DC (10 or half the damage), dropping to 0 ends it, and a ⏱ timer ends it after its duration (10 rounds for a 1-minute spell).
+- **Weapons and armor that do the math:** magic bonuses, typed extra damage (a smite, Elemental Weapon), Sharpshooter, attacks linked to inventory items, and a one-armor swap. Item bonuses to spell save DC and spell attack count everywhere.
+- **Prepared spells** for Wizards, Clerics, Druids and Paladins with a limit counter, a one-tap **Concentrate** button that asks first if it would end the spell you're holding, and charges on magic items that recharge at dawn or by hand.
+- **Sort and Show** on every sheet list, inventory categories, and resource maximums that follow the proficiency bonus or an ability modifier.
+- A **fresh update banner** (Refresh or Later) when a new version is live, and **dark mode** that follows your device with an Appearance choice in Settings.
+- **Safe on a weak signal:** if a save can't get through, the sheet keeps your changes, retries by itself, and tells you plainly. See _Playing on a weak signal_ below.
 - A **companion card** for a mount, familiar or animal friend: picture, HP, AC, speed, all six ability scores and saves to roll, attacks, and bulleted notes, with its own Edit stats lock. A Long Rest heals it with its character.
 - A full level-up flow: hit points, ability score improvements or feats, subclass choice at the right level, and new spells that follow each class's own spell slot rules.
 - Everything is editable after creation, and race, class, subclass and background can be retyped for homebrew and non-SRD characters.
@@ -153,7 +158,13 @@ A DM creates a table with a join code, and players join with one of their charac
 - A full attack flow: players roll a virtual d20 or type a real one, and the database decides hit or miss against the **secret** AC. The DM can attack with monsters, send damage as a request the player applies, or deny an attack.
 - A **party strip** showing every character's portrait, HP, AC and conditions, plus concentration, death saves when someone is down, condition timers, and each companion's HP on its own line. A DM switch shares it with the players (the DM decides whether the party can see each other).
 - **Handouts**: pictures and notes the DM reveals to the whole table or to chosen players only. Revealing one adds a note to the journal, and pictures open in a pop-up.
-- **Secret messages** between the DM and individual players, with pictures.
+- **Secret messages** between the DM and individual players, with pictures, read receipts, and pasted or dropped screenshots that are shrunk automatically.
+- **Table rules:** the DM writes session-zero lines ("no PvP", "phones away") on the Prep tab, and players read them in a collapsed card that shows a "New" tag when it changes.
+- **Allowed content:** the DM blocks races, classes, backgrounds, feats or spells for the table. Players see the list, and the Players tab flags a character who doesn't match. It's a guide, not a lock.
+- **Away players:** the DM marks someone away and their turns are skipped until they're back.
+- **Encounter helper:** suggest a fight by difficulty for the party's level (2014 XP-budget method, SRD monsters), or build your own and add it with stat blocks in one click. **Loot ideas** (coins, a magic item, a small hoard) sit beside it.
+- **Previously on... recaps:** one per session, edited by anyone at the table. "Draft from the notes" asks Claude to write a first version from notes shared with the whole table only; private notes never go in.
+- **Campaigns:** a table's journal can be split into Campaign 1 and Campaign 2 (anyone at the table can do it), older campaigns stay readable, notes are labelled 1.17 or 2.3 when there's more than one, and each campaign has its own recaps.
 
 **On each player's game page:**
 
@@ -162,6 +173,11 @@ A DM creates a table with a join code, and players join with one of their charac
 - A shared **table journal**: entries are signed by character and grouped by session, unfinished drafts are kept if you switch tabs, and any entry can be **private** (not even the DM can read it). Anyone can file a note under **any session number** (to catch up on an earlier session, or write session 41 of a long campaign), move one of their notes to another session, and use **Look back at** to read any session in full. The DM can set the table's current session to any number. (This needs `20261018_journal_pick_session.sql` run once in the Supabase SQL editor.)
 - One **Journal** tab on every character sheet: a private, numbered-session journal that works with or without a table. At a table the tab becomes **Journal & Handouts** with a switch between the table's journal (with its handouts) and **My private notes**. Notes show the writer's portrait beside their name (this needs `20261018_journal_portraits.sql` run once in the Supabase SQL editor). The private journal is readable only by its owner (it lives in the account, not the table). At a table, **Bring notes into the table** lets the player choose, note by note, to share it with the whole table, bring it in as a "Just me" note, or keep it out (with one-tap "everything" shortcuts); notes remember where they were shared so they aren't copied twice. (This needs `20261018_character_journal.sql` run once in the Supabase SQL editor.)
 - The table's handouts, also shown on the character sheet.
+- A quiet **get-ready heads-up** when you're next in the turn order: a line in the banner, a short buzz on a phone, and the tab title. It's on by default and can be switched off in Settings.
+
+### Playing on a weak signal
+
+Game nights happen in basements and cafés. Every change to a character sheet is written to the device first and saved to the server in the background. If the server can't be reached, a status line says "Not saved yet. Your changes are kept on this device", saves retry on their own (after 4, 8, 16, 30 and then every 60 seconds, and again the moment the connection returns), and the browser warns before you close a tab with unsaved changes. A sheet you've opened before still opens with no signal, from the copy on the device. If the sheet was changed on another device meanwhile, QuestKeeper asks which version to keep instead of overwriting either. The copies are cleared when you sign out. Opening a sheet for the very first time with no signal still needs a connection.
 
 **Hidden stays hidden:** enemy HP, AC and attacks never reach a player's browser. Players see a name, Healthy, Bloodied or Down, and damage taken.
 
@@ -321,11 +337,11 @@ Run from the repository root:
 
 ## Testing and quality
 
-- **About 1,030 frontend tests** (Vitest and React Testing Library) cover the game rules as plain functions (ability scores, HP, level-up, rests, armor class, skill grants, feature sources and choices, spell components, death saves, concentration, condition timers, journal and handout rules, party strip) and the sheet, creation, table, journal and search components. Whole-character "audit" tests build sample characters of every SRD class and race and check the result.
+- **About 1,800 frontend tests** (Vitest and React Testing Library) cover the game rules as plain functions (ability scores, HP, level-up, rests, armor class, skill grants, feature sources and choices, spell components, death saves, concentration, condition timers, journal and handout rules, party strip) and the sheet, creation, table, journal and search components. Whole-character "audit" tests build sample characters of every SRD class and race and check the result.
 - **Backend tests** cover the Open5e mappers, the magic item catalog, the spells controller, and AI search (the catalog, checking Claude's answer, the rate limit, and the main failure paths, with the Anthropic SDK replaced by a stand-in so tests never call the API).
 - **CI** runs on every push and pull request to `main`: lint, frontend tests, build, backend tests, and a second job that installs the backend exactly the way Render does (`npm ci --workspaces=false`), so a broken lockfile fails CI instead of the deploy.
 - **Database security rules** are checked by running each migration in a throwaway local Postgres and calling the functions as a DM, a player and an outsider.
-- **Hands-on QA:** a [new-player walkthrough](docs/QA_NEW_PLAYER_WALKTHROUGH.md) tracks 40 usability findings from a first-time player's point of view, and a [two-account test](docs/TWO_ACCOUNT_TEST.md) (DM and player) walks through live play end to end, with a stage added for each new live-play feature.
+- **Hands-on QA:** a [new-player walkthrough](docs/QA_NEW_PLAYER_WALKTHROUGH.md) tracks 40 usability findings from a first-time player's point of view, and a [two-account test](docs/TWO_ACCOUNT_TEST.md) (DM and player) walks through live play end to end, with a stage added for each new live-play feature (the latest are recaps and campaigns, allowed content and the weak-signal sheet).
 
 ## Challenges, setbacks and how I solved them
 
@@ -421,24 +437,51 @@ Run from the repository root:
 
 **Solution:** The key lives only in the backend's environment, results are limited to real catalog ids, the catalog is cached, each visitor is rate limited (with Render's proxy trusted so the limit sees real visitors, not one shared address), and the search runs only when a player picks it, never on each keystroke.
 
+### Her fiancé's old campaign notes were mixed into the new campaign
+
+**Problem:** A table's journal held two campaigns in one list. The older campaign's notes (1.1 to 1.43) had been typed in a single evening, after the current campaign's notes, so I couldn't assume "the oldest notes are the old campaign". My first "start a new campaign" tool split by session number and gave the wrong answer for her data.
+
+**Solution:** The split is now by a window of dates: the notes written inside it stay as the older campaign and everything else becomes the current one. The tool looks for a burst of notes written close together and asks one question ("Are these your older campaign's notes?" Yes or No). The first design had so many buttons that it was overwhelming, so the extras moved behind "More options" and Move went inside Edit. Since the journal only showed a weekday and time, every note now shows its full date. Anyone at the table can sort notes, because the DM of the new campaign isn't the player who wrote the old ones. The database function was run against a copy of her real data before she used it.
+
+### A weak signal could lose a sheet change without saying so
+
+**Problem:** A failed save on a sheet was easy to miss, and the next successful save could overwrite or drop it.
+
+**Solution:** A save queue now keeps every change, retries with a growing delay, and shows a status line. A copy is kept on the device, and if the server's version changed in the meantime, the player chooses which to keep. The queue's timers and "latest attempt" handling use refs to stay within the project's strict React lint rules.
+
+### The recap must never leak a private note
+
+**Problem:** An AI recap built from "the journal" could pull in a private note or a DM-only one.
+
+**Solution:** The draft button sends Claude only the notes shared with the whole table. Private notes never leave the database for this feature.
+
 ### Smaller setbacks along the way
 
 - **A pull request merged before its second commit was pushed.** The missing commit was cherry-picked into the next pull request (#151). I now check `git status` and `git log` against `origin/main` before every new branch.
 - **A lint rule** (`react-hooks/immutability`) flagged an effect that called a function declared further down. The effect was moved below the functions it uses.
 - **The phone header overlapped at 375px**, and on tablets the Stats | Skills switch crowded the character's name. The header was tightened and the switch moved onto the controls line.
 - **The search used to depend on every category** loading, and **only one background** (Acolyte) exists in the 2014 SRD. That's a licensing limit, not a bug. The 2024 SRD and Open5e now add more.
+- **A commit landed on local `main` by mistake**, so the next pull request carried an extra commit. It was untangled with git and moved to a branch.
+- **I once said a pull request was merged before checking.** Now `git fetch` and a look at `origin/main` come first.
+- **The local test database** needed fixes of its own (socket paths that were too long, a locale setting), which cost time but not users.
 - **Headless screenshots of the guide came out blank** because the page hadn't finished loading. Giving the browser more time fixed it.
 
 ## Where things stand
 
 ### Working on now
 
-- Running the **two-account test** (DM and player on separate accounts) and fixing what it finds before the group's next game night.
-- Turning on **AI search** on the live site (adding the API key on Render) and tuning its picks with real searches.
+- A **visual update** (the "cozy tavern" look). The homepage and all four DM screen tabs (Combat, Story, Players, Prep) are restyled; the character sheet and the rest are next. Screenshots go in dated folders so the before-and-after history keeps growing.
+- Running the **two-account test** for the newest features (recaps and campaigns, allowed content and the weak-signal sheet) before the next game night.
+- **Choosing a new name.** Other sites already use "QuestKeeper" for a similar idea, so the name is changing. The rename is on hold until a name is chosen.
 
-### Blockers
+### Blockers and the plan around them
 
-- **Render's paid plan:** returns 502s until Render fixes its routing (support ticket open). Until then the API is on the free plan and sleeps when idle, with game night covered by the keep-awake workflow.
+- **The name isn't unique.** Plan: pick a name, check the web and domain availability, then rename the text across the app and docs in one pass (the repo, the Supabase project and the Render service names can stay as they are at first). The same domain can then be used for Google sign-in.
+- **Google sign-in** is waiting on a Google Cloud OAuth client and the Google provider in Supabase. Publishing the consent screen may reject an `onrender.com` address, so the choice is test mode with a small list of users, or a domain of its own after the rename. The secret never goes in chat or the repo. The button gets built after the name is settled.
+- **Render's paid plan** returns 502s until Render fixes its routing (support ticket open). Until then the API is on the free plan and sleeps when idle, with game night covered by the keep-awake workflow.
+- **Opening a never-seen sheet with no signal.** The weak-signal tools cover sheets already opened. A progressive web app (a service worker) would make the whole app open offline. That's a bigger step and is deliberately not built yet.
+- **Migrations run by hand.** Each new feature ships a SQL file that has to be run in the Supabase SQL editor, in date order. Plan: keep listing the exact files in each pull request, and look at the Supabase CLI later.
+- **Newest features not yet played with two accounts.** Plan: the checklist now has steps for each, and they get run before game night.
 - **Book content licensing:** subraces like Wood Elf and Drow, and Tasha's optional class features, aren't in the SRD. They can only be listed as names, summaries and links, or entered as homebrew.
 - **Free Supabase plan:** has no automatic backups, so data is exported by hand now and then (most recently a full database dump on October 16, 2026).
 - **Paste-fill parsing** for more formats needs real sample text to build against.
@@ -454,11 +497,15 @@ Run from the repository root:
 - The table and combat rules are checked by hand in a local Postgres and by component tests, not yet by automated database or end-to-end tests.
 - The free API's first request after a quiet period takes about 20 seconds.
 - AI search covers the SRD's spells, magic items, classes, races and backgrounds, not Open5e, book listings or homebrew yet, and needs an Anthropic API key.
+- The encounter helper uses the 2014 XP-budget method and SRD monsters only, and its loot scale is my own rough guide.
+- The allowed-content list is a guide: it flags mismatches but doesn't stop a player from picking something, and it doesn't filter the builder's pickers yet.
+- Recap drafts need the Anthropic key on Render, like AI search.
+- **Activity icons:** the DM screen knows how to show a small icon on a log line that carries an explicit kind (attack, damage, healing, spell, turn, handout), but **no live log line has a kind yet**, so none show an icon. The database change that adds kinds is planned and **is not in the repository** (it hasn't been tested). The plan is in [docs/ACTIVITY_EVENT_KINDS_PLAN.md](docs/ACTIVITY_EVENT_KINDS_PLAN.md).
 - Round timers are counted by each open copy of a sheet, so the same sheet open in two tabs would count a round twice.
 
 ## Ideas and roadmap
 
-What would make QuestKeeper even better than it was yesterday:
+What would make QuestKeeper even better than it was yesterday (encounter prep, recaps, campaigns, allowed content and weak-signal saving from earlier lists are built):
 
 1. **Book subraces as link-outs:** Wood Elf, Drow, Mountain Dwarf, Stout Halfling and Forest Gnome as names, summaries and links, with a one-tap "Make as homebrew".
 2. **Sorting and filtering** on the sheet (items by category, spells by level, favorites), and **splitting item stacks**.
@@ -466,8 +513,9 @@ What would make QuestKeeper even better than it was yesterday:
 4. **Automated database and end-to-end tests** for the table rules, so the two-account test can run itself.
 5. **Backend caching and timeouts,** and global search that keeps working if one category fails.
 6. **A beginner mode toggle** to hide hints once a player doesn't need them.
-7. **Session tools for the DM:** encounter prep, a recap generated from the journal, and table hints.
+7. **More table tools:** a shared list of NPCs and places, open quests and threads, a quiet pause button for comfort, the DM tracking a monster's concentration, and table hints.
 8. **More AI help** on top of search by meaning: backstory ideas, "describe the vibe" character suggestions, and AI search over Open5e and homebrew too.
+9. **Works with no signal at all** as an installable app, and **Google sign-in** after the rename.
 
 The roadmap stays incremental: each feature should be small enough to understand, build, test and review before the next one.
 
@@ -480,7 +528,10 @@ The roadmap stays incremental: each feature should be small enough to understand
 - **Mid October 2026:** Open5e and book listings, homebrew, magic items, the quiz, rules words, shared rolls, secret messages, the Adventurer and Dungeon Master split, party strip, journal, handouts, the player game page and a full character audit.
 - **October 15 to 17, 2026:** a full companion card, an orderable characters list, a clearer DM combat screen, party portraits, a Settings page, death saves, concentration, round timers, tidier class pages and **AI search by meaning** with Claude.
 
-As of October 17, 2026 there are 160+ merged pull requests and 240 commits.
+- **October 18 to 19, 2026:** a journal for every character, dark mode, level-up that asks for class feature choices, a calmer sheet, weapons and armor that do the math, multiple companions, and Messages with receipts and screenshots.
+- **October 20 to 21, 2026:** prepared spells, table rules, away players, the encounter and loot helpers, the get-ready heads-up, recaps, campaigns, the allowed-content list and the weak-signal sheet.
+
+As of October 21, 2026 there are 230+ merged pull requests and 310+ commits.
 
 ## Content and licensing principles
 

@@ -7,6 +7,9 @@ import {
   getSpellEffectIcon,
   getUiIcon,
   getMagicItemIcon,
+  getCreaturePortrait,
+  getActivityIcon,
+  ACTIVITY_KINDS,
 } from "./icons";
 import { BOOK_RACES } from "./bookRaces";
 import { BOOK_BACKGROUNDS } from "./bookBackgrounds";
@@ -103,5 +106,37 @@ describe("getMagicItemIcon", () => {
     expect(getMagicItemIcon("SCROLL")).toBe(getMagicItemIcon("scroll"));
     expect(getMagicItemIcon(undefined)).toBe(getMagicItemIcon("Wondrous Item"));
     expect(getMagicItemIcon("Other")).toBe(getMagicItemIcon("Wondrous Item"));
+  });
+});
+
+describe("getCreaturePortrait", () => {
+  it("finds a portrait only by a creature's exact SRD id", () => {
+    for (const id of ["goblin", "kobold", "ogre", "skeleton", "wolf"]) {
+      expect(getCreaturePortrait(id)).toBeTruthy();
+    }
+  });
+
+  it("never guesses from a name, a different case or a lookalike", () => {
+    expect(getCreaturePortrait("Kobold")).toBeUndefined();
+    expect(getCreaturePortrait("kobold-chieftain")).toBeUndefined();
+    expect(getCreaturePortrait("goblin boss")).toBeUndefined();
+    expect(getCreaturePortrait("")).toBeUndefined();
+    expect(getCreaturePortrait(undefined)).toBeUndefined();
+    expect(getCreaturePortrait(42)).toBeUndefined();
+  });
+});
+
+describe("getActivityIcon", () => {
+  it("has an icon for each of the six explicit kinds", () => {
+    expect(ACTIVITY_KINDS).toEqual(["attack", "damage", "healing", "spell", "turn", "handout"]);
+    for (const kind of ACTIVITY_KINDS) expect(getActivityIcon(kind)).toBeTruthy();
+  });
+
+  it("gives nothing for no kind, an unknown kind, or words from a message", () => {
+    expect(getActivityIcon(undefined)).toBeUndefined();
+    expect(getActivityIcon(null)).toBeUndefined();
+    expect(getActivityIcon("mystery")).toBeUndefined();
+    expect(getActivityIcon("Kobold attacks Billie")).toBeUndefined();
+    expect(getActivityIcon("ATTACK")).toBeUndefined();
   });
 });

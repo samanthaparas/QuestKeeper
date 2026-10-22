@@ -48,16 +48,37 @@ describe("Home", () => {
     expect(screen.getByText(/Up to 20 short questions/)).toHaveTextContent("your results are ready after 5 answers");
   });
 
-  it("tells name search and meaning search apart, and opens the meaning search with the example", async () => {
+  it("offers search by name or by meaning, one at a time, with clear tabs", async () => {
     const heard = vi.fn();
     window.addEventListener(OPEN_SEARCH_EVENT, heard);
     renderHome();
+    // By name is the first choice, and says what it does.
+    expect(screen.getByRole("tab", { name: "By name" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByLabelText("Search by name")).toHaveAccessibleDescription(/whose name matches/);
-    const meaning = screen.getByRole("region", { name: "Don't know the name? Search by meaning" });
-    await userEvent.click(within(meaning).getByRole("button", { name: /Help me sneak past guards/ }));
+
+    // Switching shows the meaning search, with its own examples.
+    await userEvent.click(screen.getByRole("tab", { name: "By meaning" }));
+    expect(screen.getByRole("tab", { name: "By meaning" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByLabelText("Search by name")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /Help me sneak past guards/ }));
     expect(heard).toHaveBeenCalledTimes(1);
     expect(heard.mock.calls[0][0].detail).toEqual({ query: "Help me sneak past guards", meaning: true });
+
+    // Typing your own description opens the same search.
+    await userEvent.type(screen.getByLabelText("Search by meaning"), "light my way{Enter}");
+    expect(heard).toHaveBeenCalledTimes(2);
+    expect(heard.mock.calls[1][0].detail).toEqual({ query: "light my way", meaning: true });
     window.removeEventListener(OPEN_SEARCH_EVENT, heard);
+  });
+
+  it("moves between the search tabs with the arrow keys", async () => {
+    renderHome();
+    screen.getByRole("tab", { name: "By name" }).focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "By meaning" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "By meaning" })).toHaveAttribute("aria-selected", "true");
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("tab", { name: "By name" })).toHaveFocus();
   });
 
   it("offers three paths, each with a sample to see before signing up", () => {

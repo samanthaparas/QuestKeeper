@@ -162,6 +162,9 @@ export function combatantFromMonster(detail) {
     statBlock: {
       attacks,
       notes: note,
+      // The SRD's own id for this creature ("kobold"), kept so the DM
+      // screen can show its portrait without guessing from the name.
+      ...(typeof detail.index === "string" && detail.index ? { creature: detail.index } : {}),
       ...(initiativeBonus ? { initiativeBonus } : {}),
       ...(Object.keys(saves).length > 0 ? { saves } : {}),
     },

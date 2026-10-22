@@ -1,39 +1,79 @@
-/* Spacing is kept modest so the useful destinations (search, paths,
-   categories) aren't pushed down by empty space. */
+/* The homepage, styled as a cosy tavern. Panels share one look (a warm
+   surface with a thin brass edge and a soft shadow) built from the app's own
+   colour tokens, so light and dark mode both just work: light is warm cream
+   with soft brown, dark is candle-lit brown. Spacing is kept modest so the
+   useful destinations (search, paths, categories) aren't pushed down. */
 .home {
-  padding-top: 28px;
-  padding-bottom: 40px;
+  --home-panel-edge: color-mix(in srgb, var(--qk-brass) 55%, var(--qk-border));
+  --home-panel-bg: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--qk-surface) 90%, var(--qk-brass)) 0%,
+    var(--qk-surface) 55%
+  );
+  --home-panel-shadow: 0 14px 34px var(--qk-shadow), inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent);
+
+  max-width: var(--qk-content-width);
+  margin: 0 auto;
+  padding: 20px 32px 8px;
 }
+
+/* One panel look, used by the hero, search, paths, character cards and
+   category cards. */
+.home__hero,
+.home__lookup,
+.home__continue-card,
+.home__path,
+.home .category-card {
+  background: var(--home-panel-bg);
+  border: 1px solid var(--home-panel-edge);
+  border-radius: var(--qk-radius-large);
+  box-shadow: var(--home-panel-shadow);
+}
+
+/* ---------- The welcome ---------- */
 
 .home__hero {
-  /* Lets the illustration sit beside the words (see .home__hero-art). */
   position: relative;
-  max-width: var(--qk-reading-width);
-  margin: 0 auto;
-  padding: 0 32px;
-  text-align: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: stretch;
+  overflow: hidden;
+  min-height: 270px;
 }
 
-/* The hero illustration only shows when there's room for it beside the
-   reading column. It's placed outside the flow, so the hero is exactly as
-   tall as before and search doesn't move; at 200% zoom or on smaller
-   screens it's simply left out. */
+/* The painted hearth scene fills the whole panel behind the words. Its
+   own left side is quiet (dark wall), and the fade below blends it into the
+   panel colour, so the text always sits on a plain theme-coloured area, in
+   light and dark alike. */
 .home__hero-art {
-  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
 }
 
-/* From 1280px there's a comfortable gap between the words and the art. */
-@media (min-width: 1280px) {
-  .home__hero-art {
-    display: block;
-    position: absolute;
-    top: 4px;
-    left: calc(100% - 8px);
-    width: 220px;
-    height: 220px;
-    object-fit: contain;
-    pointer-events: none;
-  }
+.home__hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    var(--qk-surface) 0%,
+    color-mix(in srgb, var(--qk-surface) 96%, transparent) 46%,
+    color-mix(in srgb, var(--qk-surface) 55%, transparent) 58%,
+    transparent 74%
+  );
+}
+
+.home__hero-copy {
+  position: relative;
+  z-index: 1;
+  align-self: center;
+  padding: 26px 8px 26px 40px;
+  text-align: left;
 }
 
 .home__eyebrow {
@@ -41,81 +81,44 @@
   /* The darker accent: small text needs 4.5:1 against the page. */
   color: var(--qk-terracotta-hover);
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .home__title {
   color: var(--qk-text);
   font-family: var(--qk-font-display);
-  font-size: 48px;
+  font-size: clamp(32px, 3.2vw, 44px);
   line-height: 1.1;
   font-weight: 600;
-  margin: 0 0 12px;
+  margin: 0 0 10px;
 }
 
 .home__subtitle {
+  max-width: 520px;
   color: var(--qk-text-muted);
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1.5;
-  margin: 0 0 20px;
-}
-
-.home__suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.home__suggestions-label {
-  color: var(--qk-text-muted);
-  font-size: 14px;
-  margin-right: 4px;
-}
-
-.home__suggestion-chip {
-  min-height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--qk-border);
-  border-radius: 999px;
-  background-color: var(--qk-surface);
-  color: var(--qk-text);
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    transform 0.1s ease;
-}
-
-.home__suggestion-chip:hover {
-  border-color: var(--qk-terracotta);
-  background-color: var(--qk-terracotta-soft);
-}
-
-.home__suggestion-chip:focus-visible {
-  outline: 2px solid var(--qk-focus);
-  outline-offset: 2px;
+  margin: 0 0 16px;
 }
 
 /* The one main next step (the quiz), with what to expect. */
 
 .home__start {
-  margin: 0 0 24px;
+  margin: 0;
 }
 
 .home__cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 52px;
-  padding: 0 28px;
+  min-height: 48px;
+  padding: 10px 26px;
+  /* If a narrow column makes the label wrap, it stays centred. */
+  text-align: center;
+  line-height: 1.25;
   border: 2px solid var(--qk-terracotta);
   border-radius: var(--qk-radius-control);
   background-color: var(--qk-terracotta);
@@ -123,6 +126,7 @@
   font-size: 18px;
   font-weight: 700;
   text-decoration: none;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--qk-terracotta) 30%, transparent);
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
@@ -135,7 +139,6 @@
 }
 
 .home__cta:focus-visible,
-.home__meaning-button:focus-visible,
 .home__continue-button:focus-visible,
 .home__continue-dismiss:focus-visible {
   outline: 3px solid var(--qk-focus);
@@ -147,6 +150,7 @@
 .home__cta--quiet {
   background-color: transparent;
   color: var(--qk-text);
+  box-shadow: none;
 }
 
 .home__cta--quiet:hover {
@@ -154,130 +158,90 @@
 }
 
 .home__cta-note {
-  margin: 8px auto 0;
-  max-width: 520px;
+  margin: 8px 0 0;
+  max-width: 480px;
   color: var(--qk-text-muted);
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-/* Search by name, then search by meaning. */
-
-.home__lookup {
-  display: grid;
-  gap: 8px;
-  text-align: left;
-}
-
-.home__lookup .home__suggestions {
-  justify-content: flex-start;
-  width: min(100%, 760px);
-  margin: 4px auto 0;
-}
-
-/* Search by meaning: a smaller second option right under name search,
-   lined up with it, rather than a panel of its own. A thin rule marks where
-   the name search's own hints end. */
-.home__meaning {
-  width: min(100%, 760px);
-  margin: 14px auto 0;
-  padding: 12px 0 0;
-  border-top: 1px solid var(--qk-border);
-}
-
-.home__meaning-title {
-  margin: 0 0 2px;
-  color: var(--qk-text);
-  /* Body font, so it reads as part of the search, not a new section. */
-  font-family: var(--qk-font-body);
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.home__meaning-text,
-.home__meaning-tip {
-  margin: 0 0 8px;
-  color: var(--qk-text-muted);
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-/* The example button and the keyboard tip share a row when there's room. */
-.home__meaning-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 14px;
-}
-
-.home__meaning-tip {
-  margin: 0;
   font-size: 14px;
+  line-height: 1.5;
 }
 
-.home__meaning-tip kbd {
-  padding: 1px 6px;
-  border: 1px solid var(--qk-border);
-  border-radius: 4px;
-  font: inherit;
-}
-
-.home__meaning-button {
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1px solid var(--qk-terracotta);
-  border-radius: var(--qk-radius-control);
-  background-color: transparent;
-  color: var(--qk-text);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-  text-align: left;
-  transition:
-    background-color 0.15s ease,
-    transform 0.1s ease;
-}
-
-.home__meaning-button:hover {
-  background-color: var(--qk-terracotta-soft);
-}
-
-/* Continue Character */
+/* ---------- Coming back: your character first ---------- */
 
 .home__continue {
-  max-width: var(--qk-content-width);
-  margin: 32px auto 0;
-  padding: 0 32px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 14px;
 }
 
 .home__continue-card {
-  max-width: 480px;
-  margin: 0 auto;
-  padding: 24px;
-  background-color: var(--qk-surface);
-  border: 1px solid var(--qk-border);
-  border-radius: var(--qk-radius-card);
-  box-shadow: 0 12px 30px var(--qk-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 16px 20px;
   text-align: left;
+}
+
+/* The "pick up where you left off" note, when there is one, takes the
+   whole first row. */
+.home__continue-card[aria-labelledby="home-pending-title"] {
+  grid-column: 1 / -1;
+}
+
+/* Your character: portrait on the left, details and the button beside it. */
+.home__continue-card--character {
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+}
+
+.home__continue-portrait {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 76px;
+  height: 76px;
+  overflow: hidden;
+  border: 2px solid var(--home-panel-edge);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.home__continue-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home__continue-body {
+  min-width: 0;
+  flex: 1;
 }
 
 .home__continue-title {
   color: var(--qk-text);
   font-family: var(--qk-font-display);
-  font-size: 22px;
-  margin: 0 0 4px;
+  font-size: 21px;
+  margin: 0 0 2px;
 }
 
 .home__continue-subtitle {
   color: var(--qk-text-muted);
-  font-size: 14px;
-  margin: 0 0 16px;
+  font-size: 15px;
+  margin: 0 0 10px;
 }
 
-.home__continue-badges {
+/* HP and spell slots, then the button, on one line when there's room. */
+.home__continue-actions {
   display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
 }
 
 .home__badge {
@@ -292,19 +256,29 @@
 }
 
 .home__continue-button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
   min-height: 44px;
+  padding: 0 20px;
   border-radius: var(--qk-radius-control);
   background-color: var(--qk-terracotta);
-  color: var(--qk-surface);
+  color: var(--qk-on-accent);
   text-decoration: none;
   font-weight: 700;
   transition:
     background-color 0.15s ease,
     transform 0.1s ease;
+}
+
+.home__continue-actions .home__continue-button {
+  margin-left: auto;
+}
+
+/* The "Your games" card's button fills its width. */
+.home__continue-card:not(.home__continue-card--character) .home__continue-button,
+.home__continue-card:not(.home__continue-card--character) .home__continue-dismiss {
+  align-self: stretch;
 }
 
 /* The "Pick up where you left off" note goes first; your character's
@@ -325,7 +299,7 @@ button.home__continue-button {
 .home__continue-dismiss {
   display: block;
   min-height: 44px;
-  margin: 8px auto 0;
+  margin: 4px auto 0;
   padding: 0 12px;
   border: 0;
   background: none;
@@ -341,59 +315,176 @@ button.home__continue-button {
 
 .home__continue-button:hover {
   background-color: var(--qk-terracotta-hover);
+  color: var(--qk-on-accent);
 }
 
 /* The outlined version keeps its readable text colour on hover. */
 .home__continue-button--quiet:hover {
   background-color: var(--qk-terracotta-soft);
+  color: var(--qk-text);
 }
 
-/* Three paths in: discover, play, run */
+/* ---------- Search: by name or by meaning, one at a time ---------- */
+
+.home__lookup {
+  margin-top: 14px;
+  padding: 14px 20px 14px;
+  text-align: left;
+}
+
+/* Two clearly labelled choices, like tabs: the chosen one is filled. */
+.home__modes {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 4px;
+  border: 1px solid var(--home-panel-edge);
+  border-radius: 999px;
+}
+
+.home__mode {
+  min-height: 40px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.home__mode:hover {
+  background-color: var(--qk-terracotta-soft);
+}
+
+.home__mode--active,
+.home__mode--active:hover {
+  background-color: var(--qk-terracotta);
+  color: var(--qk-on-accent);
+}
+
+.home__mode:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* The search box already looks like a panel; here it just fills the row. */
+.home__lookup .search-form,
+.home__lookup .search-form-wrapper--scoped {
+  width: 100%;
+}
+
+.home__lookup .search-form {
+  min-height: 52px;
+  box-shadow: none;
+}
+
+.home__lookup .search-form:focus-within {
+  box-shadow: 0 0 0 4px var(--qk-terracotta-soft);
+}
+
+.home__lookup .search-form__hint {
+  margin: 6px 0 0;
+}
+
+.home__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 6px;
+}
+
+.home__suggestions-label {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  margin-right: 2px;
+}
+
+.home__suggestion-chip {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.home__suggestion-chip:hover {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+}
+
+.home__suggestion-chip:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Three paths in: discover, play, run ---------- */
 
 .home__paths {
-  max-width: var(--qk-content-width);
-  margin: 44px auto 0;
-  padding: 0 32px;
+  margin-top: 24px;
 }
 
-.home__paths-title {
+.home__paths-title,
+.home__categories-title {
   color: var(--qk-text);
   font-family: var(--qk-font-display);
-  margin: 0 0 16px;
+  font-size: 22px;
+  margin: 0 0 10px;
 }
 
 .home__paths-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px;
 }
 
 .home__path {
-  padding: 24px 20px;
-  background-color: var(--qk-surface);
-  border: 1px solid var(--qk-border);
-  border-radius: var(--qk-radius-card);
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  column-gap: 12px;
+  align-content: start;
+  padding: 14px 16px 10px;
+}
+
+.home__path-art {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
 }
 
 .home__path h3 {
+  align-self: center;
   color: var(--qk-text);
   font-family: var(--qk-font-display);
-  font-size: 20px;
-  margin: 0 0 8px;
+  font-size: 19px;
+  margin: 0;
 }
 
 .home__path p {
+  grid-column: 1 / -1;
   color: var(--qk-text-muted);
   font-size: 15px;
-  line-height: 1.5;
-  margin: 0 0 12px;
+  line-height: 1.45;
+  margin: 8px 0 6px;
 }
 
 .home__path ul {
+  grid-column: 1 / -1;
   display: grid;
-  gap: 4px;
   margin: 0;
-  padding: 0;
+  padding: 4px 0 0;
+  border-top: 1px solid var(--home-panel-edge);
   list-style: none;
 }
 
@@ -401,7 +492,7 @@ button.home__continue-button {
 .home__path a {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
+  min-height: 40px;
   color: var(--qk-terracotta-hover);
   font-weight: 700;
   text-underline-offset: 3px;
@@ -419,43 +510,63 @@ button.home__continue-button {
 }
 
 .home__paths-note {
-  margin: 12px 0 0;
-  color: var(--qk-text-muted);
+  margin: 8px 0 0;
+  /* A shade darker than the usual muted text: on the page background (not a
+     panel) the usual one is only 4:1 in light mode. */
+  color: color-mix(in srgb, var(--qk-text-muted) 65%, var(--qk-text));
   font-size: 14px;
 }
 
-/* Browse Categories */
+/* ---------- Browse Categories ---------- */
 
 .home__categories {
-  max-width: var(--qk-content-width);
-  margin: 44px auto 0;
-  padding: 0 32px;
-}
-
-.home__categories-title {
-  color: var(--qk-text);
-  font-family: var(--qk-font-display);
-  margin: 0 0 16px;
+  margin-top: 20px;
 }
 
 .home__categories-grid {
   display: grid;
-  /* Six categories: two even rows of three. */
+  /* Six categories: two even rows of three, or one row of six when wide. */
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
+}
+
+/* A tighter card than the shared default: the same artwork, a little
+   smaller, so the whole row stays easy to reach. */
+.home .category-card {
+  min-height: 0;
+  padding: 8px 10px 12px;
+  gap: 2px;
+}
+
+.home .category-card__art {
+  width: 108px;
+  height: 108px;
+  margin: -14px;
+}
+
+.home .category-card__art--tight {
+  width: 76px;
+  height: 76px;
+  margin: 2px;
+}
+
+@media (min-width: 1180px) {
+  .home__categories-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 
 .category-link {
   text-decoration: none;
   color: inherit;
   display: block;
-  border-radius: var(--qk-radius-card);
+  border-radius: var(--qk-radius-large);
 }
 
 /* Pointing at a category warms its border and deepens its shadow. */
 .category-link:hover .category-card {
   border-color: var(--qk-terracotta);
-  box-shadow: 0 6px 16px var(--qk-shadow);
+  box-shadow: 0 8px 20px var(--qk-shadow);
 }
 
 /* Keyboard focus is just as clear, without needing any movement: a full
@@ -476,10 +587,13 @@ button.home__continue-button {
   box-shadow: 0 2px 6px var(--qk-shadow);
 }
 
-/* Movement that acknowledges an action. It's skipped when the device asks
-   for reduced motion, and when Settings > Reduce motion is on (index.css
-   switches off the transitions; the :not() here also drops the lift and
-   press themselves). Only transform moves, so nothing around it shifts. */
+/* ---------- Gentle motion ---------- */
+
+/* Movement that acknowledges an action. It's
+   skipped when the device asks for reduced motion, and when Settings >
+   Reduce motion is on (index.css switches off every animation and
+   transition; the :not() here also drops the lift and press themselves).
+   Only transform and opacity move, so nothing around it shifts. */
 @media (prefers-reduced-motion: no-preference) {
   html:not([data-motion="reduce"]) .category-link:hover .category-card,
   html:not([data-motion="reduce"]) .category-link:focus-visible .category-card {
@@ -498,7 +612,6 @@ button.home__continue-button {
   }
 
   html:not([data-motion="reduce"]) .home__cta:active,
-  html:not([data-motion="reduce"]) .home__meaning-button:active,
   html:not([data-motion="reduce"]) .home__continue-button:active {
     transform: translateY(1px);
   }
@@ -509,19 +622,127 @@ button.home__continue-button {
   }
 }
 
-@media (max-width: 900px) {
-  .home__paths-grid {
+/* ---------- Smaller screens ---------- */
+
+/* Tablets and below: the three paths stay side by side while there's room
+   for them (a tablet shouldn't turn them into three tall panels). */
+@media (max-width: 820px) {
+  .home {
+    padding: 16px 20px 8px;
+  }
+
+  .home__hero {
     grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  /* The picture becomes its own shallow panel above the words, so the
+     words keep their full size. */
+  .home__hero::after {
+    display: none;
+  }
+
+  .home__hero-art {
+    position: static;
+    order: -1;
+    width: calc(100% - 24px);
+    /* Its own proportions, not a thin strip: a little over 2:1 crops most of
+       the empty left wall and keeps the whole picture's height, so the
+       fireplace, mugs, backpack and the sleeping cat are all in frame. */
+    height: auto;
+    aspect-ratio: 2.2 / 1;
+    margin: 12px 12px 0;
+    border-radius: var(--qk-radius-card);
+    object-position: 100% 50%;
+  }
+
+  .home__hero-copy {
+    padding: 16px 24px 22px;
+  }
+
+  .home__path {
+    padding: 12px 12px 6px;
+  }
+
+  .home__path h3 {
+    font-size: 18px;
+  }
+
+  .home__path p {
+    font-size: 14px;
   }
 }
 
-@media (max-width: 768px) {
+/* Tablet portrait (about 700 to 820px wide): the words and the picture are
+   one composition again, as on desktop. The words take the left ~55%, and
+   the painting fills the panel behind them, positioned so the fireplace and
+   the sleeping cat sit in the right ~45%. A short fade in the panel colour
+   keeps the words on a plain background. No fixed height: the panel grows
+   with the text, with larger text or zoom. Below 700px it goes back to the
+   compact stacked version above. */
+@media (min-width: 701px) and (max-width: 820px) {
+  .home__hero {
+    grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
+    min-height: 350px;
+  }
+
+  .home__hero::after {
+    display: block;
+    background: linear-gradient(
+      90deg,
+      var(--qk-surface) 0%,
+      color-mix(in srgb, var(--qk-surface) 96%, transparent) 54%,
+      color-mix(in srgb, var(--qk-surface) 50%, transparent) 63%,
+      transparent 75%
+    );
+  }
+
+  .home__hero-art {
+    position: absolute;
+    inset: 0;
+    order: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    aspect-ratio: auto;
+    border-radius: 0;
+    object-position: 91% 50%;
+  }
+
+  .home__hero-copy {
+    padding: 28px 24px 28px 28px;
+  }
+}
+
+@media (max-width: 700px) {
+  .home__continue {
+    grid-template-columns: 1fr;
+  }
+
+  .home__paths-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home__categories-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .home__continue-card--character {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 560px) {
   .home__title {
-    font-size: 34px;
+    font-size: 30px;
   }
 
   .home__subtitle {
     font-size: 16px;
+  }
+
+  .home__hero-copy {
+    padding: 14px 18px 20px;
   }
 
   .home__categories-grid {
@@ -530,18 +751,20 @@ button.home__continue-button {
 }
 
 @media (max-width: 480px) {
-  .home__title {
-    font-size: 30px;
+  .home {
+    padding: 12px 12px 8px;
   }
 
-  /* Phones stack everything, so the gaps between sections can be a little
-     smaller without anything feeling crowded. */
-  .home__continue {
-    margin-top: 24px;
+  .home__lookup {
+    padding: 12px;
   }
+}
 
-  .home__paths,
-  .home__categories {
-    margin-top: 36px;
+/* If the device asks for reduced motion, the small colour fades go too (the
+   lift and press movements are already off in that case). */
+@media (prefers-reduced-motion: reduce) {
+  .home *,
+  .footer * {
+    transition: none !important;
   }
 }
