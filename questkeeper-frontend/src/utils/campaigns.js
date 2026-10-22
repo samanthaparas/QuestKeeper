@@ -115,13 +115,6 @@ export function suggestOlderNotes(entries) {
   return null;
 }
 
-// A time as the value for a date-and-time box ("2026-10-22T19:22").
-export function toDateTimeInput(when) {
-  const date = new Date(when);
-  const pad = (number) => String(number).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
 // A date-and-time box's value as a time the database understands, or null
 // when it's empty. endOfMinute: include the whole minute typed (a note written
 // at 8:34:40 counts as "until 8:34").

@@ -332,12 +332,39 @@ describe("TableJournal", () => {
       expect(await screen.findByLabelText("New note")).toBeInTheDocument();
     });
 
-    it("gives everyone at the table a Move list on each note, and the Campaigns panel", async () => {
+    it("keeps the rows tidy: no Move list on every note, just a quiet Move link on other people's notes", async () => {
       renderCampaigns({ isDm: false });
       const note = (await screen.findByText("Season two: two years later.")).closest("li");
-      await userEvent.selectOptions(within(note).getByLabelText("Move this note to another campaign"), "1");
+      expect(within(note).queryByLabelText("Move this note to another campaign")).not.toBeInTheDocument();
+      // The DM wrote this one, not "me": a Move link, no Edit.
+      expect(within(note).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+
+      await userEvent.click(within(note).getByRole("button", { name: "Move" }));
+      await userEvent.selectOptions(within(note).getByLabelText(/Move to/), "1");
       expect(moveJournalEntries).toHaveBeenCalledWith("t1", ["new1"], 1);
       expect(screen.getByText(/^Campaigns/)).toBeInTheDocument();
+    });
+
+    it("puts Move inside Edit for your own notes, and only moves when the campaign was changed", async () => {
+      listJournal.mockResolvedValue([
+        TWO_CAMPAIGNS[0],
+        { ...TWO_CAMPAIGNS[1], id: "mine", author_id: "me", author_name: "Billie", body: "My own note." },
+      ]);
+      renderJournal({ sessionNumber: 1, campaignNumber: 2, campaignNames: NAMES });
+      const note = (await screen.findByText("My own note.")).closest("li");
+      expect(within(note).queryByRole("button", { name: "Move" })).not.toBeInTheDocument();
+
+      // Edit and save without touching the campaign: nothing is moved.
+      await userEvent.click(within(note).getByRole("button", { name: "Edit" }));
+      await userEvent.click(within(note).getByRole("button", { name: "Save" }));
+      expect(updateJournalEntry).toHaveBeenCalled();
+      expect(moveJournalEntries).not.toHaveBeenCalled();
+
+      // Edit again, pick the other campaign, and save.
+      await userEvent.click(within(note).getByRole("button", { name: "Edit" }));
+      await userEvent.selectOptions(within(note).getByLabelText("Campaign"), "1");
+      await userEvent.click(within(note).getByRole("button", { name: "Save" }));
+      expect(moveJournalEntries).toHaveBeenCalledWith("t1", ["mine"], 1);
     });
   });
 });

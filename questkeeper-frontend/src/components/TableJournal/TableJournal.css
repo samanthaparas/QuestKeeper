@@ -373,7 +373,8 @@
 }
 
 .table-journal__move {
-  margin-left: auto;
+  margin: 6px 0 0;
+  font-size: 14px;
 }
 
 .table-journal__campaign-note {
