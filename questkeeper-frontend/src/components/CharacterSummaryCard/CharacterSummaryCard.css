@@ -265,3 +265,14 @@
   color: var(--qk-text-muted);
   border-style: dashed;
 }
+
+/* A character that uses something the DM's table doesn't allow. */
+.character-summary__flag {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--qk-brass);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+  font-size: 14px;
+}

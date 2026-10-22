@@ -30,6 +30,7 @@ import {
   removeCombatant,
   removeMember,
   setTableRules,
+  setBannedContent,
   banMember,
   unbanMember,
   listBans,
@@ -66,6 +67,9 @@ import TableRules from "../../components/TableRules/TableRules";
 import EncounterHelper from "../../components/EncounterHelper/EncounterHelper";
 import LootHelper from "../../components/LootHelper/LootHelper";
 import TurnHeadsUp from "../../components/TurnHeadsUp/TurnHeadsUp";
+import ContentRules from "../../components/ContentRules/ContentRules";
+import ContentNotice from "../../components/ContentNotice/ContentNotice";
+import { bannedChoicesOf, cleanBanned } from "../../utils/contentRules";
 import { addJournalEntry, getTablePortraits } from "../../utils/journalStore";
 import "./TablePage.css";
 
@@ -1314,6 +1318,9 @@ function TablePage() {
         {/* The DM's table rules, for players to read (nothing if there are none). */}
         {!isDm && <TableRules tableId={table.id} rules={table.table_rules} />}
 
+        {/* What the DM doesn't allow here (nothing shows if nothing is blocked). */}
+        {!isDm && <ContentNotice banned={cleanBanned(table.banned_content)} sheet={mySheet} />}
+
         {(isDm ? characters.length > 0 : partyRows.length > 0) && (
           <section className="table-page__party" aria-labelledby="party-title">
             <div className="table-page__party-head">
@@ -1398,6 +1405,13 @@ function TablePage() {
             rules={table.table_rules}
             isDm
             onSave={(text) => setTableRules(table.id, text)}
+          />
+        )}
+
+        {isDm && dmTab === "prep" && (
+          <ContentRules
+            banned={cleanBanned(table.banned_content)}
+            onSave={(next) => setBannedContent(table.id, next)}
           />
         )}
 
@@ -1794,7 +1808,11 @@ function TablePage() {
                 <div className="table-page__characters">
                   {(selectedPlayerId === "all" ? characters : [selectedSheet]).map(
                     (sheet) => (
-                      <CharacterSummaryCard key={sheet.id} sheet={sheet} />
+                      <CharacterSummaryCard
+                        key={sheet.id}
+                        sheet={sheet}
+                        bannedChoices={bannedChoicesOf(sheet, cleanBanned(table.banned_content))}
+                      />
                     ),
                   )}
                 </div>

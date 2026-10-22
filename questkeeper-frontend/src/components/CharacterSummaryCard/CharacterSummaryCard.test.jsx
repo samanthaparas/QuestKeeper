@@ -100,4 +100,12 @@ describe("CharacterSummaryCard: reading a player's spells, items and features", 
     const feature = screen.getByText("Arcane Recovery").closest(".character-summary__entry");
     expect(feature).toHaveTextContent("Once a day on a short rest, get slots back");
   });
+
+  it("flags a character that uses something the table doesn't allow, and says nothing otherwise", () => {
+    const { rerender } = render(<CharacterSummaryCard sheet={SHEET} />);
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+
+    rerender(<CharacterSummaryCard sheet={SHEET} bannedChoices={[{ kind: "spell", label: "spell", name: "Shield" }]} />);
+    expect(screen.getByRole("note")).toHaveTextContent("⚠ Uses options not allowed at this table: Shield (spell)");
+  });
 });

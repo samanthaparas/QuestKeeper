@@ -1,0 +1,164 @@
+/* The DM's "Allowed content" panel: one collapsed line on the Prep tab. */
+.content-rules {
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.content-rules__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  padding: 14px 20px;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.content-rules__count {
+  padding: 1px 10px;
+  border-radius: 999px;
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+  font-family: var(--qk-font-body);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.content-rules__summary:focus-visible,
+.content-rules__pill:focus-visible,
+.content-rules__button:focus-visible,
+.content-rules__remove:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.content-rules__body {
+  display: grid;
+  gap: 12px;
+  padding: 0 20px 18px;
+}
+
+.content-rules__hint,
+.content-rules__empty {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.content-rules__kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+  justify-self: start;
+}
+
+.content-rules__pill {
+  min-height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.content-rules__pill[aria-checked="true"] {
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+.content-rules__form {
+  display: grid;
+  gap: 4px;
+}
+
+.content-rules__label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.content-rules__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.content-rules__input {
+  flex: 1 1 220px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-input-bg);
+  color: var(--qk-text);
+  font: inherit;
+}
+
+.content-rules__button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.content-rules__button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.content-rules__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.content-rules__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 6px 2px 0;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+  font-size: 14px;
+}
+
+.content-rules__remove {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.content-rules__remove:hover {
+  background-color: var(--qk-terracotta-soft);
+}
+
+.content-rules__message {
+  margin: 0;
+  color: var(--qk-text);
+  font-size: 14px;
+}
