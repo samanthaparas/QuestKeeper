@@ -61,7 +61,7 @@ describe("TableRecap", () => {
     await userEvent.type(screen.getByRole("textbox", { name: /Recap for session 2/ }), "The party crossed the bridge.");
     await userEvent.click(screen.getByRole("button", { name: "Save recap" }));
 
-    expect(saveRecap).toHaveBeenCalledWith("t1", 2, "The party crossed the bridge.", null);
+    expect(saveRecap).toHaveBeenCalledWith("t1", 2, "The party crossed the bridge.", null, 1);
   });
 
   it("edits an existing recap, passing the saved version's time", async () => {
@@ -74,7 +74,7 @@ describe("TableRecap", () => {
     await userEvent.type(box, " Then it rained.");
     await userEvent.click(screen.getByRole("button", { name: "Save recap" }));
 
-    expect(saveRecap).toHaveBeenCalledWith("t1", 2, `${RECAP.body} Then it rained.`, RECAP.updated_at);
+    expect(saveRecap).toHaveBeenCalledWith("t1", 2, `${RECAP.body} Then it rained.`, RECAP.updated_at, 1);
   });
 
   it("says so when someone else saved first, keeps your words, and lets you replace theirs on purpose", async () => {
@@ -94,7 +94,7 @@ describe("TableRecap", () => {
     expect(screen.getByRole("textbox", { name: /Recap for session 2/ })).toHaveValue(`${RECAP.body} Mine.`);
 
     await userEvent.click(screen.getByRole("button", { name: "Save recap" }));
-    await waitFor(() => expect(saveRecap).toHaveBeenLastCalledWith("t1", 2, `${RECAP.body} Mine.`, "2026-10-19T20:05:00Z"));
+    await waitFor(() => expect(saveRecap).toHaveBeenLastCalledWith("t1", 2, `${RECAP.body} Mine.`, "2026-10-19T20:05:00Z", 1));
   });
 
   it("drafts from the notes marked for the whole table only, never a private note, and doesn't save it", async () => {
@@ -139,5 +139,20 @@ describe("TableRecap", () => {
     await userEvent.click(screen.getByText(/Previously on/));
     await userEvent.selectOptions(screen.getByLabelText(/Recap for session/), "3");
     expect(await screen.findByText("Session three recap.")).toBeInTheDocument();
+  });
+
+  it("keeps campaigns apart: only this campaign's recaps show, labelled campaign.session, and saves go to it", async () => {
+    listRecaps.mockResolvedValue([
+      { ...RECAP, campaign_number: 1, session_number: 2, body: "Old campaign recap." },
+      { ...RECAP, campaign_number: 2, session_number: 2, body: "Season two recap." },
+    ]);
+    renderRecap({ campaign: 2, showCampaign: true });
+    expect(await screen.findByText("Season two recap.")).toBeInTheDocument();
+    expect(screen.queryByText("Old campaign recap.")).not.toBeInTheDocument();
+    expect(screen.getByText("Session 2.2")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Edit recap" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save recap" }));
+    expect(saveRecap).toHaveBeenCalledWith("t1", 2, "Season two recap.", RECAP.updated_at, 2);
   });
 });

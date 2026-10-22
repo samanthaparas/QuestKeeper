@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { listRecaps, saveRecap, subscribeToRecaps } from "../../utils/recapStore";
 import { writeRecapFromNotes } from "../../utils/api";
 import { formatStamp } from "../../utils/journal";
+import { sessionLabel } from "../../utils/campaigns";
 import "./TableRecap.css";
 
 // "Previously on...": one short recap per session, at the top of the Story
@@ -11,13 +12,15 @@ import "./TableRecap.css";
 // note). A draft only goes into the edit box; nothing is saved or shown until
 // someone taps Save.
 //
-// entries: the journal entries this person can see (the screen picks the
-// shared ones). currentSession: the table's current session number.
+// entries: the journal entries of the campaign being read (the screen picks
+// the shared ones). currentSession: its current session number. campaign:
+// which campaign this is; showCampaign: label sessions "2.5" (campaign 2,
+// session 5) when the table has several.
 
 const POLL_MS = 15000;
 const MAX_LENGTH = 3000;
 
-function TableRecap({ tableId, entries = [], currentSession = 1 }) {
+function TableRecap({ tableId, entries = [], currentSession = 1, campaign = 1, showCampaign = false }) {
   const headingId = useId();
   const textareaId = useId();
   const [recaps, setRecaps] = useState([]);
@@ -51,17 +54,19 @@ function TableRecap({ tableId, entries = [], currentSession = 1 }) {
   // The sessions with notes or a recap, newest first. The one shown starts as
   // the latest session before the current one (what happened last time), or the
   // current one if that's all there is.
+  const recapsHere = recaps.filter((item) => (item.campaign_number ?? 1) === campaign);
   const sessions = [
     ...new Set([
       currentSession,
       ...entries.map((entry) => entry.session_number ?? 1),
-      ...recaps.map((recap) => recap.session_number),
+      ...recapsHere.map((recap) => recap.session_number),
     ]),
   ].sort((a, b) => b - a);
   const earlier = sessions.filter((session) => session < currentSession);
   const selected = pick ?? earlier[0] ?? currentSession;
 
-  const recap = recaps.find((item) => item.session_number === selected) ?? null;
+  const selectedLabel = sessionLabel(campaign, selected, showCampaign);
+  const recap = recapsHere.find((item) => item.session_number === selected) ?? null;
   // Only notes marked for the whole table go to the AI, never a private note.
   const sharedNotes = entries
     .filter((entry) => (entry.session_number ?? 1) === selected && entry.visibility === "table")
@@ -99,7 +104,7 @@ function TableRecap({ tableId, entries = [], currentSession = 1 }) {
     setIsSaving(true);
     setMessage("");
     try {
-      await saveRecap(tableId, selected, editing.text, editing.expectedAt);
+      await saveRecap(tableId, selected, editing.text, editing.expectedAt, campaign);
       setEditing(null);
       load();
     } catch (failure) {
@@ -108,7 +113,9 @@ function TableRecap({ tableId, entries = [], currentSession = 1 }) {
         // second Save is then a deliberate choice to replace it.
         const latest = await listRecaps(tableId).catch(() => recaps);
         setRecaps(latest);
-        const theirs = latest.find((item) => item.session_number === selected);
+        const theirs = latest.find(
+          (item) => (item.campaign_number ?? 1) === campaign && item.session_number === selected,
+        );
         setEditing((current) => ({ ...current, expectedAt: theirs?.updated_at ?? null }));
         setMessage("Someone else changed this just now. Their version is shown above. Yours is still in the box: Save again to replace theirs.");
       } else {
@@ -129,7 +136,7 @@ function TableRecap({ tableId, entries = [], currentSession = 1 }) {
       aria-labelledby={headingId}
     >
       <summary id={headingId} className="table-recap__summary">
-        Previously on… <span className="table-recap__session">Session {selected}</span>
+        Previously on… <span className="table-recap__session">Session {selectedLabel}</span>
         {!recap && <span className="table-recap__empty-tag">No recap yet</span>}
       </summary>
       <div className="table-recap__body">
@@ -146,7 +153,7 @@ function TableRecap({ tableId, entries = [], currentSession = 1 }) {
             >
               {sessions.map((session) => (
                 <option key={session} value={session}>
-                  {session}
+                  {sessionLabel(campaign, session, showCampaign)}
                   {session === currentSession ? " (current)" : ""}
                 </option>
               ))}
@@ -157,7 +164,7 @@ function TableRecap({ tableId, entries = [], currentSession = 1 }) {
         {editing ? (
           <form className="table-recap__form" onSubmit={save}>
             <label className="table-recap__label" htmlFor={textareaId}>
-              Recap for session {selected}
+              Recap for session {selectedLabel}
             </label>
             <textarea
               id={textareaId}
@@ -197,7 +204,7 @@ function TableRecap({ tableId, entries = [], currentSession = 1 }) {
               </div>
             ) : (
               <p className="table-recap__empty">
-                Nobody has written a recap for session {selected} yet. Anyone at the table can.
+                Nobody has written a recap for session {selectedLabel} yet. Anyone at the table can.
               </p>
             )}
             <div className="table-recap__actions">
@@ -218,7 +225,7 @@ function TableRecap({ tableId, entries = [], currentSession = 1 }) {
 
         {sharedNotes.length === 0 && (
           <p className="table-recap__hint">
-            There are no notes for the whole table in session {selected} yet, so there&apos;s nothing to draft from.
+            There are no notes for the whole table in session {selectedLabel} yet, so there&apos;s nothing to draft from.
           </p>
         )}
         <p className="table-recap__message" role="status">

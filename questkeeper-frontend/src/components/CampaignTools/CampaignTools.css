@@ -1,0 +1,137 @@
+/* The DM's Campaigns panel on the Story tab: one collapsed line until opened. */
+.campaign-tools {
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  margin-bottom: 12px;
+}
+
+.campaign-tools__summary {
+  padding: 10px 14px;
+  color: var(--qk-text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.campaign-tools__summary:focus-visible,
+.campaign-tools__button:focus-visible,
+.campaign-tools__link:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.campaign-tools__body {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.campaign-tools__hint,
+.campaign-tools__edge {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.campaign-tools__suggestion {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-brass-soft);
+  font-size: 14px;
+}
+
+.campaign-tools__fields {
+  display: grid;
+  gap: 6px;
+  max-width: 420px;
+}
+
+.campaign-tools__fields label,
+.campaign-tools__list label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.campaign-tools__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400 !important;
+}
+
+.campaign-tools__input {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-input-bg);
+  color: var(--qk-text);
+  font: inherit;
+}
+
+.campaign-tools__preview {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface-muted);
+}
+
+.campaign-tools__preview p {
+  margin: 0;
+}
+
+.campaign-tools__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.campaign-tools__list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.campaign-tools__button {
+  justify-self: start;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.campaign-tools__button--primary {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+.campaign-tools__button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.campaign-tools__link {
+  border: none;
+  background: none;
+  color: var(--qk-terracotta);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.campaign-tools__message {
+  margin: 0;
+  font-size: 14px;
+}

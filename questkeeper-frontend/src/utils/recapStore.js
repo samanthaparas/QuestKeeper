@@ -14,14 +14,16 @@ export async function listRecaps(tableId) {
 }
 
 // Saves a session's recap. expectedAt is the updated_at of the version being
-// edited (null if there wasn't one). An empty body removes it. Throws an error
+// edited (null if there wasn't one). campaign: which campaign it belongs to
+// (null for the table's current one). An empty body removes it. Throws an error
 // with code "changed" when someone else saved first, so the screen can say so.
-export async function saveRecap(tableId, sessionNumber, body, expectedAt = null) {
+export async function saveRecap(tableId, sessionNumber, body, expectedAt = null, campaign = null) {
   const { data, error } = await supabase.rpc("save_table_recap", {
     p_table_id: tableId,
     p_session: sessionNumber,
     p_body: body,
     p_expected_at: expectedAt,
+    p_campaign: campaign,
   });
   if (error) {
     const failure = new Error(

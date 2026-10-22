@@ -1746,6 +1746,8 @@ function TablePage() {
             userId={user?.id}
             isDm={isDm}
             sessionNumber={table.session_number ?? 1}
+            campaignNumber={table.campaign_number ?? 1}
+            campaignNames={table.campaign_names ?? {}}
           />
         )}
 
