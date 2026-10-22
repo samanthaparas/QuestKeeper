@@ -67,6 +67,13 @@ vi.mock("../../utils/journalStore", () => ({
   subscribeToJournal: vi.fn(() => () => {}),
 }));
 
+// The recap card has its own tests; here it just needs to load quietly.
+vi.mock("../../utils/recapStore", () => ({
+  listRecaps: vi.fn().mockResolvedValue([]),
+  saveRecap: vi.fn(),
+  subscribeToRecaps: vi.fn(() => () => {}),
+}));
+
 vi.mock("../../utils/characterStore", () => ({
   getCharacter: vi.fn().mockResolvedValue({ abilityScores: { dexterity: 14 } }),
   getCharactersByIds: vi.fn().mockResolvedValue([]),

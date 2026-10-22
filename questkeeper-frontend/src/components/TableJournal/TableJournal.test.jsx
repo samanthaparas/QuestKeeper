@@ -24,6 +24,14 @@ vi.mock("../../utils/journalStore", () => ({
   subscribeToJournal: vi.fn(() => () => {}),
 }));
 
+// The recap card at the top has its own tests; here it just stays quiet.
+vi.mock("../../utils/recapStore", () => ({
+  listRecaps: vi.fn().mockResolvedValue([]),
+  saveRecap: vi.fn(),
+  subscribeToRecaps: vi.fn(() => () => {}),
+}));
+vi.mock("../../utils/api", () => ({ writeRecapFromNotes: vi.fn() }));
+
 const NOTES = [
   {
     id: "n1",
