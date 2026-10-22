@@ -135,3 +135,8 @@
   margin: 0;
   font-size: 14px;
 }
+
+.campaign-tools__warning {
+  color: var(--qk-danger);
+  font-weight: 700;
+}

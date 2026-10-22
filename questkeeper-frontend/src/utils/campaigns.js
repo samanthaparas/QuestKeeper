@@ -31,51 +31,104 @@ export function sessionLabel(campaign, session, hasSeveral) {
   return hasSeveral ? `${campaign}.${session}` : String(session);
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
 
-// Where a journal most likely switched from one campaign to the next: the
-// biggest quiet stretch between two notes, if it's at least two weeks long.
-// Returns { cutoff, gapDays, last, first } (last: the note before the gap,
-// first: the note after, which is where the new campaign starts) or null.
-export function suggestSplit(entries) {
-  const sorted = [...entries].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-  let best = null;
-  for (let index = 1; index < sorted.length; index += 1) {
-    const gap = new Date(sorted[index].created_at) - new Date(sorted[index - 1].created_at);
-    if (!best || gap > best.gap) best = { gap, last: sorted[index - 1], first: sorted[index] };
-  }
-  if (!best || best.gap < 14 * DAY_MS) return null;
+// Is this note inside the window? A missing from / until means "no limit".
+export function inWindow(entry, from, until) {
+  const time = new Date(entry.created_at).getTime();
+  return (!from || time >= new Date(from).getTime()) && (!until || time <= new Date(until).getTime());
+}
+
+const byTime = (a, b) => new Date(a.created_at) - new Date(b.created_at);
+
+// A short description of a group of notes, so the person can tell which
+// campaign it is: how many, who wrote them, when, and which sessions.
+export function describeNotes(entries) {
+  const sorted = [...entries].sort(byTime);
+  const writers = new Map();
+  for (const entry of sorted) writers.set(entry.author_name, (writers.get(entry.author_name) ?? 0) + 1);
+  const sessions = sorted.map((entry) => entry.session_number ?? 1);
   return {
-    cutoff: best.first.created_at,
-    gapDays: Math.round(best.gap / DAY_MS),
-    last: best.last,
-    first: best.first,
+    count: sorted.length,
+    writers: [...writers.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count })),
+    first: sorted[0]?.created_at ?? null,
+    last: sorted.at(-1)?.created_at ?? null,
+    firstSession: sessions.length ? Math.min(...sessions) : null,
+    lastSession: sessions.length ? Math.max(...sessions) : null,
   };
 }
 
-// How many notes would stay before a cutoff and how many would move on.
-export function countSplit(entries, cutoff) {
-  const time = new Date(cutoff).getTime();
-  let before = 0;
-  let after = 0;
-  for (const entry of entries) {
-    if (new Date(entry.created_at).getTime() >= time) after += 1;
-    else before += 1;
+// A guess at which notes are the older campaign, from how they were written:
+//  - "batch": five or more notes by one person typed in within a short time
+//    (each less than 45 minutes after the last), which looks like an old
+//    campaign being entered all at once, and
+//  - "gap": otherwise, a quiet stretch of two weeks or more, with everything
+//    before it being the older campaign.
+// Returns { kind, from, until, count, writer, minutes?, gapDays? } or null.
+// It's only a suggestion: the person checks it against what's in each group.
+export function suggestOlderNotes(entries) {
+  const sorted = [...entries].sort(byTime);
+
+  let best = null;
+  const writers = [...new Set(sorted.map((entry) => entry.author_name))];
+  for (const writer of writers) {
+    const mine = sorted.filter((entry) => entry.author_name === writer);
+    let cluster = [];
+    const finish = () => {
+      if (cluster.length >= 5 && (!best || cluster.length > best.length)) best = cluster;
+      cluster = [];
+    };
+    for (const entry of mine) {
+      const previous = cluster.at(-1);
+      if (previous && new Date(entry.created_at) - new Date(previous.created_at) > 45 * MINUTE_MS) finish();
+      cluster.push(entry);
+    }
+    finish();
   }
-  return { before, after };
+  if (best) {
+    return {
+      kind: "batch",
+      from: best[0].created_at,
+      until: best.at(-1).created_at,
+      count: best.length,
+      writer: best[0].author_name,
+      minutes: Math.max(1, Math.round((new Date(best.at(-1).created_at) - new Date(best[0].created_at)) / MINUTE_MS)),
+    };
+  }
+
+  let gap = null;
+  for (let index = 1; index < sorted.length; index += 1) {
+    const size = new Date(sorted[index].created_at) - new Date(sorted[index - 1].created_at);
+    if (!gap || size > gap.size) gap = { size, last: sorted[index - 1], first: sorted[index] };
+  }
+  if (gap && gap.size >= 14 * DAY_MS) {
+    return {
+      kind: "gap",
+      from: null,
+      until: gap.last.created_at,
+      count: sorted.filter((entry) => new Date(entry.created_at) <= new Date(gap.last.created_at)).length,
+      writer: null,
+      gapDays: Math.round(gap.size / DAY_MS),
+    };
+  }
+  return null;
 }
 
-// A date picked in a date box ("2026-01-01") as the start of that day, in the
-// person's own time zone, as a time the database understands.
-export function startOfDay(dateText) {
-  const [year, month, day] = String(dateText).split("-").map(Number);
-  if (!year || !month || !day) return null;
-  return new Date(year, month - 1, day).toISOString();
-}
-
-// The reverse: a time as the value for a date box.
-export function toDateInput(when) {
+// A time as the value for a date-and-time box ("2026-10-22T19:22").
+export function toDateTimeInput(when) {
   const date = new Date(when);
   const pad = (number) => String(number).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+// A date-and-time box's value as a time the database understands, or null
+// when it's empty. endOfMinute: include the whole minute typed (a note written
+// at 8:34:40 counts as "until 8:34").
+export function fromDateTimeInput(text, { endOfMinute = false } = {}) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(String(text ?? ""));
+  if (!match) return null;
+  const [, year, month, day, hour, minute] = match.map(Number);
+  const when = new Date(year, month - 1, day, hour, minute, endOfMinute ? 59 : 0, endOfMinute ? 999 : 0);
+  return Number.isNaN(when.getTime()) ? null : when.toISOString();
 }
