@@ -91,6 +91,26 @@ export async function summarizeForGroup({ category, name, text }) {
   }
 }
 
+// "Previously on...": Claude retells a session from the table's shared notes
+// ([{ author, text }]). Like the other AI helpers it never throws: failures
+// come back as a message the screen can show.
+export async function writeRecapFromNotes({ sessionNumber, entries }) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/recap`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionNumber, entries }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { recap: "", message: body.message ?? "The recap didn't work. Try again in a moment." };
+    }
+    return { recap: body.recap ?? "", message: body.message };
+  } catch {
+    return { recap: "", message: "Couldn't reach the server. Check your connection and try again." };
+  }
+}
+
 function editionQuery(edition) {
   return edition ? `?edition=${encodeURIComponent(edition)}` : "";
 }

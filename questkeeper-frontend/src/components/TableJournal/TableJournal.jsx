@@ -19,6 +19,7 @@ import {
   wasEdited,
 } from "../../utils/journal";
 import { getInitials } from "../../utils/characterSheet";
+import TableRecap from "../TableRecap/TableRecap";
 import "./TableJournal.css";
 
 const POLL_MS = 15000;
@@ -233,6 +234,8 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1 }) {
 
   return (
     <section className="table-journal" aria-labelledby={`${draftId}-title`}>
+      {/* The group's "Previously on..." recap, written and edited by everyone. */}
+      <TableRecap tableId={tableId} entries={entries} currentSession={sessionNumber} />
       <div className="table-journal__head">
         <h2 id={`${draftId}-title`} className="table-journal__title">
           Journal

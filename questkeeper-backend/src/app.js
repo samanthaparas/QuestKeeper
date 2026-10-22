@@ -15,6 +15,7 @@ import featuresRouter from "./routes/features.js";
 import aiSearchRouter from "./routes/aiSearch.js";
 import homebrewSummaryRouter from "./routes/homebrewSummary.js";
 import monstersRouter from "./routes/monsters.js";
+import recapRouter from "./routes/recap.js";
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use("/api/features", featuresRouter);
 app.use("/api/ai-search", aiSearchRouter);
 app.use("/api/homebrew-summary", homebrewSummaryRouter);
 app.use("/api/monsters", monstersRouter);
+app.use("/api/recap", recapRouter);
 
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({
