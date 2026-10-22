@@ -9,7 +9,6 @@ import {
   inWindow,
   sessionLabel,
   suggestOlderNotes,
-  toDateTimeInput,
 } from "./campaigns";
 
 const note = (created_at, extra = {}) => ({ id: created_at, created_at, ...extra });
@@ -108,8 +107,8 @@ describe("suggestOlderNotes", () => {
 });
 
 describe("date-and-time boxes", () => {
-  it("round-trips a moment in the person's own time zone", () => {
-    expect(toDateTimeInput(fromDateTimeInput("2026-10-22T19:22"))).toBe("2026-10-22T19:22");
+  it("reads a box's value in the person's own time zone", () => {
+    expect(fromDateTimeInput("2026-10-22T19:22")).toBe(new Date(2026, 9, 22, 19, 22).toISOString());
     expect(fromDateTimeInput("")).toBeNull();
     expect(fromDateTimeInput("nonsense")).toBeNull();
   });

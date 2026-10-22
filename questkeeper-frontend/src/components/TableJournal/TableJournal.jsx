@@ -111,6 +111,8 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber
   const [noteSession, setNoteSession] = useState("");
   const [view, setView] = useState("recent");
   const [currentInput, setCurrentInput] = useState("");
+  // The note whose "Move to another campaign" picker is open (someone else's note).
+  const [movingId, setMovingId] = useState(null);
   const draftId = useId();
   const choiceName = useId();
 
@@ -201,7 +203,22 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber
       setError(chosen.error);
       return;
     }
-    if (await run(() => updateJournalEntry(editing.id, { ...editing, sessionNumber: chosen.value }))) {
+    const moveTo = Number(editing.campaign);
+    if (
+      await run(async () => {
+        await updateJournalEntry(editing.id, {
+          id: editing.id,
+          body: editing.body,
+          visibility: editing.visibility,
+          session: editing.session,
+          sessionNumber: chosen.value,
+        });
+        // The campaign picker in the edit box: only when it was changed.
+        if (editing.campaign && moveTo !== editing.originalCampaign) {
+          await moveJournalEntries(tableId, [editing.id], moveTo);
+        }
+      })
+    ) {
       setEditing(null);
     }
   }
@@ -463,22 +480,19 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber
                             <span className="table-journal__private">🔒 Just me</span>
                           )}
                         </p>
-                        {hasSeveral && !isEditing && (
-                          <label className="table-journal__move">
-                            <span className="table-journal__visually-hidden">Move this note to another campaign</span>
-                            <select
-                              className="table-journal__select table-journal__select--small"
-                              aria-label="Move this note to another campaign"
-                              value={campaignOf(entry)}
-                              onChange={(event) => run(() => moveJournalEntries(tableId, [entry.id], Number(event.target.value)))}
+                        {/* Someone else's note: a quiet Move link (your own notes have
+                            it inside Edit). */}
+                        {hasSeveral && !isMine && !isEditing && (
+                          <p className="table-journal__actions">
+                            <button
+                              type="button"
+                              className="table-journal__link"
+                              aria-expanded={movingId === entry.id}
+                              onClick={() => setMovingId(movingId === entry.id ? null : entry.id)}
                             >
-                              {campaigns.map((number) => (
-                                <option key={number} value={number}>
-                                  {number === campaignOf(entry) ? "Move…" : `Move to ${campaignLabel(campaignNames, number)}`}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
+                              Move
+                            </button>
+                          </p>
                         )}
                         {isMine && !isEditing && (
                           <p className="table-journal__actions">
@@ -491,6 +505,8 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber
                                   body: entry.body,
                                   visibility: entry.visibility,
                                   session: String(entry.session_number ?? 1),
+                                  campaign: String(campaignOf(entry)),
+                                  originalCampaign: campaignOf(entry),
                                 })
                               }
                             >
@@ -529,6 +545,22 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber
                               onChange={(event) => setEditing({ ...editing, session: event.target.value })}
                             />
                           </label>
+                          {hasSeveral && (
+                            <label className="table-journal__session-pick">
+                              Campaign
+                              <select
+                                className="table-journal__select table-journal__select--small"
+                                value={editing.campaign}
+                                onChange={(event) => setEditing({ ...editing, campaign: event.target.value })}
+                              >
+                                {campaigns.map((number) => (
+                                  <option key={number} value={number}>
+                                    {campaignLabel(campaignNames, number)}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          )}
                           <div className="table-journal__composer-row">
                             <VisibilityChoice
                               value={editing.visibility}
@@ -547,6 +579,33 @@ function TableJournal({ tableId, userId, isDm, sessionNumber = 1, campaignNumber
                         </form>
                       ) : (
                         <p className="table-journal__body">{entry.body}</p>
+                      )}
+
+                      {movingId === entry.id && !isMine && (
+                        <p className="table-journal__move">
+                          <label>
+                            Move to{" "}
+                            <select
+                              className="table-journal__select table-journal__select--small"
+                              value={campaignOf(entry)}
+                              onChange={(event) => {
+                                const target = Number(event.target.value);
+                                setMovingId(null);
+                                if (target !== campaignOf(entry)) run(() => moveJournalEntries(tableId, [entry.id], target));
+                              }}
+                            >
+                              {campaigns.map((number) => (
+                                <option key={number} value={number}>
+                                  {campaignLabel(campaignNames, number)}
+                                  {number === campaignOf(entry) ? " (here now)" : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </label>{" "}
+                          <button type="button" className="table-journal__link" onClick={() => setMovingId(null)}>
+                            Cancel
+                          </button>
+                        </p>
                       )}
 
                     </div>

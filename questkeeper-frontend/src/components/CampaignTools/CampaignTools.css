@@ -140,3 +140,39 @@
   color: var(--qk-danger);
   font-weight: 700;
 }
+
+/* The one-question card (and the date picker that replaces it). */
+.campaign-tools__ask {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--qk-brass);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-brass-soft);
+}
+
+.campaign-tools__ask p {
+  margin: 0;
+}
+
+.campaign-tools__question {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.campaign-tools__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* "More options" and "Start a brand new campaign": small and out of the way. */
+.campaign-tools__more > summary {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.campaign-tools__more[open] > summary {
+  margin-bottom: 8px;
+}
