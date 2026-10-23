@@ -1,0 +1,282 @@
+/* The DM screen's Players tab: "Your players" on the left, one character's
+   read-only overview on the right. The panel frames and slim headers come from
+   the DM screen's shared styles (TablePage.css); this is what's inside. */
+.dm-players {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.dm-players__list-panel,
+.dm-players__sheet-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dm-players__empty {
+  margin: 0;
+  padding: 12px;
+  color: var(--qk-text-muted);
+}
+
+.dm-players__readonly {
+  color: color-mix(in srgb, var(--qk-text) 82%, var(--qk-surface-muted));
+  font-size: 13px;
+}
+
+/* A small "Show all" button on the right of the header. */
+.dm-players__all {
+  min-height: 30px;
+  padding: 2px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dm-players__all:hover {
+  background-color: color-mix(in srgb, var(--qk-terracotta-soft) 55%, transparent);
+}
+
+.dm-players__all--active {
+  border-color: var(--dm-gold, var(--qk-brass));
+  box-shadow: inset 0 0 0 1px var(--dm-gold, var(--qk-brass));
+}
+
+.dm-players__sheet:focus-visible,
+.dm-players__side:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: -3px;
+}
+
+.dm-players__all:focus-visible,
+.dm-players__pick:focus-visible,
+.dm-players__toggle:focus-visible,
+.dm-players__share summary:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* Narrow screens: the list folds under its header until asked for. */
+.dm-players__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 10px 0;
+  min-height: 40px;
+  padding: 4px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dm-players__toggle-word {
+  text-decoration: underline;
+}
+
+.dm-players__side {
+  display: none;
+  gap: 8px;
+  align-content: start;
+  min-height: 0;
+  padding: 10px;
+}
+
+.dm-players__side--open {
+  display: grid;
+}
+
+.dm-players__picker {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One player: picture, name, level and class, HP bar and number, and AC in a shield. */
+.dm-players__pick {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px 6px 6px;
+  border: 2px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 25%, var(--qk-surface));
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dm-players__pick:hover {
+  background-color: color-mix(in srgb, var(--qk-terracotta-soft) 55%, var(--qk-surface));
+}
+
+/* Whoever's overview is open: a solid gold line all the way round (also named for screen readers by aria-pressed). */
+.dm-players__pick--active {
+  border-color: var(--dm-gold, var(--qk-brass));
+  background-color: color-mix(in srgb, var(--dm-gold, var(--qk-brass)) 10%, var(--qk-surface));
+}
+
+.dm-players__avatar {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 82px;
+  overflow: hidden;
+  border: 2px solid var(--qk-border);
+  border-radius: 10px;
+  background-color: var(--qk-terracotta-soft);
+}
+
+.dm-players__avatar .character-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+.dm-players__pick-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dm-players__pick-name {
+  font-family: var(--qk-font-display);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+
+.dm-players__pick-sub {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.dm-players__bar {
+  display: block;
+  height: 8px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background-color: var(--qk-border);
+}
+
+.dm-players__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background-color: var(--qk-moss, #5a7a52);
+}
+
+.dm-players__bar--low > span {
+  background-color: var(--qk-danger);
+}
+
+.dm-players__pick-hp {
+  color: var(--qk-text);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* The allowed-content warning, on the card too, so it isn't missed. */
+.dm-players__flag {
+  color: var(--qk-text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.dm-players__share {
+  padding-top: 6px;
+  border-top: 1px solid var(--qk-border);
+  font-size: 13.5px;
+}
+
+.dm-players__share summary {
+  min-height: 34px;
+  padding: 6px 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dm-players__sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 10px 12px 12px;
+}
+
+/* Players removed for good, under the list. */
+.dm-players .table-page__bans {
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--qk-border);
+}
+
+/* ----- Wide screens: both panels side by side, filling the window ----- */
+@media (min-width: 900px) {
+  .dm-players {
+    grid-template-columns: minmax(280px, 25%) minmax(0, 1fr);
+    align-items: stretch;
+    /* The tab fits the window: the page doesn't scroll, the panels do. */
+    height: clamp(520px, calc(100dvh - 290px), 1000px);
+  }
+
+  .dm-players__toggle {
+    display: none;
+  }
+
+  .dm-players__side {
+    display: grid;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scroll-padding: 10px;
+  }
+
+  .dm-players__sheet {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scroll-padding: 10px;
+  }
+
+  /* One main scroll area: the overview scrolls inside its panel. */
+  .dm-players__sheet > .character-summary {
+    flex: 0 0 auto;
+  }
+}
+
+/* The overview's header gets its own row: the title, then the read-only
+   notice (wrapping under it when there is no room), then the divider. */
+.dm-players__sheet-panel > .table-page__slim-head {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+
+.dm-players__sheet {
+  flex: 1 1 auto;
+}
+
+/* With Show all each overview stands alone, one under another. */
+.dm-players__sheet > .character-summary + .character-summary {
+  padding-top: 12px;
+  border-top: 1px solid var(--qk-border);
+}

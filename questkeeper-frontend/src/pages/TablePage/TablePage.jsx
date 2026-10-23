@@ -56,12 +56,12 @@ import { formatModifier, getAbilityModifier, rollDie } from "../../utils/charact
 import { toPartyRow } from "../../utils/partyStrip";
 import { shouldReduceMotion } from "../../utils/motionPreference";
 import Button from "../../components/Button/Button";
-import CharacterSummaryCard from "../../components/CharacterSummaryCard/CharacterSummaryCard";
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
 import AddCombatantForm from "../../components/AddCombatantForm/AddCombatantForm";
 import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEditPanel";
 import PlayerCharacterCard from "../../components/PlayerCharacterCard/PlayerCharacterCard";
 import PartyStrip from "../../components/PartyStrip/PartyStrip";
+import DmPlayersTab from "../../components/DmPlayersTab/DmPlayersTab";
 import DmStoryTab from "../../components/DmStoryTab/DmStoryTab";
 import CharacterAvatar from "../../components/CharacterAvatar/CharacterAvatar";
 import TableJournal from "../../components/TableJournal/TableJournal";
@@ -2318,7 +2318,7 @@ function TablePage() {
 
   return (
     <main className={`table-page${isDm ? " table-page--dm" : ""}`}>
-      <div className={`table-page__content${dmCombatLayout || (isDm && dmTab === "story") ? " table-page__content--wide" : ""}`}>
+      <div className={`table-page__content${dmCombatLayout || (isDm && (dmTab === "story" || dmTab === "players")) ? " table-page__content--wide" : ""}`}>
         <Link className="table-page__back" to={isDm ? "/dm" : "/games"}>
           {isDm ? "← DM Screen" : "← My Games"}
         </Link>
@@ -2377,7 +2377,7 @@ function TablePage() {
         {/* What the DM doesn't allow here (nothing shows if nothing is blocked). */}
         {!isDm && <ContentNotice banned={cleanBanned(table.banned_content)} sheet={mySheet} />}
 
-        {!dmCombatLayout && !(isDm && dmTab === "story") && partyBlock}
+        {!dmCombatLayout && !(isDm && (dmTab === "story" || dmTab === "players")) && partyBlock}
 
         {(isDm || myMember) && (
           <div className="table-page__tabs-bar">
@@ -2561,62 +2561,15 @@ function TablePage() {
         )}
 
         {isDm && dmTab === "players" && (
-          <section className="table-page__section table-page__section--panel" ref={playersSectionRef}>
-            <header className="table-page__slim-head">
-              <h2 className="table-page__slim-title">Your players</h2>
-            </header>
-            <div className="table-page__slim-body">
-            {characters.length === 0 ? (
-              <p className="table-page__empty">
-                Characters appear here when players join. You can read everything but
-                cannot edit any sheet.
-              </p>
-            ) : (
-              <>
-                <div className="table-page__tabs" role="tablist" aria-label="Players">
-                  {characters.map((sheet) => (
-                    <button
-                      key={sheet.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={selectedSheet?.id === sheet.id}
-                      className={`table-page__tab${
-                        selectedSheet?.id === sheet.id ? " table-page__tab--active" : ""
-                      }`}
-                      onClick={() => setSelectedPlayerId(sheet.id)}
-                    >
-                      {sheet.name}
-                    </button>
-                  ))}
-                  {characters.length > 1 && (
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={selectedPlayerId === "all"}
-                      className={`table-page__tab${
-                        selectedPlayerId === "all" ? " table-page__tab--active" : ""
-                      }`}
-                      onClick={() => setSelectedPlayerId("all")}
-                    >
-                      Show all
-                    </button>
-                  )}
-                </div>
-
-                <div className="table-page__characters">
-                  {(selectedPlayerId === "all" ? characters : [selectedSheet]).map(
-                    (sheet) => (
-                      <CharacterSummaryCard
-                        key={sheet.id}
-                        sheet={sheet}
-                        bannedChoices={bannedChoicesOf(sheet, cleanBanned(table.banned_content))}
-                      />
-                    ),
-                  )}
-                </div>
-              </>
-            )}
-
+          <DmPlayersTab
+            characters={characters}
+            selectedId={selectedPlayerId}
+            onSelect={setSelectedPlayerId}
+            bannedFor={(sheet) => bannedChoicesOf(sheet, cleanBanned(table.banned_content))}
+            shareControl={shareLabel}
+            partyShared={partyShared}
+            sectionRef={playersSectionRef}
+          >
             {/* Players removed for good can't rejoin until the DM lets them back. */}
             {bans.length > 0 && (
               <div className="table-page__bans">
@@ -2642,8 +2595,7 @@ function TablePage() {
                 </ul>
               </div>
             )}
-            </div>
-          </section>
+          </DmPlayersTab>
         )}
 
         {!isDm && myMember && table.combat_active && onTab("combat") && (

@@ -654,15 +654,16 @@ describe("TablePage", () => {
       renderPage();
       await openTab("Players");
 
-      expect(await screen.findByRole("tab", { name: "Billie" })).toHaveAttribute("aria-selected", "true");
+      const picker = await screen.findByRole("list", { name: "Players" });
+      expect(within(picker).getByRole("button", { name: /^Billie/ })).toHaveAttribute("aria-pressed", "true");
       expect(screen.getByText("Level 5 · No race · No class")).toBeInTheDocument();
       expect(screen.queryByText("Level 3 · No race · No class")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByRole("tab", { name: "Thorn" }));
+      await userEvent.click(within(picker).getByRole("button", { name: /^Thorn/ }));
       expect(screen.getByText("Level 3 · No race · No class")).toBeInTheDocument();
       expect(screen.queryByText("Level 5 · No race · No class")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByRole("tab", { name: "Show all" }));
+      await userEvent.click(screen.getByRole("button", { name: "Show all" }));
       expect(screen.getByText("Level 5 · No race · No class")).toBeInTheDocument();
       expect(screen.getByText("Level 3 · No race · No class")).toBeInTheDocument();
     });
@@ -1505,6 +1506,21 @@ describe("DM screen tabs", () => {
     expect(screen.getByText("Perception 14")).toBeInTheDocument();
     expect(screen.getByText("Insight 12")).toBeInTheDocument();
     expect(screen.getByText("Investigation 10")).toBeInTheDocument();
+  });
+
+  it("replaces the Party panel with the player list on the Players tab, and keeps the sharing switch", async () => {
+    mockTable({ isDm: true });
+    getCharactersByIds.mockResolvedValue([
+      { id: "char-1", name: "Billie", level: 5, abilityScores: {}, combat: {} },
+      { id: "char-2", name: "Thorn", level: 3, abilityScores: {}, combat: {} },
+    ]);
+    renderPage();
+    expect(await screen.findByRole("heading", { name: /^Party · 2 players/ })).toBeInTheDocument();
+
+    await openTab("Players");
+    expect(screen.queryByRole("heading", { name: /^Party · / })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Your players · 2" })).toBeInTheDocument();
+    expect(screen.getByText(/let players see the party/i)).toBeInTheDocument();
   });
 
   it("opens a character's card on the Players tab from the party strip", async () => {
