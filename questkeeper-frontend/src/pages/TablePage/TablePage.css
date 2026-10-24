@@ -1278,7 +1278,8 @@
   display: grid;
   justify-items: end;
   gap: 3px;
-  color: var(--qk-warning);
+  /* The warm accent, darkened (in the light theme) so the numbers read clearly. */
+  color: color-mix(in srgb, var(--qk-warning) 55%, var(--qk-text));
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
@@ -4266,4 +4267,380 @@ html:has(.table-page--dm) {
 .table-page--dm .table-journal__number,
 .table-page--dm .table-journal__select {
   border-color: color-mix(in srgb, var(--qk-text) 66%, var(--qk-surface));
+}
+
+/* ======== Prep tab: readiness across the top, the encounter on the left, the
+   table's rules and the initiative list on the right ======== */
+.table-page__prep-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.table-page__prep-main,
+.table-page__prep-side {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  align-content: start;
+}
+
+@media (min-width: 1100px) {
+  .table-page__prep-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 400px);
+    grid-template-areas:
+      "ready ready"
+      "main side";
+  }
+
+  .table-page__prep-ready {
+    grid-area: ready;
+  }
+
+  .table-page__prep-main {
+    grid-area: main;
+  }
+
+  .table-page__prep-side {
+    grid-area: side;
+  }
+}
+
+/* "Before the fight", kept slim: a top row with the title and Start combat,
+   then the four steps. The steps lay themselves out by the panel's own width:
+   four across when they fit, two by two in the middle, one column when narrow
+   (never three and a lone fourth). */
+.table-page--dm .table-page__prep--ready {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px 14px 10px;
+  container-type: inline-size;
+}
+
+.table-page__prep-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-width: 0;
+}
+
+.table-page__prep-title {
+  margin: 0;
+  margin-right: auto;
+  font-family: var(--qk-font-display);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.table-page__prep-more-toggle {
+  min-height: 34px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.table-page__prep-more-toggle:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.table-page__prep-go {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.table-page__prep-go .qk-button {
+  min-height: 38px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.table-page__prep-go-hint {
+  color: var(--qk-text);
+  font-size: 13px;
+}
+
+.table-page__prep--ready .table-page__prep-steps {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+}
+
+@container (min-width: 480px) {
+  .table-page__prep--ready .table-page__prep-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 900px) {
+  .table-page__prep--ready .table-page__prep-steps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.table-page__prep--ready .table-page__prep-step {
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 10px;
+}
+
+.table-page__prep-step-text {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.table-page__prep--ready .table-page__prep-mark {
+  width: 26px;
+  height: 26px;
+  background: var(--qk-surface-muted);
+  color: var(--qk-text);
+}
+
+.table-page__prep--ready .table-page__prep-step--current .table-page__prep-mark {
+  border-color: var(--qk-terracotta);
+  background: var(--qk-terracotta);
+  color: var(--qk-surface);
+}
+
+.table-page__prep--ready .table-page__prep-step--done .table-page__prep-mark {
+  border-color: var(--qk-moss);
+  background: var(--qk-moss);
+  color: var(--qk-surface);
+}
+
+.table-page__prep--ready .table-page__prep-detail {
+  margin: 0;
+  font-size: 13.5px;
+}
+
+/* Nudge sits in its step at its own size, not stretched across it. */
+.table-page__prep--ready .table-page__prep-action.qk-button {
+  width: auto;
+  min-height: 32px;
+  margin-top: 2px;
+  padding: 2px 10px;
+  font-size: 13px;
+}
+
+.table-page__prep-details {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 12px 2px;
+  border-top: 1px solid var(--dm-panel-edge);
+  list-style: none;
+  font-size: 14px;
+}
+
+.table-page__prep-details[hidden] {
+  display: none;
+}
+
+.table-page--dm .table-page__prep.table-page__prep--live.table-page__section--panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 12px 16px;
+}
+
+.table-page__prep-live-text {
+  margin: 0;
+}
+
+/* Panels in the Prep columns: the encounter helper's head is its header bar. */
+.table-page--dm .encounter-helper__head {
+  min-height: 52px;
+  padding: 8px 14px;
+  background-color: color-mix(in srgb, var(--qk-surface-muted) 45%, transparent);
+}
+
+.table-page--dm .encounter-helper__title {
+  font-size: 18px;
+}
+
+/* The initiative list in its narrow column: its rows wrap rather than squeeze. */
+.table-page__prep-side .table-page__combat {
+  min-width: 0;
+}
+
+/* The initiative list in the Prep column runs the page's own length (no
+   scroll box of its own), and each row is tighter: the name and numbers on one
+   line, the Init, Set and Roll controls on the next. */
+.table-page__prep-side .table-page__order {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+  gap: 6px;
+}
+
+.table-page__prep-side .table-page__row-select {
+  flex: 1 1 100%;
+  grid-template-columns: 26px 34px minmax(0, 1fr) auto;
+  gap: 8px;
+  min-height: 44px;
+  padding-bottom: 0;
+}
+
+.table-page__prep-side .table-page__summary-initiative {
+  padding: 0 8px 6px;
+  gap: 6px;
+}
+
+.table-page__prep-side .table-page__summary-initiative .table-page__number {
+  width: 76px;
+}
+
+.table-page__prep-side .table-page__row--summary .table-page__compact-hp {
+  font-size: 13px;
+}
+
+.table-page--dm .table-page__prep--live .table-page__next-turn.qk-button {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+/* One column (tablet and phone): Initiative setup follows the add form, and
+   the table's rules, allowed content and loot ideas come after it. */
+@media (max-width: 1099px) {
+  .table-page__prep-side {
+    display: contents;
+  }
+
+  .table-page__prep-ready {
+    order: 0;
+  }
+
+  .table-page__prep-main {
+    order: 1;
+  }
+
+  .table-page__prep-side > .table-page__combat {
+    order: 2;
+  }
+
+  .table-page__prep-side > :not(.table-page__combat) {
+    order: 3;
+  }
+}
+
+/* The step to do now sits on a tinted card: its detail text is full strength. */
+.table-page__prep-step--current .table-page__prep-detail {
+  color: var(--qk-text);
+}
+
+/* ======== Prep, second pass: Initiative setup first in the right column, tighter rows ======== */
+.table-page__prep-side .table-page__combat {
+  container-type: inline-size;
+}
+
+/* A healthy creature needs no "Healthy" line while the fight is being set up
+   (the text stays for screen readers). */
+.table-page__prep-side .table-page__status--healthy {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.table-page__prep-side .table-page__row--summary .table-page__compact-name {
+  gap: 0;
+}
+
+.table-page__prep-side .table-page__row-select {
+  min-height: 40px;
+  padding-top: 4px;
+}
+
+.table-page__prep-side .table-page__summary-initiative {
+  padding: 0 8px 6px 44px;
+}
+
+/* On a wider panel (a tablet column, or the page at a large size) the name and
+   the controls share one line. */
+@container (min-width: 460px) {
+  .table-page__prep-side .table-page__summary-line {
+    flex-wrap: nowrap;
+  }
+
+  .table-page__prep-side .table-page__row-select {
+    flex: 1 1 auto;
+  }
+
+  .table-page__prep-side .table-page__summary-initiative {
+    flex: 0 0 auto;
+    padding: 0 8px 0 0;
+  }
+}
+
+/* "Roll initiative" is the main action here; New encounter is quieter. */
+.table-page__prep-side .table-page__toolbar .table-page__combat-buttons {
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+
+/* Short disclosures for longer guidance. */
+.table-page__hint-more,
+.encounter-helper__more,
+.add-combatant__more {
+  font-size: 14px;
+}
+
+.table-page__hint-more > summary,
+.encounter-helper__more > summary,
+.add-combatant__more > summary {
+  display: inline-block;
+  min-height: 30px;
+  padding: 4px 0;
+  color: var(--qk-text);
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.table-page__hint-more > summary:focus-visible,
+.encounter-helper__more > summary:focus-visible,
+.add-combatant__more > summary:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.table-page__hint-more > p,
+.encounter-helper__more > p,
+.add-combatant__more > p {
+  margin: 2px 0 6px;
+}
+
+.table-page__prep-side .table-page__hint-more {
+  margin: 0 14px;
+}
+
+/* The "jump to the picked creature's panel" button sits after the controls, not before them. */
+.table-page__prep-side .table-page__summary-initiative {
+  order: 2;
+}
+
+.table-page__prep-side .table-page__row-jump {
+  order: 3;
+  width: 34px;
+  height: 34px;
+  margin: 0 8px 6px 0;
 }

@@ -29,10 +29,9 @@ const GOBLIN_DETAIL = {
 // The line saying how hard the mix is (there is also a separate message line).
 const rating = () => document.querySelector(".encounter-helper__rating");
 
+// The helper sits open; wait for the monster list to arrive.
 async function open() {
-  await userEvent.click(screen.getByText("Encounter helper"));
   await waitFor(() => expect(getMonsters).toHaveBeenCalled());
-  await screen.findByRole("button", { name: "Suggest an encounter" });
   await waitFor(() => expect(screen.getByRole("button", { name: "Suggest an encounter" })).toBeEnabled());
 }
 
@@ -42,9 +41,9 @@ describe("EncounterHelper", () => {
     getMonsterDetails.mockReset().mockResolvedValue(GOBLIN_DETAIL);
   });
 
-  it("loads the monster list only when opened", async () => {
+  it("is open as a panel and loads the monster list once", async () => {
     render(<EncounterHelper levels={[3, 3, 3, 3]} onAdd={vi.fn()} />);
-    expect(getMonsters).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "Encounter helper" })).toBeInTheDocument();
     await open();
     expect(getMonsters).toHaveBeenCalledTimes(1);
   });
@@ -67,7 +66,7 @@ describe("EncounterHelper", () => {
     render(<EncounterHelper levels={[3, 3, 3, 3]} onAdd={vi.fn()} />);
     await open();
 
-    await userEvent.click(screen.getByRole("radio", { name: "Hard" }));
+    await userEvent.selectOptions(screen.getByLabelText(/Difficulty/), "hard");
     await userEvent.click(screen.getByRole("button", { name: "Suggest an encounter" }));
 
     expect(screen.getByRole("list", { name: "This encounter" })).toBeInTheDocument();
@@ -79,8 +78,8 @@ describe("EncounterHelper", () => {
     render(<EncounterHelper levels={[3, 3, 3, 3]} onAdd={vi.fn()} />);
     await open();
 
-    await userEvent.selectOptions(screen.getByLabelText("Theme"), "undead");
-    await userEvent.click(screen.getByRole("radio", { name: "Easy" }));
+    await userEvent.selectOptions(screen.getByLabelText(/Theme/), "undead");
+    await userEvent.selectOptions(screen.getByLabelText(/Difficulty/), "easy");
     await userEvent.click(screen.getByRole("button", { name: "Suggest an encounter" }));
 
     const list = screen.getByRole("list", { name: "This encounter" });
@@ -92,8 +91,8 @@ describe("EncounterHelper", () => {
     render(<EncounterHelper levels={[3, 3, 3, 3]} onAdd={vi.fn()} />);
     await open();
 
-    await userEvent.type(screen.getByLabelText("Add a monster"), "ogr");
-    await userEvent.click(screen.getByRole("button", { name: /Ogre/ }));
+    await userEvent.type(screen.getByLabelText("Search SRD monsters"), "ogr");
+    await userEvent.click(screen.getByRole("button", { name: "Add Ogre" }));
     // One ogre (450 XP) is Easy for four 3rd-level characters.
     expect(rating()).toHaveTextContent("Easy for this party");
 
@@ -112,8 +111,8 @@ describe("EncounterHelper", () => {
     render(<EncounterHelper levels={[3, 3, 3, 3]} onAdd={onAdd} />);
     await open();
 
-    await userEvent.type(screen.getByLabelText("Add a monster"), "gob");
-    await userEvent.click(screen.getByRole("button", { name: /Goblin/ }));
+    await userEvent.type(screen.getByLabelText("Search SRD monsters"), "gob");
+    await userEvent.click(screen.getByRole("button", { name: "Add Goblin" }));
     await userEvent.click(screen.getByRole("button", { name: "One more Goblin" }));
     await userEvent.click(screen.getByRole("button", { name: "Add this encounter" }));
 
@@ -137,8 +136,8 @@ describe("EncounterHelper", () => {
   it("says so when adding fails, and keeps the encounter", async () => {
     render(<EncounterHelper levels={[3, 3, 3, 3]} onAdd={vi.fn().mockResolvedValue(false)} />);
     await open();
-    await userEvent.type(screen.getByLabelText("Add a monster"), "gob");
-    await userEvent.click(screen.getByRole("button", { name: /Goblin/ }));
+    await userEvent.type(screen.getByLabelText("Search SRD monsters"), "gob");
+    await userEvent.click(screen.getByRole("button", { name: "Add Goblin" }));
     await userEvent.click(screen.getByRole("button", { name: "Add this encounter" }));
 
     expect(await screen.findByText(/Couldn.t add all of them/)).toBeInTheDocument();
@@ -148,7 +147,21 @@ describe("EncounterHelper", () => {
   it("says so when the monster list can't load", async () => {
     getMonsters.mockRejectedValue(new Error("offline"));
     render(<EncounterHelper levels={[3, 3, 3, 3]} onAdd={vi.fn()} />);
-    await userEvent.click(screen.getByText("Encounter helper"));
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load the monster list");
+  });
+
+  it("shows matches and picks as cards with the challenge rating, XP and tags", async () => {
+    render(<EncounterHelper levels={[3, 3, 3, 3]} onAdd={vi.fn()} />);
+    await open();
+    await userEvent.type(screen.getByLabelText("Search SRD monsters"), "gob");
+    const matches = screen.getByRole("list", { name: "Matching monsters" });
+    expect(matches).toHaveTextContent("Goblin");
+    expect(matches).toHaveTextContent("CR 1/4 · 50 XP");
+    expect(matches).toHaveTextContent("Humanoid");
+    expect(matches).toHaveTextContent("Small");
+    await userEvent.click(screen.getByRole("button", { name: "Add Goblin" }));
+    // Picking clears the search and puts the goblin in the mix, with a count.
+    expect(screen.queryByRole("list", { name: "Matching monsters" })).not.toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "This encounter" })).toHaveTextContent("Goblin");
   });
 });

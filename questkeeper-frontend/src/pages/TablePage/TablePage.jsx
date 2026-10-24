@@ -1190,6 +1190,8 @@ function TablePage() {
   const [myDexterity, setMyDexterity] = useState(10);
 
   const [templates, setTemplates] = useState([]);
+  // The readiness bar's longer explanations (who is still waiting, and so on).
+  const [showPrepDetails, setShowPrepDetails] = useState(false);
   const [showMonsterForm, setShowMonsterForm] = useState(false);
   // On narrow screens the party folds into one "Party · 4 players" line.
   const [partyOpen, setPartyOpen] = useState(false);
@@ -1433,6 +1435,7 @@ function TablePage() {
   );
   const { now, upcoming } = getNowAndNext(combatants, table.current_combatant_id);
   const canStart = ordered.length > 0;
+  const prepSteps = getDmPrepSteps({ combatants, combatActive: table.combat_active, canStart });
   const unrolledNpcs = waiting.filter((combatant) => combatant.kind !== "player");
   const unrolledNpcCount = unrolledNpcs.length;
   // "2 monsters and 1 NPC", so friendly NPCs are not called monsters.
@@ -1459,7 +1462,6 @@ function TablePage() {
       (myCombatant.initiative === null || myCombatant.initiative === undefined) &&
       (table.combat_active || hasActiveNudge(events, myCombatant.name)),
   );
-  const prepSteps = getDmPrepSteps({ combatants, combatActive: table.combat_active });
   const playerTip = getPlayerTableTip({
     me: myCombatant,
     combatActive: table.combat_active,
@@ -1713,7 +1715,8 @@ function TablePage() {
       <CombatantSummaryRow
         key={combatant.id}
         {...props}
-        selected={combatant.id === selectedId}
+        // On Prep nobody is "selected" until the DM picks someone (their panel isn't shown before that).
+        selected={combatant.id === (prepLayout && pickedId === null ? null : selectedId)}
         statusRow={sheet ? partyRowById.get(sheet.id) : null}
         // Picking whoever is up goes back to following the turn.
         onSelect={(id) => setPickedId(id === currentId ? null : id)}
@@ -1734,6 +1737,8 @@ function TablePage() {
   // the party, the fight, and the damage form with the activity log. Other
   // tabs (and narrow screens) show them one after another as before.
   const dmCombatLayout = isDm && dmTab === "combat";
+  // The DM's Prep tab lays its panels out in two columns (TablePage.css).
+  const prepLayout = isDm && dmTab === "prep";
   const playerCount = partyRows.length;
   const partyHurt = partyRows.filter((row) => row.health === "bloodied").length;
   const partyDown = partyRows.filter((row) => row.health === "down").length;
@@ -1854,7 +1859,7 @@ function TablePage() {
               {/* The same slim header bar as the other panels: the title, with
                   adding a monster and ending the fight beside it. */}
               <header className="table-page__slim-head table-page__slim-head--bar">
-                <h2 className="table-page__slim-title">Combat</h2>
+                <h2 className="table-page__slim-title">{prepLayout ? "Initiative setup" : "Combat"}</h2>
                 <div className="table-page__combat-buttons">
                   {table.combat_active && (
                     <Button
@@ -1889,12 +1894,14 @@ function TablePage() {
                       </>
                     )}
                   </p>
+                ) : prepLayout ? (
+                  <p className="table-page__turn-line">Creatures you&apos;ve added for this encounter.</p>
                 ) : (
                   <p className="table-page__turn-line">No fight in progress.</p>
                 )}
                 <div className="table-page__combat-buttons">
                   {unrolledNpcCount > 0 && (
-                    <Button variant="secondary" onClick={rollForAllNpcs}>
+                    <Button variant={prepLayout ? undefined : "secondary"} onClick={rollForAllNpcs}>
                       {`Roll initiative for ${unrolledLabel}`}
                     </Button>
                   )}
@@ -1920,13 +1927,15 @@ function TablePage() {
                       Next turn
                     </Button>
                   ) : (
-                    <Button
-                      className="table-page__next-turn"
-                      disabled={!canStart}
-                      onClick={() => run(() => startCombat(table.id, combatants))}
-                    >
-                      Start combat
-                    </Button>
+                    !prepLayout && (
+                      <Button
+                        className="table-page__next-turn"
+                        disabled={!canStart}
+                        onClick={() => run(() => startCombat(table.id, combatants))}
+                      >
+                        Start combat
+                      </Button>
+                    )
                   )}
                 </div>
               </div>
@@ -1964,17 +1973,27 @@ function TablePage() {
           </div>
           )}
 
-          {isDm && !canStart && (
+          {/* On Prep, Start combat and its reason sit in the readiness bar. */}
+          {isDm && !canStart && !prepLayout && (
             <p className="table-page__hint">
               Set at least one initiative (yours, a player's, or a monster's) to start combat.
             </p>
           )}
 
-          {isDm && unrolledNpcCount > 0 && (
+          {isDm && unrolledNpcCount > 0 && !prepLayout && (
             <p className="table-page__hint">
               Rolling for a boss yourself? Set its initiative first, then use the roll button
               for the rest. Anyone who already has an initiative is left alone.
             </p>
+          )}
+          {isDm && unrolledNpcCount > 0 && prepLayout && (
+            <details className="table-page__hint-more">
+              <summary>How rolling works</summary>
+              <p>
+                Rolling for a boss yourself? Set its initiative first, then use the roll button for the rest.
+                Anyone who already has an initiative is left alone. Set one at least to start combat.
+              </p>
+            </details>
           )}
 
           {!isDm && myCombatant && myCombatant.initiative == null && (
@@ -2032,7 +2051,7 @@ function TablePage() {
               panel stays on the page (only the picked one is shown), so an
               amount typed or an attack in progress is still there when the DM
               looks at someone else and comes back. */}
-          {isDm && selectedCombatant && (
+          {isDm && selectedCombatant && (!prepLayout || pickedId !== null) && (
             <section
               id="detail-panel"
               className="table-page__detail"
@@ -2078,10 +2097,17 @@ function TablePage() {
             </header>
             <div className="table-page__slim-body">
             <p className="table-page__hint">
-              Players see a name, a status like Bloodied, and damage taken. They never see
-              HP, AC, or a stat block. Add several at once, or pick from your library.
-              Friendly NPCs and party members you track by hand are added the same way.
+              Add to the fight puts it in tonight&apos;s fight now; Save for later only stores it in your
+              library. Players never see HP, AC or stat blocks.
             </p>
+            <details className="table-page__hint-more">
+              <summary>What players can see</summary>
+              <p>
+                Players see a name, a status like Bloodied, and damage taken. They never see HP, AC, or a
+                stat block. Add several at once, or pick from your library. Friendly NPCs and party members
+                you track by hand are added the same way.
+              </p>
+            </details>
             <AddCombatantForm
               onAdd={handleAddCombatants}
               onSaveToLibrary={handleSaveToLibraryOnly}
@@ -2318,7 +2344,7 @@ function TablePage() {
 
   return (
     <main className={`table-page${isDm ? " table-page--dm" : ""}`}>
-      <div className={`table-page__content${dmCombatLayout || (isDm && (dmTab === "story" || dmTab === "players")) ? " table-page__content--wide" : ""}`}>
+      <div className={`table-page__content${dmCombatLayout || (isDm && (dmTab === "story" || dmTab === "players" || dmTab === "prep")) ? " table-page__content--wide" : ""}`}>
         <Link className="table-page__back" to={isDm ? "/dm" : "/games"}>
           {isDm ? "← DM Screen" : "← My Games"}
         </Link>
@@ -2377,7 +2403,7 @@ function TablePage() {
         {/* What the DM doesn't allow here (nothing shows if nothing is blocked). */}
         {!isDm && <ContentNotice banned={cleanBanned(table.banned_content)} sheet={mySheet} />}
 
-        {!dmCombatLayout && !(isDm && (dmTab === "story" || dmTab === "players")) && partyBlock}
+        {!dmCombatLayout && !(isDm && (dmTab === "story" || dmTab === "players" || dmTab === "prep")) && partyBlock}
 
         {(isDm || myMember) && (
           <div className="table-page__tabs-bar">
@@ -2447,96 +2473,136 @@ function TablePage() {
           </div>
         )}
 
-        {isDm && dmTab === "prep" && (
-          <TableRules
-            key={table.id}
-            tableId={table.id}
-            rules={table.table_rules}
-            isDm
-            onSave={(text) => setTableRules(table.id, text)}
-          />
-        )}
-
-        {isDm && dmTab === "prep" && (
-          <ContentRules
-            banned={cleanBanned(table.banned_content)}
-            onSave={(next) => setBannedContent(table.id, next)}
-          />
-        )}
-
-        {isDm && dmTab === "prep" && table.combat_active && (
-          <p className="table-page__hint">
-            The fight is on. Add more monsters here, or head to the Combat tab to run it.
-          </p>
-        )}
-
-        {isDm && dmTab === "prep" && !table.combat_active && (
-          <section className="table-page__prep table-page__section--panel" aria-labelledby="prep-title">
-            <header className="table-page__slim-head">
-              <h2 id="prep-title" className="table-page__slim-title">
-                Before the fight
-              </h2>
-            </header>
-            <ol className="table-page__prep-steps table-page__slim-body">
-              {prepSteps.map((step) => (
-                <li
-                  key={step.id}
-                  className={`table-page__prep-step${step.done ? " table-page__prep-step--done" : ""}${
-                    step.current ? " table-page__prep-step--current" : ""
-                  }`}
-                >
-                  <span className="table-page__prep-mark" aria-hidden="true">
-                    {step.done ? "✓" : ""}
-                  </span>
-                  <span>
-                    <strong>{step.label}</strong>
-                    <span className="table-page__visually-hidden">{step.done ? " (done)" : " (to do)"}</span>
-                    <span className="table-page__prep-detail">{step.detail}</span>
-                    {step.id === "initiative" && waitingPlayers.length > 0 && (
+        {/* The DM's Prep tab: how ready the fight is across the top, the
+            encounter helper and the add form on the left, and the table's
+            rules, allowed content, loot ideas and the initiative list on
+            the right (one column on narrow screens; TablePage.css). */}
+        {prepLayout && (
+          <div className="table-page__prep-grid">
+            <div className="table-page__prep-ready">
+              {table.combat_active ? (
+                <section className="table-page__prep table-page__prep--live table-page__section--panel" aria-label="The fight is on">
+                  <p className="table-page__prep-live-text">
+                    The fight is on. Add more monsters here, or head to the Combat tab to run it.
+                  </p>
+                  <Button className="table-page__next-turn" onClick={() => pickTab("combat")}>
+                    Go to Combat →
+                  </Button>
+                </section>
+              ) : (
+                <section className="table-page__prep table-page__prep--ready table-page__section--panel" aria-labelledby="prep-title">
+                  <header className="table-page__prep-head">
+                    <h2 id="prep-title" className="table-page__prep-title">
+                      Before the fight
+                    </h2>
+                    <button
+                      type="button"
+                      className="table-page__prep-more-toggle"
+                      aria-expanded={showPrepDetails}
+                      aria-controls="prep-details"
+                      onClick={() => setShowPrepDetails((open) => !open)}
+                    >
+                      {showPrepDetails ? "Hide step details" : "Step details"}
+                    </button>
+                    <div className="table-page__prep-go">
                       <Button
-                        variant="secondary"
-                        className="table-page__prep-action"
-                        disabled={nudgeCooling}
-                        onClick={() => nudge(...waitingPlayers)}
+                        className="table-page__next-turn"
+                        disabled={!canStart}
+                        aria-describedby={canStart ? undefined : "prep-start-hint"}
+                        onClick={() => run(() => startCombat(table.id, combatants))}
                       >
-                        {nudgeCooling
-                          ? "Nudged ✓"
-                          : `🔔 Nudge ${
-                              waitingPlayers.length === 1
-                                ? waitingPlayers[0].name
-                                : `${waitingPlayers.length} players`
-                            } to roll`}
+                        Start combat
                       </Button>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </section>
+                      {!canStart && (
+                        <span id="prep-start-hint" className="table-page__prep-go-hint">
+                          Set at least one initiative first.
+                        </span>
+                      )}
+                    </div>
+                  </header>
+                  <ol className="table-page__prep-steps">
+                    {prepSteps.map((step, index) => (
+                      <li
+                        key={step.id}
+                        className={`table-page__prep-step${step.done ? " table-page__prep-step--done" : ""}${
+                          step.current ? " table-page__prep-step--current" : ""
+                        }`}
+                      >
+                        <span className="table-page__prep-mark" aria-hidden="true">
+                          {step.done ? "✓" : index + 1}
+                        </span>
+                        <span className="table-page__prep-step-text">
+                          <strong>{step.label}</strong>
+                          <span className="table-page__visually-hidden">{step.done ? " (done)" : " (to do)"}</span>
+                          <span className="table-page__prep-detail">{step.status}</span>
+                          {step.id === "initiative" && waitingPlayers.length > 0 && (
+                            <Button
+                              variant="secondary"
+                              className="table-page__prep-action"
+                              disabled={nudgeCooling}
+                              onClick={() => nudge(...waitingPlayers)}
+                            >
+                              {nudgeCooling
+                                ? "Nudged ✓"
+                                : `🔔 Nudge ${
+                                    waitingPlayers.length === 1
+                                      ? waitingPlayers[0].name
+                                      : `${waitingPlayers.length} players`
+                                  } to roll`}
+                            </Button>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                  {/* The longer explanation for each step, including who is still waiting. */}
+                  <ul id="prep-details" className="table-page__prep-details" hidden={!showPrepDetails}>
+                    {prepSteps.map((step) => (
+                      <li key={step.id}>
+                        <strong>{step.label}.</strong> {step.detail}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </div>
+
+            <div className="table-page__prep-main">
+              {/* Ideas for a fight that suits the party, from the free SRD monsters. */}
+              <EncounterHelper
+                levels={characters.map((sheet) => Number(sheet.level) || 1)}
+                onAdd={handleAddCombatants}
+              />
+              {addMonsterBlock}
+            </div>
+
+            <div className="table-page__prep-side">
+              {!table.combat_active && combatBlock}
+              <TableRules
+                key={table.id}
+                tableId={table.id}
+                rules={table.table_rules}
+                isDm
+                onSave={(text) => setTableRules(table.id, text)}
+              />
+              <ContentRules
+                banned={cleanBanned(table.banned_content)}
+                onSave={(next) => setBannedContent(table.id, next)}
+              />
+              {/* And ideas for what the fight leaves behind. */}
+              <LootHelper levels={characters.map((sheet) => Number(sheet.level) || 1)} />
+            </div>
+          </div>
         )}
 
-        {/* Before a fight, Prep shows the initiative list too: setting up
-            means rolling initiative and starting combat. */}
-        {!dmCombatLayout && combatBlock}
+        {/* The Combat tab and the players' page (the DM's Prep tab has its own layout above). */}
+        {!dmCombatLayout && !prepLayout && combatBlock}
 
-        {/* Ideas for a fight that suits the party, from the free SRD monsters. */}
-        {isDm && dmTab === "prep" && (
-          <EncounterHelper
-            levels={characters.map((sheet) => Number(sheet.level) || 1)}
-            onAdd={handleAddCombatants}
-          />
-        )}
+        {!dmCombatLayout && !prepLayout && addMonsterBlock}
 
-        {/* And ideas for what the fight leaves behind. */}
-        {isDm && dmTab === "prep" && (
-          <LootHelper levels={characters.map((sheet) => Number(sheet.level) || 1)} />
-        )}
+        {!dmCombatLayout && !prepLayout && orphanBlock}
 
-        {!dmCombatLayout && addMonsterBlock}
-
-        {!dmCombatLayout && orphanBlock}
-
-        {!dmCombatLayout && damageBlock}
+        {!dmCombatLayout && !prepLayout && damageBlock}
 
         {/* Handouts: made and revealed on the DM's Story tab; players see
             the ones revealed to them on their page. The shared journal is on

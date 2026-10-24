@@ -161,7 +161,7 @@ describe("AddCombatantForm", () => {
     render(<AddCombatantForm onAdd={vi.fn()} onSaveToLibrary={vi.fn()} />);
 
     expect(screen.getByText("Puts it in tonight's fight right now.")).toBeInTheDocument();
-    expect(screen.getByText(/Just preparing\?/)).toBeInTheDocument();
+    expect(screen.getByText(/Stored in your library only/)).toBeInTheDocument();
   });
 
   it("saves to the library only, without adding to the fight", async () => {
