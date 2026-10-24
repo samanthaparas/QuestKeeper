@@ -28,9 +28,15 @@ import {
   banMember,
   unbanMember,
   listBans,
+  startCombat,
 } from "../../utils/tableStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
+// The Prep tab's encounter helper asks for the SRD monster list; none is needed here.
+vi.mock("../../utils/api", async (importOriginal) => ({
+  ...(await importOriginal()),
+  getMonsters: vi.fn().mockResolvedValue([]),
+}));
 
 // A fresh storage per test, so a DM tab picked in one test isn't remembered in the next.
 beforeEach(() => {
@@ -1011,12 +1017,44 @@ describe("table help for new groups", () => {
     const checklist = await screen.findByRole("region", { name: "Before the fight" });
     const steps = within(checklist).getAllByRole("listitem");
     expect(steps.map((step) => step.textContent)).toEqual([
-      expect.stringContaining("Share the join code (done)"),
-      expect.stringContaining("Add the monsters (done)"),
-      expect.stringContaining("Get everyone's initiative (to do)Still waiting on Billie."),
-      expect.stringContaining("Start combat (to do)"),
+      expect.stringContaining("Share the join code (done)1 player joined"),
+      expect.stringContaining("Add the monsters (done)1 creature added"),
+      expect.stringContaining("Get everyone's initiative (to do)Waiting for 1 initiative"),
+      expect.stringContaining("Start combat (to do)Ready to start"),
     ]);
     expect(steps[2]).toHaveClass("table-page__prep-step--current");
+  });
+
+  it("keeps the longer step explanations, and who is waiting, behind Step details", async () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    renderPage();
+
+    const checklist = await screen.findByRole("region", { name: "Before the fight" });
+    const toggle = within(checklist).getByRole("button", { name: "Step details" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(within(checklist).getByText(/Still waiting on Billie\./)).not.toBeVisible();
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(within(checklist).getByText(/Still waiting on Billie\./)).toBeVisible();
+    expect(within(checklist).getByText(/players? (has|have) joined/)).toBeVisible();
+    await userEvent.click(within(checklist).getByRole("button", { name: "Hide step details" }));
+    expect(within(checklist).getByText(/Still waiting on Billie\./)).not.toBeVisible();
+  });
+
+  it("puts Nudge inside the initiative step and explains why Start combat is off when nobody has rolled", async () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    useTable.mockReturnValue({ ...currentTable, combatants: currentTable.combatants.map((c) => ({ ...c, initiative: null })) });
+    renderPage();
+
+    const checklist = await screen.findByRole("region", { name: "Before the fight" });
+    const start = within(checklist).getByRole("button", { name: "Start combat" });
+    expect(start).toBeDisabled();
+    expect(start).toHaveAccessibleDescription("Set at least one initiative first.");
+    const initiativeStep = within(checklist).getAllByRole("listitem")[2];
+    expect(within(initiativeStep).getByRole("button", { name: /Nudge/ })).toBeInTheDocument();
+    expect(initiativeStep).toHaveTextContent("Waiting for");
+    expect(within(checklist).getAllByRole("listitem")[3]).toHaveTextContent("Set at least one initiative");
   });
 
   it("hides the checklist once combat has started", async () => {
@@ -1348,12 +1386,15 @@ describe("party strip", () => {
     mockTable({ isDm: true, combatActive: false });
     getCharactersByIds.mockResolvedValue([billieSheet]);
     renderPage();
+    // Prep has its own layout; the party sits on the Combat tab.
+    await openTab("Combat");
 
     const strip = await screen.findByRole("list", { name: "Party" });
     expect(within(strip).getByText(/7\/20/)).toBeInTheDocument();
     expect(within(strip).getByText(/Bloodied/)).toBeInTheDocument();
     expect(within(strip).getByText("14", { exact: false })).toBeInTheDocument();
-    expect(within(strip).getByText("Poisoned")).toBeInTheDocument();
+    // Conditions show on the character's initiative line while the fight is set up, not twice.
+    expect(screen.getAllByText("Poisoned").length).toBeGreaterThan(0);
     // Wisdom 12 (+1) + proficiency 2 = 13 Perception, so passive 13.
     expect(within(strip).getByText("Perception 13")).toBeInTheDocument();
   });
@@ -1362,6 +1403,7 @@ describe("party strip", () => {
     mockTable({ isDm: true, combatActive: false });
     getCharactersByIds.mockResolvedValue([billieSheet]);
     renderPage();
+    await openTab("Combat");
 
     // The sharing checkbox sits behind the "Stats hidden" disclosure in the Party header.
     await userEvent.click(await screen.findByRole("button", { name: /Stats hidden/ }));
@@ -1436,6 +1478,56 @@ describe("DM screen tabs", () => {
     expect(screen.getByText("Before the fight")).toBeInTheDocument();
     expect(screen.getByText("Add monsters and NPCs")).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Initiative order" })).toBeInTheDocument();
+  });
+
+  it("lays Prep out in panels: readiness with Start combat, the encounter helper and add form, then rules, allowed content, loot and Initiative setup", () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    renderPage();
+
+    const ready = screen.getByRole("region", { name: "Before the fight" });
+    expect(within(ready).getByRole("button", { name: "Start combat" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Encounter helper" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Add monsters and NPCs" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Table rules" })).toBeInTheDocument();
+    expect(screen.getByText("Allowed content")).toBeInTheDocument();
+    expect(screen.getByText("Loot ideas")).toBeInTheDocument();
+    const setup = screen.getByRole("heading", { name: "Initiative setup" });
+    expect(setup).toBeInTheDocument();
+    // The main column (helper, add form) comes before the side column (rules ... Initiative setup).
+    const grid = document.querySelector(".table-page__prep-grid");
+    expect(grid.querySelector(".table-page__prep-main")).toContainElement(screen.getByRole("heading", { name: "Encounter helper" }));
+    expect(grid.querySelector(".table-page__prep-side")).toContainElement(setup);
+    // The Party panel stays out of Prep, and Start combat isn't in the initiative toolbar any more.
+    expect(screen.queryByRole("heading", { name: /^Party · / })).not.toBeInTheDocument();
+    expect(within(document.querySelector(".table-page__combat .table-page__toolbar")).queryByRole("button", { name: "Start combat" })).not.toBeInTheDocument();
+  });
+
+  it("starts the fight from the readiness panel, and keeps the per-creature initiative controls", async () => {
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    renderPage();
+
+    const start = within(screen.getByRole("region", { name: "Before the fight" })).getByRole("button", { name: "Start combat" });
+    await userEvent.click(start);
+    expect(startCombat).toHaveBeenCalledTimes(1);
+
+    // Each creature in Initiative setup still has its own Init box, Set button and roll.
+    const setup = document.querySelector(".table-page__combat");
+    expect(within(setup).getAllByRole("spinbutton", { name: /^Initiative for / }).length).toBeGreaterThan(0);
+    expect(within(setup).getAllByRole("button", { name: "Set" }).length).toBeGreaterThan(0);
+  });
+
+  it("on Prep during a fight, says so and offers Go to Combat, with no readiness steps or initiative list", async () => {
+    mockTable({ isDm: true });
+    renderPage();
+    await openTab("Prep");
+
+    expect(screen.getByRole("region", { name: "The fight is on" })).toHaveTextContent("The fight is on. Add more monsters here");
+    expect(screen.queryByRole("region", { name: "Before the fight" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Initiative setup" })).not.toBeInTheDocument();
+    // Adding more monsters mid-fight still works from here.
+    expect(screen.getByRole("heading", { name: "Add monsters and NPCs" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Go to Combat/ }));
+    expect(selectedTab()).toHaveTextContent("Combat");
   });
 
   it("opens on Combat during a fight", () => {
@@ -2105,9 +2197,10 @@ describe("TablePage, DM Combat tab: header rows, gold turn, and the slim panels"
     expect(within(toolbar).getAllByRole("button").map((b) => b.textContent)).toEqual(["New encounter", "Next turn"]);
   });
 
-  it("shows Start combat in the same far-right place before the fight", () => {
+  it("shows Start combat in the same far-right place before the fight", async () => {
     mockTable({ isDm: true, combatActive: false });
     renderPage();
+    await openTab("Combat");
 
     const toolbar = document.querySelector(".table-page__combat .table-page__toolbar");
     expect(within(toolbar).getAllByRole("button").map((b) => b.textContent).at(-1)).toBe("Start combat");

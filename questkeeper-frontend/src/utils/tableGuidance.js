@@ -14,7 +14,10 @@ function listNames(names) {
 
 // The four things a DM does before a fight, in order. `current` marks the
 // first step that isn't done yet, so the page can highlight it.
-export function getDmPrepSteps({ combatants = [], combatActive = false }) {
+// `status` is the short line shown on the step itself; `detail` is the longer
+// explanation (and the names of who is still waiting) behind "Step details".
+// canStart: whether Start combat is allowed right now (the page's own rule).
+export function getDmPrepSteps({ combatants = [], combatActive = false, canStart = true }) {
   const players = combatants.filter((combatant) => combatant.kind === "player");
   const npcs = combatants.filter((combatant) => combatant.kind !== "player");
   const waiting = combatants.filter((combatant) => !hasInitiative(combatant));
@@ -24,6 +27,7 @@ export function getDmPrepSteps({ combatants = [], combatActive = false }) {
       id: "invite",
       label: "Share the join code",
       done: players.length > 0,
+      status: players.length > 0 ? `${players.length} ${players.length === 1 ? "player" : "players"} joined` : "No players yet",
       detail:
         players.length > 0
           ? `${players.length} ${players.length === 1 ? "player has" : "players have"} joined. More can join any time.`
@@ -33,6 +37,7 @@ export function getDmPrepSteps({ combatants = [], combatActive = false }) {
       id: "monsters",
       label: "Add the monsters",
       done: npcs.length > 0,
+      status: npcs.length > 0 ? `${npcs.length} ${npcs.length === 1 ? "creature" : "creatures"} added` : "None added yet",
       detail:
         npcs.length > 0
           ? `${npcs.length} added. Only you can see their HP, AC and attacks.`
@@ -42,6 +47,12 @@ export function getDmPrepSteps({ combatants = [], combatActive = false }) {
       id: "initiative",
       label: "Get everyone's initiative",
       done: combatants.length > 0 && waiting.length === 0,
+      status:
+        combatants.length === 0
+          ? "Nobody to roll yet"
+          : waiting.length > 0
+            ? `Waiting for ${waiting.length} ${waiting.length === 1 ? "initiative" : "initiatives"}`
+            : "Everyone has rolled",
       detail:
         combatants.length === 0
           ? "Players roll on their own screens. Roll for monsters with the button below."
@@ -53,6 +64,7 @@ export function getDmPrepSteps({ combatants = [], combatActive = false }) {
       id: "start",
       label: "Start combat",
       done: combatActive,
+      status: combatActive ? "Combat is on" : canStart ? "Ready to start" : "Set at least one initiative",
       detail:
         "Turns go from the highest initiative down. Use Next turn to move on.",
     },

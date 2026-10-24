@@ -87,7 +87,7 @@ function TableRules({ tableId, rules = "", isDm = false, onSave }) {
         <textarea
           className="table-rules__input"
           aria-label="Table rules"
-          rows={5}
+          rows={3}
           maxLength={TABLE_RULES_MAX}
           placeholder="One rule per line"
           value={draft}
@@ -96,19 +96,6 @@ function TableRules({ tableId, rules = "", isDm = false, onSave }) {
             setMessage("");
           }}
         />
-        <div className="table-rules__starters" role="group" aria-label="Add a starter line">
-          {STARTERS.map((text) => (
-            <button
-              key={text}
-              type="button"
-              className="table-rules__starter"
-              onClick={() => addStarter(text)}
-              disabled={draft.includes(text)}
-            >
-              + {text}
-            </button>
-          ))}
-        </div>
         <div className="table-rules__actions">
           <button type="button" className="table-rules__save" onClick={save} disabled={isSaving || unchanged}>
             {isSaving ? "Saving..." : "Save table rules"}
@@ -117,6 +104,23 @@ function TableRules({ tableId, rules = "", isDm = false, onSave }) {
             {message}
           </span>
         </div>
+        {/* Suggestions are tucked away so the box stays small. */}
+        <details className="table-rules__starter-details">
+          <summary>Starter lines (suggestions)</summary>
+          <div className="table-rules__starters" role="group" aria-label="Add a starter line">
+            {STARTERS.map((text) => (
+              <button
+                key={text}
+                type="button"
+                className="table-rules__starter"
+                onClick={() => addStarter(text)}
+                disabled={draft.includes(text)}
+              >
+                + {text}
+              </button>
+            ))}
+          </div>
+        </details>
       </section>
     );
   }

@@ -175,3 +175,37 @@ describe("latestGameEvent", () => {
     expect(isHousekeepingMessage(attack.message)).toBe(false);
   });
 });
+
+describe("getDmPrepSteps: short status lines", () => {
+  it("counts players, creatures and who is still to roll", () => {
+    const steps = getDmPrepSteps({
+      combatants: [player("Billie", 15), player("Rowan"), monster("Goblin 1"), monster("Goblin 2")],
+      canStart: true,
+    });
+    expect(steps.map((step) => step.status)).toEqual([
+      "2 players joined",
+      "2 creatures added",
+      "Waiting for 3 initiatives",
+      "Ready to start",
+    ]);
+  });
+
+  it("uses the singular, and says what is missing on an empty table", () => {
+    expect(getDmPrepSteps({ combatants: [player("Billie", 12), monster("Wolf", 8)], canStart: true }).map((step) => step.status)).toEqual([
+      "1 player joined",
+      "1 creature added",
+      "Everyone has rolled",
+      "Ready to start",
+    ]);
+    expect(getDmPrepSteps({ combatants: [], canStart: false }).map((step) => step.status)).toEqual([
+      "No players yet",
+      "None added yet",
+      "Nobody to roll yet",
+      "Set at least one initiative",
+    ]);
+  });
+
+  it("says combat is on once it has started", () => {
+    expect(getDmPrepSteps({ combatants: [player("Billie", 12)], combatActive: true })[3].status).toBe("Combat is on");
+  });
+});

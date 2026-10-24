@@ -159,11 +159,14 @@ function AddCombatantForm({ onAdd, onSaveToLibrary, templates = [] }) {
         )}
       </div>
 
-      <p className="add-combatant__tip">
-        <strong>Adding several of the same monster?</strong> Type the name once and set{" "}
-        <em>How many</em> (up to 20). Each one gets its own HP, and you can give each a
-        nickname or icon under <em>Tell them apart</em>.
-      </p>
+      <details className="add-combatant__more">
+        <summary>Adding several creatures</summary>
+        <p className="add-combatant__tip">
+          <strong>Adding several of the same monster?</strong> Type the name once and set{" "}
+          <em>How many</em> (up to 20). Each one gets its own HP, and you can give each a
+          nickname or icon under <em>Tell them apart</em>.
+        </p>
+      </details>
 
       <div className="add-combatant__row add-combatant__row--fields">
         <label className="add-combatant__labeled add-combatant__labeled--name">
@@ -272,8 +275,7 @@ function AddCombatantForm({ onAdd, onSaveToLibrary, templates = [] }) {
               Save for later (library only)
             </Button>
             <span className="add-combatant__submit-note">
-              Just preparing? It goes in your library for another night and is <strong>not</strong> added to
-              the fight.
+              Stored in your library only: <strong>not</strong> added to the fight.
             </span>
           </div>
         )}
