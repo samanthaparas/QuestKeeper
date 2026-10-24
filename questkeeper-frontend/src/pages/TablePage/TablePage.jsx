@@ -1715,8 +1715,8 @@ function TablePage() {
       <CombatantSummaryRow
         key={combatant.id}
         {...props}
-        // On Prep nobody is "selected" until the DM picks someone (their panel isn't shown before that).
-        selected={combatant.id === (prepLayout && pickedId === null ? null : selectedId)}
+        // Before the fight nobody is "selected" until the DM picks someone (their panel isn't shown before that).
+        selected={combatant.id === (!table.combat_active && pickedId === null ? null : selectedId)}
         statusRow={sheet ? partyRowById.get(sheet.id) : null}
         // Picking whoever is up goes back to following the turn.
         onSelect={(id) => setPickedId(id === currentId ? null : id)}
@@ -1853,7 +1853,12 @@ function TablePage() {
     </button>
   );
   const combatBlock = (onTab("combat") || (dmTab === "prep" && !table.combat_active)) && (
-        <section className={`table-page__combat${isDm ? " table-page__section--panel table-page__combat--panel" : ""}`} ref={combatRef}>
+        <section
+          className={`table-page__combat${isDm ? " table-page__section--panel table-page__combat--panel" : ""}${
+            isDm && !table.combat_active ? " table-page__combat--setup" : ""
+          }`}
+          ref={combatRef}
+        >
           {isDm && (
             <>
               {/* The same slim header bar as the other panels: the title, with
@@ -2051,7 +2056,7 @@ function TablePage() {
               panel stays on the page (only the picked one is shown), so an
               amount typed or an attack in progress is still there when the DM
               looks at someone else and comes back. */}
-          {isDm && selectedCombatant && (!prepLayout || pickedId !== null) && (
+          {isDm && selectedCombatant && (table.combat_active || pickedId !== null) && (
             <section
               id="detail-panel"
               className="table-page__detail"

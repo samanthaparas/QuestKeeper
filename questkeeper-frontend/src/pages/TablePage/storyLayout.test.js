@@ -24,7 +24,12 @@ describe("Story journal layout rules (source check)", () => {
   });
 
   it("only gives the notes a flex-sized scroll box inside the tall-and-wide media query", () => {
-    const start = css.lastIndexOf("@media (min-width: 900px) and (min-height: 620px) {");
+    // The tall-and-wide block that holds the journal rules (other tabs have their own).
+    const query = "@media (min-width: 900px) and (min-height: 620px) {";
+    let start = css.indexOf(query);
+    while (start !== -1 && !css.slice(start, css.indexOf("\n}\n", start)).includes(".table-journal--feed > .table-journal__scroll")) {
+      start = css.indexOf(query, start + 1);
+    }
     const media = css.slice(start, css.indexOf("\n}\n", start) + 3);
     expect(media).toContain(".table-journal--feed > .table-journal__scroll");
     expect(media).toMatch(/flex:\s*1 1 0/);

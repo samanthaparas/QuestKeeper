@@ -4644,3 +4644,20 @@ html:has(.table-page--dm) {
   height: 34px;
   margin: 0 8px 6px 0;
 }
+
+/* Before the fight (nobody has started yet), the list of who still needs an
+   initiative is the main thing on the Combat tab: it takes the room (and
+   scrolls only if it has to), the order list underneath is just as tall as it
+   needs to be, and no creature's controls are open until one is picked. */
+@media (min-width: 900px) and (min-height: 620px) {
+  .table-page--dm .table-page__dm-grid .table-page__combat--setup .table-page__order--waiting {
+    flex: 1 1 auto;
+    min-height: 96px;
+    max-height: none;
+  }
+
+  .table-page--dm .table-page__dm-grid .table-page__combat--setup ol.table-page__order {
+    flex: 0 1 auto;
+    min-height: 120px;
+  }
+}
