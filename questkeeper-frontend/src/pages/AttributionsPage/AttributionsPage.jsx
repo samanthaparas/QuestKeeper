@@ -4,6 +4,7 @@ import {
   OGL_PARAGRAPHS,
   OGL_COPYRIGHT_NOTICES,
 } from "../../utils/licenses";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import "./AttributionsPage.css";
 
 // Credits every book QuestKeeper's game content comes from. The licenses
@@ -12,15 +13,14 @@ import "./AttributionsPage.css";
 function AttributionsPage() {
   return (
     <main className="attributions">
-      <section className="attributions__section">
-        <h1 className="attributions__title">Attributions</h1>
-        <p className="attributions__intro">
+      <PageBanner art="hearth" title="Attributions">
+        <p className="page-banner__description">
           Every race, class, background and spell in QuestKeeper comes from a
           freely licensed source. Each one is marked with a badge naming its
           book. This page credits those books and includes the licenses they
           ask us to share.
         </p>
-      </section>
+      </PageBanner>
 
       <section className="attributions__section" aria-labelledby="srd-title">
         <h2 id="srd-title" className="attributions__heading">
@@ -75,7 +75,8 @@ function AttributionsPage() {
         </h2>
 
         {/* Sections 1-14 are the license's own words, unchanged. */}
-        <div className="attributions__license">
+        {/* A scrolling box: it takes keyboard focus (so the arrow keys scroll it) and has a name. */}
+        <div className="attributions__license" tabIndex={0} role="region" aria-label="License text, scrolls">
           {OGL_PARAGRAPHS.map((paragraph) => (
             <p key={paragraph.slice(0, 40)}>{paragraph}</p>
           ))}
