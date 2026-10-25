@@ -121,7 +121,7 @@ function StatBlockFields({ value, onChange, idPrefix = "stat" }) {
         // A browser only scrolls to the typing cursor when a text box gets focus, which can leave
         // the lower part of the box cut off (most noticeable zoomed in). This brings the whole
         // box into view, moving the page only as far as needed.
-        onFocus={(event) => event.currentTarget.scrollIntoView({ block: "nearest" })}
+        onFocus={(event) => event.currentTarget.scrollIntoView?.({ block: "nearest" })}
       />
     </div>
   );
