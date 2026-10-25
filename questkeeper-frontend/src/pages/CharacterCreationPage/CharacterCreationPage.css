@@ -9,6 +9,8 @@
   max-width: var(--qk-content-width);
   margin: 0 auto;
   display: grid;
+  /* One column that may shrink, so the long step rail can't push the page wider than a phone. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -149,4 +151,14 @@
 
 .character-creation__cancel-button:hover {
   color: var(--qk-terracotta-hover);
+}
+
+.character-creation__banner {
+  max-width: var(--qk-content-width);
+  margin: 0 auto;
+}
+
+.character-creation__banner .page-banner {
+  min-height: 120px;
+  margin-bottom: 16px;
 }

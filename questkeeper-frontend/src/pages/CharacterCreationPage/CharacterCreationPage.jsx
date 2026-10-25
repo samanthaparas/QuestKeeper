@@ -85,6 +85,7 @@ import EquipmentChoiceStep from "../../components/EquipmentChoiceStep/EquipmentC
 import { parseEquipmentChoices } from "../../utils/equipmentChoices";
 import CreationTips from "../../components/CreationTips/CreationTips";
 import Button from "../../components/Button/Button";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import HomebrewDialog from "../../components/HomebrewDialog/HomebrewDialog";
 import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
 import { createHomebrew } from "../../utils/homebrewStore";
@@ -615,6 +616,12 @@ function CharacterCreationPage() {
 
   return (
     <main className="character-creation">
+      {/* The first step opens with the banner; later steps stay compact so the choices are the focus. */}
+      {step === "name" && (
+        <div className="character-creation__banner">
+          <PageBanner art="wilderness" eyebrow="Adventurer" title="Create a character" />
+        </div>
+      )}
       <div className="character-creation__layout">
         <CreationStepRail groups={railGroups} onJump={goToStep} />
 
@@ -691,9 +698,9 @@ function CharacterCreationPage() {
             <div className="character-creation__main">
               {step === "name" && (
                 <div className="character-creation__name-step">
-                  <h1 className="character-creation__title">
+                  <h2 className="character-creation__title">
                     What's your character's name?
-                  </h1>
+                  </h2>
 
                   <input
                     className="character-creation__name-input"

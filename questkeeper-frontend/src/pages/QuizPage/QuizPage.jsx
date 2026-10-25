@@ -12,6 +12,7 @@ import {
   quizResults,
 } from "../../utils/quizScoring";
 import { getClassIcon, getRaceIcon } from "../../utils/icons";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import Button from "../../components/Button/Button";
 import "./QuizPage.css";
 
@@ -134,15 +135,15 @@ function QuizPage() {
   if (view === "intro") {
     return (
       <main className="quiz">
-        <section className="quiz__card quiz__intro">
-          <span className="quiz__eyebrow">Not sure what to play?</span>
-          <h1 className="quiz__title">Find your character</h1>
-          <p>
+        <PageBanner art="wilderness" eyebrow="Not sure what to play?" title="Find your character" className="quiz__banner">
+          <p className="page-banner__description">
             Answer up to {QUESTIONS.length} quick questions about how you&apos;d
             handle a few situations and how you like to play. Skip any
             you&apos;re not sure about. You&apos;ll get three builds that fit
             you, and one tap fills them into character creation.
           </p>
+        </PageBanner>
+        <section className="quiz__card quiz__intro">
           <p className="quiz__note">
             There are no wrong answers. Pick what sounds the most fun.
           </p>
@@ -156,9 +157,7 @@ function QuizPage() {
     const { chips, results } = quizResults(answers);
     return (
       <main className="quiz">
-        <section className="quiz__results-head">
-          <span className="quiz__eyebrow">Your results</span>
-          <h1 className="quiz__title">Three heroes that fit you</h1>
+        <PageBanner art="wilderness" eyebrow="Your results" title="Three heroes that fit you">
           {chips.length > 0 && (
             <p className="quiz__chips">
               <span>Your play style:</span>
@@ -169,7 +168,7 @@ function QuizPage() {
               ))}
             </p>
           )}
-        </section>
+        </PageBanner>
 
         <ol className="quiz__results">
           {results.map((result) => (
