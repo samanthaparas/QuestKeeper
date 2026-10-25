@@ -77,7 +77,9 @@ describe("character creation from the quiz", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Filling in your build from the quiz");
     expect(await screen.findByText(/From the quiz: Iron Guardian/)).toBeInTheDocument();
     // Race, class and background are done; skills are the first thing left.
-    expect(screen.getByRole("heading", { level: 2, name: /skills/i })).toBeInTheDocument();
+    // (The step is now part of the address, and the router updates it a
+    // moment after the build fills in, so wait for it.)
+    expect(await screen.findByRole("heading", { level: 2, name: /skills/i })).toBeInTheDocument();
     expect(loadQuizBuild).toHaveBeenCalledWith(expect.objectContaining({ id: "iron-guardian" }));
   });
 
