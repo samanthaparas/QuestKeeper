@@ -53,6 +53,15 @@
   font-size: 14px;
 }
 
+/* A results link opened with no saved answers. */
+.quiz__note--warning {
+  padding: 10px 12px;
+  border-left: 3px solid var(--qk-warning);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+}
+
 /* --- One question at a time ---------------------------------------------- */
 .quiz__progress {
   height: 6px;

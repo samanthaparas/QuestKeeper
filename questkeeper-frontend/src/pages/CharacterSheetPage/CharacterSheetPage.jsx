@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useTableTurn } from "../../hooks/useTableTurn";
@@ -181,6 +181,18 @@ import "./CharacterSheetPage.css";
 // A controlled number input keeps typed text like "025" on screen even though
 // the stored value is 25. Rewrite the visible text once, sheet-wide, so a
 // leading zero never sticks around.
+
+// Every tab the sheet can show (see CharacterSheetTabs).
+const SHEET_TAB_KEYS = new Set([
+  "actions",
+  "spells",
+  "resources",
+  "inventory",
+  "features",
+  "rolls",
+  "story",
+  "journal",
+]);
 function stripLeadingZeros(event) {
   const input = event.target;
   if (input.type === "number" && /^-?0+\d/.test(input.value)) {
@@ -246,7 +258,19 @@ function CharacterSheetPage() {
   const [journalView, setJournalView] = useState("table");
   const [restMessage, setRestMessage] = useState("");
   const [levelUpSummary, setLevelUpSummary] = useState(null);
-  const [activeTab, setActiveTab] = useState("actions");
+  // The open tab is part of the address (?tab=inventory), so a reload keeps
+  // it and the browser's Back returns to the tab you were on before leaving
+  // the sheet. Actions, the first tab, has no ?tab.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab") ?? "actions";
+  function setActiveTab(tab) {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      if (tab === "actions") next.delete("tab");
+      else next.set("tab", tab);
+      return next;
+    });
+  }
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   // Stats are locked until the player taps "Edit stats", so a stray tap can't
   // change AC or a score by accident. Current HP, temp HP, the temporary AC
@@ -516,7 +540,6 @@ function CharacterSheetPage() {
       setLoadedId(id);
       setIsLevelingUp(false);
       setLevelUpSummary(null);
-      setActiveTab("actions");
       setActiveSlotLevels(
         new Set(
           getSpellSlots(loaded?.spellcasting)
@@ -1854,6 +1877,13 @@ function CharacterSheetPage() {
     (sheet.spellcasting?.cantripsKnown?.length ?? 0) > 0 ||
     (sheet.spellcasting?.spellsKnown?.length ?? 0) > 0 ||
     getSpellSlots(sheet.spellcasting).some((slot) => slot.max > 0);
+  // An address with a tab this character doesn't have (?tab=spells for a
+  // fighter, or an old link) just shows Actions.
+  const activeTab =
+    SHEET_TAB_KEYS.has(requestedTab) &&
+    (requestedTab !== "spells" || hasSpellcasting)
+      ? requestedTab
+      : "actions";
 
   // Shown in the left rail on wide screens, or at the top of the sheet when
   // the Stats | Skills switch is on Skills.

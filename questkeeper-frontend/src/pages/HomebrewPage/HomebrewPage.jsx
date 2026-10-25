@@ -18,12 +18,16 @@ import {
 } from "../../utils/homebrewForm";
 import Button from "../../components/Button/Button";
 import HomebrewForm from "../../components/HomebrewForm/HomebrewForm";
+import { loadFormDraft } from "../../utils/formDrafts";
 import HomebrewSharing from "../../components/HomebrewSharing/HomebrewSharing";
 import PageBanner from "../../components/PageBanner/PageBanner";
 import "./HomebrewPage.css";
 
 // Your homebrew races, subraces, backgrounds and subclasses, the ones others
 // share with you, and who you share yours with.
+// Unsaved changes in the editor, kept on this device.
+const HOMEBREW_DRAFT_KEY = "qk-homebrew-draft";
+
 function HomebrewPage() {
   const { user } = useAuth();
   const location = useLocation();
@@ -33,9 +37,11 @@ function HomebrewPage() {
   const [error, setError] = useState("");
   // The open form, or null. Arriving from "Make it as homebrew" on the
   // Backgrounds page opens it with the name, book and link filled in.
+  // Otherwise, an entry left unsaved last time (a Back press, a reload)
+  // opens again with its changes.
   const [form, setForm] = useState(() => {
     const prefill = location.state?.newHomebrew;
-    if (!prefill?.category) return null;
+    if (!prefill?.category) return loadFormDraft(HOMEBREW_DRAFT_KEY)?.form ?? null;
     const { category, data, ...fields } = prefill;
     const blank = emptyHomebrewForm(category);
     return { ...blank, ...fields, data: { ...blank.data, ...data } };
@@ -147,6 +153,7 @@ function HomebrewPage() {
             classOptions={classOptions}
             onSave={handleSave}
             onCancel={() => setForm(null)}
+            draftKey={HOMEBREW_DRAFT_KEY}
           />
         ) : (
           <div className="homebrew-page__new">

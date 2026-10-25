@@ -330,3 +330,39 @@
   color: color-mix(in srgb, var(--qk-text) 72%, var(--qk-background));
   opacity: 1;
 }
+
+/* "Back to top", once you're well down the guide. Bottom-right, clear of a
+   phone's home bar. */
+.guide__top {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--qk-terracotta);
+  border-radius: 999px;
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+  font-family: var(--qk-font-body);
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px var(--qk-shadow);
+  cursor: pointer;
+}
+
+.guide__top:hover {
+  background-color: var(--qk-terracotta-hover);
+}
+
+.guide__top:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 3px;
+}
+
+.guide__title:focus {
+  outline: none;
+}

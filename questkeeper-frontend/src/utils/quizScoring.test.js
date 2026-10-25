@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BUILDS, QUESTIONS } from "./quizData";
-import { answeredCount, leanFor, quizResults, topBuilds } from "./quizScoring";
+import { answeredCount, leanFor, quizResults, topBuilds, encodeAnswers, decodeAnswers } from "./quizScoring";
 
 // A tiny repeatable random number generator, so the simulation is stable.
 function seeded(seed) {
@@ -90,5 +90,22 @@ describe("quiz scoring", () => {
     const reasons = reasonsFor({ magic: -2, front: 1, free: 0, simple: 1, wild: 0 }, barbarian);
     expect(reasons).toContain("You'd rather fight than juggle spells.");
     expect(reasons).not.toContain("Magic is the fun part for you.");
+  });
+});
+
+describe("answers in the results link", () => {
+  const questions = Array.from({ length: 6 }, () => ({ answers: [{}, {}, {}, {}] }));
+
+  it("turns answers into a short code and back", () => {
+    const answers = [0, 3, null, 1, 2, 0];
+    expect(encodeAnswers(answers)).toBe("03-120");
+    expect(decodeAnswers("03-120", questions)).toEqual(answers);
+  });
+
+  it("refuses a code that doesn't fit the questions", () => {
+    expect(decodeAnswers("03-12", questions)).toBeNull(); // too short
+    expect(decodeAnswers("03-129", questions)).toBeNull(); // no answer 9
+    expect(decodeAnswers("0-----", questions)).toBeNull(); // too few answered
+    expect(decodeAnswers(null, questions)).toBeNull();
   });
 });

@@ -9,6 +9,8 @@ import { QUESTIONS } from "../../utils/quizData";
 import {
   MIN_ANSWERS,
   answeredCount,
+  decodeAnswers,
+  encodeAnswers,
   quizResults,
 } from "../../utils/quizScoring";
 import { getClassIcon, getRaceIcon } from "../../utils/icons";
@@ -19,22 +21,33 @@ import "./QuizPage.css";
 const STORAGE_KEY = "qk-quiz-answers";
 const EMPTY = QUESTIONS.map(() => null);
 
-// Answers are kept for this browser tab, so leaving to read about a class
-// and coming back doesn't lose them.
-function loadAnswers() {
+// Answers are kept on this device (not just this tab), so leaving to read
+// about a class, a sign-up email that opens a new tab, or a phone reopening
+// the page doesn't lose them. Older visits kept them per tab, so that copy
+// is still read once.
+function readSaved(storage) {
   try {
-    const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY));
+    const saved = JSON.parse(storage.getItem(STORAGE_KEY));
     return Array.isArray(saved) && saved.length === QUESTIONS.length
       ? saved
-      : EMPTY;
+      : null;
   } catch {
-    return EMPTY;
+    return null;
   }
+}
+
+function loadAnswers(codeFromLink) {
+  return (
+    decodeAnswers(codeFromLink, QUESTIONS) ??
+    readSaved(window.localStorage) ??
+    readSaved(window.sessionStorage) ??
+    EMPTY
+  );
 }
 
 function saveAnswers(answers) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
   } catch {
     // Not saved; the quiz still works.
   }
@@ -56,11 +69,14 @@ function QuizPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const heroName = location.state?.name ?? "";
-  const [answers, setAnswers] = useState(loadAnswers);
-  const firstUnanswered = answers.findIndex((choice) => choice == null);
-  // The results have their own address (/quiz?view=results), so the
-  // browser's Back button returns to them from a book page.
+  // The results have their own address (/quiz?view=results&a=...), so the
+  // browser's Back button returns to them from a book page, and the link
+  // carries the answers so it works in a new tab too.
   const [searchParams, setSearchParams] = useSearchParams();
+  const [answers, setAnswers] = useState(() =>
+    loadAnswers(searchParams.get("a")),
+  );
+  const firstUnanswered = answers.findIndex((choice) => choice == null);
   const [step, setStep] = useState(() =>
     answeredCount(answers) > 0 ? "question" : "intro",
   );
@@ -69,13 +85,23 @@ function QuizPage() {
     answeredCount(answers) >= MIN_ANSWERS
       ? "results"
       : step;
+  // A results link opened where its answers aren't available (and the link
+  // didn't carry them): say so instead of silently restarting.
+  const resultsMissing =
+    searchParams.get("view") === "results" &&
+    answeredCount(answers) < MIN_ANSWERS;
 
   // Showing the results is a new page in the browser's history; leaving them
   // goes back to the questions. The hero's name (from character creation)
   // comes along either way.
-  function setView(next) {
+  // `latest`: the answers including a pick made this moment (state updates
+  // aren't visible until the next render).
+  function setView(next, latest = answers) {
     if (next === "results") {
-      setSearchParams({ view: "results" }, { state: location.state });
+      setSearchParams(
+        { view: "results", a: encodeAnswers(latest) },
+        { state: location.state },
+      );
     } else {
       setStep(next);
       if (searchParams.get("view"))
@@ -95,7 +121,7 @@ function QuizPage() {
     );
     setAnswers(next);
     if (index < QUESTIONS.length - 1) setIndex(index + 1);
-    else setView("results");
+    else setView("results", next);
   }
 
   function skip() {
@@ -144,6 +170,12 @@ function QuizPage() {
           </p>
         </PageBanner>
         <section className="quiz__card quiz__intro">
+          {resultsMissing && (
+            <p className="quiz__note quiz__note--warning" role="status">
+              We couldn&apos;t find the answers for those results on this
+              device. Take the quiz again and your results will be saved.
+            </p>
+          )}
           <p className="quiz__note">
             There are no wrong answers. Pick what sounds the most fun.
           </p>

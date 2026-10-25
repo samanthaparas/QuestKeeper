@@ -46,6 +46,9 @@ function scrollToSection(id, behavior = shouldReduceMotion() ? "auto" : "smooth"
   document.getElementById(id)?.scrollIntoView({ behavior, block: "start" });
 }
 
+// How far down (in pixels) before "Back to top" appears.
+const SHOW_TOP_AFTER = 1200;
+
 function Guide() {
   // Other pages link to a section with /guide?section=tables.
   const [searchParams] = useSearchParams();
@@ -56,6 +59,26 @@ function Guide() {
   useEffect(() => {
     if (sectionId) scrollToSection(sectionId, "auto");
   }, [sectionId]);
+
+  // The guide is long on a phone, so after a screen or so a "Back to top"
+  // button appears.
+  const [showTop, setShowTop] = useState(false);
+  useEffect(() => {
+    function check() {
+      setShowTop(window.scrollY > SHOW_TOP_AFTER);
+    }
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    return () => window.removeEventListener("scroll", check);
+  }, []);
+
+  function backToTop() {
+    window.scrollTo({ top: 0, behavior: shouldReduceMotion() ? "auto" : "smooth" });
+    // Keyboard and screen reader users land on the title, not the button.
+    const title = document.querySelector(".guide .page-banner__title");
+    title?.setAttribute("tabindex", "-1");
+    title?.focus({ preventScroll: true });
+  }
 
   return (
     <main className="guide">
@@ -549,6 +572,11 @@ function Guide() {
       </section>
 
       <RulesWordsSection />
+      {showTop && (
+        <button type="button" className="guide__top" onClick={backToTop}>
+          <span aria-hidden="true">↑</span> Back to top
+        </button>
+      )}
     </main>
   );
 }

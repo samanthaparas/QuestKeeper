@@ -10,7 +10,12 @@ import {
 import { collectSkills, loadRaceSkillGrants, missingRacePicks } from "../../utils/skillGrants";
 import { sourceFromEntry } from "../../utils/featureSources";
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import {
   getRaces,
   getClasses,
@@ -83,6 +88,12 @@ import CreationSummaryPanel from "../../components/CreationSummaryPanel/Creation
 import CharacterReview from "../../components/CharacterReview/CharacterReview";
 import EquipmentChoiceStep from "../../components/EquipmentChoiceStep/EquipmentChoiceStep";
 import { parseEquipmentChoices } from "../../utils/equipmentChoices";
+import {
+  clearCreationDraft,
+  hasCreationProgress,
+  loadCreationDraft,
+  saveCreationDraft,
+} from "../../utils/creationDraft";
 import CreationTips from "../../components/CreationTips/CreationTips";
 import Button from "../../components/Button/Button";
 import PageBanner from "../../components/PageBanner/PageBanner";
@@ -100,41 +111,75 @@ import {
 const mapRaceToDetailPanelResult = mapRaceToPanel;
 const mapClassToDetailPanelResult = mapClassToPanel;
 
-function CharacterCreationPage() {
+function CharacterCreationPage({ onStartFresh }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [stepKey, setStepKey] = useState("name");
+  const [searchParams, setSearchParams] = useSearchParams();
+  // The character in progress, saved on this device as you go (see the
+  // autosave below), unless this visit brings a build from the quiz.
+  const [draft] = useState(() =>
+    location.state?.quizBuild ? null : loadCreationDraft(),
+  );
+  function restored(field, fallback) {
+    return draft && field in draft.fields ? draft.fields[field] : fallback;
+  }
+  // Each step is its own address (?step=class), so the browser's Back and
+  // Forward (or a phone's back swipe) move between steps instead of leaving
+  // creation and losing everything.
+  //
+  // Picking up a saved character through a plain link (no ?step) resumes
+  // at its step for this first view, and writes that step into the address
+  // (replacing the entry), so later an address without ?step always means
+  // the first step and Back behaves.
+  const resumeStep = useRef(
+    searchParams.get("step") ? null : restored("stepKey", null),
+  );
+  const stepKey = searchParams.get("step") ?? resumeStep.current ?? "name";
+  function setStepKey(key) {
+    setSearchParams({ step: key });
+  }
+  useEffect(() => {
+    const step = resumeStep.current;
+    resumeStep.current = null;
+    if (step && !searchParams.get("step")) {
+      setSearchParams({ step }, { replace: true });
+    }
+    // Only when the page opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Arriving from the character quiz brings the hero's name along.
-  const [name, setName] = useState(() => location.state?.name ?? "");
-  const [race, setRace] = useState(null);
-  const [characterClass, setCharacterClass] = useState(null);
-  const [background, setBackground] = useState(null);
-  const [abilityScores, setAbilityScores] = useState(null);
-  const [classSkills, setClassSkills] = useState([]);
+  const [name, setName] = useState(
+    () => location.state?.name ?? restored("name", ""),
+  );
+  const [race, setRace] = useState(() => restored("race", null));
+  const [characterClass, setCharacterClass] = useState(() => restored("characterClass", null));
+  const [background, setBackground] = useState(() => restored("background", null));
+  const [abilityScores, setAbilityScores] = useState(() => restored("abilityScores", null));
+  const [classSkills, setClassSkills] = useState(() => restored("classSkills", []));
   // Skills picked from a background's own choice (Innkeeper, Lyceum Student).
-  const [backgroundSkills, setBackgroundSkills] = useState([]);
+  const [backgroundSkills, setBackgroundSkills] = useState(() => restored("backgroundSkills", []));
   // Skills the race and subrace grant (fixed ones and "choose N"), and the
   // player's picks for each choice ({ [grantId]: [skill] }).
-  const [raceSkillGrants, setRaceSkillGrants] = useState([]);
-  const [racePicks, setRacePicks] = useState({});
+  const [raceSkillGrants, setRaceSkillGrants] = useState(() => restored("raceSkillGrants", []));
+  const [racePicks, setRacePicks] = useState(() => restored("racePicks", {}));
   // Languages picked on the Skills step ({ race: ["Dwarvish"] }). Optional:
   // a skipped pick stays as a reminder on the sheet.
-  const [languagePicks, setLanguagePicks] = useState({});
-  const [spellChoices, setSpellChoices] = useState(null);
-  const [raceRaw, setRaceRaw] = useState(null);
-  const [classRaw, setClassRaw] = useState(null);
-  const [backgroundRaw, setBackgroundRaw] = useState(null);
-  const [abilityAssignments, setAbilityAssignments] = useState(null);
-  const [subrace, setSubrace] = useState(null);
-  const [subraceRaw, setSubraceRaw] = useState(null);
-  const [subclass, setSubclass] = useState(null);
-  const [subclassRaw, setSubclassRaw] = useState(null);
-  const [subraceCantrip, setSubraceCantrip] = useState(null);
+  const [languagePicks, setLanguagePicks] = useState(() => restored("languagePicks", {}));
+  const [spellChoices, setSpellChoices] = useState(() => restored("spellChoices", null));
+  const [raceRaw, setRaceRaw] = useState(() => restored("raceRaw", null));
+  const [classRaw, setClassRaw] = useState(() => restored("classRaw", null));
+  const [backgroundRaw, setBackgroundRaw] = useState(() => restored("backgroundRaw", null));
+  const [abilityAssignments, setAbilityAssignments] = useState(() => restored("abilityAssignments", null));
+  const [subrace, setSubrace] = useState(() => restored("subrace", null));
+  const [subraceRaw, setSubraceRaw] = useState(() => restored("subraceRaw", null));
+  const [subclass, setSubclass] = useState(() => restored("subclass", null));
+  const [subclassRaw, setSubclassRaw] = useState(() => restored("subclassRaw", null));
+  const [subraceCantrip, setSubraceCantrip] = useState(() => restored("subraceCantrip", null));
   const [isCreating, setIsCreating] = useState(false);
-  const [cameFromReview, setCameFromReview] = useState(false);
+  const [cameFromReview, setCameFromReview] = useState(() => restored("cameFromReview", false));
   // Starting-gear choices and the gear they add (null until the Gear step).
-  const [equipmentSelections, setEquipmentSelections] = useState(null);
-  const [chosenEquipment, setChosenEquipment] = useState([]);
+  const [equipmentSelections, setEquipmentSelections] = useState(() => restored("equipmentSelections", null));
+  const [chosenEquipment, setChosenEquipment] = useState(() => restored("chosenEquipment", []));
   // "Make your own": the open homebrew pop-up, the entry just made (shown
   // selected in its picker), and a counter that reloads the pickers.
   const [homebrewRequest, setHomebrewRequest] = useState(null);
@@ -150,6 +195,73 @@ function CharacterCreationPage() {
     if (!location.state?.quizBuild) return "idle";
     return findQuizBuild(location.state.quizBuild) ? "loading" : "unknown";
   });
+
+  // Keep the character in progress on this device after every change.
+  useEffect(() => {
+    if (isCreating) return;
+    saveCreationDraft({
+      stepKey,
+      name,
+      race,
+      characterClass,
+      background,
+      abilityScores,
+      classSkills,
+      backgroundSkills,
+      raceSkillGrants,
+      racePicks,
+      languagePicks,
+      spellChoices,
+      raceRaw,
+      classRaw,
+      backgroundRaw,
+      abilityAssignments,
+      subrace,
+      subraceRaw,
+      subclass,
+      subclassRaw,
+      subraceCantrip,
+      cameFromReview,
+      equipmentSelections,
+      chosenEquipment,
+    });
+  }, [
+    isCreating,
+    stepKey,
+    name,
+    race,
+    characterClass,
+    background,
+    abilityScores,
+    classSkills,
+    backgroundSkills,
+    raceSkillGrants,
+    racePicks,
+    languagePicks,
+    spellChoices,
+    raceRaw,
+    classRaw,
+    backgroundRaw,
+    abilityAssignments,
+    subrace,
+    subraceRaw,
+    subclass,
+    subclassRaw,
+    subraceCantrip,
+    cameFromReview,
+    equipmentSelections,
+    chosenEquipment,
+  ]);
+
+  // "Picking up where you left off", until it's dismissed or you start over.
+  const [showResumeNote, setShowResumeNote] = useState(() => Boolean(draft));
+
+  // Throw the saved character away and begin again on the first step.
+  function startFresh() {
+    clearCreationDraft();
+    setSearchParams({}, { replace: true });
+    onStartFresh?.();
+  }
 
   // Fills in everything the build decides, the same way each picker would,
   // and spreads the standard array over its two main abilities (confirmed on
@@ -393,7 +505,12 @@ function CharacterCreationPage() {
   // Leave creation from any step. Nothing is saved until Create, so the
   // choices so far are thrown away (after asking).
   function cancelCreation() {
-    if (window.confirm("Stop making this character? Your choices so far won't be saved.")) {
+    const hasChoices = hasCreationProgress({ name, race, characterClass, background });
+    if (
+      !hasChoices ||
+      window.confirm("Stop making this character? Your choices so far won't be saved.")
+    ) {
+      clearCreationDraft();
       navigate("/characters");
     }
   }
@@ -636,6 +753,7 @@ function CharacterCreationPage() {
 
     try {
       await saveCharacter(sheet);
+      clearCreationDraft();
       navigate("/characters");
     } finally {
       setIsCreating(false);
@@ -651,6 +769,26 @@ function CharacterCreationPage() {
         <div className="character-creation__banner">
           <PageBanner art="wilderness" eyebrow="Adventurer" title="Create a character" />
         </div>
+      )}
+      {showResumeNote && (
+        <p className="character-creation__resume" role="status">
+          <span>
+            Picking up where you left off
+            {draft?.fields.name ? ` with ${draft.fields.name}` : ""}. Your
+            choices are kept on this device until you create the character.
+          </span>
+          <span className="character-creation__resume-actions">
+            <Button variant="secondary" onClick={startFresh}>
+              Start fresh
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setShowResumeNote(false)}
+            >
+              Got it
+            </Button>
+          </span>
+        </p>
       )}
       <div className="character-creation__layout" ref={layoutRef}>
         <CreationStepRail groups={railGroups} onJump={goToStep} />
@@ -742,10 +880,7 @@ function CharacterCreationPage() {
                   />
 
                   <div className="character-creation__nav">
-                    <Button
-                      variant="secondary"
-                      onClick={() => navigate("/characters")}
-                    >
+                    <Button variant="secondary" onClick={cancelCreation}>
                       Cancel
                     </Button>
 
@@ -1232,4 +1367,15 @@ function CharacterCreationPage() {
   );
 }
 
-export default CharacterCreationPage;
+// Start fresh remounts the page (a new key), so every choice resets at once.
+function CharacterCreationRoute() {
+  const [run, setRun] = useState(0);
+  return (
+    <CharacterCreationPage
+      key={run}
+      onStartFresh={() => setRun((count) => count + 1)}
+    />
+  );
+}
+
+export default CharacterCreationRoute;

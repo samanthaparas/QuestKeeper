@@ -21,6 +21,17 @@
   font-size: 22px;
 }
 
+/* Unsaved changes brought back from last time. */
+.homebrew-form__restored {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--qk-moss);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+  font-size: 14px;
+}
+
 .homebrew-form__note {
   margin: 0;
   padding: 10px 14px;

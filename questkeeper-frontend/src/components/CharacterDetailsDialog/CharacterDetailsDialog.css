@@ -1,7 +1,9 @@
 .character-details-dialog {
   width: min(640px, calc(100vw - 32px));
   max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-large);

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { clearFormDraft, loadFormDraft, saveFormDraft } from "../../utils/formDrafts";
 import {
   CATEGORY_LABELS,
   formToEntry,
@@ -37,8 +38,36 @@ const PANEL_MAPPERS = {
 // onSave(entry): saves; may throw, and the message is shown.
 // classOptions: the player's homebrew classes (for "which class is this
 // subclass for?").
-function HomebrewForm({ initialForm, raceOptions = [], classOptions = [], onSave, onCancel }) {
-  const [form, setForm] = useState(initialForm);
+// draftKey: where unsaved changes are kept on this device, so leaving the
+// page by accident (a Back press, a reload) doesn't lose them. They come
+// back the next time this same entry is opened, and are cleared on Save or
+// Cancel.
+function formKeyOf(form) {
+  return form.id ?? `new-${form.category}`;
+}
+
+function HomebrewForm({ initialForm, raceOptions = [], classOptions = [], onSave, onCancel, draftKey }) {
+  const [restored] = useState(() => {
+    const draft = draftKey ? loadFormDraft(draftKey) : null;
+    return draft?.formKey === formKeyOf(initialForm) ? draft.form : null;
+  });
+  const [form, setForm] = useState(restored ?? initialForm);
+
+  // Keep unsaved changes. Nothing is kept while the form matches what was
+  // opened, but restored changes stay until Save or Cancel.
+  useEffect(() => {
+    if (!draftKey) return;
+    if (!restored && JSON.stringify(form) === JSON.stringify(initialForm)) {
+      clearFormDraft(draftKey);
+    } else {
+      saveFormDraft(draftKey, { formKey: formKeyOf(form), form });
+    }
+  }, [draftKey, form, initialForm, restored]);
+
+  function cancel() {
+    if (draftKey) clearFormDraft(draftKey);
+    onCancel();
+  }
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   // Text pasted into "Fill in from pasted text", shown beside the form as a
@@ -85,6 +114,7 @@ function HomebrewForm({ initialForm, raceOptions = [], classOptions = [], onSave
     setIsSaving(true);
     try {
       await onSave(formToEntry(form));
+      if (draftKey) clearFormDraft(draftKey);
     } catch (saveError) {
       setError(saveError.message ?? "Could not save.");
     } finally {
@@ -98,6 +128,12 @@ function HomebrewForm({ initialForm, raceOptions = [], classOptions = [], onSave
         <h2 className="homebrew-form__title">
           {form.id ? `Edit ${form.name || label}` : `New homebrew ${label.toLowerCase()}`}
         </h2>
+        {restored && (
+          <p className="homebrew-form__restored" role="status">
+            Your unsaved changes are back. Save to keep them, or Cancel to
+            throw them away.
+          </p>
+        )}
 
         {/* Copyright reminder: summaries are fine, copied book text isn't. */}
         <p className="homebrew-form__note">
@@ -214,7 +250,7 @@ function HomebrewForm({ initialForm, raceOptions = [], classOptions = [], onSave
           <Button type="submit" disabled={isSaving}>
             {form.id ? "Save changes" : `Save ${label.toLowerCase()}`}
           </Button>
-          <Button type="button" variant="secondary" onClick={onCancel}>
+          <Button type="button" variant="secondary" onClick={cancel}>
             Cancel
           </Button>
         </div>

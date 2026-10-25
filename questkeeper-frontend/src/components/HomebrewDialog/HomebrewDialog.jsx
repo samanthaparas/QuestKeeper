@@ -4,6 +4,7 @@ import { refreshHomebrew } from "../../utils/homebrewCache";
 import { emptyHomebrewForm } from "../../utils/homebrewForm";
 import HomebrewForm from "../HomebrewForm/HomebrewForm";
 import "./HomebrewDialog.css";
+import { usePopupBehavior } from "../../hooks/usePopupBehavior";
 
 // The homebrew form in a pop-up, so players can make a missing option
 // without leaving character creation (and losing their progress).
@@ -17,6 +18,8 @@ function HomebrewDialog({ request, onClose, onCreated }) {
   const dialogRef = useRef(null);
   const titleId = useId();
   const isOpen = request !== null;
+  // Page stays still behind it; the phone's Back closes it.
+  usePopupBehavior(isOpen, onClose);
 
   useEffect(() => {
     const dialog = dialogRef.current;
