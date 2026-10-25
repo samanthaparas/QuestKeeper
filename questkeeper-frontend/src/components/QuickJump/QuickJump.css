@@ -92,6 +92,7 @@
   flex-direction: column;
   width: min(620px, 100%);
   max-height: min(560px, 80vh);
+  max-height: min(560px, 80dvh);
   overflow: hidden;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-large);

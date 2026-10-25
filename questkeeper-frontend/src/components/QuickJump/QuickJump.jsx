@@ -12,6 +12,7 @@ import {
 import { searchByMeaning } from "../../utils/api";
 import { loadCharacterEntries, loadContentLists, pageEntries } from "../../utils/quickJumpIndex";
 import "./QuickJump.css";
+import { usePopupBehavior } from "../../hooks/usePopupBehavior";
 
 // Whether the player is typing somewhere, so "/" types a slash instead of
 // opening the search.
@@ -35,6 +36,8 @@ function SearchIcon() {
 // typing, or ⌘K (Ctrl+K on Windows) anywhere at all.
 function QuickJump() {
   const [isOpen, setIsOpen] = useState(false);
+  // Page stays still behind it; the phone's Back closes it.
+  usePopupBehavior(isOpen, () => setIsOpen(false));
   // Words another page asked it to open with (see openQuickSearch).
   const [request, setRequest] = useState(null);
 

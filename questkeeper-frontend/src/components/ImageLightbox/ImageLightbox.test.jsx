@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ImageLightbox from "./ImageLightbox";
 
@@ -41,5 +41,20 @@ describe("ImageLightbox", () => {
     await open();
     fireEvent.click(screen.getByRole("dialog", { hidden: true }));
     expect(screen.queryByRole("link", { name: "Open full size" })).not.toBeInTheDocument();
+  });
+});
+
+describe("ImageLightbox on a phone", () => {
+  it("closes with the phone's Back instead of leaving the page, and keeps the page still while open", async () => {
+    render(<ImageLightbox src="https://example.test/map.png" alt="Map" caption="Map" />);
+    await userEvent.click(screen.getByRole("button", { name: "Show Map bigger" }));
+    expect(document.documentElement.style.overflow).toBe("hidden");
+    expect(window.history.state?.qkPopup).toBeTruthy();
+
+    window.history.back();
+    await waitFor(() =>
+      expect(screen.queryByRole("link", { name: "Open full size" })).not.toBeInTheDocument(),
+    );
+    expect(document.documentElement.style.overflow).toBe("");
   });
 });

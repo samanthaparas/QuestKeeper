@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import HomebrewForm from "./HomebrewForm";
+import { installFakeStorage } from "../../test/fakeStorage";
 import { emptyHomebrewForm } from "../../utils/homebrewForm";
 
 function renderForm(props = {}) {
@@ -80,5 +81,35 @@ describe("HomebrewForm", () => {
     await userEvent.click(screen.getByLabelText(/choose extra skills from a list/));
     await userEvent.click(screen.getByRole("button", { name: "Allow any skill" }));
     expect(screen.getByText(/Pick from: any skill/)).toBeInTheDocument();
+  });
+});
+
+describe("HomebrewForm keeps unsaved changes", () => {
+  function renderWithDraft(onCancel = vi.fn()) {
+    return render(
+      <MemoryRouter>
+        <HomebrewForm
+          initialForm={emptyHomebrewForm("race")}
+          raceOptions={[]}
+          onSave={vi.fn().mockResolvedValue()}
+          onCancel={onCancel}
+          draftKey="test-homebrew-draft"
+        />
+      </MemoryRouter>,
+    );
+  }
+
+  it("brings changes back after leaving by accident, and drops them on Cancel", async () => {
+    installFakeStorage();
+    const { unmount } = renderWithDraft();
+    await userEvent.type(screen.getByLabelText("Name"), "Owlfolk");
+    unmount();
+
+    renderWithDraft();
+    expect(screen.getByLabelText("Name")).toHaveValue("Owlfolk");
+    expect(screen.getByRole("status")).toHaveTextContent("Your unsaved changes are back");
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(window.localStorage.getItem("test-homebrew-draft")).toBeNull();
   });
 });

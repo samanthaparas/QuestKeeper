@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import "./ImageLightbox.css";
+import { usePopupBehavior } from "../../hooks/usePopupBehavior";
 
 // A picture you can tap to see big, in a pop-up over the page instead of a
 // new tab, so nobody leaves the game. Close with ✕, Esc, or a tap outside
@@ -9,6 +10,8 @@ import "./ImageLightbox.css";
 // className: for the small picture on the page.
 function ImageLightbox({ src, alt, caption, className }) {
   const [isOpen, setIsOpen] = useState(false);
+  // Page stays still behind it; the phone's Back closes it.
+  usePopupBehavior(isOpen, () => setIsOpen(false));
   const dialogRef = useRef(null);
   const captionId = useId();
 

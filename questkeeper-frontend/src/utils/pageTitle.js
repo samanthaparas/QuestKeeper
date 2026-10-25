@@ -13,6 +13,7 @@ const EXTRA_TITLES = {
   "/login": "Log In",
   "/sample/character": "Sample Character",
   "/sample/table": "Sample DM Table",
+  "/attributions": "Sources & Licenses",
 };
 
 export function getPageTitle(pathname = "/") {

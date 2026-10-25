@@ -119,3 +119,32 @@ describe("QuizPage", () => {
     expect(screen.queryByRole("link", { name: /Back to your quiz results/ })).toBeNull();
   });
 });
+
+describe("quiz results that survive a new tab", () => {
+  function renderAt(url) {
+    return render(
+      <MemoryRouter initialEntries={[url]}>
+        <Routes>
+          <Route path="/quiz" element={<QuizPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it("shows the results from the link even with nothing saved on the device", () => {
+    renderAt(`/quiz?view=results&a=${"0".repeat(20)}`);
+    expect(screen.getByRole("heading", { name: "Three heroes that fit you" })).toBeInTheDocument();
+  });
+
+  it("says so when a results link has no answers to show", () => {
+    renderAt("/quiz?view=results");
+    expect(screen.getByRole("status")).toHaveTextContent("couldn't find the answers for those results");
+  });
+
+  it("keeps answers on the device, not just in this tab", async () => {
+    renderAt("/quiz");
+    await userEvent.click(screen.getByRole("button", { name: "Start the quiz" }));
+    await answerFirst(1);
+    expect(JSON.parse(window.localStorage.getItem("qk-quiz-answers"))[0]).not.toBeNull();
+  });
+});

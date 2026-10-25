@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from "react";
 import Button from "../Button/Button";
 import { ABILITY_SCORES, ABILITY_LABELS } from "../../utils/characterSheet";
 import "./CharacterDetailsDialog.css";
+import { usePopupBehavior } from "../../hooks/usePopupBehavior";
 
 // "Edit details" pop-up from beside the character's name: name, race,
 // class, subclass, background, level and spellcasting ability. Changes save
@@ -17,6 +18,9 @@ function CharacterDetailsDialog({
 }) {
   const dialogRef = useRef(null);
   const titleId = useId();
+
+  // Page stays still behind it; the phone's Back closes it.
+  usePopupBehavior(isOpen, onClose);
 
   useEffect(() => {
     const dialog = dialogRef.current;
