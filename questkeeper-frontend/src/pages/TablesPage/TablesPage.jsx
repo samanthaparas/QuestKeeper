@@ -4,6 +4,8 @@ import { useAuth } from "../../context/useAuth";
 import { listCharacters } from "../../utils/characterStore";
 import { createTable, joinTable, listMyTables } from "../../utils/tableStore";
 import Button from "../../components/Button/Button";
+import PageBanner from "../../components/PageBanner/PageBanner";
+import { getCampaignArtForList } from "../../utils/redesignArt";
 import "./TablesPage.css";
 
 // One page, two sides. mode="player" is My Games (/games): join a table and
@@ -40,6 +42,9 @@ function TablesPage({ mode = "player" }) {
   // Only this side's tables: the ones you run, or the ones you play in.
   const myTables = tables.filter((table) => (table.dm_id === user?.id) === isDmSide);
 
+  // A sample picture for each table card (never a real place), with no two neighbours alike.
+  const tableArt = getCampaignArtForList(myTables.map((table) => table.id));
+
   async function handleCreate(event) {
     event.preventDefault();
     if (!newTableName.trim()) return;
@@ -69,16 +74,16 @@ function TablesPage({ mode = "player" }) {
   return (
     <main className="tables-page">
       <div className="tables-page__content">
-        <p className="tables-page__eyebrow">{isDmSide ? "Dungeon Master" : "Adventurer"}</p>
-        <h1 className="tables-page__title">{isDmSide ? "DM Screen" : "My Games"}</h1>
-        <p className="tables-page__description">
-          {isDmSide
-            ? "Start a table for your campaign or one-shot, share its join code, and run the game from here. "
-            : "Join your DM's table with one of your characters, then play from here and your character sheet. "}
-          <Link className="tables-page__guide-link" to="/guide?section=tables">
-            How playing at a table works
-          </Link>
-        </p>
+        <PageBanner art={isDmSide ? "guild-table" : "hearth"} eyebrow={isDmSide ? "Dungeon Master" : "Adventurer"} title={isDmSide ? "DM Screen" : "My Games"}>
+          <p className="page-banner__description">
+            {isDmSide
+              ? "Start a table for your campaign or one-shot, share its join code, and run the game from here. "
+              : "Join your DM's table with one of your characters, then play from here and your character sheet. "}
+            <Link className="page-banner__link" to="/guide?section=tables">
+              How playing at a table works
+            </Link>
+          </p>
+        </PageBanner>
 
         {error && (
           <p className="tables-page__error" role="alert">
@@ -201,16 +206,23 @@ function TablesPage({ mode = "player" }) {
         )}
 
         <ul className="tables-page__list">
-          {myTables.map((table) => (
+          {myTables.map((table, index) => (
             <li key={table.id}>
               <Link
                 className="tables-page__item"
                 to={isDmSide ? `/dm/tables/${table.id}` : `/games/${table.id}`}
               >
-                <span className="tables-page__item-name">{table.name}</span>
-                <span className="tables-page__item-role">
-                  {isDmSide ? `Join code ${table.join_code}` : "Player"}
-                  {table.combat_active ? " · In combat" : ""}
+                {/* A sample picture picked from the table's id (never a real place). */}
+                <img className="tables-page__item-art" src={tableArt[index]} alt="" width="160" height="120" loading="lazy" />
+                <span className="tables-page__item-text">
+                  <span className="tables-page__item-name">{table.name}</span>
+                  <span className="tables-page__item-role">
+                    {isDmSide ? `Join code ${table.join_code}` : "Player"}
+                    {table.combat_active ? " · In combat" : ""}
+                  </span>
+                </span>
+                <span className="tables-page__item-open" aria-hidden="true">
+                  {isDmSide ? "Open table" : "Open game"}
                 </span>
               </Link>
             </li>

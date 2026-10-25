@@ -7,8 +7,9 @@ import {
   sortByListPosition,
 } from "../../utils/characterStore";
 import CharacterAvatar from "../../components/CharacterAvatar/CharacterAvatar";
-import "./CharactersPage.css";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import Button from "../../components/Button/Button";
+import "./CharactersPage.css";
 
 // "Your Characters": the signed-in player's list of characters. Each row
 // shows the character's portrait (or their initials if they have none),
@@ -143,11 +144,11 @@ function CharactersPage() {
   return (
     <main className="characters-page">
       <div className="characters-page__content">
-        <h1 className="characters-page__title">Your Characters</h1>
-
-        <p className="characters-page__description">
-          Saved to your account — sign in anywhere to see the same characters.
-        </p>
+        <PageBanner art="wilderness" eyebrow="Adventurer" title="Your Characters">
+          <p className="page-banner__description">
+            Saved to your account — sign in anywhere to see the same characters.
+          </p>
+        </PageBanner>
 
         <div className="characters-page__toolbar">
           {isReordering ? (

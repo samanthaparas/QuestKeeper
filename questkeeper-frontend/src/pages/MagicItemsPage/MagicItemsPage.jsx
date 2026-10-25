@@ -15,6 +15,7 @@ import Button from "../../components/Button/Button";
 import MagicItemCard from "./MagicItemCard";
 import MagicItemDetail from "./MagicItemDetail";
 import MagicItemFilters from "./MagicItemFilters";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import "../SearchPage/SearchPage.css";
 import "./MagicItemsPage.css";
 
@@ -79,13 +80,14 @@ function MagicItemsPage() {
   return (
     <main className="search-page magic-items-page">
       <div className="search-page__content">
-        <h1 className="search-page__title">Magic Items</h1>
-        <p className="search-page__description">
-          Browse every magic item by rarity, type, where it's worn, who can use
+        <PageBanner art="library" eyebrow="Reference" title="Magic Items">
+          <p className="page-banner__description search-page__description">
+            Browse every magic item by rarity, type, where it's worn, who can use
           it and what it's good for. SRD and Vault of Magic items include their
           full text; items from the official books list their facts and link to
           the full write-up.
         </p>
+        </PageBanner>
 
         <label className="magic-items-page__search" htmlFor="mi-search">
           <span className="magic-item-filters__label">Search by name</span>

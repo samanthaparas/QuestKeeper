@@ -229,7 +229,7 @@
 }
 
 .guide__link {
-  color: var(--qk-terracotta);
+  color: var(--qk-terracotta-hover);
   font-weight: 600;
 }
 
@@ -324,4 +324,9 @@
 .guide__quiz {
   margin-top: var(--qk-space-3);
   color: var(--qk-text-muted);
+}
+
+.guide__words-filter input::placeholder {
+  color: color-mix(in srgb, var(--qk-text) 72%, var(--qk-background));
+  opacity: 1;
 }

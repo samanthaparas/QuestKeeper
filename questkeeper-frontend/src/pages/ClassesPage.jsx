@@ -6,6 +6,7 @@ import { getClassGuidance, getCardPreview } from "../utils/beginnerGuidance";
 import SearchForm from "../components/SearchForm/SearchForm";
 import DetailPanel from "../components/DetailPanel/DetailPanel";
 import ResultCard from "../components/ResultCard/ResultCard";
+import PageBanner from "../components/PageBanner/PageBanner";
 import "../pages/SearchPage/SearchPage.css";
 import SourceFilter from "../components/SourceFilter/SourceFilter";
 import { filterBySource } from "../utils/sourceFilters";
@@ -72,12 +73,12 @@ function ClassesPage() {
   return (
     <main className="search-page">
       <div className="search-page__content">
-        <h1 className="search-page__title">Explore Classes</h1>
-
-        <p className="search-page__description">
-          A class represents what your character does best, like casting spells,
+        <PageBanner art="library" eyebrow="Reference" title="Explore Classes">
+          <p className="page-banner__description search-page__description">
+            A class represents what your character does best, like casting spells,
           fighting, healing, sneaking, or protecting the party.
         </p>
+        </PageBanner>
 
         <SearchForm
           scope="classes"

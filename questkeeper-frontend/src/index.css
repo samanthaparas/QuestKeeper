@@ -352,3 +352,16 @@ input[type="number"]::-webkit-outer-spin-button {
     max-width: none;
   }
 }
+
+/* Placeholder text everywhere is a clearer shade of the main text colour (it was
+   fading under 4.5:1 on some inputs). Component styles that set their own still win. */
+:where(input, textarea)::placeholder {
+  color: color-mix(in srgb, var(--qk-text) 68%, var(--qk-input-bg));
+  opacity: 1;
+}
+
+/* When the keyboard moves to a control near the edge of the window, the page
+   leaves a little room so its focus ring isn't cut off (most noticeable zoomed in). */
+html {
+  scroll-padding-block: 12px;
+}

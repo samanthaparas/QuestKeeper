@@ -10,21 +10,6 @@
   margin: 0 auto;
 }
 
-.characters-page__title {
-  color: var(--qk-text);
-  font-family: var(--qk-font-display);
-  font-size: 36px;
-  margin: 0;
-}
-
-.characters-page__description {
-  max-width: var(--qk-reading-width);
-  margin: 16px 0 32px;
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--qk-text-muted);
-}
-
 /* "+ New Character" and "Reorder" (or "Save order" and "Cancel"). */
 .characters-page__toolbar {
   display: flex;
@@ -54,6 +39,8 @@
   margin: 0;
   padding: 0;
   display: grid;
+  /* Two across on a wide screen, one on a tablet or phone. */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
   gap: 16px;
 }
 
@@ -66,6 +53,12 @@
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-card);
   background-color: var(--qk-surface);
+  box-shadow: 0 6px 16px var(--qk-shadow);
+}
+
+.characters-page__item:hover,
+.characters-page__item:focus-within {
+  border-color: var(--qk-terracotta);
 }
 
 /* The whole left side (portrait + name) is the link to the sheet. */
@@ -84,8 +77,8 @@
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 56px;
-  height: 56px;
+  width: 72px;
+  height: 72px;
   overflow: hidden;
   border: 2px solid var(--qk-border);
   border-radius: var(--qk-radius-card);
@@ -102,6 +95,7 @@
 }
 
 .characters-page__item-text {
+  font-family: var(--qk-font-body);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -175,4 +169,23 @@
   .characters-page__title {
     font-size: 28px;
   }
+}
+
+.characters-page__item-name {
+  font-family: var(--qk-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.characters-page__item-info:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 4px;
+  border-radius: var(--qk-radius-card);
+}
+
+/* The delete question wraps under the name instead of squeezing it. */
+.characters-page__item:has(.characters-page__confirm) {
+  flex-wrap: wrap;
 }

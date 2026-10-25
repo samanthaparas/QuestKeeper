@@ -74,7 +74,8 @@ import ContentRules from "../../components/ContentRules/ContentRules";
 import ContentNotice from "../../components/ContentNotice/ContentNotice";
 import { bannedChoicesOf, cleanBanned } from "../../utils/contentRules";
 import { addJournalEntry, getTablePortraits } from "../../utils/journalStore";
-import lanternArt from "../../assets/hero/inn-lantern.webp";
+import { getBannerInfo } from "../../utils/redesignArt";
+import lanternArt from "../../assets/hero/inn-lantern-crop.webp";
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
@@ -2362,10 +2363,21 @@ function TablePage() {
           />
         )}
 
-        <header className="table-page__header">
-          {/* The DM screen's banner picture: decoration only, behind the title. */}
-          {isDm && (
-            <img className="table-page__banner-art" src={lanternArt} alt="" width="2000" height="667" />
+        <header className={`table-page__header${isDm ? "" : " table-page__header--banner"}`}>
+          {/* The banner picture: decoration only, behind the title. The DM's is the lantern;
+              a player's is the same sample picture their table has on My Games. */}
+          {isDm ? (
+            <img className="table-page__banner-art table-page__banner-art--lantern" src={lanternArt} alt="" width="940" height="370" />
+          ) : (
+            <img
+              className="table-page__banner-art table-page__banner-art--wide"
+              src={getBannerInfo("player-game").src}
+              srcSet={getBannerInfo("player-game").srcSet}
+              sizes="(min-width: 620px) 620px, 100vw"
+              alt=""
+              width="2172"
+              height="724"
+            />
           )}
           <div className="table-page__header-text">
             {/* The DM's join code sits right beside the table name as a small

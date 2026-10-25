@@ -73,7 +73,8 @@
   align-items: center;
   gap: 4px 6px;
   margin: 0;
-  color: var(--qk-text-muted);
+  /* A little stronger than the soft muted colour, so the small line clears 4.5:1 on the card. */
+  color: color-mix(in srgb, var(--qk-text) 82%, var(--qk-surface));
   font-size: 14px;
 }
 

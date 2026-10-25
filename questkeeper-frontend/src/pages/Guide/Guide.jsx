@@ -10,6 +10,7 @@ import {
 } from "../../utils/characterSheet";
 import { RULES_WORDS } from "../../utils/rulesWords";
 import { shouldReduceMotion } from "../../utils/motionPreference";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import "./Guide.css";
 
 const SECTIONS = [
@@ -59,14 +60,14 @@ function Guide() {
   return (
     <main className="guide">
       <section className="guide__hero">
-        <span className="guide__eyebrow">New to D&amp;D?</span>
-        <h1 className="guide__title">Learn the Basics</h1>
-        <p className="guide__intro">
+        <PageBanner art="learning-desk" eyebrow="New to D&amp;D?" title="Learn the Basics">
+          <p className="page-banner__description">
           New game, strange dice, a character sheet full of numbers. You do not
           have to memorize all of D&amp;D before you play. This guide covers
           what you need for your first session, and explains the unfamiliar
           words as soon as they show up.
         </p>
+        </PageBanner>
         <nav className="guide__contents" aria-label="Guide sections">
           {SECTIONS.map((section) => (
             <button

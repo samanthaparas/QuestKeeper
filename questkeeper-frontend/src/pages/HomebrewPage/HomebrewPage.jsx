@@ -19,6 +19,7 @@ import {
 import Button from "../../components/Button/Button";
 import HomebrewForm from "../../components/HomebrewForm/HomebrewForm";
 import HomebrewSharing from "../../components/HomebrewSharing/HomebrewSharing";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import "./HomebrewPage.css";
 
 // Your homebrew races, subraces, backgrounds and subclasses, the ones others
@@ -123,12 +124,13 @@ function HomebrewPage() {
   return (
     <main className="homebrew-page">
       <div className="homebrew-page__content">
-        <h1 className="homebrew-page__title">My Homebrew</h1>
-        <p className="homebrew-page__description">
-          Make your own races, subraces, backgrounds, classes, subclasses and feats, or write up
-          an option from a book your table uses. They show up in character
-          creation with a "Homebrew" badge, for you and anyone you share them with.
-        </p>
+        <PageBanner art="bestiary" eyebrow="Adventurer" title="My Homebrew">
+          <p className="page-banner__description">
+            Make your own races, subraces, backgrounds, classes, subclasses and feats, or write up
+            an option from a book your table uses. They show up in character
+            creation with a "Homebrew" badge, for you and anyone you share them with.
+          </p>
+        </PageBanner>
 
         {error && (
           <p className="homebrew-page__error" role="alert">

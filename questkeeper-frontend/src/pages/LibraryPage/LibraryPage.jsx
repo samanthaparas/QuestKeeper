@@ -9,6 +9,7 @@ import {
 import { cleanStatBlock, emptyStatBlock, isSameTemplate, readStatBlock } from "../../utils/statBlock";
 import Button from "../../components/Button/Button";
 import StatBlockFields from "../../components/StatBlockFields/StatBlockFields";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import "./LibraryPage.css";
 
 const BLANK = {
@@ -109,12 +110,16 @@ function LibraryPage() {
   return (
     <main className="library-page">
       <div className="library-page__content">
-        <h1 className="library-page__title">Monster Library</h1>
-        <p className="library-page__description">
-          Prepare monsters and friendly NPCs ahead of game night. Only you can see your
-          library. Add anything in it to a fight from your table's "Add monsters and NPCs"
-          form. <Link to="/dm">Go to your DM Screen</Link>
-        </p>
+        <PageBanner art="bestiary" eyebrow="Dungeon Master" title="Monster Library">
+          <p className="page-banner__description">
+            Prepare monsters and friendly NPCs ahead of game night. Only you can see your
+            library. Add anything in it to a fight from your table's "Add monsters and NPCs"
+            form.{" "}
+            <Link className="page-banner__link" to="/dm">
+              Go to your DM Screen
+            </Link>
+          </p>
+        </PageBanner>
 
         {error && (
           <p className="library-page__error" role="alert">

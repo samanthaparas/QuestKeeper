@@ -11,6 +11,7 @@ import {
 import { getMotionPreference, setMotionPreference } from "../../utils/motionPreference";
 import { getThemePreference, setThemePreference } from "../../utils/themePreference";
 import { getHeadsUpPreference, setHeadsUpPreference } from "../../utils/turnHeadsUp";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import "./SettingsPage.css";
 
 const MIN_PASSWORD = 6; // Supabase's own minimum
@@ -100,8 +101,7 @@ function SettingsPage() {
 
   return (
     <main className="settings-page">
-      <p className="settings-page__eyebrow">Your account</p>
-      <h1 className="settings-page__title">Settings</h1>
+      <PageBanner art="hearth" eyebrow="Your account" title="Settings" />
 
       <form
         className="settings-page__card"
