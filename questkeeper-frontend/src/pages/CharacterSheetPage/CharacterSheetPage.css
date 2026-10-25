@@ -3365,3 +3365,27 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   font-size: 13px;
   font-weight: 700;
 }
+
+/* P and E written out under the skills list (the badges alone only explain themselves on hover). */
+.character-sheet__skills-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 10px 0 0;
+  color: var(--qk-text);
+  font-size: 13px;
+}
+
+.character-sheet__skills-legend-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background-color: var(--qk-terracotta);
+  color: var(--qk-on-accent);
+  font-size: 10px;
+  font-weight: 700;
+}
