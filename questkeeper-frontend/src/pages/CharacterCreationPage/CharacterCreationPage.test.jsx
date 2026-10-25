@@ -242,6 +242,13 @@ describe("a character in progress survives Back and leaving", () => {
     expect(screen.getByText("Your characters")).toBeInTheDocument();
   });
 
+  it("opens at the first missing step when an old address points past what's been chosen", () => {
+    // What Back does after a cancelled character: the address says subrace, but nothing is chosen.
+    renderCreation("/characters/new?step=subrace");
+    expect(screen.getByPlaceholderText("Character name")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /subrace/i })).not.toBeInTheDocument();
+  });
+
   it("starts over when you choose Start fresh", async () => {
     renderCreation();
     await nameAndContinue("Bram");

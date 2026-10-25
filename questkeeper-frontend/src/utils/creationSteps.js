@@ -59,6 +59,25 @@ export function getVisibleSteps({
   return steps;
 }
 
+// A step's address (?step=subrace) can outlive the choices behind it: cancel a
+// character, press Back, and the old address comes back with nothing chosen.
+// This keeps the page on the earliest step whose answer is still missing
+// (the name, race, class or background) when the address asks for one later,
+// or for a step this character doesn't have at all.
+export function reachableStep(requested, { steps, name, race, characterClass, background }) {
+  const needed = [
+    ["name", Boolean(name?.trim())],
+    ["race", Boolean(race)],
+    ["class", Boolean(characterClass)],
+    ["background", Boolean(background)],
+  ];
+  const firstMissing = needed.find(([, done]) => !done)?.[0];
+  const askedFor = steps.indexOf(requested);
+  if (askedFor === -1) return firstMissing ?? "review";
+  if (firstMissing && askedFor > steps.indexOf(firstMissing)) return firstMissing;
+  return requested;
+}
+
 // What is still missing before a character can be created, so the Review page
 // can point at each gap instead of letting an incomplete sheet through. Each
 // issue names the step that fixes it.

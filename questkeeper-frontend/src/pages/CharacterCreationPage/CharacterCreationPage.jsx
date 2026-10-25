@@ -81,6 +81,7 @@ import {
   getGroupStatus,
   getVisibleSteps,
   getReviewIssues,
+  reachableStep,
   CREATION_STEP_ART,
 } from "../../utils/creationSteps";
 import CreationStepRail from "../../components/CreationStepRail/CreationStepRail";
@@ -418,7 +419,7 @@ function CharacterCreationPage({ onStartFresh }) {
     characterClass,
     hasEquipmentChoices,
   });
-  const step = stepKey;
+  const step = reachableStep(stepKey, { steps, name, race, characterClass, background });
 
   // When the step changes, show the new step's heading and move keyboard focus
   // to it, so a screen reader announces where you are and a long page isn't
@@ -449,7 +450,7 @@ function CharacterCreationPage({ onStartFresh }) {
     heading.setAttribute("tabindex", "-1");
     heading.focus({ preventScroll: true });
   }, [step]);
-  const stepIndex = Math.max(0, steps.indexOf(stepKey));
+  const stepIndex = Math.max(0, steps.indexOf(step));
 
   const issues = getReviewIssues({
     steps,
@@ -564,7 +565,7 @@ function CharacterCreationPage({ onStartFresh }) {
       } else {
         raw = await getBackgroundDetails(index);
       }
-      setMadePick({ step: stepKey, raw });
+      setMadePick({ step, raw });
     } finally {
       setPickerVersion((version) => version + 1);
     }
