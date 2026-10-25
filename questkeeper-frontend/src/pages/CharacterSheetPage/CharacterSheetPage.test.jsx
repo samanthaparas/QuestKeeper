@@ -1776,3 +1776,28 @@ describe("CharacterSheetPage on a weak signal", () => {
     expect(screen.getByText(/Changes from last time hadn't saved/)).toBeInTheDocument();
   });
 });
+
+describe("the open tab is part of the address", () => {
+  function SheetAt({ url, sheet }) {
+    getCharacter.mockResolvedValue(sheet);
+    return (
+      <MemoryRouter initialEntries={[url]}>
+        <Routes>
+          <Route path="/characters/:id" element={<CharacterSheetPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+  }
+
+  it("opens on the tab named in the address, so a reload keeps it", async () => {
+    const sheet = makeSheet();
+    render(<SheetAt url={`/characters/${sheet.id}?tab=inventory`} sheet={sheet} />);
+    expect(await screen.findByRole("tab", { name: /Inventory/, selected: true })).toBeInTheDocument();
+  });
+
+  it("falls back to Actions for a tab this character doesn't have", async () => {
+    const sheet = makeSheet();
+    render(<SheetAt url={`/characters/${sheet.id}?tab=not-a-tab`} sheet={sheet} />);
+    expect(await screen.findByRole("tab", { name: /Actions/, selected: true })).toBeInTheDocument();
+  });
+});

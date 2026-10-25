@@ -230,3 +230,27 @@ export function quizResults(answers) {
 export function answeredCount(answers) {
   return answers.filter((choice) => choice != null).length;
 }
+
+// Answers as a short code for the results address ("0213-1..."): one digit
+// per question for the answer picked, "-" for a skipped one. The results
+// link then works on its own, in a new tab or on another device.
+export function encodeAnswers(answers) {
+  return answers.map((choice) => (choice == null ? "-" : String(choice))).join("");
+}
+
+// The answers back from that code, or null if it doesn't fit these
+// questions (wrong length, an answer that doesn't exist, too few answered).
+export function decodeAnswers(code, questions) {
+  if (typeof code !== "string" || code.length !== questions.length) return null;
+  const answers = [...code].map((character, index) => {
+    if (character === "-") return null;
+    const choice = Number(character);
+    return Number.isInteger(choice) &&
+      choice >= 0 &&
+      choice < questions[index].answers.length
+      ? choice
+      : undefined;
+  });
+  if (answers.includes(undefined)) return null;
+  return answeredCount(answers) >= MIN_ANSWERS ? answers : null;
+}

@@ -18,3 +18,9 @@ describe("getPageTitle", () => {
     expect(getPageTitle("/nope/nothing")).toBe("QuestKeeper");
   });
 });
+
+describe("pages outside the menu", () => {
+  it("names the sources and licenses page", () => {
+    expect(getPageTitle("/attributions")).toBe("Sources & Licenses \u00b7 QuestKeeper");
+  });
+});

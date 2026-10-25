@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import Button from "../Button/Button";
 import { getEditionTabLabels } from "../../utils/srdDetails";
 import "./SrdDetailDialog.css";
+import { usePopupBehavior } from "../../hooks/usePopupBehavior";
 
 function SrdDetailEntries({ details }) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -112,6 +113,8 @@ function SrdDetailDialog({ view, onClose }) {
   const dialogRef = useRef(null);
   const titleId = useId();
   const isOpen = view !== null;
+  // Page stays still behind it; the phone's Back closes it.
+  usePopupBehavior(isOpen, onClose);
 
   useEffect(() => {
     const dialog = dialogRef.current;

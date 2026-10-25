@@ -352,3 +352,29 @@ input[type="number"]::-webkit-outer-spin-button {
     max-width: none;
   }
 }
+
+/* iPhones zoom the whole page in (and leave it zoomed) when you tap a text
+   box whose text is smaller than 16px. On touch screens:
+   1. every box starts at 16px (the browser's own default is about 13px);
+      boxes that set a larger size keep it, since their class wins;
+   2. the boxes that deliberately use smaller text are raised to 16px. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .character-sheet__skill-bonus-input,
+  .character-sheet__stat-textarea,
+  .character-sheet__feature-choice select,
+  .character-sheet__spell-slot-max input,
+  .character-sheet__vital-input.character-sheet__ac-bonus,
+  .character-sheet__vitals .character-sheet__ability-input,
+  .table-journal__select--small,
+  .table-journal__bar .table-journal__select,
+  .concentration__input,
+  .character-sheet__list-control select {
+    font-size: 16px !important;
+  }
+}

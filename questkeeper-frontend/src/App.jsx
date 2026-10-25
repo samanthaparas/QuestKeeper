@@ -22,6 +22,7 @@ import HomebrewInvitePage from "./pages/HomebrewInvitePage/HomebrewInvitePage";
 import Guide from "./pages/Guide/Guide";
 import QuizPage from "./pages/QuizPage/QuizPage";
 import BackLink from "./components/BackLink/BackLink";
+import ScrollManager from "./components/ScrollManager/ScrollManager";
 import AuthPage from "./pages/AuthPage/AuthPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import SampleCharacterPage from "./pages/Samples/SampleCharacterPage";
@@ -31,6 +32,12 @@ import { getPageTitle } from "./utils/pageTitle";
 import { CURRENT_BUILD, fetchDeployedBuild, isNewerBuild } from "./utils/api";
 
 function NotFound() {
+  // The title list only knows real pages, so this one names itself (again
+  // after each move between two unknown addresses).
+  const { pathname } = useLocation();
+  useEffect(() => {
+    document.title = "Page Not Found \u00b7 QuestKeeper";
+  }, [pathname]);
   return (
     <main className="search-page">
       <div className="search-page__content">
@@ -143,6 +150,8 @@ function App() {
   return (
     <>
       <PageTitle />
+      {/* New pages open at the top; Back returns to where you were. */}
+      <ScrollManager />
       <SkipLink />
       <UpdateBanner />
       <Header />

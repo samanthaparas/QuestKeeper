@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { installFakeStorage } from "../../test/fakeStorage";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TableRecap from "./TableRecap";
@@ -33,6 +34,8 @@ const renderRecap = (props = {}) =>
 
 describe("TableRecap", () => {
   beforeEach(() => {
+    // Unsaved recap drafts are kept on the device; start each test clean.
+    installFakeStorage();
     listRecaps.mockReset().mockResolvedValue([]);
     saveRecap.mockReset().mockResolvedValue({});
     writeRecapFromNotes.mockReset();

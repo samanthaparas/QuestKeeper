@@ -3,6 +3,7 @@ import { listRecaps, saveRecap, subscribeToRecaps } from "../../utils/recapStore
 import { writeRecapFromNotes } from "../../utils/api";
 import { formatStamp } from "../../utils/journal";
 import { sessionLabel } from "../../utils/campaigns";
+import { clearFormDraft, loadFormDraft, saveFormDraft } from "../../utils/formDrafts";
 import "./TableRecap.css";
 
 // "Previously on...": one short recap per session, at the top of the Story
@@ -67,6 +68,28 @@ function TableRecap({ tableId, entries = [], currentSession = 1, campaign = 1, s
 
   const selectedLabel = sessionLabel(campaign, selected, showCampaign);
   const recap = recapsHere.find((item) => item.session_number === selected) ?? null;
+
+  // A recap being written is kept on this device until it's saved or
+  // cancelled, so leaving the page (a Back press, a reload) doesn't lose it.
+  const draftKey = `qk-recap-draft:${tableId}:${campaign}:${selected}`;
+  const [checkedDraftFor, setCheckedDraftFor] = useState(null);
+  if (editing === null && checkedDraftFor !== draftKey) {
+    setCheckedDraftFor(draftKey);
+    const saved = loadFormDraft(draftKey);
+    if (saved?.text?.trim()) {
+      setEditing(saved);
+      setIsOpen(true);
+      setMessage("Your unsaved recap is back. Save it, or Cancel to throw it away.");
+    }
+  }
+  useEffect(() => {
+    if (editing) saveFormDraft(draftKey, editing);
+  }, [editing, draftKey]);
+
+  function stopEditing() {
+    clearFormDraft(draftKey);
+    setEditing(null);
+  }
   // Only notes marked for the whole table go to the AI, never a private note.
   const sharedNotes = entries
     .filter((entry) => (entry.session_number ?? 1) === selected && entry.visibility === "table")
@@ -105,7 +128,7 @@ function TableRecap({ tableId, entries = [], currentSession = 1, campaign = 1, s
     setMessage("");
     try {
       await saveRecap(tableId, selected, editing.text, editing.expectedAt, campaign);
-      setEditing(null);
+      stopEditing();
       load();
     } catch (failure) {
       if (failure.code === "changed") {
@@ -178,7 +201,7 @@ function TableRecap({ tableId, entries = [], currentSession = 1, campaign = 1, s
               <button type="submit" className="table-recap__button table-recap__button--primary" disabled={isSaving}>
                 {isSaving ? "Saving..." : "Save recap"}
               </button>
-              <button type="button" className="table-recap__button" onClick={() => setEditing(null)}>
+              <button type="button" className="table-recap__button" onClick={stopEditing}>
                 Cancel
               </button>
               <button

@@ -45,6 +45,9 @@ function scrollToSection(id, behavior = shouldReduceMotion() ? "auto" : "smooth"
   document.getElementById(id)?.scrollIntoView({ behavior, block: "start" });
 }
 
+// How far down (in pixels) before "Back to top" appears.
+const SHOW_TOP_AFTER = 1200;
+
 function Guide() {
   // Other pages link to a section with /guide?section=tables.
   const [searchParams] = useSearchParams();
@@ -56,11 +59,31 @@ function Guide() {
     if (sectionId) scrollToSection(sectionId, "auto");
   }, [sectionId]);
 
+  // The guide is long on a phone, so after a screen or so a "Back to top"
+  // button appears.
+  const [showTop, setShowTop] = useState(false);
+  useEffect(() => {
+    function check() {
+      setShowTop(window.scrollY > SHOW_TOP_AFTER);
+    }
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    return () => window.removeEventListener("scroll", check);
+  }, []);
+
+  function backToTop() {
+    window.scrollTo({ top: 0, behavior: shouldReduceMotion() ? "auto" : "smooth" });
+    // Keyboard and screen reader users land on the title, not the button.
+    document.getElementById("guide-title")?.focus({ preventScroll: true });
+  }
+
   return (
     <main className="guide">
       <section className="guide__hero">
         <span className="guide__eyebrow">New to D&amp;D?</span>
-        <h1 className="guide__title">Learn the Basics</h1>
+        <h1 id="guide-title" className="guide__title" tabIndex={-1}>
+          Learn the Basics
+        </h1>
         <p className="guide__intro">
           New game, strange dice, a character sheet full of numbers. You do not
           have to memorize all of D&amp;D before you play. This guide covers
@@ -548,6 +571,11 @@ function Guide() {
       </section>
 
       <RulesWordsSection />
+      {showTop && (
+        <button type="button" className="guide__top" onClick={backToTop}>
+          <span aria-hidden="true">↑</span> Back to top
+        </button>
+      )}
     </main>
   );
 }

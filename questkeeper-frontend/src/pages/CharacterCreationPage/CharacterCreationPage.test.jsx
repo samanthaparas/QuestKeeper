@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { installFakeStorage } from "../../test/fakeStorage";
 import CharacterCreationPage from "./CharacterCreationPage";
 import { loadQuizBuild } from "../../utils/quizBuild";
 
@@ -13,6 +14,9 @@ vi.mock("../../utils/quizBuild", async (importOriginal) => ({
   ...(await importOriginal()),
   loadQuizBuild: vi.fn(),
 }));
+
+// The character in progress is saved on the device; start every test clean.
+beforeEach(() => installFakeStorage());
 
 const skill = (index, name) => ({ item: { index: `skill-${index}`, name: `Skill: ${name}` } });
 
@@ -73,7 +77,9 @@ describe("character creation from the quiz", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Filling in your build from the quiz");
     expect(await screen.findByText(/From the quiz: Iron Guardian/)).toBeInTheDocument();
     // Race, class and background are done; skills are the first thing left.
-    expect(screen.getByRole("heading", { level: 2, name: /skills/i })).toBeInTheDocument();
+    // (The step is now part of the address, and the router updates it a
+    // moment after the build fills in, so wait for it.)
+    expect(await screen.findByRole("heading", { level: 2, name: /skills/i })).toBeInTheDocument();
     expect(loadQuizBuild).toHaveBeenCalledWith(expect.objectContaining({ id: "iron-guardian" }));
   });
 
@@ -105,5 +111,87 @@ describe("character creation from the quiz", () => {
   it("offers the quiz on the name step", () => {
     renderFromQuiz(null);
     expect(screen.getByRole("button", { name: "Take the character quiz" })).toBeInTheDocument();
+  });
+});
+
+describe("a character in progress survives Back and leaving", () => {
+  function Probe() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    return (
+      <>
+        <p data-testid="where">{location.pathname + location.search}</p>
+        <button type="button" onClick={() => navigate(-1)}>
+          Browser back
+        </button>
+      </>
+    );
+  }
+
+  function renderCreation(url = "/characters/new") {
+    return render(
+      <MemoryRouter initialEntries={[url]}>
+        <Probe />
+        <Routes>
+          <Route path="/characters/new" element={<CharacterCreationPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  async function nameAndContinue(name) {
+    await userEvent.type(screen.getByPlaceholderText("Character name"), name);
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+  }
+
+  it("gives each step its own address, so Back goes to the previous step", async () => {
+    renderCreation();
+    await nameAndContinue("Bram");
+    expect(screen.getByTestId("where")).toHaveTextContent("/characters/new?step=race");
+
+    await userEvent.click(screen.getByRole("button", { name: "Browser back" }));
+    expect(screen.getByPlaceholderText("Character name")).toHaveValue("Bram");
+  });
+
+  it("picks up where you left off after leaving the page", async () => {
+    renderCreation();
+    await nameAndContinue("Bram");
+    cleanup();
+
+    renderCreation();
+    expect(screen.getByRole("status")).toHaveTextContent("Picking up where you left off with Bram");
+    // The resumed step goes into the address, so Back still works after.
+    expect(screen.getByTestId("where")).toHaveTextContent("/characters/new?step=race");
+  });
+
+  it("goes back to the first step after picking up a saved character", async () => {
+    renderCreation();
+    await nameAndContinue("Bram");
+    cleanup();
+
+    // Return through a plain link, then step back from the resumed step.
+    render(
+      <MemoryRouter initialEntries={["/characters", "/characters/new"]} initialIndex={1}>
+        <Probe />
+        <Routes>
+          <Route path="/characters/new" element={<CharacterCreationPage />} />
+          <Route path="/characters" element={<p>Your characters</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId("where")).toHaveTextContent("/characters/new?step=race");
+    await userEvent.click(screen.getByRole("button", { name: "Browser back" }));
+    expect(screen.getByText("Your characters")).toBeInTheDocument();
+  });
+
+  it("starts over when you choose Start fresh", async () => {
+    renderCreation();
+    await nameAndContinue("Bram");
+    cleanup();
+
+    renderCreation("/characters/new?step=race");
+    await userEvent.click(screen.getByRole("button", { name: "Start fresh" }));
+    expect(screen.getByPlaceholderText("Character name")).toHaveValue("");
+    expect(screen.queryByText(/Picking up where you left off/)).not.toBeInTheDocument();
   });
 });
