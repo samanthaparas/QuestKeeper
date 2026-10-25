@@ -1,0 +1,107 @@
+/* A banner is always a dark scene, so its words use fixed light colours in
+   both themes (a dark wash sits between the picture and the words). */
+.page-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 190px;
+  margin-bottom: 28px;
+  overflow: hidden;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: #1f1814;
+  box-shadow: 0 6px 16px var(--qk-shadow);
+  container-type: inline-size;
+}
+
+.page-banner__art {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  /* Shown at its real size on the right (never stretched wider), with its left edge melting into the band. */
+  width: min(100%, var(--banner-art-width, 1086px));
+  height: 100%;
+  object-fit: cover;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 22%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 22%);
+}
+
+.page-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(90deg, rgb(31 24 20 / 0.9) 0%, rgb(31 24 20 / 0.72) min(640px, 55%), rgb(31 24 20 / 0) 92%);
+  pointer-events: none;
+}
+
+.page-banner__text {
+  position: relative;
+  z-index: 2;
+  max-width: min(640px, 100%);
+  padding: 24px 28px;
+  color: #f2e6d6;
+  text-align: left;
+}
+
+.page-banner__eyebrow {
+  margin: 0 0 4px;
+  color: #f0a283;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.page-banner__title {
+  margin: 0;
+  color: #f2e6d6;
+  font-family: var(--qk-font-display);
+  font-size: 36px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.page-banner .page-banner__description {
+  max-width: var(--qk-reading-width);
+  margin: 12px 0 0;
+  color: #e1d0ba;
+  line-height: 1.6;
+}
+
+.page-banner__link {
+  color: #f0a283;
+  font-weight: 600;
+}
+
+.page-banner__link:focus-visible {
+  outline: 3px solid #8cc6cc;
+  outline-offset: 2px;
+}
+
+/* A narrower band (a tablet, or the reading-width pages) shows less of the picture, so the words keep the dark side. */
+@container (max-width: 900px) {
+  .page-banner__art {
+    width: 58%;
+  }
+}
+
+@media (max-width: 560px) {
+  .page-banner {
+    min-height: 170px;
+  }
+
+  .page-banner__text {
+    padding: 18px;
+  }
+
+  .page-banner__title {
+    font-size: 30px;
+  }
+
+  /* On a phone the words cover most of the picture, so the dark wash covers all of it. */
+  .page-banner::before {
+    background: linear-gradient(90deg, rgb(31 24 20 / 0.9), rgb(31 24 20 / 0.78));
+  }
+}
