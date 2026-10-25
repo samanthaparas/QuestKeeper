@@ -9,7 +9,7 @@ import {
 } from "../../utils/startingCharacter";
 import { collectSkills, loadRaceSkillGrants, missingRacePicks } from "../../utils/skillGrants";
 import { sourceFromEntry } from "../../utils/featureSources";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   getRaces,
@@ -307,6 +307,36 @@ function CharacterCreationPage() {
     hasEquipmentChoices,
   });
   const step = stepKey;
+
+  // When the step changes, show the new step's heading and move keyboard focus
+  // to it, so a screen reader announces where you are and a long page isn't
+  // left scrolled past the top. Comparing with the step we last showed (rather
+  // than "has this run before") keeps the first load, including React's
+  // development replay of effects, from taking focus off the name box.
+  const layoutRef = useRef(null);
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    const layout = layoutRef.current;
+    const heading = layout?.querySelector("h1, .character-creation__title");
+    if (!heading) return;
+    // On a phone the progress rail scrolls sideways; keep the current step in
+    // sight by moving only the rail itself, never the page.
+    const rail = layout.querySelector(".creation-step-rail__list");
+    const current = rail?.querySelector('[aria-current="step"]');
+    if (rail && current) {
+      const offset = current.getBoundingClientRect().left - rail.getBoundingClientRect().left;
+      rail.scrollLeft += offset - (rail.clientWidth - current.offsetWidth) / 2;
+    }
+    // Start at the progress rail; if the heading would still be below the fold, bring it up too.
+    layout.scrollIntoView?.({ block: "start" });
+    if (heading.getBoundingClientRect().bottom > window.innerHeight * 0.9) {
+      heading.scrollIntoView?.({ block: "start" });
+    }
+    heading.setAttribute("tabindex", "-1");
+    heading.focus({ preventScroll: true });
+  }, [step]);
   const stepIndex = Math.max(0, steps.indexOf(stepKey));
 
   const issues = getReviewIssues({
@@ -622,7 +652,7 @@ function CharacterCreationPage() {
           <PageBanner art="wilderness" eyebrow="Adventurer" title="Create a character" />
         </div>
       )}
-      <div className="character-creation__layout">
+      <div className="character-creation__layout" ref={layoutRef}>
         <CreationStepRail groups={railGroups} onJump={goToStep} />
 
         <CreationSummaryPanel

@@ -135,7 +135,7 @@ function EquipmentChoiceStep({
 
   return (
     <div className="equipment-step">
-      <h2 className="equipment-step__title">Choose Your Starting Gear</h2>
+      <h1 className="equipment-step__title">Choose Your Starting Gear</h1>
       <p className="equipment-step__description">
         Armor you pick sets your Armor Class, and weapons become attacks on your
         sheet. Not sure? The first option in each choice is the classic pick.

@@ -17,7 +17,10 @@ const ICON_RESOLVERS = {
 
 // id: set by a browse page, so focus can come back to this card when its
 // details close.
-function ResultCard({ result, onClick, isSelected, id }) {
+// picker: the creation pickers show a larger picture in a round tile, and a
+// letter in the same tile for a race, class or background with no artwork
+// (a homebrew one, say), so every card in the list lines up.
+function ResultCard({ result, onClick, isSelected, id, picker = false }) {
   const previewId = useId();
   const resolveIcon = ICON_RESOLVERS[result.category];
   const schoolId = typeof result.school === "string"
@@ -30,7 +33,7 @@ function ResultCard({ result, onClick, isSelected, id }) {
   return (
     <button
       id={id}
-      className={`result-card ${isSelected ? "result-card--selected" : ""}`}
+      className={`result-card ${isSelected ? "result-card--selected" : ""} ${picker ? "result-card--picker" : ""}`.trim()}
       type="button"
       onClick={onClick}
       // Says which card is open, not by its ring colour alone.
@@ -44,6 +47,11 @@ function ResultCard({ result, onClick, isSelected, id }) {
           alt=""
           aria-hidden="true"
         />
+      )}
+      {!iconSrc && picker && resolveIcon && (
+        <span className="result-card__icon result-card__icon--letter" aria-hidden="true">
+          {result.name?.trim().charAt(0).toUpperCase()}
+        </span>
       )}
       <div className="result-card__text">
         <h3 className="result-card__name">{result.name}</h3>

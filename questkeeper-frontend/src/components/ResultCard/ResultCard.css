@@ -39,7 +39,8 @@
 /* On the open card's tinted background the softer grey text is too faint
    (under 4.5:1), so it uses the main text colour there. */
 .result-card--selected .result-card__type,
-.result-card--selected .result-card__tagline {
+.result-card--selected .result-card__tagline,
+.result-card--selected .result-card__chip {
   color: var(--qk-text);
 }
 
@@ -164,4 +165,27 @@
   color: var(--qk-text-muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+/* In the creation pickers the picture is a bigger medallion, so each choice
+   reads at a glance; a letter stands in when there is no artwork. */
+.result-card--picker .result-card__icon {
+  box-sizing: border-box;
+  width: 64px;
+  height: 64px;
+  padding: 6px;
+  border: 1px solid var(--qk-border);
+  border-radius: 50%;
+  background-color: var(--qk-surface-muted);
+}
+
+.result-card--picker .result-card__icon--letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--qk-text-muted);
+  font-family: var(--qk-font-display);
+  font-size: 28px;
+  font-weight: 600;
 }

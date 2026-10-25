@@ -51,7 +51,7 @@ function SubraceCantripStep({
 
   return (
     <div className="subrace-cantrip-step">
-      <h2 className="subrace-cantrip-step__title">Choose a Free Cantrip</h2>
+      <h1 className="subrace-cantrip-step__title">Choose a Free Cantrip</h1>
 
       {!traitId && (
         <p className="subrace-cantrip-step__description">

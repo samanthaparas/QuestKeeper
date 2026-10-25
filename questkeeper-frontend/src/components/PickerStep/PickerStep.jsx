@@ -139,6 +139,7 @@ function PickerStep({
         }}
         isSelected={selectedIndex === item.index}
         onClick={() => handleSelect(item)}
+        picker
       />
     );
   }
@@ -148,7 +149,7 @@ function PickerStep({
 
   return (
     <div className="picker-step">
-      <h2 className="picker-step__title">{title}</h2>
+      <h1 className="picker-step__title">{title}</h1>
       <p className="picker-step__description">{description}</p>
 
       {onMakeOwn && (

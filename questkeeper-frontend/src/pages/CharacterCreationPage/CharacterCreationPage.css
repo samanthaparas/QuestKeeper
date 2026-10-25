@@ -162,3 +162,9 @@
   min-height: 120px;
   margin-bottom: 16px;
 }
+
+/* A step's heading takes keyboard focus when you arrive on it; it isn't a control, so no ring. */
+.character-creation h1:focus,
+.character-creation__title:focus {
+  outline: none;
+}

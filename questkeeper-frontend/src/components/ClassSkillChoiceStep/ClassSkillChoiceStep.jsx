@@ -130,9 +130,9 @@ function ClassSkillChoiceStep({
 
   return (
     <div className="class-skill-choice-step">
-      <h2 className="class-skill-choice-step__title">
+      <h1 className="class-skill-choice-step__title">
         Choose Skill Proficiencies
-      </h2>
+      </h1>
 
       {grantedSkills.length > 0 && (
         <p className="class-skill-choice-step__description">
