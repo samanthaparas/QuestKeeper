@@ -17,7 +17,19 @@ import {
   safeDestination,
 } from "../../utils/continueAfterLogin";
 import Button from "../../components/Button/Button";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import "./AuthPage.css";
+
+// Every view of this page shares one frame: the hearth banner (whose heading is
+// the page's h1) above a warm card holding the form or the message.
+function AuthFrame({ title, children }) {
+  return (
+    <main className="auth-page">
+      <PageBanner art="hearth" eyebrow="Your account" title={title} />
+      <div className="auth-page__card">{children}</div>
+    </main>
+  );
+}
 
 // Log in, sign up, or get back in when the password is forgotten (an emailed
 // link, then "Choose a new password" here). It says why an account is needed and what happens
@@ -50,6 +62,18 @@ function AuthPage() {
   useEffect(() => {
     if (startedFresh) whyTitleRef.current?.focus();
   }, [startedFresh]);
+  // Switching between log in, sign up, forgot password and the "check your
+  // email" screens removes the button you pressed, so focus moves to the new
+  // heading (not on the first view).
+  const view = isRecovering ? "recovery" : resetSent ? "reset-sent" : confirmSent ? "confirm-sent" : mode;
+  const shownView = useRef(view);
+  useEffect(() => {
+    if (shownView.current === view) return;
+    shownView.current = view;
+    const title = document.querySelector(".auth-page .page-banner__title");
+    title?.setAttribute("tabindex", "-1");
+    title?.focus();
+  }, [view]);
   const passwordHintId = useId();
   const errorId = useId();
 
@@ -130,8 +154,7 @@ function AuthPage() {
   // They came from the reset email: just the new password, nothing else.
   if (isRecovering) {
     return (
-      <main className="auth-page">
-        <h1 className="auth-page__title">Choose a new password</h1>
+      <AuthFrame title="Choose a new password">
         <form className="auth-page__form" onSubmit={handleNewPassword} aria-describedby={error ? errorId : undefined}>
           <label className="auth-page__label" htmlFor="auth-new-password">
             New password
@@ -169,14 +192,13 @@ function AuthPage() {
             {isSubmitting ? "Please wait..." : "Save new password"}
           </Button>
         </form>
-      </main>
+      </AuthFrame>
     );
   }
 
   if (resetSent) {
     return (
-      <main className="auth-page">
-        <h1 className="auth-page__title">Check your email</h1>
+      <AuthFrame title="Check your email">
         <div className="auth-page__notice" role="status">
           <p>
             If there&apos;s an account for <strong>{email}</strong>, we&apos;ve sent a link to choose a new
@@ -192,14 +214,13 @@ function AuthPage() {
         >
           Back to log in
         </Button>
-      </main>
+      </AuthFrame>
     );
   }
 
   if (confirmSent) {
     return (
-      <main className="auth-page">
-        <h1 className="auth-page__title">Check your email</h1>
+      <AuthFrame title="Check your email">
         <div className="auth-page__notice" role="status">
           <p>
             We sent a link to <strong>{email}</strong>. Open it to confirm your account, then log in.
@@ -221,16 +242,12 @@ function AuthPage() {
         >
           I&apos;ve confirmed it, log in
         </Button>
-      </main>
+      </AuthFrame>
     );
   }
 
   return (
-    <main className="auth-page">
-      <h1 className="auth-page__title">
-        {mode === "login" ? "Log In" : mode === "signup" ? "Sign Up" : "Forgot your password?"}
-      </h1>
-
+    <AuthFrame title={mode === "login" ? "Log In" : mode === "signup" ? "Sign Up" : "Forgot your password?"}>
       {/* Why an account, and what happens once you're in. */}
       <section className="auth-page__why" aria-labelledby="auth-why-title">
         <h2 id="auth-why-title" className="auth-page__why-title" ref={whyTitleRef} tabIndex={-1}>
@@ -363,7 +380,7 @@ function AuthPage() {
         Not ready yet? <Link to="/sample/character">See a sample character sheet</Link> or{" "}
         <Link to="/sample/table">a sample DM table</Link>.
       </p>
-    </main>
+    </AuthFrame>
   );
 }
 

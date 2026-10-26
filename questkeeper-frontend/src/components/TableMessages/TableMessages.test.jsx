@@ -360,6 +360,111 @@ describe("shrinking big pictures", () => {
       height: 1200,
     });
   });
+
+  it("says it's loading instead of claiming you have no tables, while the first load is still going", async () => {
+    let finish;
+    store.listMyTables.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    renderMessages();
+    await userEvent.click(screen.getByRole("button", { name: /Messages/ }));
+    const drawer = screen.getByRole("complementary", { name: /Messages/ });
+    expect(within(drawer).getByRole("status")).toHaveTextContent("Loading your messages");
+    expect(drawer).not.toHaveTextContent("Messages are for the people at your tables");
+    await act(async () => finish([{ id: "t1", name: "Test night" }]));
+    expect(await within(drawer).findByRole("button", { name: "+ New message" })).toBeInTheDocument();
+  });
+
+  it("shows a clear error with Try again when messages can't load, and recovers", async () => {
+    store.listMyTables.mockRejectedValueOnce(new Error("offline"));
+    renderMessages();
+    await waitFor(() => expect(store.listMyTables).toHaveBeenCalled());
+    await userEvent.click(screen.getByRole("button", { name: /Messages/ }));
+    const drawer = screen.getByRole("complementary", { name: /Messages/ });
+    expect(await within(drawer).findByRole("alert")).toHaveTextContent("Couldn't load messages right now.");
+    // Not also told "no messages yet" about something that never loaded.
+    expect(drawer).not.toHaveTextContent("No messages yet");
+    await userEvent.click(within(drawer).getByRole("button", { name: "Try again" }));
+    expect(await within(drawer).findByRole("button", { name: "+ New message" })).toBeInTheDocument();
+  });
+
+  it("stops saying Loading when a conversation can't load, and lets you try again", async () => {
+    store.listConversations.mockResolvedValue([
+      { id: "c1", tableId: "t1", everyone: true, memberIds: [ME, "dm"], unread: 0, lastMessage: null },
+    ]);
+    store.listMessages.mockRejectedValueOnce(new Error("offline")).mockResolvedValue([]);
+    const drawer = await openDrawer();
+    await userEvent.click(await within(drawer).findByRole("button", { name: /Everyone at the table/ }));
+    expect(await within(drawer).findByRole("alert")).toHaveTextContent("Couldn't load this conversation.");
+    expect(within(drawer).queryByText("Loading...")).toBeNull();
+    await userEvent.click(within(drawer).getByRole("button", { name: "Try again" }));
+    expect(await within(drawer).findByText(/Nothing here yet/)).toBeInTheDocument();
+  });
+
+  it("closes on Escape from anywhere on the page, and puts focus back on the Messages button", async () => {
+    render(
+      <MemoryRouter>
+        <button type="button">Somewhere else</button>
+        <TableMessages myId={ME} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(store.listConversations).toHaveBeenCalled());
+    await userEvent.click(screen.getByRole("button", { name: /Messages/ }));
+    expect(screen.getByRole("complementary", { name: /Messages/ })).toBeInTheDocument();
+    screen.getByRole("button", { name: "Somewhere else" }).focus();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("complementary")).toBeNull();
+    expect(screen.getByRole("button", { name: /Messages/ })).toHaveFocus();
+  });
+
+  it("keeps Tab inside the Messages button and the open drawer", async () => {
+    const drawer = await openDrawer();
+    const toggle = screen.getByRole("button", { name: /Messages/ });
+    const close = within(drawer).getByRole("button", { name: "Close messages" });
+    const fresh = within(drawer).getByRole("button", { name: "+ New message" });
+    toggle.focus();
+    await userEvent.tab();
+    expect(close).toHaveFocus();
+    // From the last control it comes back round to the Messages button, not out to the page behind.
+    fresh.focus();
+    await userEvent.tab();
+    expect(toggle).toHaveFocus();
+    await userEvent.tab({ shift: true });
+    expect(fresh).toHaveFocus();
+  });
+
+  it("lets Tab carry on from the drawer's heading instead of jumping out to the Messages button", async () => {
+    const drawer = await openDrawer();
+    await userEvent.click(within(drawer).getByRole("button", { name: "+ New message" }));
+    const heading = within(drawer).getByRole("heading", { name: "Messages" });
+    expect(heading).toHaveFocus();
+    await userEvent.tab();
+    expect(within(drawer).getByRole("button", { name: "Close messages" })).toHaveFocus();
+  });
+
+  it("moves focus to the drawer's heading when the screen changes", async () => {
+    const drawer = await openDrawer();
+    await userEvent.click(within(drawer).getByRole("button", { name: "+ New message" }));
+    expect(within(drawer).getByRole("heading", { name: "Messages" })).toHaveFocus();
+  });
+
+  it("brings the writing box fully into view when it gets keyboard focus", async () => {
+    store.listConversations.mockResolvedValue([
+      { id: "c1", tableId: "t1", everyone: true, memberIds: [ME, "dm"], unread: 0, lastMessage: null },
+    ]);
+    const scrollIntoView = vi.fn();
+    const saved = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: scrollIntoView });
+    try {
+      const drawer = await openDrawer();
+      await userEvent.click(await within(drawer).findByRole("button", { name: /Everyone at the table/ }));
+      const box = await within(drawer).findByRole("textbox", { name: "Your message" });
+      scrollIntoView.mockClear();
+      box.focus();
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    } finally {
+      if (saved) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", saved);
+      else delete HTMLElement.prototype.scrollIntoView;
+    }
+  });
 });
 
 

@@ -629,3 +629,103 @@
   border-radius: var(--qk-radius-small);
   object-fit: cover;
 }
+
+/* --- Loading, empty and error notes ------------------------------------------ */
+/* One look for every "nothing to show yet" message in the drawer: a soft card
+   with a small wax seal, so it feels like part of the letters, not a stray line. */
+.table-messages__note {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 12px 14px 12px 40px;
+  border: 1px dashed var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+  font-size: 14px;
+  line-height: 1.5;
+  list-style: none;
+}
+
+.table-messages__note::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #d0725a, var(--qk-terracotta) 55%, var(--qk-terracotta-hover));
+  box-shadow: 0 1px 2px var(--qk-shadow);
+}
+
+.table-messages__note p {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.table-messages__note--loading::before {
+  animation: table-messages-seal 1.4s ease-in-out infinite;
+}
+
+@keyframes table-messages-seal {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-messages__note--loading::before {
+    animation: none;
+  }
+}
+
+.table-messages__note--error {
+  border: 1px solid var(--qk-danger);
+  background-color: var(--qk-danger-soft);
+  color: var(--qk-text);
+}
+
+.table-messages__note--error::before {
+  background: var(--qk-danger);
+}
+
+.table-messages__note--error p {
+  font-weight: 600;
+}
+
+/* On a short window (a phone on its side, or the page zoomed in) the writing
+   box would sit on top of the messages and cover whatever has keyboard focus,
+   such as "Try again". There it simply follows the messages instead. */
+@media (max-height: 560px) {
+  .table-messages__composer {
+    position: static;
+  }
+}
+
+/* A note placed straight in the drawer (the "couldn't load" one) keeps the same side space as the lists. */
+.table-messages__drawer > .table-messages__note {
+  margin: 12px 16px 0;
+}
+
+/* The drawer's heading and message list take keyboard focus when the screen
+   changes or a retry runs; they aren't controls, so no ring. */
+.table-messages__title:focus,
+.table-messages__messages:focus {
+  outline: none;
+}
+
+/* Room for a focus ring below a control that was scrolled into view. */
+.table-messages__composer textarea,
+.table-messages__composer button {
+  scroll-margin-bottom: 8px;
+}
+
+/* "Try again" sits on the pale red error card, where the usual terracotta text
+   measured 4.2:1; the deeper terracotta used for links clears 4.5:1. */
+.table-messages__note--error .table-messages__secondary {
+  color: var(--qk-terracotta-hover);
+}
