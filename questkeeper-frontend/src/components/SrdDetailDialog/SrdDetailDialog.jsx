@@ -3,6 +3,7 @@ import Button from "../Button/Button";
 import { getEditionTabLabels } from "../../utils/srdDetails";
 import "./SrdDetailDialog.css";
 import { usePopupBehavior } from "../../hooks/usePopupBehavior";
+import InlineLoading from "../StatusNote/InlineLoading";
 
 function SrdDetailEntries({ details }) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -151,7 +152,7 @@ function SrdDetailDialog({ view, onClose }) {
           </div>
 
           {view.status === "loading" && (
-            <p className="srd-dialog__status">Loading SRD details…</p>
+            <InlineLoading className="srd-dialog__status">Loading SRD details…</InlineLoading>
           )}
 
           {view.status === "error" && (

@@ -18,7 +18,7 @@ Two scripts (they need Pillow: `python3 -m venv /tmp/qkvenv && /tmp/qkvenv/bin/p
 
 `src/utils/redesignArt.js` is the one place that imports banners and campaign pictures, and says where each banner's focal point is.
 
-- The `support-new` pictures have a dark background baked in. They are not transparent, so show them on their own dark tile.
+- The prepared support pictures have a dark background baked in. They are not transparent, so show them on their own dark tile.
 - Generated characters are generic sample art. They never replace an uploaded portrait.
 - Creature pictures may only be used for an exact, confirmed creature id.
 - Table cards use the campaign landscapes as generic sample art, picked from the table id. They are not real places.
@@ -37,7 +37,7 @@ Used by the app (committed, optimized):
 | `src/assets/support/lantern.webp` | The tile on the "Something went wrong" fallback |
 | `src/assets/illustrations/lost-path.webp` | The 404 page (720x480 source in the finish kit; shown at most 320px wide) |
 
-Prepared but **not used by any page**, on purpose (the untracked `characters/`, `creature-portraits-new/`, `items-new/`, `support-new/` folders and `redesign-art-manifest.json` hold them; they are not committed):
+Prepared but **not used by any page**, on purpose. These were deleted from the working folder on October 26, 2026 (they were never committed). Byte-identical copies are in the redesign "finish kit" outside the repository, and the art-pack sheets and `scripts/extract_redesign_art_pack.py` in the ignored `design/source/` folder can make them again:
 
 - **Characters:** generic portraits. They would suggest a look for a race or class, so they stay unused unless a mapping is approved. They never replace an uploaded portrait.
 - **Creatures:** only exact, confirmed creature ids may use them, and none are mapped yet.

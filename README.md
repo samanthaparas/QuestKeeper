@@ -498,7 +498,7 @@ Run from the repository root:
 
 ### Working on now
 
-- **Finishing the site-wide redesign.** Done: the tavern homepage, all four DM screen tabs, the banners and page redesigns, the quiz and character creation, sign-in and Messages, and calm loading and error states (including the DM table page). Still to do: **Homebrew** (the editor, forms and invite page), the error boundary and a warmer Not Found page, tiles for subrace and subclass pickers, and the prepared character, creature and item artwork (not used anywhere yet). The character sheet's three-column layout stays as it is.
+- **The site-wide redesign is done** (October 24 to 26): the tavern homepage, all four DM screen tabs, banners on every page, the quiz and character creation, sign-in and Messages, Homebrew (the list, editor, invite page and sharing), a Not Found page and a crash fallback, letter tiles on every picker card, and calm loading and error states throughout. The character sheet's three-column layout stays as it is; a small alignment polish is still optional.
 - A **real-device check** of the redesign and the mobile audit (a signed-in pass on a real phone), since the browser checks so far used sample data and stand-in stores.
 - Running the **two-account test** for the newest features (recaps and campaigns, allowed content, the weak-signal sheet and the redesigned DM screen) before the next game night.
 - **Choosing a new name.** Other sites already use "QuestKeeper" for a similar idea, so the name is changing. The rename is on hold until a name is chosen.
@@ -530,24 +530,23 @@ Run from the repository root:
 - The allowed-content list is a guide: it flags mismatches but doesn't stop a player from picking something, and it doesn't filter the builder's pickers yet.
 - Recap drafts need the Anthropic key on Render, like AI search.
 - **Activity icons:** the DM screen shows a small icon on a log line that carries an explicit kind (attack, damage, healing, spell, turn, handout). The database change that adds kinds (`20261024_activity_kinds.sql`) is in the repository and has been run in Supabase, but only the handout notice sends a kind so far, so most log lines still show no icon. The plan is in [docs/ACTIVITY_EVENT_KINDS_PLAN.md](docs/ACTIVITY_EVENT_KINDS_PLAN.md).
-- **Homebrew pages haven't had the redesign yet**, and an unexpected crash in the app has no friendly fallback page (there's no error boundary).
-- The subrace and subclass pickers have no picture tile, and the generated character, creature and item artwork is prepared but not used anywhere.
+- An unexpected crash shows a calm "Something went wrong" card, but it only catches errors made while a page is drawn, not failed requests (those keep their own messages).
+- Subrace and subclass cards use a letter tile instead of artwork, on purpose (a picture could suggest what a lineage or subclass looks like). Generated character, creature and item artwork was prepared but never used, so it was removed (see `docs/REDESIGN_REFERENCE.md`).
 - Round timers are counted by each open copy of a sheet, so the same sheet open in two tabs would count a round twice.
 
 ## Ideas and roadmap
 
 What would make QuestKeeper even better than it was yesterday (encounter prep, recaps, campaigns, allowed content and weak-signal saving from earlier lists are built):
 
-1. **Finish the redesign:** Homebrew, an error boundary and a friendlier Not Found page, and tiles or artwork for the remaining pickers.
-2. **Book subraces as link-outs:** Wood Elf, Drow, Mountain Dwarf, Stout Halfling and Forest Gnome as names, summaries and links, with a one-tap "Make as homebrew".
-3. **Sorting and filtering** on the sheet (items by category, spells by level, favorites), and **splitting item stacks**.
-4. **Better paste-fill** that reads more formats of pasted rules text.
-5. **Automated database and end-to-end tests** for the table rules, so the two-account test can run itself.
-6. **Backend caching and timeouts,** and global search that keeps working if one category fails.
-7. **A beginner mode toggle** to hide hints once a player doesn't need them.
-8. **More table tools:** a shared list of NPCs and places, open quests and threads, a quiet pause button for comfort, the DM tracking a monster's concentration, and table hints.
-9. **More AI help** on top of search by meaning: backstory ideas, "describe the vibe" character suggestions, and AI search over Open5e and homebrew too.
-10. **Works with no signal at all** as an installable app, and **Google sign-in** after the rename.
+1. **Book subraces as link-outs:** Wood Elf, Drow, Mountain Dwarf, Stout Halfling and Forest Gnome as names, summaries and links, with a one-tap "Make as homebrew".
+2. **Sorting and filtering** on the sheet (items by category, spells by level, favorites), and **splitting item stacks**.
+3. **Better paste-fill** that reads more formats of pasted rules text.
+4. **Automated database and end-to-end tests** for the table rules, so the two-account test can run itself.
+5. **Backend caching and timeouts,** and global search that keeps working if one category fails.
+6. **A beginner mode toggle** to hide hints once a player doesn't need them.
+7. **More table tools:** a shared list of NPCs and places, open quests and threads, a quiet pause button for comfort, the DM tracking a monster's concentration, and table hints.
+8. **More AI help** on top of search by meaning: backstory ideas, "describe the vibe" character suggestions, and AI search over Open5e and homebrew too.
+9. **Works with no signal at all** as an installable app, and **Google sign-in** after the rename.
 
 The roadmap stays incremental: each feature should be small enough to understand, build, test and review before the next one.
 
@@ -562,9 +561,9 @@ The roadmap stays incremental: each feature should be small enough to understand
 
 - **October 18 to 19, 2026:** a journal for every character, dark mode, level-up that asks for class feature choices, a calmer sheet, weapons and armor that do the math, multiple companions, and Messages with receipts and screenshots.
 - **October 20 to 21, 2026:** prepared spells, table rules, away players, the encounter and loot helpers, the get-ready heads-up, recaps, campaigns, the allowed-content list and the weak-signal sheet.
-- **October 22 to 25, 2026:** the tavern homepage and a redesign of all four DM screen tabs, a mobile audit from a friend's phone testing, and the site-wide redesign (banners, My Games, Your Characters, the quiz, character creation, sign-in, Messages and calm loading and error states).
+- **October 22 to 26, 2026:** the tavern homepage and a redesign of all four DM screen tabs, a mobile audit from a friend's phone testing, and the site-wide redesign (banners, My Games, Your Characters, the quiz, character creation, sign-in, Messages, Homebrew, a Not Found page and crash fallback, and calm loading and error states).
 
-As of October 25, 2026 there are 240+ merged pull requests and 320+ commits.
+As of October 26, 2026 there are 240+ merged pull requests and 320+ commits.
 
 ## Content and licensing principles
 

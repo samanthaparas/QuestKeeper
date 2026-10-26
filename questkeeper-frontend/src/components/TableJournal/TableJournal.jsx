@@ -24,6 +24,7 @@ import TableRecap from "../TableRecap/TableRecap";
 import CampaignTools from "../CampaignTools/CampaignTools";
 import { campaignLabel, campaignNumbers, campaignOf, sessionLabel } from "../../utils/campaigns";
 import "./TableJournal.css";
+import InlineLoading from "../StatusNote/InlineLoading";
 
 const POLL_MS = 15000;
 const MAX_LENGTH = 4000;
@@ -339,7 +340,7 @@ function TableJournal({
       )}
 
       {isLoading ? (
-        <p className="table-journal__empty">Loading the journal...</p>
+        <InlineLoading className="table-journal__empty">Loading the journal...</InlineLoading>
       ) : (
         sessions.map((group) => (
           <section key={group.session} className="table-journal__session">

@@ -19,6 +19,7 @@ import {
 import CharacterAvatar from "../CharacterAvatar/CharacterAvatar";
 import "../TableJournal/TableJournal.css";
 import "./PersonalJournal.css";
+import InlineLoading from "../StatusNote/InlineLoading";
 
 const MAX_LENGTH = 4000;
 // How many of the newest notes show before the reader picks a session.
@@ -379,7 +380,7 @@ function PersonalJournal({ characterId, table = null, name = "", portraitUrl = "
       )}
 
       {isLoading ? (
-        <p className="table-journal__empty">Loading your journal...</p>
+        <InlineLoading className="table-journal__empty">Loading your journal...</InlineLoading>
       ) : entries.length === 0 ? (
         <p className="table-journal__empty">
           No notes yet. Write your first one above, and it will be filed under session {latestSession}.
