@@ -37,7 +37,7 @@ export function useTable(tableId) {
       const table = await getTable(tableId);
 
       if (!table) {
-        setState((previous) => ({ ...previous, table: null, isLoading: false }));
+        setState((previous) => ({ ...previous, table: null, isLoading: false, error: "" }));
         return;
       }
 

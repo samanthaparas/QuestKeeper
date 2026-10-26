@@ -4776,3 +4776,27 @@ html:has(.table-page--dm) {
     opacity: 0.85;
   }
 }
+
+/* The heading on a table that couldn't be opened or found. */
+.table-page__status-heading {
+  margin: 0 0 16px;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 28px;
+}
+
+.table-page__status-heading + .status-note {
+  margin-bottom: 16px;
+}
+
+.table-page__status-link {
+  display: inline-block;
+  color: var(--qk-terracotta-hover);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.table-page__status-link:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}

@@ -76,6 +76,8 @@ import { bannedChoicesOf, cleanBanned } from "../../utils/contentRules";
 import { addJournalEntry, getTablePortraits } from "../../utils/journalStore";
 import { getBannerInfo } from "../../utils/redesignArt";
 import lanternArt from "../../assets/hero/inn-lantern-crop.webp";
+import StatusNote from "../../components/StatusNote/StatusNote";
+import { useFocusAfterRetry } from "../../components/StatusNote/useFocusAfterRetry";
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
@@ -1172,6 +1174,20 @@ function TablePage() {
     useTable(id);
 
   const [actionError, setActionError] = useState("");
+  // "Try again" on a table that couldn't load: the wait is shown, and focus
+  // goes to the page heading once it's done (the button is gone by then).
+  const [hasRetried, setHasRetried] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+  useFocusAfterRetry(hasRetried, isLoading || isRetrying);
+  async function retryLoadingTable() {
+    setHasRetried(true);
+    setIsRetrying(true);
+    try {
+      await refresh();
+    } finally {
+      setIsRetrying(false);
+    }
+  }
   const [characters, setCharacters] = useState([]);
   // Players: the party strip's mini sheets, when the DM shares them.
   const [partyMinis, setPartyMinis] = useState([]);
@@ -1402,22 +1418,37 @@ function TablePage() {
     writeDmTab(id, key, isDm);
   }
 
-  if (isLoading) {
+  if (isLoading || isRetrying) {
     return (
       <main className="table-page">
-        <p className="table-page__empty">Loading table...</p>
+        <div className="table-page__content">
+          <StatusNote variant="loading" focusOnShow={hasRetried}>
+            Loading table...
+          </StatusNote>
+        </div>
       </main>
     );
   }
 
   if (!table) {
+    // A request that failed can be tried again. A table that comes back empty is
+    // either gone or not yours to see, and the page says the same thing either way.
     return (
       <main className="table-page">
         <div className="table-page__content">
-          <p className="table-page__empty">
-            {error || "This table was not found, or you are not part of it."}
-          </p>
-          <Link to="/games">Back to My Games</Link>
+          <h1 className="table-page__status-heading">
+            {error ? "Couldn't open this table" : "We couldn't find that table"}
+          </h1>
+          {error ? (
+            <StatusNote variant="error" onRetry={retryLoadingTable}>
+              Couldn&apos;t load this table. Check your connection and try again.
+            </StatusNote>
+          ) : (
+            <StatusNote>This table was not found, or you are not part of it.</StatusNote>
+          )}
+          <Link className="table-page__status-link" to="/games">
+            Back to My Games
+          </Link>
         </div>
       </main>
     );
@@ -2403,10 +2434,16 @@ function TablePage() {
 
         </header>
 
-        {(error || actionError) && (
+        {actionError ? (
           <p className="table-page__error" role="alert">
-            {actionError || error}
+            {actionError}
           </p>
+        ) : (
+          error && (
+            <StatusNote variant="error" onRetry={refresh}>
+              Couldn&apos;t refresh this table just now. It will keep trying, or you can try again.
+            </StatusNote>
+          )
         )}
 
         {/* The player's own character, always on top of their game page. */}
