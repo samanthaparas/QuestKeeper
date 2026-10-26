@@ -4,6 +4,7 @@ import CharacterAvatar from "../CharacterAvatar/CharacterAvatar";
 import { conditionWord } from "../../utils/conditions";
 import { toPartyRow } from "../../utils/partyStrip";
 import "./PlayerCharacterCard.css";
+import InlineLoading from "../StatusNote/InlineLoading";
 
 const HEALTH_LABELS = { bloodied: "Bloodied", down: "Down" };
 
@@ -15,7 +16,7 @@ function PlayerCharacterCard({ sheet, characterId }) {
   if (!sheet) {
     return (
       <section className="player-card player-card--loading" aria-label="Your character">
-        <p className="player-card__empty">Loading your character…</p>
+        <InlineLoading className="player-card__empty">Loading your character…</InlineLoading>
         <Link className="qk-button qk-button--primary player-card__open" to={`/characters/${characterId}`}>
           Open my character sheet
         </Link>

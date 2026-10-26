@@ -4,6 +4,7 @@ import { formatSpellDetails } from "../../utils/srdDetails";
 import { getSpellSummary } from "../../utils/spellSummaries";
 import { SrdBlocks } from "../DetailPanel/DetailPanel";
 import "./SpellChoiceOption.css";
+import InlineLoading from "../StatusNote/InlineLoading";
 
 // One spell in a "pick your spells" list: the checkbox, a one-line summary of
 // what it does, and a "Read more" button that shows the full SRD text, so
@@ -77,7 +78,7 @@ function SpellChoiceOption({
 
       {isOpen && (
         <div className="spell-option__details">
-          {details.status === "loading" && <p>Loading the full text...</p>}
+          {details.status === "loading" && <InlineLoading>Loading the full text...</InlineLoading>}
           {details.status === "error" && (
             <p>Couldn't load the full text. Try again in a moment.</p>
           )}

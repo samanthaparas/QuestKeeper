@@ -5,6 +5,7 @@ import { attunementLine, kindLine, rarityClass } from "../../utils/magicItemFilt
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 import { SrdBlocks } from "../../components/DetailPanel/DetailPanel";
 import SourceBadge from "../../components/SourceBadge/SourceBadge";
+import InlineLoading from "../../components/StatusNote/InlineLoading";
 
 // Open5e text uses blank lines between paragraphs and markdown tables.
 function toBlocks(text) {
@@ -84,7 +85,7 @@ function MagicItemDetail({ item, headingId, describedBy }) {
         </>
       ) : (
         <div className="magic-item-detail__text">
-          {!detail && <p>Loading the description...</p>}
+          {!detail && <InlineLoading>Loading the description...</InlineLoading>}
           {detail?.error && <p>Couldn't load the description. Please try again later.</p>}
           {detail?.data?.desc && <SrdBlocks blocks={toBlocks(detail.data.desc)} />}
           {/* Versions with different text (e.g. each Belt of Giant Strength). */}

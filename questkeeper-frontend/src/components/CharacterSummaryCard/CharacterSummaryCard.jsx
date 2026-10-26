@@ -30,6 +30,7 @@ import { findSrdMatches, formatSpellDetails } from "../../utils/srdDetails";
 import CharacterAvatar from "../CharacterAvatar/CharacterAvatar";
 import { getMagicItemIcon } from "../../utils/icons";
 import "./CharacterSummaryCard.css";
+import InlineLoading from "../StatusNote/InlineLoading";
 
 function itemName(item) {
   return typeof item === "string" ? item : (item?.name ?? "Unnamed");
@@ -331,7 +332,7 @@ function SpellPeekBody({ spell, onFullText }) {
       <p className="character-summary__peek-label">Rules (SRD)</p>
       {brief?.facts?.length > 0 && <p className="character-summary__peek-facts">{brief.facts.join(" · ")}</p>}
       {brief?.text && <p className="character-summary__peek-text">{brief.text}</p>}
-      {brief === undefined && <p className="character-summary__peek-facts">Loading the rules…</p>}
+      {brief === undefined && <InlineLoading className="character-summary__peek-facts">Loading the rules…</InlineLoading>}
       {brief === null && <p className="character-summary__peek-facts">No SRD text for this spell.</p>}
       {spell.components && (
         <p className="character-summary__slots">
