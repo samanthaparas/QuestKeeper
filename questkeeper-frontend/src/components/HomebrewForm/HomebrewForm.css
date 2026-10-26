@@ -1,9 +1,10 @@
 /* Form on the left, live preview on the right; stacked on smaller screens. */
 .homebrew-form {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
   gap: 24px;
   align-items: start;
+  max-width: 1200px;
 }
 
 .homebrew-form__card {
@@ -102,8 +103,10 @@
 
 .homebrew-form__input,
 .homebrew-form__textarea {
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px 10px;
+  font-size: 16px;
+  line-height: 1.5;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-control);
   background-color: var(--qk-input-bg);
@@ -183,8 +186,13 @@
 
 .homebrew-form__error {
   margin: 0;
-  color: var(--qk-danger);
+  padding: 10px 12px;
+  border-left: 4px solid var(--qk-danger);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-danger-soft);
+  color: var(--qk-text);
   font-weight: 600;
+  line-height: 1.4;
 }
 
 /* Keeps the preview in view while scrolling through a long form. */
@@ -229,8 +237,8 @@
 }
 
 .homebrew-form__aside-tab {
-  min-height: 32px;
-  padding: 0 12px;
+  min-height: 40px;
+  padding: 0 14px;
   border: 1px solid var(--qk-border);
   border-radius: 999px;
   background-color: var(--qk-surface);
@@ -280,6 +288,13 @@
   color: var(--qk-text-muted);
   font-size: 14px;
   font-weight: 600;
+}
+
+/* On a short window (zoomed in) a sticky preview would cover the form; it just follows it. */
+@media (max-height: 560px) {
+  .homebrew-form__preview {
+    position: static;
+  }
 }
 
 @media (max-width: 900px) {

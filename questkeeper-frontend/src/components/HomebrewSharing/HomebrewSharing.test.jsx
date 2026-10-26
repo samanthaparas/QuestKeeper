@@ -106,4 +106,19 @@ describe("HomebrewSharing", () => {
     expect(removeGrant).toHaveBeenCalledWith("alex", "me");
     expect(onAccessRemoved).toHaveBeenCalled();
   });
+
+  it("doesn't show 'nobody yet' before the details arrive, and offers Try again if they can't load", async () => {
+    listMyTables.mockRejectedValueOnce(new Error("Failed to fetch")).mockResolvedValue([]);
+    listMyTableShares.mockResolvedValue([]);
+    listPendingInvites.mockResolvedValue([]);
+    listGrants.mockResolvedValue({ sharedByMe: [], sharedWithMe: [] });
+    render(<HomebrewSharing userId="me" />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading your sharing details");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load your sharing details");
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Invite someone")).toBeVisible();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

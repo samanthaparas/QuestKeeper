@@ -1,25 +1,48 @@
 .homebrew-invite {
   min-height: 70vh;
-  padding: 48px 16px;
+  padding: 32px 16px 48px;
   background-color: var(--qk-background);
   color: var(--qk-text);
+}
+
+/* The banner is a little wider than the card, like the sign-in page. */
+.homebrew-invite > .page-banner {
+  max-width: 880px;
+  min-height: 120px;
+  margin: 0 auto 20px;
 }
 
 .homebrew-invite__card {
   display: grid;
   gap: 16px;
-  max-width: 520px;
+  justify-items: center;
+  max-width: 640px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 28px 24px;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-card);
   background-color: var(--qk-surface);
+  text-align: center;
 }
 
-.homebrew-invite__title {
+.homebrew-invite__card > .status-note {
+  justify-self: stretch;
+  text-align: left;
+}
+
+/* A sealed scroll on a dark inset (the picture has a dark background of its own). */
+.homebrew-invite__thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  background-color: #2a211c;
+  object-fit: cover;
+}
+
+.homebrew-invite__heading {
   margin: 0;
   font-family: var(--qk-font-display);
-  font-size: 30px;
+  font-size: 24px;
 }
 
 .homebrew-invite__text {
@@ -41,11 +64,16 @@
 .homebrew-invite__actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 10px;
 }
 
-.homebrew-invite__error {
-  margin: 0;
-  color: var(--qk-danger);
-  font-weight: 600;
+@media (max-width: 480px) {
+  .homebrew-invite {
+    padding: 20px 12px 40px;
+  }
+
+  .homebrew-invite__card {
+    padding: 22px 16px;
+  }
 }

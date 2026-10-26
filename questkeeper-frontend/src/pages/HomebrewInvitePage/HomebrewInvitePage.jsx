@@ -3,6 +3,10 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { getInvite, acceptInvite } from "../../utils/homebrewStore";
 import { refreshHomebrew } from "../../utils/homebrewCache";
 import Button from "../../components/Button/Button";
+import PageBanner from "../../components/PageBanner/PageBanner";
+import StatusNote from "../../components/StatusNote/StatusNote";
+import { useFocusAfterRetry } from "../../components/StatusNote/useFocusAfterRetry";
+import sealedScroll from "../../assets/support/sealed-scroll.webp";
 import "./HomebrewInvitePage.css";
 
 // What each invite status means, in plain words.
@@ -18,38 +22,68 @@ function HomebrewInvitePage() {
   const { code } = useParams();
   const navigate = useNavigate();
   const [invite, setInvite] = useState(null);
-  const [error, setError] = useState("");
+  // Checking the invite failed (a retry can help), or accepting it failed (Accept can be pressed again).
+  const [loadError, setLoadError] = useState(false);
+  const [acceptError, setAcceptError] = useState("");
   const [isAccepting, setIsAccepting] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [hasRetried, setHasRetried] = useState(false);
+  const isChecking = !invite && !loadError;
 
   useEffect(() => {
+    let ignore = false;
     getInvite(code)
-      .then(setInvite)
-      .catch((loadError) => setError(loadError.message));
-  }, [code]);
+      .then((found) => !ignore && setInvite(found))
+      .catch(() => !ignore && setLoadError(true));
+    return () => {
+      ignore = true;
+    };
+  }, [code, attempt]);
+
+  useFocusAfterRetry(hasRetried, isChecking);
+
+  function retryChecking() {
+    setLoadError(false);
+    setHasRetried(true);
+    setAttempt((count) => count + 1);
+  }
 
   async function handleAccept() {
-    setError("");
+    if (isAccepting) return;
+    setAcceptError("");
     setIsAccepting(true);
     try {
       await acceptInvite(code);
       // Their homebrew should show up in pickers straight away.
       refreshHomebrew();
       navigate("/homebrew");
-    } catch (acceptError) {
-      setError(acceptError.message ?? "Could not accept the invite.");
+    } catch (acceptFailure) {
+      setAcceptError(acceptFailure.message ?? "Could not accept the invite.");
       setIsAccepting(false);
     }
   }
 
   return (
     <main className="homebrew-invite">
-      <div className="homebrew-invite__card">
-        <h1 className="homebrew-invite__title">Homebrew invite</h1>
+      <PageBanner art="bestiary" title="Homebrew invite" />
 
-        {!invite && !error && <p>Checking your invite...</p>}
+      <div className="homebrew-invite__card">
+        {isChecking && (
+          <StatusNote variant="loading" focusOnShow={hasRetried}>
+            Checking your invite...
+          </StatusNote>
+        )}
+
+        {loadError && (
+          <StatusNote variant="error" onRetry={retryChecking}>
+            Couldn&apos;t check this invite. Check your connection and try again.
+          </StatusNote>
+        )}
 
         {invite?.status === "ok" && (
           <>
+            <img className="homebrew-invite__thumb" src={sealedScroll} alt="" aria-hidden="true" />
+            <h2 className="homebrew-invite__heading">Homebrew shared with you</h2>
             <p className="homebrew-invite__text">
               <strong>{invite.sender_label}</strong> wants to share their homebrew
               with you. You'll see their shared races, subraces, backgrounds and
@@ -59,9 +93,10 @@ function HomebrewInvitePage() {
               You keep access until they stop sharing or you remove it on your My
               Homebrew page.
             </p>
+            {acceptError && <StatusNote variant="error">{acceptError}</StatusNote>}
             <div className="homebrew-invite__actions">
               <Button onClick={handleAccept} disabled={isAccepting}>
-                Accept
+                {isAccepting ? "Accepting..." : "Accept"}
               </Button>
               <Button variant="secondary" onClick={() => navigate("/")}>
                 No thanks
@@ -70,14 +105,9 @@ function HomebrewInvitePage() {
           </>
         )}
 
+        {/* A link that can't be used: just said plainly, with nothing to retry. */}
         {invite && invite.status !== "ok" && (
-          <p className="homebrew-invite__text">{STATUS_MESSAGES[invite.status]}</p>
-        )}
-
-        {error && (
-          <p className="homebrew-invite__error" role="alert">
-            {error}
-          </p>
+          <StatusNote>{STATUS_MESSAGES[invite.status]}</StatusNote>
         )}
 
         <p className="homebrew-invite__hint">

@@ -157,4 +157,25 @@ describe("HomebrewPage", () => {
     expect(await screen.findByLabelText("Name")).toHaveValue("Swashbuckler");
     expect(screen.getByLabelText("Which class is this for?")).toHaveValue("rogue");
   });
+
+  it("says it couldn't load, in friendly words, never 'Nothing yet', and tries again", async () => {
+    listVisibleHomebrew.mockRejectedValueOnce(new Error("permission denied for table homebrew"));
+    renderPage();
+
+    const alert = await screen.findByText(/Couldn't load your homebrew/);
+    expect(alert).not.toHaveTextContent("permission");
+    expect(screen.queryByText(/Nothing yet/)).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Owlfolk")).toBeInTheDocument();
+    expect(screen.queryByText(/Couldn't load your homebrew/)).toBeNull();
+  });
+
+  it("puts a round letter tile on each entry, and a loading note while it waits", async () => {
+    renderPage();
+    expect(screen.getAllByRole("status").map((note) => note.textContent)).toContain("Loading your homebrew...");
+    const item = (await screen.findByText("Owlfolk")).closest("li");
+    expect(item.querySelector(".homebrew-page__medal")).toHaveTextContent("O");
+    expect(item.querySelector(".homebrew-page__medal")).toHaveAttribute("aria-hidden", "true");
+  });
 });
