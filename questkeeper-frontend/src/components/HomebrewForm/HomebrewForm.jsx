@@ -124,7 +124,13 @@ function HomebrewForm({ initialForm, raceOptions = [], classOptions = [], onSave
 
   return (
     <div className="homebrew-form">
-      <form className="homebrew-form__card" onSubmit={handleSubmit}>
+      <form
+        className="homebrew-form__card"
+        onSubmit={handleSubmit}
+        // On a short window (zoomed in, or in the pop-up) the browser only reveals a text box's typing
+        // cursor, leaving the rest of the box cut off: bring whatever gets focus fully into view.
+        onFocus={(event) => event.target.scrollIntoView?.({ block: "nearest" })}
+      >
         <h2 className="homebrew-form__title">
           {form.id ? `Edit ${form.name || label}` : `New homebrew ${label.toLowerCase()}`}
         </h2>

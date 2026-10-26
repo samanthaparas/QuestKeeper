@@ -112,4 +112,19 @@ describe("HomebrewForm keeps unsaved changes", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(window.localStorage.getItem("test-homebrew-draft")).toBeNull();
   });
+
+  it("brings a text box fully into view when it gets keyboard focus (zoomed in, or in the pop-up)", () => {
+    const scrollIntoView = vi.fn();
+    const saved = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: scrollIntoView });
+    try {
+      renderForm();
+      scrollIntoView.mockClear();
+      screen.getByLabelText("Summary").focus();
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    } finally {
+      if (saved) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", saved);
+      else delete HTMLElement.prototype.scrollIntoView;
+    }
+  });
 });

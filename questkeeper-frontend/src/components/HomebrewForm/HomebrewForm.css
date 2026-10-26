@@ -329,3 +329,11 @@
   outline: 2px solid var(--qk-focus);
   outline-offset: 2px;
 }
+
+/* Room for a focus ring below a control that was scrolled into view. */
+.homebrew-form__card input,
+.homebrew-form__card textarea,
+.homebrew-form__card select,
+.homebrew-form__card button {
+  scroll-margin-block: 8px;
+}
