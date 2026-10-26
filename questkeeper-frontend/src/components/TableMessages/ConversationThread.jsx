@@ -9,6 +9,7 @@ import {
 } from "../../utils/messageStore";
 import { messageTime, personName, readReceipt, whoCanSee } from "./messageLabels";
 import ImageLightbox from "../ImageLightbox/ImageLightbox";
+import StatusNote from "../StatusNote/StatusNote";
 import { shrinkImage } from "../../utils/portraits";
 
 // How often to look again while your latest message hasn't been seen by
@@ -167,30 +168,27 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
 
       <ol className="table-messages__messages" aria-label="Messages" ref={listRef} tabIndex={-1}>
         {isLoading && (
-          <li className="table-messages__note table-messages__note--loading" role="status">
+          <StatusNote as="li" variant="loading">
             Loading...
-          </li>
+          </StatusNote>
         )}
         {loadError && (
-          <li className="table-messages__note table-messages__note--error" role="alert">
-            <p>Couldn't load this conversation.</p>
-            <button
-              type="button"
-              className="table-messages__secondary"
-              onClick={() => {
-                setLoadError(false);
-                setIsLoading(true);
-                setAttempt((count) => count + 1);
-                // The button goes away while it tries again; keep focus on the list.
-                listRef.current?.focus();
-              }}
-            >
-              Try again
-            </button>
-          </li>
+          <StatusNote
+            as="li"
+            variant="error"
+            onRetry={() => {
+              setLoadError(false);
+              setIsLoading(true);
+              setAttempt((count) => count + 1);
+              // The button goes away while it tries again; keep focus on the list.
+              listRef.current?.focus();
+            }}
+          >
+            Couldn't load this conversation.
+          </StatusNote>
         )}
         {!isLoading && !loadError && messages.length === 0 && (
-          <li className="table-messages__note">Nothing here yet. Say hello, or share a map.</li>
+          <StatusNote as="li">Nothing here yet. Say hello, or share a map.</StatusNote>
         )}
         {messages.map((message, index) => {
           const mine = message.sender_id === myId;

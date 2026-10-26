@@ -138,11 +138,18 @@ describe("LibraryPage", () => {
     confirm.mockRestore();
   });
 
-  it("shows an error if the library cannot load", async () => {
-    listTemplates.mockRejectedValue(new Error("Could not reach the database"));
+  it("says so in friendly words if the library cannot load, never 'Nothing here yet', and tries again", async () => {
+    listTemplates.mockRejectedValueOnce(new Error("Could not reach the database"));
     renderPage();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Could not reach the database");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load your library. Check your connection and try again.");
+    expect(alert).not.toHaveTextContent("database");
+    expect(screen.queryByText(/Nothing here yet/)).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Bugbear")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("won't add a second copy of something already in the library", async () => {

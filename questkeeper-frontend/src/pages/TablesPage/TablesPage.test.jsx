@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import TablesPage from "./TablesPage";
@@ -134,5 +134,19 @@ describe("help for new groups", () => {
 
     expect(await screen.findByText("Friday Game")).toBeInTheDocument();
     expect(screen.queryByText(/Here is how a game night works/)).not.toBeInTheDocument();
+  });
+
+  it("says so in friendly words when the tables can't load, and tries again", async () => {
+    listMyTables.mockRejectedValueOnce(new Error("relation game_tables does not exist"));
+    renderPage();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load your tables. Check your connection and try again.");
+    expect(alert).not.toHaveTextContent("relation");
+    expect(screen.queryByText(/not at any tables yet|not running any tables yet/)).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(listMyTables).toHaveBeenCalledTimes(2);
   });
 });

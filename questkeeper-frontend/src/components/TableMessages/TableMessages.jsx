@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useMessages } from "../../hooks/useMessages";
 import { startConversation } from "../../utils/messageStore";
 import ConversationThread from "./ConversationThread";
+import StatusNote from "../StatusNote/StatusNote";
 import { conversationTitle, joinNames, personName } from "./messageLabels";
 import "./TableMessages.css";
 
@@ -165,19 +166,15 @@ function TableMessages({ myId }) {
           </header>
 
           {messages.error && (
-            <div className="table-messages__note table-messages__note--error" role="alert">
-              <p>{messages.error}</p>
-              <button
-                type="button"
-                className="table-messages__secondary"
-                onClick={async () => {
-                  await messages.reload();
-                  titleRef.current?.focus();
-                }}
-              >
-                Try again
-              </button>
-            </div>
+            <StatusNote
+              variant="error"
+              onRetry={async () => {
+                await messages.reload();
+                titleRef.current?.focus();
+              }}
+            >
+              {messages.error}
+            </StatusNote>
           )}
 
           {/* Something arrived while this is open: say so, and offer to open it
@@ -202,16 +199,14 @@ function TableMessages({ myId }) {
 
           {messages.isLoading && messages.tables.length === 0 && !messages.error ? (
             <div className="table-messages__body">
-              <p className="table-messages__note table-messages__note--loading" role="status">
-                Loading your messages...
-              </p>
+              <StatusNote variant="loading">Loading your messages...</StatusNote>
             </div>
           ) : messages.error && messages.tables.length === 0 ? null : messages.tables.length === 0 ? (
             <div className="table-messages__body">
-              <p className="table-messages__note">
+              <StatusNote>
                 Messages are for the people at your tables. Make a table, or join one with your
                 DM&apos;s code, and you can message the whole party, a few people, or just one.
-              </p>
+              </StatusNote>
               <Link className="table-messages__primary table-messages__primary--link" to="/games" onClick={close}>
                 Go to My Games
               </Link>
@@ -268,10 +263,10 @@ function ConversationList({ conversations, showTable, tableName, peopleAt, myId,
         + New message
       </button>
       {conversations.length === 0 ? (
-        <p className="table-messages__note">
+        <StatusNote>
           No messages yet. Send a secret note to one person, a few, or the whole party: only the
           people you pick can read it.
-        </p>
+        </StatusNote>
       ) : (
         <ul className="table-messages__list">
           {conversations.map((conversation) => {

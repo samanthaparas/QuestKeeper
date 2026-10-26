@@ -64,4 +64,26 @@ describe("CharactersPage", () => {
     renderPage();
     expect(await screen.findByText(/No characters yet/)).toBeInTheDocument();
   });
+
+  it("says so when the characters can't load, never 'No characters yet', and tries again", async () => {
+    listCharacters.mockRejectedValueOnce(new Error("offline"));
+    renderPage();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load your characters. Check your connection and try again.");
+    expect(screen.queryByText(/No characters yet/)).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("link", { name: /Pippa/ })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+    // The button that was pressed is gone, so keyboard focus goes to the page heading, not nowhere.
+    expect(screen.getByRole("heading", { level: 1, name: "Your Characters" })).toHaveFocus();
+  });
+
+  it("says it is loading first, and 'No characters yet' only when the list really is empty", async () => {
+    listCharacters.mockResolvedValueOnce([]);
+    renderPage();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading your characters");
+    expect(await screen.findByText("No characters yet. Create one to get started.")).toBeInTheDocument();
+  });
 });
