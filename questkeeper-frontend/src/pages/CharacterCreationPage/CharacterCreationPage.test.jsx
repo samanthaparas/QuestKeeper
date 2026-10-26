@@ -217,7 +217,10 @@ describe("a character in progress survives Back and leaving", () => {
     cleanup();
 
     renderCreation();
-    expect(screen.getByRole("status")).toHaveTextContent("Picking up where you left off with Bram");
+    // (The race picker's own "Loading options..." line is a status too, so pick out the resume note.)
+    expect(screen.getByText(/Picking up where you left off/).closest('[role="status"]')).toHaveTextContent(
+      "Picking up where you left off with Bram",
+    );
     // The resumed step goes into the address, so Back still works after.
     expect(screen.getByTestId("where")).toHaveTextContent("/characters/new?step=race");
   });

@@ -63,6 +63,7 @@ import { getFeatureSubclassId, sourceFromEntry } from "../../utils/featureSource
 import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 import { spellFactsFrom } from "../../utils/spellComponents";
+import InlineLoading from "../StatusNote/InlineLoading";
 
 // The dropdown value for "Book spell instead": the player types the spell in
 // themselves, for spells from books that aren't in the SRD list.
@@ -919,7 +920,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
                   sits under the dropdown before one is picked. */}
               {(isFeatLoading || featDetails) && (
                 <div className="level-up-wizard__feat-card">
-                  {isFeatLoading && <p>Loading feat...</p>}
+                  {isFeatLoading && <InlineLoading>Loading feat...</InlineLoading>}
                   {featDetails && (
                     <>
                       <h4>{featDetails.name}</h4>
@@ -948,7 +949,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
             what it does before you choose.
           </p>
 
-          {isSubclassLoading && <p>Loading subclasses...</p>}
+          {isSubclassLoading && <InlineLoading>Loading subclasses...</InlineLoading>}
           {subclassError && (
             <p className="level-up-wizard__error">{subclassError}</p>
           )}
@@ -988,7 +989,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
             </div>
           )}
 
-          {isSubclassDetailLoading && <p>Loading details...</p>}
+          {isSubclassDetailLoading && <InlineLoading>Loading details...</InlineLoading>}
 
           {bookSubclass && !isSubclassDetailLoading && (
             <div className="level-up-wizard__feat-card">
@@ -1081,7 +1082,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
             choices. Each one goes on the Features tab.
           </p>
 
-          {!featureGroups && <p>Loading choices...</p>}
+          {!featureGroups && <InlineLoading>Loading choices...</InlineLoading>}
           {featureError && <p className="level-up-wizard__error">{featureError}</p>}
           {featureGroups?.length === 0 && !featureError && (
             <p className="level-up-wizard__step-description">
@@ -1166,7 +1167,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
             </p>
           )}
 
-          {isSpellsLoading && <p>Loading spell list...</p>}
+          {isSpellsLoading && <InlineLoading>Loading spell list...</InlineLoading>}
           {spellsError && (
             <p className="level-up-wizard__error">{spellsError}</p>
           )}
@@ -1272,7 +1273,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
 
           {selectedSpellIndex && (
             <div className="level-up-wizard__feat-card">
-              {isSpellDetailLoading && <p>Loading spell details...</p>}
+              {isSpellDetailLoading && <InlineLoading>Loading spell details...</InlineLoading>}
               {selectedSpellDetails && (
                 <>
                   <h4>{selectedSpellDetails.name}</h4>
