@@ -105,3 +105,8 @@
 .stat-block-fields__saves .stat-block-fields__number {
   width: 64px;
 }
+
+/* When the keyboard moves into the Notes box, the page scrolls to leave a little room around it. */
+.stat-block-fields__notes {
+  scroll-margin-block: 24px;
+}

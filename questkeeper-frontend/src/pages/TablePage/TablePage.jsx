@@ -74,7 +74,10 @@ import ContentRules from "../../components/ContentRules/ContentRules";
 import ContentNotice from "../../components/ContentNotice/ContentNotice";
 import { bannedChoicesOf, cleanBanned } from "../../utils/contentRules";
 import { addJournalEntry, getTablePortraits } from "../../utils/journalStore";
-import lanternArt from "../../assets/hero/inn-lantern.webp";
+import { getBannerInfo } from "../../utils/redesignArt";
+import lanternArt from "../../assets/hero/inn-lantern-crop.webp";
+import StatusNote from "../../components/StatusNote/StatusNote";
+import { useFocusAfterRetry } from "../../components/StatusNote/useFocusAfterRetry";
 import "./TablePage.css";
 
 const CHARACTER_POLL_MS = 10000;
@@ -1171,6 +1174,20 @@ function TablePage() {
     useTable(id);
 
   const [actionError, setActionError] = useState("");
+  // "Try again" on a table that couldn't load: the wait is shown, and focus
+  // goes to the page heading once it's done (the button is gone by then).
+  const [hasRetried, setHasRetried] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+  useFocusAfterRetry(hasRetried, isLoading || isRetrying);
+  async function retryLoadingTable() {
+    setHasRetried(true);
+    setIsRetrying(true);
+    try {
+      await refresh();
+    } finally {
+      setIsRetrying(false);
+    }
+  }
   const [characters, setCharacters] = useState([]);
   // Players: the party strip's mini sheets, when the DM shares them.
   const [partyMinis, setPartyMinis] = useState([]);
@@ -1401,22 +1418,37 @@ function TablePage() {
     writeDmTab(id, key, isDm);
   }
 
-  if (isLoading) {
+  if (isLoading || isRetrying) {
     return (
       <main className="table-page">
-        <p className="table-page__empty">Loading table...</p>
+        <div className="table-page__content">
+          <StatusNote variant="loading" focusOnShow={hasRetried}>
+            Loading table...
+          </StatusNote>
+        </div>
       </main>
     );
   }
 
   if (!table) {
+    // A request that failed can be tried again. A table that comes back empty is
+    // either gone or not yours to see, and the page says the same thing either way.
     return (
       <main className="table-page">
         <div className="table-page__content">
-          <p className="table-page__empty">
-            {error || "This table was not found, or you are not part of it."}
-          </p>
-          <Link to="/games">Back to My Games</Link>
+          <h1 className="table-page__status-heading">
+            {error ? "Couldn't open this table" : "We couldn't find that table"}
+          </h1>
+          {error ? (
+            <StatusNote variant="error" onRetry={retryLoadingTable}>
+              Couldn&apos;t load this table. Check your connection and try again.
+            </StatusNote>
+          ) : (
+            <StatusNote>This table was not found, or you are not part of it.</StatusNote>
+          )}
+          <Link className="table-page__status-link" to="/games">
+            Back to My Games
+          </Link>
         </div>
       </main>
     );
@@ -2362,10 +2394,21 @@ function TablePage() {
           />
         )}
 
-        <header className="table-page__header">
-          {/* The DM screen's banner picture: decoration only, behind the title. */}
-          {isDm && (
-            <img className="table-page__banner-art" src={lanternArt} alt="" width="2000" height="667" />
+        <header className={`table-page__header${isDm ? "" : " table-page__header--banner"}`}>
+          {/* The banner picture: decoration only, behind the title. The DM's is the lantern;
+              a player's is the same sample picture their table has on My Games. */}
+          {isDm ? (
+            <img className="table-page__banner-art table-page__banner-art--lantern" src={lanternArt} alt="" width="940" height="370" />
+          ) : (
+            <img
+              className="table-page__banner-art table-page__banner-art--wide"
+              src={getBannerInfo("player-game").src}
+              srcSet={getBannerInfo("player-game").srcSet}
+              sizes="(min-width: 620px) 620px, 100vw"
+              alt=""
+              width="2172"
+              height="724"
+            />
           )}
           <div className="table-page__header-text">
             {/* The DM's join code sits right beside the table name as a small
@@ -2391,10 +2434,16 @@ function TablePage() {
 
         </header>
 
-        {(error || actionError) && (
+        {actionError ? (
           <p className="table-page__error" role="alert">
-            {actionError || error}
+            {actionError}
           </p>
+        ) : (
+          error && (
+            <StatusNote variant="error" onRetry={refresh}>
+              Couldn&apos;t refresh this table just now. It will keep trying, or you can try again.
+            </StatusNote>
+          )
         )}
 
         {/* The player's own character, always on top of their game page. */}

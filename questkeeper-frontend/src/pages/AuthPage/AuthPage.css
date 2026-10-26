@@ -1,18 +1,24 @@
+/* The page is a hearth banner above one warm card. The banner is a little
+   wider than the card, like the quiz page's. */
 .auth-page {
-  max-width: 420px;
-  margin: 60px auto;
+  max-width: 880px;
+  margin: 32px auto 60px;
+  padding: 0 16px;
+}
+
+.auth-page > .page-banner {
+  min-height: 140px;
+  margin-bottom: 20px;
+}
+
+.auth-page__card {
+  max-width: 460px;
+  margin: 0 auto;
   padding: 32px;
   background: var(--qk-surface);
   border: 2px solid var(--qk-border);
   border-radius: var(--qk-radius-card);
   box-shadow: 0 12px 30px var(--qk-shadow);
-}
-
-.auth-page__title {
-  margin: 0 0 24px;
-  color: var(--qk-text);
-  font-family: var(--qk-font-display);
-  text-align: center;
 }
 
 .auth-page__form {
@@ -44,9 +50,15 @@
 }
 
 .auth-page__error {
-  color: var(--qk-danger);
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-left: 4px solid var(--qk-danger);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-danger-soft);
+  color: var(--qk-text);
   font-size: 14px;
-  margin: 4px 0 0;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .auth-page__form .qk-button {
@@ -146,7 +158,11 @@
 /* Narrow screens: less outer space, so the form keeps its width. */
 @media (max-width: 480px) {
   .auth-page {
-    margin: 24px 16px;
+    margin: 20px auto 40px;
+    padding: 0 12px;
+  }
+
+  .auth-page__card {
     padding: 24px 18px;
   }
 }
@@ -181,4 +197,18 @@
   cursor: pointer;
   font: inherit;
   font-size: 14px;
+}
+
+/* On a short window (zoomed in, or a phone on its side) the banner shrinks to
+   its words, so the form isn't pushed off the screen. */
+@media (max-height: 560px) {
+  .auth-page > .page-banner {
+    min-height: 0;
+    margin-bottom: 12px;
+  }
+}
+
+/* The heading takes keyboard focus when the view changes; it isn't a control, so no ring. */
+.auth-page .page-banner__title:focus {
+  outline: none;
 }

@@ -73,7 +73,7 @@ function ClassSpellChoiceStep({
 
   return (
     <div className="class-spell-choice-step">
-      <h2 className="class-spell-choice-step__title">Choose Starting Spells</h2>
+      <h1 className="class-spell-choice-step__title">Choose Starting Spells</h1>
 
       {!isCaster && (
         <p className="class-spell-choice-step__description">

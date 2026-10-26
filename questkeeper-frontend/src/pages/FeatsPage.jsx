@@ -6,6 +6,7 @@ import SearchForm from "../components/SearchForm/SearchForm";
 import ResultCard from "../components/ResultCard/ResultCard";
 import SourceFilter from "../components/SourceFilter/SourceFilter";
 import { filterBySource } from "../utils/sourceFilters";
+import PageBanner from "../components/PageBanner/PageBanner";
 import "../pages/SearchPage/SearchPage.css";
 import { useBrowseSelection } from "../hooks/useOpenFromLink";
 import BrowseLayout from "../components/BrowseLayout/BrowseLayout";
@@ -82,12 +83,12 @@ function FeatsPage() {
   return (
     <main className="search-page">
       <div className="search-page__content">
-        <h1 className="search-page__title">Explore Feats</h1>
-
-        <p className="search-page__description">
-          A feat is a special talent your character can learn, usually in place
+        <PageBanner art="library" eyebrow="Reference" title="Explore Feats">
+          <p className="page-banner__description search-page__description">
+            A feat is a special talent your character can learn, usually in place
           of an ability score increase when they level up.
         </p>
+        </PageBanner>
 
         <p className="search-page__note">
           Includes the 2014 and 2024 SRD feats, your own homebrew feats, and the

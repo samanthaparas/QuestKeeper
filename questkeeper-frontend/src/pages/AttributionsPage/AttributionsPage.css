@@ -38,8 +38,10 @@
 
 /* Long legal text: smaller type in a scrollable box so the page stays short. */
 .attributions__license {
-  max-height: 480px;
+  /* Never taller than most of the window, so the whole box (and its focus outline) can be in view when zoomed. */
+  max-height: min(480px, 70dvh);
   overflow-y: auto;
+  scroll-margin-block: 24px;
   padding: 16px 20px;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-card);
@@ -79,4 +81,14 @@
   .attributions__title {
     font-size: 34px;
   }
+}
+
+/* The banner fills the same column as the credits below it. */
+.attributions > .page-banner {
+  margin-bottom: 24px;
+}
+
+.attributions__license:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
 }

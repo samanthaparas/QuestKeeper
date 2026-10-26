@@ -82,7 +82,8 @@
 
 .creation-step-rail__item--current .creation-step-rail__static {
   background-color: var(--qk-terracotta-soft);
-  color: var(--qk-terracotta-hover);
+  /* The terracotta label was just under 4.5:1 on its tinted pill; a deeper brown clears it. */
+  color: color-mix(in srgb, var(--qk-terracotta-hover) 55%, var(--qk-text));
 }
 
 .creation-step-rail__item--current .creation-step-rail__marker {

@@ -22,7 +22,7 @@
   display: grid;
   gap: 6px;
   width: min(100%, 760px);
-  margin: 0 auto 16px;
+  margin: 0 0 16px;
 }
 
 .magic-items-page__search-input {
@@ -36,6 +36,11 @@
   font-size: 16px;
 }
 
+.magic-items-page__search-input::placeholder {
+  color: color-mix(in srgb, var(--qk-text) 70%, var(--qk-surface));
+  opacity: 1;
+}
+
 .magic-items-page__search-input:focus-visible,
 .magic-item-filters__select:focus-visible,
 .magic-item-filters__chip:focus-visible,
@@ -46,7 +51,7 @@
 
 .magic-item-filters {
   width: min(100%, 760px);
-  margin: 0 auto 16px;
+  margin: 0 0 16px;
   padding: 12px 16px;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-card);
@@ -122,7 +127,7 @@
 
 .magic-items-page__count {
   width: min(100%, 760px);
-  margin: 0 auto 12px;
+  margin: 0 0 12px;
   color: var(--qk-text-muted);
   font-variant-numeric: tabular-nums;
 }

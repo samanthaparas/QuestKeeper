@@ -1,8 +1,9 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useMessages } from "../../hooks/useMessages";
 import { startConversation } from "../../utils/messageStore";
 import ConversationThread from "./ConversationThread";
+import StatusNote from "../StatusNote/StatusNote";
 import { conversationTitle, joinNames, personName } from "./messageLabels";
 import "./TableMessages.css";
 
@@ -16,14 +17,75 @@ function tableFromPath(pathname) {
 // unread count that opens a side drawer with conversations from all your
 // tables. Anyone at a table can message the whole party, a few people, or
 // one person; only the people in a conversation can read it.
+// Things the keyboard can land on, inside the drawer.
+const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
+
 function TableMessages({ myId }) {
   const messages = useMessages(myId);
   const { pathname } = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState({ name: "list" }); // list | new | thread
   const buttonRef = useRef(null);
+  const drawerRef = useRef(null);
+  const titleRef = useRef(null);
   const titleId = useId();
+  // Which screen of the drawer was showing last time, so changing screens
+  // (not opening the drawer) is what moves keyboard focus.
+  const shownView = useRef(null);
   const { incoming, clearIncoming } = messages;
+  const viewKey = `${view.name}:${view.id ?? ""}`;
+
+  // Open and showing: Escape closes from anywhere, and Tab stays among the
+  // Messages button and the drawer's own controls (on a phone the drawer
+  // covers the page, so Tab must not wander into what's hidden behind it).
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    function onKeyDown(event) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+        clearIncoming();
+        buttonRef.current?.focus();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const drawer = drawerRef.current;
+      const toggle = buttonRef.current;
+      if (!drawer || !toggle) return;
+      const stops = [
+        toggle,
+        ...[...drawer.querySelectorAll(FOCUSABLE)].filter(
+          (element) => !element.disabled && !element.closest("[hidden]") && getComputedStyle(element).display !== "none",
+        ),
+      ];
+      const first = stops[0];
+      const last = stops.at(-1);
+      const active = document.activeElement;
+      // Focus on the drawer's heading or message list (focusable only by script) counts as inside.
+      if (active !== toggle && !drawer.contains(active)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, clearIncoming]);
+
+  // The button you pressed to change screens is gone from the page, so focus
+  // moves to the drawer's heading, which says where you are now.
+  useEffect(() => {
+    if (!isOpen) {
+      shownView.current = null;
+      return;
+    }
+    if (shownView.current !== null && shownView.current !== viewKey) titleRef.current?.focus();
+    shownView.current = viewKey;
+  }, [isOpen, viewKey]);
 
   if (!myId) return null;
 
@@ -78,11 +140,7 @@ function TableMessages({ myId }) {
       </span>
 
       {isOpen && (
-        <aside
-          className="table-messages__drawer"
-          aria-labelledby={titleId}
-          onKeyDown={(event) => event.key === "Escape" && close()}
-        >
+        <aside className="table-messages__drawer" aria-labelledby={titleId} ref={drawerRef}>
           <header className="table-messages__header">
             {view.name !== "list" && (
               <button
@@ -96,7 +154,7 @@ function TableMessages({ myId }) {
                 ‹ All messages
               </button>
             )}
-            <h2 id={titleId} className="table-messages__title">
+            <h2 id={titleId} className="table-messages__title" ref={titleRef} tabIndex={-1}>
               Messages
               {view.name === "thread" && openConversation && (
                 <span className="table-messages__table"> · {tableName(openConversation.tableId)}</span>
@@ -108,9 +166,15 @@ function TableMessages({ myId }) {
           </header>
 
           {messages.error && (
-            <p className="table-messages__error" role="alert">
+            <StatusNote
+              variant="error"
+              onRetry={async () => {
+                await messages.reload();
+                titleRef.current?.focus();
+              }}
+            >
               {messages.error}
-            </p>
+            </StatusNote>
           )}
 
           {/* Something arrived while this is open: say so, and offer to open it
@@ -133,12 +197,16 @@ function TableMessages({ myId }) {
             </div>
           )}
 
-          {messages.tables.length === 0 && !messages.error ? (
+          {messages.isLoading && messages.tables.length === 0 && !messages.error ? (
             <div className="table-messages__body">
-              <p className="table-messages__empty">
+              <StatusNote variant="loading">Loading your messages...</StatusNote>
+            </div>
+          ) : messages.error && messages.tables.length === 0 ? null : messages.tables.length === 0 ? (
+            <div className="table-messages__body">
+              <StatusNote>
                 Messages are for the people at your tables. Make a table, or join one with your
                 DM&apos;s code, and you can message the whole party, a few people, or just one.
-              </p>
+              </StatusNote>
               <Link className="table-messages__primary table-messages__primary--link" to="/games" onClick={close}>
                 Go to My Games
               </Link>
@@ -195,10 +263,10 @@ function ConversationList({ conversations, showTable, tableName, peopleAt, myId,
         + New message
       </button>
       {conversations.length === 0 ? (
-        <p className="table-messages__empty">
+        <StatusNote>
           No messages yet. Send a secret note to one person, a few, or the whole party: only the
           people you pick can read it.
-        </p>
+        </StatusNote>
       ) : (
         <ul className="table-messages__list">
           {conversations.map((conversation) => {

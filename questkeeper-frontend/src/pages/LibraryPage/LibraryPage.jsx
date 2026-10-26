@@ -8,7 +8,10 @@ import {
 } from "../../utils/tableStore";
 import { cleanStatBlock, emptyStatBlock, isSameTemplate, readStatBlock } from "../../utils/statBlock";
 import Button from "../../components/Button/Button";
+import StatusNote from "../../components/StatusNote/StatusNote";
+import { useFocusAfterRetry } from "../../components/StatusNote/useFocusAfterRetry";
 import StatBlockFields from "../../components/StatBlockFields/StatBlockFields";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import "./LibraryPage.css";
 
 const BLANK = {
@@ -25,16 +28,33 @@ function LibraryPage() {
   const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  // The library couldn't load: said in friendly words, with a retry.
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [hasRetried, setHasRetried] = useState(false);
   const [form, setForm] = useState(BLANK);
   const [editingId, setEditingId] = useState(null);
   const [isBusy, setIsBusy] = useState(false);
 
   useEffect(() => {
+    let ignore = false;
     listTemplates()
-      .then(setTemplates)
-      .catch((loadError) => setError(loadError.message))
-      .finally(() => setIsLoading(false));
-  }, []);
+      .then((found) => !ignore && setTemplates(found))
+      .catch(() => !ignore && setLoadError(true))
+      .finally(() => !ignore && setIsLoading(false));
+    return () => {
+      ignore = true;
+    };
+  }, [loadAttempt]);
+
+  useFocusAfterRetry(hasRetried, isLoading);
+
+  function retryLoading() {
+    setLoadError(false);
+    setIsLoading(true);
+    setHasRetried(true);
+    setLoadAttempt((count) => count + 1);
+  }
 
   function startEdit(template) {
     setEditingId(template.id);
@@ -109,12 +129,16 @@ function LibraryPage() {
   return (
     <main className="library-page">
       <div className="library-page__content">
-        <h1 className="library-page__title">Monster Library</h1>
-        <p className="library-page__description">
-          Prepare monsters and friendly NPCs ahead of game night. Only you can see your
-          library. Add anything in it to a fight from your table's "Add monsters and NPCs"
-          form. <Link to="/dm">Go to your DM Screen</Link>
-        </p>
+        <PageBanner art="bestiary" eyebrow="Dungeon Master" title="Monster Library">
+          <p className="page-banner__description">
+            Prepare monsters and friendly NPCs ahead of game night. Only you can see your
+            library. Add anything in it to a fight from your table's "Add monsters and NPCs"
+            form.{" "}
+            <Link className="page-banner__link" to="/dm">
+              Go to your DM Screen
+            </Link>
+          </p>
+        </PageBanner>
 
         {error && (
           <p className="library-page__error" role="alert">
@@ -195,13 +219,23 @@ function LibraryPage() {
 
         <h2 className="library-page__section-title">Your library</h2>
 
-        {isLoading && <p className="library-page__empty">Loading your library...</p>}
+        {isLoading && (
+          <StatusNote variant="loading" focusOnShow={hasRetried}>
+            Loading your library...
+          </StatusNote>
+        )}
 
-        {!isLoading && templates.length === 0 && (
-          <p className="library-page__empty">
+        {loadError && (
+          <StatusNote variant="error" onRetry={retryLoading}>
+            Couldn&apos;t load your library. Check your connection and try again.
+          </StatusNote>
+        )}
+
+        {!isLoading && !loadError && templates.length === 0 && (
+          <StatusNote>
             Nothing here yet. Add a monster above, or tick "Also save to my library" when
             you add one at a table.
-          </p>
+          </StatusNote>
         )}
 
         <ul className="library-page__list">

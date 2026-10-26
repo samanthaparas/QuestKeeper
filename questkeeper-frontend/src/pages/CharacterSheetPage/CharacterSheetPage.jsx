@@ -1972,6 +1972,12 @@ function CharacterSheetPage() {
           );
         })}
       </ul>
+      {/* What the P and E badges mean, written out so it doesn't depend on hovering. */}
+      <p className="character-sheet__skills-legend">
+        <span className="character-sheet__skills-legend-badge" aria-hidden="true">P</span> Proficient
+        <span aria-hidden="true"> · </span>
+        <span className="character-sheet__skills-legend-badge" aria-hidden="true">E</span> Expertise
+      </p>
     </section>
   );
 

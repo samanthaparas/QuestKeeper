@@ -118,6 +118,17 @@ describe("QuizPage", () => {
     // No back button on the quiz itself.
     expect(screen.queryByRole("link", { name: /Back to your quiz results/ })).toBeNull();
   });
+
+  it("puts the page title in a banner on the intro and the results, with one main heading each", async () => {
+    renderQuiz();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Find your character" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Start the quiz" }));
+    await answerFirst(5);
+    await userEvent.click(screen.getByRole("button", { name: "See my results" }));
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Three heroes that fit you" })).toBeInTheDocument();
+  });
 });
 
 describe("quiz results that survive a new tab", () => {

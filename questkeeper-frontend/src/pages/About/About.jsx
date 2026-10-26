@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import "./About.css";
 
 // What QuestKeeper does today (for players, DMs, and anyone deciding
@@ -7,14 +8,13 @@ import "./About.css";
 function About() {
   return (
     <main className="about">
-      <section className="about__hero">
-        <h1 className="about__title">About QuestKeeper</h1>
-        <p className="about__intro">
+      <PageBanner art="hearth" title="About QuestKeeper">
+        <p className="page-banner__description">
           QuestKeeper is a free companion for Dungeons &amp; Dragons 5th Edition. It turns rules into
           friendly, guided choices for new players, and keeps a whole table&apos;s characters and fights in
           one place during a game.
         </p>
-      </section>
+      </PageBanner>
 
       <section className="about__section" aria-labelledby="about-does-title">
         <h2 id="about-does-title" className="about__section-title">

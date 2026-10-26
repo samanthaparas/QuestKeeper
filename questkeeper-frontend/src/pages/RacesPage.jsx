@@ -9,6 +9,7 @@ import SourceFilter from "../components/SourceFilter/SourceFilter";
 import BrowseLayout from "../components/BrowseLayout/BrowseLayout";
 import { filterBySource } from "../utils/sourceFilters";
 import { dedupeEntries, entryKey } from "../utils/browseList";
+import PageBanner from "../components/PageBanner/PageBanner";
 import "../pages/SearchPage/SearchPage.css";
 import { useBrowseSelection } from "../hooks/useOpenFromLink";
 
@@ -75,13 +76,13 @@ function RacesPage() {
   return (
     <main className="search-page">
       <div className="search-page__content">
-        <h1 className="search-page__title">Explore Races</h1>
-
-        <p className="search-page__description">
-          A race represents your character's ancestry and natural traits. Choose
+        <PageBanner art="library" eyebrow="Reference" title="Explore Races">
+          <p className="page-banner__description search-page__description">
+            A race represents your character's ancestry and natural traits. Choose
           this first when creating a character. Races from the official books
           have a short summary and a link to their full rules.
         </p>
+        </PageBanner>
 
         <SearchForm
           scope="races"

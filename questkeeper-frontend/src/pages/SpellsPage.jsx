@@ -16,6 +16,7 @@ import {
 } from "../utils/spellFilters";
 import SearchForm from "../components/SearchForm/SearchForm";
 import ResultCard from "../components/ResultCard/ResultCard";
+import PageBanner from "../components/PageBanner/PageBanner";
 import "../pages/SearchPage/SearchPage.css";
 import Button from "../components/Button/Button";
 
@@ -115,12 +116,12 @@ function SpellsPage() {
   return (
     <main className="search-page">
       <div className="search-page__content">
-        <h1 className="search-page__title">Explore Spells</h1>
-
-        <p className="search-page__description">
-          Spells define the magical effects your character can cast in and out
+        <PageBanner art="library" eyebrow="Reference" title="Explore Spells">
+          <p className="page-banner__description search-page__description">
+            Spells define the magical effects your character can cast in and out
           of combat.
         </p>
+        </PageBanner>
 
         <SearchForm
           scope="spells"

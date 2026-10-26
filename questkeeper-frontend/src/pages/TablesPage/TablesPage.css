@@ -10,18 +10,7 @@
   margin: 0 auto;
 }
 
-.tables-page__title {
-  margin: 0;
-  font-family: var(--qk-font-display);
-  font-size: 36px;
-}
 
-.tables-page__description {
-  max-width: var(--qk-reading-width);
-  margin: 16px 0 32px;
-  line-height: 1.6;
-  color: var(--qk-text-muted);
-}
 
 .tables-page__error {
   margin: 0 0 24px;
@@ -35,6 +24,7 @@
 .tables-page__forms {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
   gap: 24px;
   margin-bottom: 40px;
 }
@@ -47,6 +37,7 @@
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-card);
   background-color: var(--qk-surface);
+  box-shadow: 0 6px 16px var(--qk-shadow);
 }
 
 .tables-page__card-title,
@@ -89,30 +80,91 @@
 }
 
 .tables-page__item {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) auto;
+  align-items: center;
   gap: 16px;
-  padding: 16px 20px;
+  min-height: 120px;
+  padding: 0 20px 0 0;
+  overflow: hidden;
   border: 1px solid var(--qk-border);
   border-radius: var(--qk-radius-card);
   background-color: var(--qk-surface);
+  box-shadow: 0 6px 16px var(--qk-shadow);
   color: inherit;
   text-decoration: none;
+}
+
+.tables-page__item:hover {
+  border-color: var(--qk-terracotta);
+}
+
+.tables-page__item:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.tables-page__item-art {
+  align-self: stretch;
+  width: 160px;
+  height: 100%;
+  min-height: 120px;
+  object-fit: cover;
+}
+
+.tables-page__item-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 0;
+}
+
+.tables-page__item-open {
+  padding: 8px 18px;
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-on-accent);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tables-page__item:hover .tables-page__item-open {
+  background-color: var(--qk-terracotta-hover);
+}
+
+@media (max-width: 560px) {
+  .tables-page {
+    padding: 24px 16px;
+  }
+
+  .tables-page__item {
+    grid-template-columns: 96px minmax(0, 1fr);
+    padding-right: 14px;
+  }
+
+  .tables-page__item-art {
+    grid-row: 1 / span 2;
+    width: 96px;
+  }
+
+
+  .tables-page__item-open {
+    grid-column: 2;
+    justify-self: start;
+    margin-bottom: 12px;
+  }
 }
 
 .tables-page__item-name {
   font-size: 18px;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .tables-page__item-role {
   color: var(--qk-text-muted);
 }
 
-.tables-page__guide-link {
-  color: var(--qk-terracotta);
-  font-weight: 600;
-}
 
 /* Shown when someone isn't at any tables yet: how a game night works. */
 .tables-page__intro {
@@ -130,15 +182,6 @@
   line-height: 1.5;
 }
 
-/* "Adventurer" / "Dungeon Master" above the title, so you know which side you're on. */
-.tables-page__eyebrow {
-  margin: 0 0 4px;
-  color: var(--qk-terracotta);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
 
 .tables-page__card--other {
   background-color: transparent;
@@ -147,4 +190,14 @@
 
 .tables-page__other-link {
   justify-self: start;
+}
+
+.tables-page__input::placeholder {
+  color: var(--qk-text-muted);
+  opacity: 1;
+}
+
+/* When the keyboard moves to a card near the edge of the window, leave room for its focus ring. */
+html:has(.tables-page) {
+  scroll-padding-block: 12px;
 }

@@ -81,6 +81,7 @@ import {
   getGroupStatus,
   getVisibleSteps,
   getReviewIssues,
+  reachableStep,
   CREATION_STEP_ART,
 } from "../../utils/creationSteps";
 import CreationStepRail from "../../components/CreationStepRail/CreationStepRail";
@@ -96,6 +97,7 @@ import {
 } from "../../utils/creationDraft";
 import CreationTips from "../../components/CreationTips/CreationTips";
 import Button from "../../components/Button/Button";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import HomebrewDialog from "../../components/HomebrewDialog/HomebrewDialog";
 import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
 import { createHomebrew } from "../../utils/homebrewStore";
@@ -417,8 +419,38 @@ function CharacterCreationPage({ onStartFresh }) {
     characterClass,
     hasEquipmentChoices,
   });
-  const step = stepKey;
-  const stepIndex = Math.max(0, steps.indexOf(stepKey));
+  const step = reachableStep(stepKey, { steps, name, race, characterClass, background });
+
+  // When the step changes, show the new step's heading and move keyboard focus
+  // to it, so a screen reader announces where you are and a long page isn't
+  // left scrolled past the top. Comparing with the step we last showed (rather
+  // than "has this run before") keeps the first load, including React's
+  // development replay of effects, from taking focus off the name box.
+  const layoutRef = useRef(null);
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    const layout = layoutRef.current;
+    const heading = layout?.querySelector("h1, .character-creation__title");
+    if (!heading) return;
+    // On a phone the progress rail scrolls sideways; keep the current step in
+    // sight by moving only the rail itself, never the page.
+    const rail = layout.querySelector(".creation-step-rail__list");
+    const current = rail?.querySelector('[aria-current="step"]');
+    if (rail && current) {
+      const offset = current.getBoundingClientRect().left - rail.getBoundingClientRect().left;
+      rail.scrollLeft += offset - (rail.clientWidth - current.offsetWidth) / 2;
+    }
+    // Start at the progress rail; if the heading would still be below the fold, bring it up too.
+    layout.scrollIntoView?.({ block: "start" });
+    if (heading.getBoundingClientRect().bottom > window.innerHeight * 0.9) {
+      heading.scrollIntoView?.({ block: "start" });
+    }
+    heading.setAttribute("tabindex", "-1");
+    heading.focus({ preventScroll: true });
+  }, [step]);
+  const stepIndex = Math.max(0, steps.indexOf(step));
 
   const issues = getReviewIssues({
     steps,
@@ -533,7 +565,7 @@ function CharacterCreationPage({ onStartFresh }) {
       } else {
         raw = await getBackgroundDetails(index);
       }
-      setMadePick({ step: stepKey, raw });
+      setMadePick({ step, raw });
     } finally {
       setPickerVersion((version) => version + 1);
     }
@@ -733,6 +765,12 @@ function CharacterCreationPage({ onStartFresh }) {
 
   return (
     <main className="character-creation">
+      {/* The first step opens with the banner; later steps stay compact so the choices are the focus. */}
+      {step === "name" && (
+        <div className="character-creation__banner">
+          <PageBanner art="wilderness" eyebrow="Adventurer" title="Create a character" />
+        </div>
+      )}
       {showResumeNote && (
         <p className="character-creation__resume" role="status">
           <span>
@@ -753,7 +791,7 @@ function CharacterCreationPage({ onStartFresh }) {
           </span>
         </p>
       )}
-      <div className="character-creation__layout">
+      <div className="character-creation__layout" ref={layoutRef}>
         <CreationStepRail groups={railGroups} onJump={goToStep} />
 
         <CreationSummaryPanel
@@ -829,9 +867,9 @@ function CharacterCreationPage({ onStartFresh }) {
             <div className="character-creation__main">
               {step === "name" && (
                 <div className="character-creation__name-step">
-                  <h1 className="character-creation__title">
+                  <h2 className="character-creation__title">
                     What's your character's name?
-                  </h1>
+                  </h2>
 
                   <input
                     className="character-creation__name-input"

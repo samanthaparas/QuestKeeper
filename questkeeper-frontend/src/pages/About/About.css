@@ -134,3 +134,9 @@
     font-size: 34px;
   }
 }
+
+/* The banner lines up with the text column below it. */
+.about > .page-banner {
+  max-width: var(--qk-reading-width);
+  margin-inline: auto;
+}

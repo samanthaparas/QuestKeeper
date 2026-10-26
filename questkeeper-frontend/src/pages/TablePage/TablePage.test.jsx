@@ -2331,3 +2331,54 @@ describe("TablePage, DM Combat tab: the narrow-screen Party fold", () => {
     expect(editCombatant).not.toHaveBeenCalled();
   });
 });
+
+describe("TablePage when the table can't be shown", () => {
+  const empty = { table: null, members: [], combatants: [], enemyHp: {}, events: [], isLoading: false, error: "", isDm: false };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("says it's loading while the table is first fetched", () => {
+    useTable.mockReturnValue({ ...empty, isLoading: true, refresh: vi.fn() });
+    renderPage();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading table...");
+  });
+
+  it("tells a failed request apart from a missing table: friendly words, Try again, no raw error", async () => {
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    useTable.mockReturnValue({ ...empty, error: "JWT expired: PGRST301", refresh });
+    renderPage();
+
+    expect(screen.getByRole("heading", { level: 1, name: "Couldn't open this table" })).toBeInTheDocument();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load this table. Check your connection and try again.");
+    expect(alert).not.toHaveTextContent("JWT");
+    expect(screen.queryByText(/not found/i)).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(refresh).toHaveBeenCalledTimes(1);
+    // The button that was pressed is gone, so focus goes to the page heading, not nowhere.
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveFocus());
+  });
+
+  it("says the same neutral thing for a table that is gone and one you can't see, with no retry", () => {
+    useTable.mockReturnValue({ ...empty, refresh: vi.fn() });
+    renderPage();
+    expect(screen.getByRole("heading", { level: 1, name: "We couldn't find that table" })).toBeInTheDocument();
+    expect(screen.getByText("This table was not found, or you are not part of it.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Back to My Games" })).toHaveAttribute("href", "/games");
+  });
+
+  it("keeps showing the table, with a gentle note and Try again, when only a refresh fails", async () => {
+    mockTable({ isDm: false });
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    useTable.mockReturnValue({ ...currentTable, error: "Failed to fetch", refresh });
+    renderPage();
+    expect(screen.getByRole("alert")).toHaveTextContent("Couldn't refresh this table just now");
+    expect(screen.getByRole("heading", { name: /Final Fight/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(refresh).toHaveBeenCalled();
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getGroupStatus, getVisibleSteps, getReviewIssues } from "./creationSteps";
+import { getGroupStatus, getVisibleSteps, getReviewIssues, reachableStep } from "./creationSteps";
 import { getRaceFixedCantrip } from "./characterSheet";
 
 const ALL_STEPS = ["name", "race", "subrace", "class", "review"];
@@ -165,5 +165,28 @@ describe("the Gear step", () => {
 
     expect(getReviewIssues(base)).toEqual([{ step: "equipment", message: "Choose your starting gear" }]);
     expect(getReviewIssues({ ...base, equipmentChosen: true })).toEqual([]);
+  });
+});
+
+describe("reachableStep", () => {
+  const steps = ["name", "race", "class", "background", "classSkills", "abilities", "review"];
+  const none = { steps, name: "", race: null, characterClass: null, background: null };
+
+  it("sends an address with nothing chosen back to the first missing answer", () => {
+    expect(reachableStep("review", none)).toBe("name");
+    expect(reachableStep("abilities", { ...none, name: "Brom" })).toBe("race");
+    expect(reachableStep("classSkills", { ...none, name: "Brom", race: {}, characterClass: {} })).toBe("background");
+  });
+
+  it("falls back to the first missing answer for a step this character doesn't have", () => {
+    expect(reachableStep("subrace", { ...none, name: "Brom" })).toBe("race");
+    expect(reachableStep("subrace", { ...none, name: "Brom", race: {}, characterClass: {}, background: {} })).toBe("review");
+  });
+
+  it("lets you stay on or go back to any step you have already reached", () => {
+    const done = { ...none, name: "Brom", race: {}, characterClass: {}, background: {} };
+    expect(reachableStep("race", done)).toBe("race");
+    expect(reachableStep("review", done)).toBe("review");
+    expect(reachableStep("race", { ...none, name: "Brom" })).toBe("race");
   });
 });

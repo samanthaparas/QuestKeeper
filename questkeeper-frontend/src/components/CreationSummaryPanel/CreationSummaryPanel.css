@@ -75,7 +75,8 @@
 
 .creation-summary__chips span {
   margin-right: 2px;
-  color: var(--qk-text-muted);
+  /* A touch stronger than the soft grey, so the small label clears 4.5:1 on the chip. */
+  color: color-mix(in srgb, var(--qk-text) 80%, var(--qk-surface-muted));
   font-size: 12px;
   font-weight: 600;
 }

@@ -70,3 +70,22 @@ describe("spell school icons", () => {
     }
   });
 });
+
+describe("ResultCard in a creation picker", () => {
+  const result = (overrides) => ({ name: "Moonwalker", category: "Race", index: "homebrew-moonwalker", ...overrides });
+
+  it("shows a letter in the picture's place when a race has no artwork", () => {
+    const { container } = render(<ResultCard result={result()} picker onClick={() => {}} />);
+    expect(container.querySelector(".result-card__icon--letter")).toHaveTextContent("M");
+  });
+
+  it("keeps the real artwork when there is some, and the plain card elsewhere", () => {
+    const { container, rerender } = render(<ResultCard result={result({ index: "elf", name: "Elf" })} picker onClick={() => {}} />);
+    expect(container.querySelector("img.result-card__icon")).not.toBeNull();
+    expect(container.querySelector(".result-card__icon--letter")).toBeNull();
+
+    // Outside the pickers (search, browse pages) a missing picture stays missing.
+    rerender(<ResultCard result={result()} onClick={() => {}} />);
+    expect(container.querySelector(".result-card__icon--letter")).toBeNull();
+  });
+});

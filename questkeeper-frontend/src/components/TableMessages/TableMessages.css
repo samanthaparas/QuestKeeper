@@ -629,3 +629,32 @@
   border-radius: var(--qk-radius-small);
   object-fit: cover;
 }
+
+/* On a short window (a phone on its side, or the page zoomed in) the writing
+   box would sit on top of the messages and cover whatever has keyboard focus,
+   such as "Try again". There it simply follows the messages instead. */
+@media (max-height: 560px) {
+  .table-messages__composer {
+    position: static;
+  }
+}
+
+
+/* The drawer's heading and message list take keyboard focus when the screen
+   changes or a retry runs; they aren't controls, so no ring. */
+.table-messages__title:focus,
+.table-messages__messages:focus {
+  outline: none;
+}
+
+/* Room for a focus ring below a control that was scrolled into view. */
+.table-messages__composer textarea,
+.table-messages__composer button {
+  scroll-margin-bottom: 8px;
+}
+
+
+/* A note placed straight in the drawer (the "couldn't load" one) keeps the same side space as the lists. */
+.table-messages__drawer > .status-note {
+  margin: 12px 16px 0;
+}

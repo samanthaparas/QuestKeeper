@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -83,11 +84,20 @@ describe("character creation from the quiz", () => {
     expect(loadQuizBuild).toHaveBeenCalledWith(expect.objectContaining({ id: "iron-guardian" }));
   });
 
+  it("has one main heading on a later step, and moves keyboard focus to it on arrival", async () => {
+    loadQuizBuild.mockResolvedValue(IRON_GUARDIAN);
+    renderFromQuiz({ quizBuild: "iron-guardian", name: "Bram" });
+    const heading = await screen.findByRole("heading", { level: 1, name: /skill proficiencies/i });
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(heading).toHaveFocus();
+  });
+
   it("asks for a name first when the quiz didn't bring one", async () => {
     loadQuizBuild.mockResolvedValue(IRON_GUARDIAN);
     renderFromQuiz({ quizBuild: "iron-guardian" });
     expect(await screen.findByText(/From the quiz: Iron Guardian/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "What's your character's name?" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.queryByText(/Take the character quiz/)).toBeNull();
   });
 
@@ -111,6 +121,54 @@ describe("character creation from the quiz", () => {
   it("offers the quiz on the name step", () => {
     renderFromQuiz(null);
     expect(screen.getByRole("button", { name: "Take the character quiz" })).toBeInTheDocument();
+  });
+});
+
+describe("moving between creation steps", () => {
+  it("leaves keyboard focus on the name box on a first load, even under StrictMode", () => {
+    render(
+      <StrictMode>
+        <MemoryRouter initialEntries={["/characters/new"]}>
+          <Routes>
+            <Route path="/characters/new" element={<CharacterCreationPage />} />
+          </Routes>
+        </MemoryRouter>
+      </StrictMode>,
+    );
+    expect(screen.getByPlaceholderText("Character name")).toHaveFocus();
+  });
+
+  it("keeps a new step's heading on screen when the rail and heading can't both fit", async () => {
+    // jsdom has no layout, so pretend: a 360px-tall window, a heading 500px down the page,
+    // and a scroll position that each scrollIntoView call moves.
+    const savedScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
+    const savedHeight = Object.getOwnPropertyDescriptor(window, "innerHeight");
+    let scrolled = 0;
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 360 });
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value() {
+        if (this.classList.contains("character-creation__layout")) scrolled = 0;
+        else if (this.tagName === "H1") scrolled = 500;
+        else scrolled = 0; // anything else that scrolls the page up would undo the heading
+      },
+    });
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () {
+      const top = (this.tagName === "H1" ? 500 : 0) - scrolled;
+      return { top, bottom: top + 30, left: 0, right: 100, width: 100, height: 30, x: 0, y: top, toJSON() {} };
+    });
+    try {
+      loadQuizBuild.mockResolvedValue(IRON_GUARDIAN);
+      renderFromQuiz({ quizBuild: "iron-guardian", name: "Bram" });
+      const heading = await screen.findByRole("heading", { level: 1, name: /skill proficiencies/i });
+      expect(heading).toHaveFocus();
+      expect(heading.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
+    } finally {
+      rect.mockRestore();
+      if (savedScroll) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", savedScroll);
+      else delete HTMLElement.prototype.scrollIntoView;
+      Object.defineProperty(window, "innerHeight", savedHeight);
+    }
   });
 });
 
@@ -182,6 +240,13 @@ describe("a character in progress survives Back and leaving", () => {
     expect(screen.getByTestId("where")).toHaveTextContent("/characters/new?step=race");
     await userEvent.click(screen.getByRole("button", { name: "Browser back" }));
     expect(screen.getByText("Your characters")).toBeInTheDocument();
+  });
+
+  it("opens at the first missing step when an old address points past what's been chosen", () => {
+    // What Back does after a cancelled character: the address says subrace, but nothing is chosen.
+    renderCreation("/characters/new?step=subrace");
+    expect(screen.getByPlaceholderText("Character name")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /subrace/i })).not.toBeInTheDocument();
   });
 
   it("starts over when you choose Start fresh", async () => {

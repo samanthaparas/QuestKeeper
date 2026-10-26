@@ -21,6 +21,7 @@ import { getCardPreview } from "../../utils/beginnerGuidance";
 import ResultCard from "../../components/ResultCard/ResultCard";
 import SourceFilter from "../../components/SourceFilter/SourceFilter";
 import { filterBySource } from "../../utils/sourceFilters";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import "./SearchPage.css";
 import BrowseLayout from "../../components/BrowseLayout/BrowseLayout";
 import { useBrowseSelection } from "../../hooks/useOpenFromLink";
@@ -150,13 +151,12 @@ function SearchPage() {
           onSearchSubmit={handleSearchSubmit}
         />
 
-        <h1 className="search-page__title">
-          {query ? <>Search results for &ldquo;{query}&rdquo;</> : "Search"}
-        </h1>
-        <p className="search-page__description search-page__scope">
-          Looks through the names of classes, races, spells and backgrounds. Feats and magic items have their
+        <PageBanner art="library" eyebrow="Search" title={<>{query ? <>Search results for &ldquo;{query}&rdquo;</> : "Search"}</>}>
+          <p className="page-banner__description search-page__description search-page__scope">
+            Looks through the names of classes, races, spells and backgrounds. Feats and magic items have their
           own pages under Explore.
         </p>
+        </PageBanner>
 
         <SourceFilter
           underSearch

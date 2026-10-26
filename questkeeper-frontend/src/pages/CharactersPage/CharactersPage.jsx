@@ -7,8 +7,11 @@ import {
   sortByListPosition,
 } from "../../utils/characterStore";
 import CharacterAvatar from "../../components/CharacterAvatar/CharacterAvatar";
-import "./CharactersPage.css";
+import PageBanner from "../../components/PageBanner/PageBanner";
 import Button from "../../components/Button/Button";
+import StatusNote from "../../components/StatusNote/StatusNote";
+import { useFocusAfterRetry } from "../../components/StatusNote/useFocusAfterRetry";
+import "./CharactersPage.css";
 
 // "Your Characters": the signed-in player's list of characters. Each row
 // shows the character's portrait (or their initials if they have none),
@@ -80,16 +83,34 @@ function CharactersPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   // One message line for anything that didn't save (order or delete).
   const [errorMessage, setErrorMessage] = useState("");
+  // The list itself couldn't load: said so (and retried), never shown as "No characters yet".
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [hasRetried, setHasRetried] = useState(false);
   const navigate = useNavigate();
 
   const isReordering = draftOrder !== null;
   const shownCharacters = draftOrder ?? characters;
 
   useEffect(() => {
+    let ignore = false;
     listCharacters()
-      .then((list) => setCharacters(sortByListPosition(list)))
-      .finally(() => setIsLoading(false));
-  }, []);
+      .then((list) => !ignore && setCharacters(sortByListPosition(list)))
+      .catch(() => !ignore && setLoadError(true))
+      .finally(() => !ignore && setIsLoading(false));
+    return () => {
+      ignore = true;
+    };
+  }, [loadAttempt]);
+
+  useFocusAfterRetry(hasRetried, isLoading);
+
+  function retryLoading() {
+    setLoadError(false);
+    setIsLoading(true);
+    setHasRetried(true);
+    setLoadAttempt((count) => count + 1);
+  }
 
   // Asks on the page itself rather than with a browser pop-up, because a
   // browser can be set to silently block pop-ups, which made Delete look
@@ -143,11 +164,11 @@ function CharactersPage() {
   return (
     <main className="characters-page">
       <div className="characters-page__content">
-        <h1 className="characters-page__title">Your Characters</h1>
-
-        <p className="characters-page__description">
-          Saved to your account — sign in anywhere to see the same characters.
-        </p>
+        <PageBanner art="wilderness" eyebrow="Adventurer" title="Your Characters">
+          <p className="page-banner__description">
+            Saved to your account — sign in anywhere to see the same characters.
+          </p>
+        </PageBanner>
 
         <div className="characters-page__toolbar">
           {isReordering ? (
@@ -188,13 +209,19 @@ function CharactersPage() {
         )}
 
         {isLoading && (
-          <p className="characters-page__empty">Loading your characters...</p>
+          <StatusNote variant="loading" focusOnShow={hasRetried}>
+            Loading your characters...
+          </StatusNote>
         )}
 
-        {!isLoading && characters.length === 0 && (
-          <p className="characters-page__empty">
-            No characters yet. Create one to get started.
-          </p>
+        {loadError && (
+          <StatusNote variant="error" onRetry={retryLoading}>
+            Couldn&apos;t load your characters. Check your connection and try again.
+          </StatusNote>
+        )}
+
+        {!isLoading && !loadError && characters.length === 0 && (
+          <StatusNote>No characters yet. Create one to get started.</StatusNote>
         )}
 
         <ul className="characters-page__list">

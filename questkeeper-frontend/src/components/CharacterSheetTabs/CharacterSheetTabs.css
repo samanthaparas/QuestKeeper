@@ -26,6 +26,8 @@
 .character-sheet-tabs__tab--active {
   color: var(--qk-terracotta);
   border-bottom-color: var(--qk-terracotta);
+  /* A very light wash, so the open tab is clear without shouting. */
+  background-color: color-mix(in srgb, var(--qk-terracotta) 8%, transparent);
 }
 
 .character-sheet-tabs__tab:focus-visible {

@@ -118,6 +118,29 @@ describe("AuthPage", () => {
     expect(screen.getByRole("heading", { name: "Log In" })).toBeInTheDocument();
   });
 
+  it("has one main heading in the banner on every view of the page", async () => {
+    renderAt("/login");
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Log In" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Need an account? Sign up" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Sign Up" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Already have an account? Log in" }));
+    await userEvent.click(screen.getByRole("button", { name: "Forgot your password?" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Forgot your password?" })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/^email$/i), "me@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Send reset link" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Check your email" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("moves keyboard focus to the new heading when the view changes", async () => {
+    renderAt("/login");
+    await userEvent.click(screen.getByRole("button", { name: "Forgot your password?" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Forgot your password?" })).toHaveFocus();
+    await userEvent.click(screen.getByRole("button", { name: "Back to log in" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Log In" })).toHaveFocus();
+  });
+
   it("explains when too many reset emails were sent", async () => {
     requestPasswordReset.mockResolvedValue({ error: { status: 429, message: "email rate limit exceeded" } });
     renderAt("/login");

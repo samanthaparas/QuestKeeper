@@ -21,6 +21,9 @@ export function useMessages(myId) {
   const [incoming, setIncoming] = useState(null);
   const [version, setVersion] = useState(0);
   const [error, setError] = useState("");
+  // True until the first load has finished (found or failed), so the drawer
+  // can say "Loading" instead of "you have no tables".
+  const [isLoading, setIsLoading] = useState(true);
 
   const reload = useCallback(async () => {
     if (!myId) return;
@@ -38,6 +41,8 @@ export function useMessages(myId) {
       setError("");
     } catch {
       setError("Couldn't load messages right now.");
+    } finally {
+      setIsLoading(false);
     }
   }, [myId]);
 
@@ -76,6 +81,7 @@ export function useMessages(myId) {
     clearIncoming: () => setIncoming(null),
     version,
     error,
+    isLoading,
     reload,
   };
 }

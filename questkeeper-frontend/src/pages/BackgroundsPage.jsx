@@ -7,6 +7,7 @@ import SearchForm from "../components/SearchForm/SearchForm";
 import ResultCard from "../components/ResultCard/ResultCard";
 import SourceFilter from "../components/SourceFilter/SourceFilter";
 import { filterBySource } from "../utils/sourceFilters";
+import PageBanner from "../components/PageBanner/PageBanner";
 import "../pages/SearchPage/SearchPage.css";
 import { useBrowseSelection } from "../hooks/useOpenFromLink";
 import BrowseLayout from "../components/BrowseLayout/BrowseLayout";
@@ -89,12 +90,12 @@ function BackgroundsPage() {
   return (
     <main className="search-page">
       <div className="search-page__content">
-        <h1 className="search-page__title">Explore Backgrounds</h1>
-
-        <p className="search-page__description">
-          A background represents your character's life before adventuring,
+        <PageBanner art="library" eyebrow="Reference" title="Explore Backgrounds">
+          <p className="page-banner__description search-page__description">
+            A background represents your character's life before adventuring,
           including skills, equipment, personality traits, and story hooks.
         </p>
+        </PageBanner>
 
         <p className="search-page__note">
           Includes the 2014 and 2024 SRD rulesets, backgrounds from Tome of

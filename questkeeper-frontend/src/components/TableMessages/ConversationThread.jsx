@@ -9,6 +9,7 @@ import {
 } from "../../utils/messageStore";
 import { messageTime, personName, readReceipt, whoCanSee } from "./messageLabels";
 import ImageLightbox from "../ImageLightbox/ImageLightbox";
+import StatusNote from "../StatusNote/StatusNote";
 import { shrinkImage } from "../../utils/portraits";
 
 // How often to look again while your latest message hasn't been seen by
@@ -26,6 +27,9 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
+  // The conversation itself couldn't load (shown in the message list, with a retry).
+  const [loadError, setLoadError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [isSending, setIsSending] = useState(false);
   // A picture being dragged over the box (it lights up to say "drop here").
   const [isDragging, setIsDragging] = useState(false);
@@ -34,6 +38,7 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
   // Messages that were unread when it opened get a small "unsealing" flourish.
   const [unreadWhenOpened] = useState(() => conversation?.unread ?? 0);
   const endRef = useRef(null);
+  const listRef = useRef(null);
   const fileRef = useRef(null);
   // Which messages were here when it opened, so ones that arrive while it's
   // open (from someone else) can be marked "New".
@@ -48,6 +53,7 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
       .then((found) => {
         if (ignore) return;
         setMessages(found);
+        setLoadError(false);
         setIsLoading(false);
         if (!knownIds.current) setFirstNew(found.length - unreadWhenOpened);
         if (knownIds.current) {
@@ -57,13 +63,17 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
         knownIds.current = new Set(found.map((message) => message.id));
         markConversationRead(conversationId).then(onRead).catch(() => {});
       })
-      .catch(() => !ignore && setError("Couldn't load this conversation."));
+      .catch(() => {
+        if (ignore) return;
+        setLoadError(true);
+        setIsLoading(false);
+      });
     return () => {
       ignore = true;
     };
     // onRead only refreshes the list; a new one shouldn't refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, version]);
+  }, [conversationId, version, attempt]);
 
   // Keep the newest message in view.
   useEffect(() => {
@@ -156,10 +166,29 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
     <div className="table-messages__thread">
       {conversation && <p className="table-messages__privacy">{whoCanSee(conversation, people, myId)}</p>}
 
-      <ol className="table-messages__messages" aria-label="Messages">
-        {isLoading && <li className="table-messages__empty">Loading...</li>}
-        {!isLoading && messages.length === 0 && (
-          <li className="table-messages__empty">Nothing here yet. Say hello, or share a map.</li>
+      <ol className="table-messages__messages" aria-label="Messages" ref={listRef} tabIndex={-1}>
+        {isLoading && (
+          <StatusNote as="li" variant="loading">
+            Loading...
+          </StatusNote>
+        )}
+        {loadError && (
+          <StatusNote
+            as="li"
+            variant="error"
+            onRetry={() => {
+              setLoadError(false);
+              setIsLoading(true);
+              setAttempt((count) => count + 1);
+              // The button goes away while it tries again; keep focus on the list.
+              listRef.current?.focus();
+            }}
+          >
+            Couldn't load this conversation.
+          </StatusNote>
+        )}
+        {!isLoading && !loadError && messages.length === 0 && (
+          <StatusNote as="li">Nothing here yet. Say hello, or share a map.</StatusNote>
         )}
         {messages.map((message, index) => {
           const mine = message.sender_id === myId;
@@ -190,6 +219,9 @@ function ConversationThread({ conversationId, conversation, people, myId, versio
       <form
         className={`table-messages__composer${isDragging ? " table-messages__composer--dragging" : ""}`}
         onSubmit={handleSend}
+        // On a short window (zoomed in) the browser only reveals the typing cursor, leaving
+        // the rest of the box or its buttons cut off: bring whatever gets focus fully into view.
+        onFocus={(event) => event.target.scrollIntoView?.({ block: "nearest" })}
         onDragOver={handleDragOver}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}

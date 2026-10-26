@@ -4661,3 +4661,142 @@ html:has(.table-page--dm) {
     min-height: 120px;
   }
 }
+
+/* ======== The player's game page: the same banner and panel feel as the DM screen ======== */
+.table-page__header--banner {
+  position: relative;
+  overflow: hidden;
+  min-height: 84px;
+  padding: 12px 20px;
+  align-items: center;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-large);
+  background: var(--qk-surface);
+  box-shadow: 0 10px 26px var(--qk-shadow);
+}
+
+.table-page__header--banner .table-page__banner-art {
+  opacity: 0.85;
+  object-position: center 40%;
+}
+
+.table-page__header--banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    var(--qk-surface) 0%,
+    color-mix(in srgb, var(--qk-surface) 94%, transparent) 40%,
+    color-mix(in srgb, var(--qk-surface) 50%, transparent) 60%,
+    transparent 78%
+  );
+}
+
+.table-page__header--banner > *:not(.table-page__banner-art) {
+  position: relative;
+  z-index: 1;
+}
+
+.table-page__header--banner .table-page__title {
+  font-size: 30px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+/* On a phone the title covers most of the picture, so the wash covers all of it. */
+@media (max-width: 560px) {
+  .table-page__header--banner::after {
+    background: color-mix(in srgb, var(--qk-surface) 86%, transparent);
+  }
+}
+
+.table-page:not(.table-page--dm) .player-card,
+.table-page:not(.table-page--dm) .table-page__combat,
+.table-page:not(.table-page--dm) .table-page__section {
+  box-shadow: 0 6px 16px var(--qk-shadow);
+}
+
+/* Small text on the player's page: a deeper shade where it sat just under 4.5:1 in the light theme. */
+.table-page:not(.table-page--dm) .table-page__back,
+.table-page__header--banner .table-page__guide-link {
+  color: var(--qk-terracotta-hover);
+}
+
+.table-page__header--banner .table-page__role {
+  color: var(--qk-text);
+}
+
+.table-page:not(.table-page--dm) .table-page__tag {
+  color: color-mix(in srgb, var(--qk-text) 82%, var(--qk-moss));
+}
+
+.table-page:not(.table-page--dm) .table-page__tag--monster {
+  color: color-mix(in srgb, var(--qk-text) 70%, var(--qk-terracotta-hover));
+}
+
+/* ======== Banner pictures: never magnified, each with its own focal point ======== */
+
+/* The DM's lantern: a crop of the illustration that keeps the whole lantern
+   (ring to base). It is shown at the band's height with its natural shape,
+   on the right, and the title and join code sit on the quiet panel colour. */
+.table-page--dm .table-page__banner-art--lantern {
+  left: auto;
+  right: 0;
+  width: auto;
+  max-width: 62%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left center;
+  opacity: 1;
+  /* The picture's left edge melts into the panel instead of ending in a hard line. */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 34%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 34%);
+}
+
+/* The player's banner: a village-and-bridge painting drawn at its real size on the
+   right (620px wide, a downscale of the 2172px source), melting into the panel.
+   The band is shallow, so it shows the middle of the scene: castle, village and bridge. */
+.table-page__header--banner .table-page__banner-art--wide {
+  left: auto;
+  right: 0;
+  width: min(100%, 620px);
+  object-fit: cover;
+  object-position: right 60%;
+  opacity: 1;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 26%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 26%);
+}
+
+/* On a phone the decorative picture steps back, so the title stays easy to read. */
+@media (max-width: 560px) {
+  .table-page--dm .table-page__banner-art--lantern {
+    max-width: 48%;
+    opacity: 0.85;
+  }
+}
+
+/* The heading on a table that couldn't be opened or found. */
+.table-page__status-heading {
+  margin: 0 0 16px;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 28px;
+}
+
+.table-page__status-heading + .status-note {
+  margin-bottom: 16px;
+}
+
+.table-page__status-link {
+  display: inline-block;
+  color: var(--qk-terracotta-hover);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.table-page__status-link:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}

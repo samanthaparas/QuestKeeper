@@ -8,7 +8,7 @@
 /* Same width and spacing as the Spells page filters under the search bar. */
 .source-filter--under-search {
   width: min(100%, 760px);
-  margin: 24px auto 16px;
+  margin: 24px 0 16px;
 }
 
 /* Matches the Spells page's "Level" / "Class" / "School" labels. */

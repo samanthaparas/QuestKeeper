@@ -1,0 +1,105 @@
+/* StatusNote: one soft look for "loading", "nothing here yet" and "couldn't load" lines,
+   with a small wax seal so they feel part of the page rather than stray text. */
+.status-note {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 12px 14px 12px 40px;
+  border: 1px dashed var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+  font-size: 14px;
+  line-height: 1.5;
+  list-style: none;
+}
+
+.status-note::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #d0725a, var(--qk-terracotta) 55%, var(--qk-terracotta-hover));
+  box-shadow: 0 1px 2px var(--qk-shadow);
+}
+
+.status-note p {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.status-note--loading::before {
+  animation: status-note-seal 1.4s ease-in-out infinite;
+}
+
+@keyframes status-note-seal {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-note--loading::before {
+    animation: none;
+  }
+}
+
+.status-note--error {
+  border: 1px solid var(--qk-danger);
+  background-color: var(--qk-danger-soft);
+  color: var(--qk-text);
+}
+
+.status-note--error::before {
+  background: var(--qk-danger);
+}
+
+.status-note--error p {
+  font-weight: 600;
+}
+
+/* The Try again button inside a note: a dashed terracotta pill. */
+.status-note__retry {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px dashed var(--qk-terracotta);
+  border-radius: var(--qk-radius-control);
+  background-color: transparent;
+  color: var(--qk-terracotta);
+  font-family: var(--qk-font-body);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.status-note__retry:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* On the pale red error card the usual terracotta text measured 4.2:1; the deeper terracotta clears 4.5:1. */
+.status-note--error .status-note__retry {
+  color: var(--qk-terracotta-hover);
+}
+
+/* A note given keyboard focus after a retry isn't a control, so no ring. */
+.status-note:focus {
+  outline: none;
+}
+
+/* A note standing alone on a page (the signed-in check, a failed list). */
+.status-note-page {
+  max-width: 560px;
+  margin: 48px auto;
+  padding: 0 16px;
+}
+
+main h1:focus {
+  outline: none;
+}

@@ -177,7 +177,7 @@ function AbilityScoreStep({
 
   return (
     <div className="ability-score-step">
-      <h2 className="ability-score-step__title">Assign Ability Scores</h2>
+      <h1 className="ability-score-step__title">Assign Ability Scores</h1>
 
       <div className="ability-score-step__method-toggle">
         <button
