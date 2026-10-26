@@ -8,7 +8,7 @@ It's designed around one idea: rules should feel like friendly guidance from an 
 
 ## Screenshots
 
-_Current as of October 15, 2026, so these show the look before the tavern redesign of the homepage and DM screen. Screenshots of the redesign (made with sample data, not a real table) are listed in the [screenshot history](docs/screenshots/README.md). Screens added after October 15 (campaigns, recaps, the encounter helper, dark mode and more) aren't pictured yet._
+_Current as of October 15, 2026, so these show the look before the redesign. The tavern homepage and the four DM screen tabs (Combat, Story, Players, Prep) have their own dated rounds of sample-data screenshots in the [screenshot history](docs/screenshots/README.md). The site-wide redesign of October 24 to 25 (banners on every page, My Games, Your Characters, the quiz, character creation, sign-in and Messages) and the screens added after October 15 (campaigns, recaps, the encounter helper, dark mode and more) aren't pictured here yet._
 
 ### Home
 
@@ -97,9 +97,9 @@ The header splits the app by who you are tonight: **Explore** (reference pages),
 
 ### Help for brand-new players
 
-- A **Learn the Basics** guide (dice, abilities, turns, the table, choices) with an interactive dice roller.
+- A **Learn the Basics** guide (dice, abilities, turns, the table, choices) with an interactive dice roller and a **Back to top** button once you're well down the page.
 - **Rules words** explained on hover anywhere they appear (Advantage, Bloodied, Concentration…), plus a full Rules words list in the guide.
-- A **character quiz**: up to 20 questions about how you'd handle situations and how you like to play. It suggests three builds, and "Use this build" fills them into character creation. Your results stay easy to get back to.
+- A **character quiz**: up to 20 questions about how you'd handle situations and how you like to play. It suggests three builds, and "Use this build" fills them into character creation. Your answers are kept on your device and in the results link, so a reload, or opening the link again, gets you back to the same three builds.
 
 ### Character creation
 
@@ -110,6 +110,8 @@ The header splits the app by who you are tonight: **Explore** (reference pages),
 - Class feature **choices** (Fighting Style, Favored Enemy, Natural Explorer…) are made during creation, and each feature remembers where it came from (class, subclass, race or background).
 - New characters get real derived stats: AC from the armor they wear, attacks from their weapons, spell components filled in from the SRD, and level-1 features.
 - After creation, a **setup list** on the Features tab points out anything still worth checking.
+- **Every step has its own address** (`?step=class`), so the browser's Back and Forward (or a phone's back swipe) move between steps instead of losing the character. What you've chosen is also kept on the device, and "Picking up where you left off" offers to resume it or **Start fresh**. A stale address can't skip ahead: it lands on the earliest step that still needs an answer.
+- **Race, class, background, subrace and subclass pickers** keep their list-and-details layout, source filters and homebrew buttons, with a round picture tile on each card (a letter when there's no artwork, as for homebrew). Each step has one main heading, and moving to a new step scrolls to it and moves keyboard focus there.
 
 ### The character sheet
 
@@ -183,9 +185,12 @@ Game nights happen in basements and cafés. Every change to a character sheet is
 
 ### Design and accessibility
 
-- A warm parchment-and-terracotta design ("Wayfarer") built on shared color, type and spacing tokens.
+- A warm parchment-and-terracotta design ("Wayfarer") built on shared color, type and spacing tokens, with light and dark themes.
+- **A site-wide redesign (October 24 to 25, 2026)** in the "cozy tavern" style: a shared **page banner** (a painting with the page's real heading, eyebrow and description on top, never baked into the picture) on My Games, the DM screen, Your Characters, the reference pages, the Guide, About, Settings, the quiz, character creation and sign-in. Table cards use generic sample landscapes, never real places, and no generated picture ever replaces an uploaded portrait. Banner artwork is sized and cropped so it stays sharp on phones and large screens.
+- **Calm loading, empty and error states.** One small shared **status note** (a soft card with a wax-seal dot) says "Loading...", "Nothing here yet" or "Couldn't load...", with a **Try again** button when a retry can help. It's used on Messages, Your Characters, My Games, the Monster Library, the table page and the signed-in check. A failed load is never shown as "nothing here" (a failed characters list used to read "No characters yet"), the DM table page tells a failed request apart from a table that's missing or not yours (and says the same neutral thing for both, so nothing leaks about tables you can't see), and the signed-in check waits a quarter of a second before saying anything so it never flashes.
+- **Keyboard and zoom:** layouts are checked at phone (375px), tablet and desktop widths and at real 200% browser zoom. After a retry or a change of view, focus moves to the new heading instead of being lost; the Messages drawer closes on Escape from anywhere and keeps Tab inside itself; and on short or zoomed windows the message box scrolls fully into view. Text colors are measured against the real pixels behind them (4.5:1, or 3:1 for large text).
+- **A mobile audit (October 24):** each new page opens at the top and Back or Forward returns to where you were; popups lock the page and close on Back; unfinished homebrew entries and recaps are kept as drafts; text boxes are 16px on touch screens so iPhones don't zoom in; the sheet's tab and every page title are in the address and the tab; screens use the dynamic viewport height.
 - Gentle motion that respects Reduce Motion, and nothing loops.
-- Loading, empty and error states for everything that waits on the network, and layouts checked at phone (375px), tablet and desktop widths.
 
 ## Tech stack
 
@@ -242,6 +247,7 @@ QuestKeeper/
 |-- docs/
 |   |-- QA_NEW_PLAYER_WALKTHROUGH.md  New-player QA findings and fix tracker
 |   |-- QUESTKEEPER_VISION.md     Product vision and development direction
+|   |-- REDESIGN_REFERENCE.md     Where the redesign mockups and art live, and how the art gets into the app
 |   |-- TWO_ACCOUNT_TEST.md       End-to-end DM + player test for live play
 |   `-- screenshots/              Dated screenshot history (old ones are never replaced)
 |-- questkeeper-backend/
@@ -252,13 +258,16 @@ QuestKeeper/
 |-- questkeeper-frontend/
 |   `-- src/
 |       |-- components/           Reusable pieces (sheet tabs, PartyStrip, TableJournal,
-|       |                         TableHandouts, TableMessages, RollDock, QuickJump...)
+|       |                         TableHandouts, TableMessages, RollDock, QuickJump,
+|       |                         PageBanner, StatusNote, ScrollManager...)
 |       |-- pages/                Pages (Home, reference pages, Guide, Quiz, Homebrew,
 |       |                         CharacterCreation, CharacterSheet, Tables, Table...)
+|       |-- assets/               Banners, sample campaign landscapes and icons (optimized)
 |       |-- utils/                Game rules as plain functions (armor class, skill
 |       |                         grants, feature sources and choices, spell components,
 |       |                         journal, handouts, party strip...) with tests
 |       `-- test/                 Shared test helpers
+|-- scripts/                      Python helpers that turn the artwork sheets into the app's optimized banner and picture files
 |-- supabase/
 |   `-- migrations/               SQL for tables, row-level security and game-rule functions
 |-- render.yaml                   Render Blueprint for both services
@@ -337,11 +346,12 @@ Run from the repository root:
 
 ## Testing and quality
 
-- **About 1,800 frontend tests** (Vitest and React Testing Library) cover the game rules as plain functions (ability scores, HP, level-up, rests, armor class, skill grants, feature sources and choices, spell components, death saves, concentration, condition timers, journal and handout rules, party strip) and the sheet, creation, table, journal and search components. Whole-character "audit" tests build sample characters of every SRD class and race and check the result.
+- **About 1,900 frontend tests** (Vitest and React Testing Library) cover the game rules as plain functions (ability scores, HP, level-up, rests, armor class, skill grants, feature sources and choices, spell components, death saves, concentration, condition timers, journal and handout rules, party strip) and the sheet, creation, table, journal, Messages, sign-in and search components, including the focus, retry and load-failure behaviour. Whole-character "audit" tests build sample characters of every SRD class and race and check the result.
 - **Backend tests** cover the Open5e mappers, the magic item catalog, the spells controller, and AI search (the catalog, checking Claude's answer, the rate limit, and the main failure paths, with the Anthropic SDK replaced by a stand-in so tests never call the API).
 - **CI** runs on every push and pull request to `main`: lint, frontend tests, build, backend tests, and a second job that installs the backend exactly the way Render does (`npm ci --workspaces=false`), so a broken lockfile fails CI instead of the deploy.
 - **Database security rules** are checked by running each migration in a throwaway local Postgres and calling the functions as a DM, a player and an outsider.
-- **Hands-on QA:** a [new-player walkthrough](docs/QA_NEW_PLAYER_WALKTHROUGH.md) tracks 40 usability findings from a first-time player's point of view, and a [two-account test](docs/TWO_ACCOUNT_TEST.md) (DM and player) walks through live play end to end, with a stage added for each new live-play feature (the latest are recaps and campaigns, allowed content and the weak-signal sheet).
+- **Hands-on QA:** a [new-player walkthrough](docs/QA_NEW_PLAYER_WALKTHROUGH.md) tracks more than 60 usability findings from a first-time player's point of view, and a [two-account test](docs/TWO_ACCOUNT_TEST.md) (DM and player) walks through live play end to end, with a stage added for each new live-play feature (the latest are recaps and campaigns, allowed content, the weak-signal sheet and the redesigned DM screen).
+- **Browser checks for the redesign:** pages were checked in real Chrome at phone, tablet and desktop sizes, in both themes and at real 200% zoom, with real key presses and text-contrast measured from pixels. Those checks used sample data and stand-in stores; a pass with real signed-in accounts on a real phone is still to do.
 
 ## Challenges, setbacks and how I solved them
 
@@ -455,6 +465,24 @@ Run from the repository root:
 
 **Solution:** The draft button sends Claude only the notes shared with the whole table. Private notes never leave the database for this feature.
 
+### Phone testing found pages opening halfway down
+
+**Problem:** A friend testing on his phone found the Guide opened mid-page, and a quiz result was lost when the page reloaded.
+
+**Solution:** A small scroll manager puts every new page at the top and restores your place on Back and Forward. Quiz answers are kept on the device and in the results link, character creation got an address for each step plus a saved draft, and popups close on Back. A full pass over ten more phone problems followed (see Design and accessibility).
+
+### Banners that looked soft, and measuring instead of guessing
+
+**Problem:** The first redesign banners were small pictures stretched across wide pages, and some of the cropped art lost its subject.
+
+**Solution:** I measured the real pixels each banner shows on each screen, replaced them with larger paintings, bounded how wide the art is drawn, gave each banner its own focal point, and checked them at 2x and at real 200% zoom. Text over the pictures sits on a dark wash, and its contrast is measured against the actual pixels behind it, not eyeballed. That also showed the tool's first "failures" were measuring mistakes (it was averaging over picture edges), so I now check the method before trusting a number.
+
+### Keyboard checks found what the tests didn't
+
+**Problem:** Automated tests passed, but real key presses in a real browser at 200% zoom showed that Tab could leave the Messages drawer into controls hidden behind it, Escape only worked from inside it, retrying a failed load dropped focus to the top of the page, and the message box sat half off-screen.
+
+**Solution:** The drawer now keeps Tab inside itself and closes on Escape from anywhere, focus moves to the new heading after a retry or a change of screen, and a focused box scrolls fully into view. Each of those has a regression test, so the browser check only has to find them once.
+
 ### Smaller setbacks along the way
 
 - **A pull request merged before its second commit was pushed.** The missing commit was cherry-picked into the next pull request (#151). I now check `git status` and `git log` against `origin/main` before every new branch.
@@ -470,8 +498,9 @@ Run from the repository root:
 
 ### Working on now
 
-- A **visual update** (the "cozy tavern" look). The homepage and all four DM screen tabs (Combat, Story, Players, Prep) are restyled; the character sheet and the rest are next. Screenshots go in dated folders so the before-and-after history keeps growing.
-- Running the **two-account test** for the newest features (recaps and campaigns, allowed content and the weak-signal sheet) before the next game night.
+- **Finishing the site-wide redesign.** Done: the tavern homepage, all four DM screen tabs, the banners and page redesigns, the quiz and character creation, sign-in and Messages, and calm loading and error states (including the DM table page). Still to do: **Homebrew** (the editor, forms and invite page), the error boundary and a warmer Not Found page, tiles for subrace and subclass pickers, and the prepared character, creature and item artwork (not used anywhere yet). The character sheet's three-column layout stays as it is.
+- A **real-device check** of the redesign and the mobile audit (a signed-in pass on a real phone), since the browser checks so far used sample data and stand-in stores.
+- Running the **two-account test** for the newest features (recaps and campaigns, allowed content, the weak-signal sheet and the redesigned DM screen) before the next game night.
 - **Choosing a new name.** Other sites already use "QuestKeeper" for a similar idea, so the name is changing. The rename is on hold until a name is chosen.
 
 ### Blockers and the plan around them
@@ -500,22 +529,25 @@ Run from the repository root:
 - The encounter helper uses the 2014 XP-budget method and SRD monsters only, and its loot scale is my own rough guide.
 - The allowed-content list is a guide: it flags mismatches but doesn't stop a player from picking something, and it doesn't filter the builder's pickers yet.
 - Recap drafts need the Anthropic key on Render, like AI search.
-- **Activity icons:** the DM screen knows how to show a small icon on a log line that carries an explicit kind (attack, damage, healing, spell, turn, handout), but **no live log line has a kind yet**, so none show an icon. The database change that adds kinds is planned and **is not in the repository** (it hasn't been tested). The plan is in [docs/ACTIVITY_EVENT_KINDS_PLAN.md](docs/ACTIVITY_EVENT_KINDS_PLAN.md).
+- **Activity icons:** the DM screen shows a small icon on a log line that carries an explicit kind (attack, damage, healing, spell, turn, handout). The database change that adds kinds (`20261024_activity_kinds.sql`) is in the repository and has been run in Supabase, but only the handout notice sends a kind so far, so most log lines still show no icon. The plan is in [docs/ACTIVITY_EVENT_KINDS_PLAN.md](docs/ACTIVITY_EVENT_KINDS_PLAN.md).
+- **Homebrew pages haven't had the redesign yet**, and an unexpected crash in the app has no friendly fallback page (there's no error boundary).
+- The subrace and subclass pickers have no picture tile, and the generated character, creature and item artwork is prepared but not used anywhere.
 - Round timers are counted by each open copy of a sheet, so the same sheet open in two tabs would count a round twice.
 
 ## Ideas and roadmap
 
 What would make QuestKeeper even better than it was yesterday (encounter prep, recaps, campaigns, allowed content and weak-signal saving from earlier lists are built):
 
-1. **Book subraces as link-outs:** Wood Elf, Drow, Mountain Dwarf, Stout Halfling and Forest Gnome as names, summaries and links, with a one-tap "Make as homebrew".
-2. **Sorting and filtering** on the sheet (items by category, spells by level, favorites), and **splitting item stacks**.
-3. **Better paste-fill** that reads more formats of pasted rules text.
-4. **Automated database and end-to-end tests** for the table rules, so the two-account test can run itself.
-5. **Backend caching and timeouts,** and global search that keeps working if one category fails.
-6. **A beginner mode toggle** to hide hints once a player doesn't need them.
-7. **More table tools:** a shared list of NPCs and places, open quests and threads, a quiet pause button for comfort, the DM tracking a monster's concentration, and table hints.
-8. **More AI help** on top of search by meaning: backstory ideas, "describe the vibe" character suggestions, and AI search over Open5e and homebrew too.
-9. **Works with no signal at all** as an installable app, and **Google sign-in** after the rename.
+1. **Finish the redesign:** Homebrew, an error boundary and a friendlier Not Found page, and tiles or artwork for the remaining pickers.
+2. **Book subraces as link-outs:** Wood Elf, Drow, Mountain Dwarf, Stout Halfling and Forest Gnome as names, summaries and links, with a one-tap "Make as homebrew".
+3. **Sorting and filtering** on the sheet (items by category, spells by level, favorites), and **splitting item stacks**.
+4. **Better paste-fill** that reads more formats of pasted rules text.
+5. **Automated database and end-to-end tests** for the table rules, so the two-account test can run itself.
+6. **Backend caching and timeouts,** and global search that keeps working if one category fails.
+7. **A beginner mode toggle** to hide hints once a player doesn't need them.
+8. **More table tools:** a shared list of NPCs and places, open quests and threads, a quiet pause button for comfort, the DM tracking a monster's concentration, and table hints.
+9. **More AI help** on top of search by meaning: backstory ideas, "describe the vibe" character suggestions, and AI search over Open5e and homebrew too.
+10. **Works with no signal at all** as an installable app, and **Google sign-in** after the rename.
 
 The roadmap stays incremental: each feature should be small enough to understand, build, test and review before the next one.
 
@@ -530,8 +562,9 @@ The roadmap stays incremental: each feature should be small enough to understand
 
 - **October 18 to 19, 2026:** a journal for every character, dark mode, level-up that asks for class feature choices, a calmer sheet, weapons and armor that do the math, multiple companions, and Messages with receipts and screenshots.
 - **October 20 to 21, 2026:** prepared spells, table rules, away players, the encounter and loot helpers, the get-ready heads-up, recaps, campaigns, the allowed-content list and the weak-signal sheet.
+- **October 22 to 25, 2026:** the tavern homepage and a redesign of all four DM screen tabs, a mobile audit from a friend's phone testing, and the site-wide redesign (banners, My Games, Your Characters, the quiz, character creation, sign-in, Messages and calm loading and error states).
 
-As of October 21, 2026 there are 230+ merged pull requests and 310+ commits.
+As of October 25, 2026 there are 240+ merged pull requests and 320+ commits.
 
 ## Content and licensing principles
 
