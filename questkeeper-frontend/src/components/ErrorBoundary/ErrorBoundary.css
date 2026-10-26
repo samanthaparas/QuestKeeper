@@ -1,0 +1,74 @@
+/* Its own small stylesheet and colours from the shared tokens, so the card still looks right
+   if the rest of the page failed to draw. */
+.error-fallback {
+  min-height: 100vh;
+  padding: 48px 16px;
+  background-color: var(--qk-background, #efe2cf);
+  color: var(--qk-text, #34261f);
+  font-family: var(--qk-font-body, system-ui, sans-serif);
+}
+
+.error-fallback__card {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 28px 24px;
+  border: 1px solid var(--qk-border, #cfb493);
+  border-radius: var(--qk-radius-card, 14px);
+  background-color: var(--qk-surface, #fff7e8);
+  text-align: center;
+}
+
+/* A lantern on a dark inset (the picture has a dark background of its own). */
+.error-fallback__thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  background-color: #2a211c;
+  object-fit: cover;
+}
+
+.error-fallback__title {
+  margin: 0;
+  font-family: var(--qk-font-display, Georgia, serif);
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+.error-fallback__text {
+  margin: 0;
+  color: var(--qk-text-muted, #756154);
+  line-height: 1.6;
+}
+
+.error-fallback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.error-fallback__button {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--qk-terracotta, #b45437);
+  border-radius: var(--qk-radius-control, 10px);
+  background-color: transparent;
+  color: var(--qk-terracotta-hover, #98432d);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.error-fallback__button--primary {
+  background-color: var(--qk-terracotta, #b45437);
+  color: var(--qk-on-accent, #fff7e8);
+}
+
+.error-fallback__button:focus-visible {
+  outline: 3px solid var(--qk-focus, #2f7480);
+  outline-offset: 3px;
+}

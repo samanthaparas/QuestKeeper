@@ -88,4 +88,22 @@ describe("ResultCard in a creation picker", () => {
     rerender(<ResultCard result={result()} onClick={() => {}} />);
     expect(container.querySelector(".result-card__icon--letter")).toBeNull();
   });
+
+  it("gives a subrace or subclass a letter tile (never its parent's picture), and keeps the full name for readers", () => {
+    const { container, rerender } = render(
+      <ResultCard result={result({ category: "Subclass", index: "draconic", name: "Draconic Bloodline" })} picker onClick={() => {}} />,
+    );
+    const tile = container.querySelector(".result-card__icon--letter");
+    expect(tile).toHaveTextContent("D");
+    expect(tile).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector("img.result-card__icon")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Draconic Bloodline" })).toBeInTheDocument();
+
+    rerender(<ResultCard result={result({ category: "Subrace", index: "hill-dwarf", name: "élan Hill Dwarf" })} picker onClick={() => {}} />);
+    expect(container.querySelector(".result-card__icon--letter")).toHaveTextContent("É");
+
+    // Outside a creation picker (browse pages) nothing is added.
+    rerender(<ResultCard result={result({ category: "Subclass", index: "draconic", name: "Draconic Bloodline" })} onClick={() => {}} />);
+    expect(container.querySelector(".result-card__icon--letter")).toBeNull();
+  });
 });

@@ -8,6 +8,7 @@ import SourceFilter from "../SourceFilter/SourceFilter";
 import { filterBySource } from "../../utils/sourceFilters";
 import { getCardPreview } from "../../utils/beginnerGuidance";
 import { toHomebrewIndex } from "../../utils/homebrewMappers";
+import InlineLoading from "../StatusNote/InlineLoading";
 
 function PickerStep({
   title,
@@ -161,7 +162,7 @@ function PickerStep({
         </p>
       )}
 
-      {isLoading && <p className="picker-step__status">Loading options...</p>}
+      {isLoading && <InlineLoading className="picker-step__status">Loading options...</InlineLoading>}
       {apiError && <p className="picker-step__error">{apiError}</p>}
       {showEmptyState && <p className="picker-step__status">{emptyMessage}</p>}
 
@@ -211,7 +212,7 @@ function PickerStep({
             )}
 
             {isDetailLoading && (
-              <p className="picker-step__status">Loading details...</p>
+              <InlineLoading className="picker-step__status">Loading details...</InlineLoading>
             )}
 
             <DetailPanel

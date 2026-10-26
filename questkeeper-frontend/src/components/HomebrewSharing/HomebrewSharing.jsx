@@ -12,6 +12,7 @@ import {
   removeGrant,
 } from "../../utils/homebrewStore";
 import Button from "../Button/Button";
+import StatusNote from "../StatusNote/StatusNote";
 import "./HomebrewSharing.css";
 
 function formatDate(value) {
@@ -36,6 +37,11 @@ function HomebrewSharing({ userId, onGrantsChange, onAccessRemoved }) {
   const [newLink, setNewLink] = useState("");
   const [copied, setCopied] = useState("");
   const [error, setError] = useState("");
+  // The sharing details couldn't load (a retry can help); until they have, the lists stay out of sight
+  // so "nobody yet" isn't shown for something that simply hasn't arrived.
+  const [loaded, setLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   // When the page opened, for marking expired links (read once, not every render).
   const [now] = useState(() => Date.now());
 
@@ -54,16 +60,18 @@ function HomebrewSharing({ userId, onGrantsChange, onAccessRemoved }) {
         setSharedTableIds(shares);
         setInvites(pending);
         setGrants(myGrants);
+        setLoaded(true);
+        setLoadFailed(false);
         onGrantsChange?.(myGrants);
       })
-      .catch((loadError) => !ignore && setError(loadError.message));
+      .catch(() => !ignore && setLoadFailed(true));
 
     return () => {
       ignore = true;
     };
     // Load once per user; the callback is only used to report back.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, attempt]);
 
   function updateGrants(next) {
     setGrants(next);
@@ -157,12 +165,21 @@ function HomebrewSharing({ userId, onGrantsChange, onAccessRemoved }) {
         and to anyone who accepts one of your invite links. Drafts stay private.
       </p>
 
-      {error && (
-        <p className="homebrew-sharing__error" role="alert">
-          {error}
-        </p>
+      {error && <StatusNote variant="error">{error}</StatusNote>}
+      {!loaded && !loadFailed && <StatusNote variant="loading">Loading your sharing details...</StatusNote>}
+      {loadFailed && (
+        <StatusNote
+          variant="error"
+          onRetry={() => {
+            setLoadFailed(false);
+            setAttempt((count) => count + 1);
+          }}
+        >
+          Couldn&apos;t load your sharing details. Check your connection and try again.
+        </StatusNote>
       )}
 
+      <div className="homebrew-sharing__content" hidden={!loaded}>
       <div className="homebrew-sharing__block">
         <h3 className="homebrew-sharing__heading">Your tables</h3>
         {tables.length === 0 ? (
@@ -307,6 +324,7 @@ function HomebrewSharing({ userId, onGrantsChange, onAccessRemoved }) {
             ))}
           </ul>
         )}
+      </div>
       </div>
     </section>
   );

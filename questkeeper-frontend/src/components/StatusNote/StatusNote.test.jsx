@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import StatusNote from "./StatusNote";
+import InlineLoading from "./InlineLoading";
 
 describe("StatusNote", () => {
   it("reads a loading note out politely and an error note out at once", () => {
@@ -39,5 +40,15 @@ describe("StatusNote", () => {
     );
     expect(screen.getByRole("status").tagName).toBe("LI");
     expect(screen.getByRole("status")).toHaveFocus();
+  });
+});
+
+describe("InlineLoading", () => {
+  it("is a polite one-line status that never takes focus", () => {
+    render(<InlineLoading>Loading details...</InlineLoading>);
+    const line = screen.getByRole("status");
+    expect(line).toHaveTextContent("Loading details...");
+    expect(line).not.toHaveAttribute("tabindex");
+    expect(line).not.toHaveFocus();
   });
 });

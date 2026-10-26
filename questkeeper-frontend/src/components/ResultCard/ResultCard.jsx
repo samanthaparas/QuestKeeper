@@ -15,6 +15,15 @@ const ICON_RESOLVERS = {
   Background: getBackgroundIcon,
 };
 
+// Subraces and subclasses have no pictures of their own, and a parent race's or class's
+// picture would wrongly suggest what they look like, so their tile is a letter.
+const LETTER_TILE_CATEGORIES = new Set(["Subrace", "Subclass"]);
+
+// The first letter (or whole character, for an emoji or an accented letter) of a name.
+function firstLetter(name) {
+  return (Array.from((name ?? "").trim())[0] ?? "?").toUpperCase();
+}
+
 // id: set by a browse page, so focus can come back to this card when its
 // details close.
 // picker: the creation pickers show a larger picture in a round tile, and a
@@ -48,9 +57,9 @@ function ResultCard({ result, onClick, isSelected, id, picker = false }) {
           aria-hidden="true"
         />
       )}
-      {!iconSrc && picker && resolveIcon && (
+      {!iconSrc && picker && (resolveIcon || LETTER_TILE_CATEGORIES.has(result.category)) && (
         <span className="result-card__icon result-card__icon--letter" aria-hidden="true">
-          {result.name?.trim().charAt(0).toUpperCase()}
+          {firstLetter(result.name)}
         </span>
       )}
       <div className="result-card__text">

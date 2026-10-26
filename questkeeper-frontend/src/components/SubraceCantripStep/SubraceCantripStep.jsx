@@ -3,6 +3,7 @@ import { getTraitDetails } from "../../utils/api";
 import "./SubraceCantripStep.css";
 import Button from "../Button/Button";
 import SpellChoiceOption from "../SpellChoiceOption/SpellChoiceOption";
+import InlineLoading from "../StatusNote/InlineLoading";
 
 function SubraceCantripStep({
   subrace,
@@ -60,9 +61,9 @@ function SubraceCantripStep({
       )}
 
       {traitId && isLoading && (
-        <p className="subrace-cantrip-step__description">
+        <InlineLoading className="subrace-cantrip-step__description">
           Loading cantrip options...
-        </p>
+        </InlineLoading>
       )}
 
       {traitId && error && (

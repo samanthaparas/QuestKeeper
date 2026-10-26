@@ -103,3 +103,28 @@
 main h1:focus {
   outline: none;
 }
+
+/* InlineLoading: the same wax-seal dot as the note, in a single line. */
+.inline-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--qk-text-muted);
+}
+
+.inline-loading::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #d0725a, var(--qk-terracotta) 55%, var(--qk-terracotta-hover));
+  animation: status-note-seal 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inline-loading::before {
+    animation: none;
+  }
+}

@@ -138,3 +138,12 @@
     padding: 16px;
   }
 }
+
+.homebrew-sharing__content {
+  display: grid;
+  gap: 16px;
+}
+
+.homebrew-sharing__content[hidden] {
+  display: none;
+}

@@ -4,6 +4,7 @@ import { getStartingSpellCounts } from "../../utils/characterSheet";
 import "./ClassSpellChoiceStep.css";
 import Button from "../Button/Button";
 import SpellChoiceOption from "../SpellChoiceOption/SpellChoiceOption";
+import InlineLoading from "../StatusNote/InlineLoading";
 
 function ClassSpellChoiceStep({
   characterClass,
@@ -83,9 +84,9 @@ function ClassSpellChoiceStep({
       )}
 
       {isCaster && isLoading && (
-        <p className="class-spell-choice-step__description">
+        <InlineLoading className="class-spell-choice-step__description">
           Loading spell list...
-        </p>
+        </InlineLoading>
       )}
 
       {isCaster && error && (
