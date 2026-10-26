@@ -23,6 +23,29 @@ Two scripts (they need Pillow: `python3 -m venv /tmp/qkvenv && /tmp/qkvenv/bin/p
 - Creature pictures may only be used for an exact, confirmed creature id.
 - Table cards use the campaign landscapes as generic sample art, picked from the table id. They are not real places.
 
+## Which prepared art is used, and where (October 26, 2026)
+
+Used by the app (committed, optimized):
+
+| File | Where it shows |
+| --- | --- |
+| `src/assets/banners/*` | The page banners (seven names; Homebrew and the invite page use `bestiary`) |
+| `src/assets/campaigns/*` | Sample landscapes on table cards |
+| `src/assets/hero/inn-lantern-crop.webp` | The DM screen's lantern banner |
+| `src/assets/support/journal-quill.webp` | Small tile beside "Nothing yet" on My Homebrew |
+| `src/assets/support/sealed-scroll.webp` | The tile on the Homebrew invite card |
+| `src/assets/support/lantern.webp` | The tile on the "Something went wrong" fallback |
+| `src/assets/illustrations/lost-path.webp` | The 404 page (720x480 source in the finish kit; shown at most 320px wide) |
+
+Prepared but **not used by any page**, on purpose (the untracked `characters/`, `creature-portraits-new/`, `items-new/`, `support-new/` folders and `redesign-art-manifest.json` hold them; they are not committed):
+
+- **Characters:** generic portraits. They would suggest a look for a race or class, so they stay unused unless a mapping is approved. They never replace an uploaded portrait.
+- **Creatures:** only exact, confirmed creature ids may use them, and none are mapped yet.
+- **Items:** decorative, no verified exact mapping yet.
+- **Other support icons** (potion, map, signpost, eye, shield and so on): kept for later empty states. The ones with a dark background baked in always sit on their own dark tile.
+
+Subrace and subclass picker cards use a letter tile, not a parent race's or class's picture, so nothing suggests what a lineage or subclass looks like.
+
 ## Rules for the mockups
 
 The boards are visual direction, not specifications. Their text, stats, dates, names, credits and the About portrait are placeholders, and features they depict (scheduling, extra login providers, notifications, new permissions, campaign metadata) are not requirements. Keep the existing storybook navigation, the character sheet's three-column layout, the finished homepage and DM Combat/Story/Players/Prep designs, and the real credits. Copy stays as it is until the later writing pass.
