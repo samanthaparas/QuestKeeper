@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Routes, Route, Link, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Header from "./components/Header/Header";
 import Home from "./pages/Home/Home";
 import About from "./pages/About/About";
@@ -25,31 +25,12 @@ import BackLink from "./components/BackLink/BackLink";
 import ScrollManager from "./components/ScrollManager/ScrollManager";
 import AuthPage from "./pages/AuthPage/AuthPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
+import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
 import SampleCharacterPage from "./pages/Samples/SampleCharacterPage";
 import SampleTablePage from "./pages/Samples/SampleTablePage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import { getPageTitle } from "./utils/pageTitle";
 import { CURRENT_BUILD, fetchDeployedBuild, isNewerBuild } from "./utils/api";
-
-function NotFound() {
-  // The title list only knows real pages, so this one names itself (again
-  // after each move between two unknown addresses).
-  const { pathname } = useLocation();
-  useEffect(() => {
-    document.title = "Page Not Found \u00b7 QuestKeeper";
-  }, [pathname]);
-  return (
-    <main className="search-page">
-      <div className="search-page__content">
-        <h1 className="search-page__title">We couldn't find that page</h1>
-        <p className="search-page__description">
-          The link may be old or mistyped. <Link to="/">Head back home</Link> or{" "}
-          <Link to="/guide">start with the beginner guide</Link>.
-        </p>
-      </div>
-    </main>
-  );
-}
 
 // Keeps the browser tab's title in step with the page.
 function PageTitle() {
@@ -275,7 +256,7 @@ function App() {
         {/* Read-only, made-up previews to look at before signing up. */}
         <Route path="/sample/character" element={<SampleCharacterPage />} />
         <Route path="/sample/table" element={<SampleTablePage />} />
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </>
   );
