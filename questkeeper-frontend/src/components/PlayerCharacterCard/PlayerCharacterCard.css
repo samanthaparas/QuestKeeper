@@ -138,10 +138,10 @@
 /* Same purple as the sheet's condition badges. */
 .player-card__condition {
   padding: 2px 10px;
-  border: 1px solid #7a5a9a;
+  border: 1px solid var(--qk-condition-border);
   border-radius: 999px;
-  background-color: #ece3f3;
-  color: #3d2a52;
+  background-color: var(--qk-condition-soft);
+  color: var(--qk-condition);
   font-size: 13px;
   font-weight: 700;
 }

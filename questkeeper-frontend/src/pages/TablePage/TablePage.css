@@ -1975,10 +1975,10 @@
 }
 
 
-/* Condition words in the DM's party cards: a deeper purple on the pale pill. */
+/* Condition words in the DM's party cards: the condition purple on its pill (it lightens in dark mode). */
 .table-page__dm-party .party-strip__condition,
 .table-page__dm-party .party-strip__condition .rule-term__word {
-  color: #2a1a3b;
+  color: var(--qk-condition);
 }
 
 /* ---------- Shorter Party cards, with statuses on the initiative line ---------- */
@@ -2058,9 +2058,9 @@
 }
 
 .table-page__chip--condition {
-  border-color: #7a5a9a;
-  background-color: #ece3f3;
-  color: #2a1a3b;
+  border-color: var(--qk-condition-border);
+  background-color: var(--qk-condition-soft);
+  color: var(--qk-condition);
 }
 
 .table-page__chip--spell {
@@ -3391,7 +3391,7 @@
 
 .table-page--dm .party-strip__condition,
 .table-page--dm .party-strip__condition .rule-term__word {
-  color: #2a1a3b;
+  color: var(--qk-condition);
 }
 
 .table-page--dm .party-strip__portrait {

@@ -1725,6 +1725,29 @@ describe("CharacterSheetPage on a weak signal", () => {
     );
   }
 
+  it("shows a player's character to their DM as a note, not an editable sheet", async () => {
+    installFakeStorage();
+    saveCharacter.mockClear();
+    const sheet = { ...makeSheet({ name: "Pippa" }), ownerId: "player-1" };
+    getCharacter.mockResolvedValue(sheet);
+    renderAt(sheet.id);
+
+    expect(await screen.findByRole("heading", { name: "Pippa belongs to another player" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to your DM tables" })).toHaveAttribute("href", "/dm");
+    expect(screen.queryByLabelText("Gold")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Level Up/ })).not.toBeInTheDocument();
+    expect(saveCharacter).not.toHaveBeenCalled();
+  });
+
+  it("opens your own character as usual", async () => {
+    installFakeStorage();
+    const sheet = { ...makeSheet({ name: "Mine" }), ownerId: "user-1" };
+    getCharacter.mockResolvedValue(sheet);
+    renderAt(sheet.id);
+    expect(await screen.findByRole("heading", { name: "Mine" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Gold")).toBeInTheDocument();
+  });
+
   it("says so, instead of loading forever, when the sheet can't be reached and there's no copy", async () => {
     installFakeStorage();
     getCharacter.mockRejectedValue(new Error("Failed to fetch"));

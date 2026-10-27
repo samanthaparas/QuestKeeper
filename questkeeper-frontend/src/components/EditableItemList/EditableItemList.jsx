@@ -85,6 +85,10 @@ function EditableItemField({ field, value, onChange, values }) {
         type={field.type}
         className={className}
         placeholder={field.placeholder}
+        // A placeholder vanishes once you type and screen readers may skip
+        // it, so the box carries its own name (a caption above it already
+        // names it).
+        aria-label={field.caption ? undefined : (field.label ?? field.placeholder)}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         // A box that isn't needed right now (the max, when it follows the
@@ -397,6 +401,7 @@ function EditableItemList({
           <textarea
             className="character-sheet__textarea"
             placeholder={textareaField.placeholder}
+            aria-label={textareaField.label ?? textareaField.placeholder}
             value={values[textareaField.key]}
             onChange={(e) =>
               handleFieldChange(textareaField.key, e.target.value)

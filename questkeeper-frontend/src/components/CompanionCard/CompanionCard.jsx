@@ -556,7 +556,7 @@ function CompanionCard({
           getItemId={(item) => item.id}
           fields={[
             { key: "name", type: "text", label: "Attack", placeholder: "Attack (e.g. Bite)" },
-            { key: "toHit", type: "number", placeholder: "To Hit" },
+            { key: "toHit", type: "number", caption: "To hit", placeholder: "+4" },
             { key: "damage", type: "text", placeholder: "Damage (e.g. 2d4+2)" },
             { key: "damageType", type: "text", placeholder: "Type (e.g. Piercing)" },
             { key: "notes", type: "textarea", placeholder: "Notes (e.g. knocks prone on a hit)" },

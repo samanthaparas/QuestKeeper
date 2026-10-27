@@ -33,6 +33,13 @@
   --qk-focus: #487c83;
   --qk-danger-soft: #fbe9e5;
 
+  /* Conditions (Poisoned, Blessed…): purple text, a pale purple fill and a
+     purple edge. Dark mode swaps them so the words stay readable. */
+  --qk-condition: #3d2a52;
+  --qk-condition-soft: #ece3f3;
+  --qk-condition-border: #7a5a9a;
+  --qk-on-condition: #fff;
+
   /* Text on a filled terracotta or danger button or bar, and the fill of
      text boxes. These flip in dark mode. */
   --qk-on-accent: #fff;
@@ -92,6 +99,10 @@
     --qk-focus: #8cc6cc;
     --qk-on-accent: #1f1814;
     --qk-input-bg: #1f1814;
+    --qk-condition: #e2d3f0;
+    --qk-condition-soft: #3a2d47;
+    --qk-condition-border: #b597d4;
+    --qk-on-condition: #1f1814;
     color-scheme: dark;
   }
 }
@@ -117,6 +128,10 @@
   --qk-focus: #8cc6cc;
   --qk-on-accent: #1f1814;
   --qk-input-bg: #1f1814;
+  --qk-condition: #e2d3f0;
+  --qk-condition-soft: #3a2d47;
+  --qk-condition-border: #b597d4;
+  --qk-on-condition: #1f1814;
   color-scheme: dark;
 }
 

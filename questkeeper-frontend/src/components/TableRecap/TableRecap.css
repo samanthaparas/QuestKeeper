@@ -90,6 +90,22 @@
   gap: 8px;
 }
 
+/* Their saved recap, shown above your box after a clash. */
+.table-recap__theirs {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--qk-warning);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+}
+
+.table-recap__theirs-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .table-recap__label {
   font-size: 14px;
   font-weight: 700;

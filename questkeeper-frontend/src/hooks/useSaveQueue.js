@@ -13,7 +13,8 @@ import { writeSheetCache } from "../utils/sheetCache";
 //  - Closing the page with changes not saved asks first.
 //
 // status: "saved" | "saving" | "waiting" (a save failed, retrying) |
-// "signed-out" (needs a login before it can save).
+// "signed-out" (needs a login before it can save) | "not-allowed" (this
+// account can't change the character; trying again won't help).
 // save(sheet) resolves to the saved sheet. onSaved(saved) hears about each
 // save. baseUpdatedAt() gives the server's "last updated" time for the
 // version being edited (kept with the copy on this device).
@@ -57,9 +58,12 @@ export function useSaveQueue({ characterId, save, onSaved, baseUpdatedAt }) {
       latest.current.onSaved?.(saved);
     } catch (failure) {
       const signedOut = /signed out/i.test(failure?.message ?? "");
+      // Refused rather than unreachable: the owner check, or the database's
+      // row rules (Postgres code 42501).
+      const notAllowed = failure?.code === "not_owner" || failure?.code === "42501";
       setError(failure?.message ?? "");
-      setStatus(signedOut ? "signed-out" : "waiting");
-      if (!signedOut) {
+      setStatus(signedOut ? "signed-out" : notAllowed ? "not-allowed" : "waiting");
+      if (!signedOut && !notAllowed) {
         const wait = RETRY_MS[Math.min(failures.current, RETRY_MS.length - 1)];
         failures.current += 1;
         timer.current = setTimeout(() => attemptRef.current(), wait);

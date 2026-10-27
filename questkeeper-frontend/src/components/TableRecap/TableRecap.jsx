@@ -139,8 +139,12 @@ function TableRecap({ tableId, entries = [], currentSession = 1, campaign = 1, s
         const theirs = latest.find(
           (item) => (item.campaign_number ?? 1) === campaign && item.session_number === selected,
         );
-        setEditing((current) => ({ ...current, expectedAt: theirs?.updated_at ?? null }));
-        setMessage("Someone else changed this just now. Their version is shown above. Yours is still in the box: Save again to replace theirs.");
+        setEditing((current) => ({ ...current, expectedAt: theirs?.updated_at ?? null, conflict: true }));
+        setMessage(
+          theirs
+            ? "Someone else changed this just now. Their version is shown above. Yours is still in the box: Save again to replace theirs."
+            : "Someone else removed this recap just now. Yours is still in the box: Save again to put it back.",
+        );
       } else {
         setMessage(failure.message ?? "Couldn't save the recap.");
       }
@@ -186,6 +190,21 @@ function TableRecap({ tableId, entries = [], currentSession = 1, campaign = 1, s
 
         {editing ? (
           <form className="table-recap__form" onSubmit={save}>
+            {/* After a clash, their saved words sit above yours, so you can
+                compare before choosing to replace them. */}
+            {editing.conflict && recap && (
+              <div className="table-recap__theirs">
+                <p className="table-recap__theirs-title">Their saved version</p>
+                <div className="table-recap__text">
+                  {paragraphs.map((paragraph, index) => (
+                    <p key={index}>{paragraph}</p>
+                  ))}
+                  <p className="table-recap__byline">
+                    Last changed by {recap.updated_by_name || "someone"} · {formatStamp(recap.updated_at)}
+                  </p>
+                </div>
+              </div>
+            )}
             <label className="table-recap__label" htmlFor={textareaId}>
               Recap for session {selectedLabel}
             </label>

@@ -1856,6 +1856,21 @@ describe("TablePage, DM Combat tab: compact rows, the party summary and the dama
     expect(screen.getByRole("heading", { name: "Selected · Kobold" })).toBeInTheDocument();
   });
 
+  it("lets go of a picked creature when you tap it again, and follows the turn", async () => {
+    mockTable({ isDm: true });
+    withAlly();
+    renderPage();
+
+    const select = () => rowFor("Sir Pip").querySelector(".table-page__row-select");
+    await userEvent.click(select());
+    expect(screen.getByRole("heading", { name: "Selected · Sir Pip" })).toBeInTheDocument();
+
+    await userEvent.click(select());
+    expect(screen.getByRole("heading", { name: "Selected · Kobold" })).toBeInTheDocument();
+    expect(screen.getByText("Following the turn")).toBeInTheDocument();
+    expect(select()).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("keeps who you picked, and what you typed for them, when a live update arrives", async () => {
     mockTable({ isDm: true });
     withAlly();
@@ -1914,6 +1929,20 @@ describe("TablePage, DM Combat tab: compact rows, the party summary and the dama
     renderPage();
     expect(within(rowFor("Sir Pip")).getByLabelText("Initiative for Sir Pip")).toBeInTheDocument();
     expect(within(rowFor("Sir Pip")).getByRole("button", { name: "Roll d20" })).toBeInTheDocument();
+  });
+
+  it("before the fight, opens a creature's panel on the first tap and closes it on the second", async () => {
+    mockTable({ isDm: true, combatActive: false });
+    withAlly();
+    renderPage();
+    expect(screen.queryByRole("heading", { name: /^Selected ·/ })).not.toBeInTheDocument();
+
+    const select = () => rowFor("Sir Pip").querySelector(".table-page__row-select");
+    await userEvent.click(select());
+    expect(screen.getByRole("heading", { name: "Selected · Sir Pip" })).toBeInTheDocument();
+
+    await userEvent.click(select());
+    expect(screen.queryByRole("heading", { name: /^Selected ·/ })).not.toBeInTheDocument();
   });
 
   it("keeps a player's page as it was: whole rows, no list-and-panel, no creature pictures", () => {

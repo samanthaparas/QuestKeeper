@@ -16,6 +16,21 @@ describe("loadSheet", () => {
     expect(readSheetCache("c1")).toMatchObject({ sheet: server, synced: true, baseUpdatedAt: server.updatedAt });
   });
 
+  it("opens someone else's character for reading only, and keeps no copy of it", async () => {
+    // A copy with unsaved edits left over from an earlier visit is dropped too.
+    writeSheetCache("c1", { sheet: { ...server, hp: 1 }, synced: false, baseUpdatedAt: server.updatedAt });
+    const theirs = { ...server, ownerId: "player-1" };
+    const result = await loadSheet("c1", async () => theirs, { viewerId: "dm-1" });
+    expect(result).toEqual({ sheet: theirs, source: "not-owner" });
+    expect(readSheetCache("c1")).toBeNull();
+  });
+
+  it("opens the owner's own character as usual", async () => {
+    const mine = { ...server, ownerId: "player-1" };
+    const result = await loadSheet("c1", async () => mine, { viewerId: "player-1" });
+    expect(result.source).toBe("server");
+  });
+
   it("says when the character isn't there", async () => {
     expect(await loadSheet("c1", async () => null)).toEqual({ sheet: null, source: "server" });
   });

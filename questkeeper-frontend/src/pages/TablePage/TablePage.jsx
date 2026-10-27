@@ -1750,8 +1750,10 @@ function TablePage() {
         // Before the fight nobody is "selected" until the DM picks someone (their panel isn't shown before that).
         selected={combatant.id === (!table.combat_active && pickedId === null ? null : selectedId)}
         statusRow={sheet ? partyRowById.get(sheet.id) : null}
-        // Picking whoever is up goes back to following the turn.
-        onSelect={(id) => setPickedId(id === currentId ? null : id)}
+        // Picking whoever is up goes back to following the turn. Tapping the
+        // one you already picked lets go of it: before a fight that closes
+        // its panel, during one the panel follows the turn again.
+        onSelect={(id) => setPickedId(id === currentId || id === pickedId ? null : id)}
         playerStats={
           sheet?.combat?.hitPoints
             ? {

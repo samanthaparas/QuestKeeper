@@ -6,6 +6,9 @@ function rowToSheet(row) {
     id: row.id,
     updatedAt: row.updated_at,
     listPosition: row.list_position ?? null,
+    // Who the character belongs to. A DM can read the characters at their
+    // table, so the sheet uses this to tell "mine" from "a player's".
+    ownerId: row.user_id ?? null,
   };
 }
 
@@ -57,8 +60,9 @@ export async function getCharacter(id) {
 export async function saveCharacter(sheet) {
   // listPosition lives in its own column (see saveCharacterOrder), so it's
   // kept out of the sheet's saved data.
+  // ownerId comes from the row's own column, so it isn't saved inside the data.
   // eslint-disable-next-line no-unused-vars
-  const { id, listPosition, ...rest } = sheet;
+  const { id, listPosition, ownerId, ...rest } = sheet;
   // getSession reads the saved session locally. getUser would make a network
   // call to the login service on every save, which counts toward its rate limit.
   const {
@@ -66,6 +70,14 @@ export async function saveCharacter(sheet) {
   } = await supabase.auth.getSession();
 
   if (!session) throw new Error("You are signed out. Log in to save changes.");
+  // Only the owner can save, and a save never hands the character to someone
+  // else. (The database refuses it too; this says why, instead of looking
+  // like a lost connection.)
+  if (ownerId && ownerId !== session.user.id) {
+    throw Object.assign(new Error("Only the player who owns this character can change it."), {
+      code: "not_owner",
+    });
+  }
 
   const { data, error } = await supabase
     .from("characters")

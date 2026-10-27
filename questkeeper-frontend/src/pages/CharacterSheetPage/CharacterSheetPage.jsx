@@ -515,7 +515,9 @@ function CharacterSheetPage() {
   // time of the version being edited is kept so a copy can tell, next visit,
   // whether the sheet changed somewhere else meanwhile.
   const serverUpdatedAt = useRef(null);
-  const [loadNote, setLoadNote] = useState({ offline: false, recovered: false, conflict: null, failed: false });
+  // notOwner: someone else's character (a DM opening a player's sheet), shown
+  // as a short note instead of an editable sheet.
+  const [loadNote, setLoadNote] = useState({ offline: false, recovered: false, conflict: null, failed: false, notOwner: false });
   const [loadAttempt, setLoadAttempt] = useState(0);
   const queue = useSaveQueue({
     characterId: id,
@@ -549,7 +551,7 @@ function CharacterSheetPage() {
       );
     }
 
-    loadSheet(id)
+    loadSheet(id, undefined, { viewerId: user?.id ?? null })
       .then((result) => {
         if (isCancelled) return;
         serverUpdatedAt.current = result.sheet?.updatedAt ?? null;
@@ -558,6 +560,7 @@ function CharacterSheetPage() {
           recovered: result.source === "recovered",
           conflict: result.source === "conflict" ? result.mine : null,
           failed: false,
+          notOwner: result.source === "not-owner",
         });
         show(result.sheet);
         // Edits that hadn't saved (from an earlier visit or while offline)
@@ -567,7 +570,7 @@ function CharacterSheetPage() {
       .catch(() => {
         if (isCancelled) return;
         // No signal and no copy on this device: say so, instead of loading forever.
-        setLoadNote({ offline: false, recovered: false, conflict: null, failed: true });
+        setLoadNote({ offline: false, recovered: false, conflict: null, failed: true, notOwner: false });
         show(null);
       });
 
@@ -618,6 +621,27 @@ function CharacterSheetPage() {
         <h1 className="character-sheet__title">Character not found</h1>
         <Link className="character-sheet__back-link" to="/characters">
           Back to Characters
+        </Link>
+      </main>
+    );
+  }
+
+  // Someone else's character. A DM can read the characters at their table,
+  // but only on the table's Players tab, which is read-only by design. An
+  // editable sheet here would only fail to save.
+  if (loadNote.notOwner) {
+    return (
+      <main className="character-sheet character-sheet--empty">
+        <h1 className="character-sheet__title">{sheet.name || "This character"} belongs to another player</h1>
+        <p>
+          Only the player who made this character can change it. If you&apos;re their DM, you can read it on your
+          table&apos;s <strong>Players</strong> tab.
+        </p>
+        <Link className="character-sheet__back-link" to="/dm">
+          Go to your DM tables
+        </Link>
+        <Link className="character-sheet__back-link" to="/characters">
+          Back to your Characters
         </Link>
       </main>
     );
@@ -809,6 +833,9 @@ function CharacterSheetPage() {
   }
 
   function persistSheet(next) {
+    // Never save over someone else's character (the page shows a note, not
+    // the sheet, but a background tidy-up must not slip through either).
+    if (loadNote.notOwner) return;
     // Back above 0 HP (healing, a rest, a typed number): the death save
     // marks are wiped, ready for the next time.
     const isUp = (next.combat?.hitPoints?.current ?? 0) > 0;
