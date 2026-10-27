@@ -120,6 +120,17 @@ describe("useSaveQueue", () => {
     expect(save).toHaveBeenCalledTimes(1);
   });
 
+  it("says a refused save isn't allowed, and doesn't retry it like a lost connection", async () => {
+    const refused = Object.assign(new Error("Only the player who owns this character can change it."), { code: "not_owner" });
+    const save = vi.fn().mockRejectedValue(refused);
+    const { result } = setup(save);
+    act(() => result.current.queueSave({ id: "c1" }));
+    await tick(700);
+    expect(result.current.status).toBe("not-allowed");
+    await tick(120000);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
   it("asks before the page closes while changes are unsaved, and not otherwise", async () => {
     const save = vi.fn().mockRejectedValue(new Error("offline"));
     const { result } = setup(save);

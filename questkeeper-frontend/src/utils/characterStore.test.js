@@ -41,6 +41,25 @@ describe("saveCharacter", () => {
     await expect(saveCharacter({ id: "c1", name: "Dangit" })).rejects.toThrow(/signed out/i);
     expect(upsert).not.toHaveBeenCalled();
   });
+
+  it("refuses to save someone else's character, and never hands it to the saver", async () => {
+    supabase.auth.getSession.mockResolvedValue({ data: { session: { user: { id: "dm-1" } } } });
+
+    await expect(saveCharacter({ id: "c1", name: "Dangit", ownerId: "player-1" })).rejects.toMatchObject({
+      code: "not_owner",
+    });
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("saves the owner's own character without putting ownerId into the saved data", async () => {
+    supabase.auth.getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+
+    await saveCharacter({ id: "c1", name: "Dangit", ownerId: "u1" });
+
+    const row = upsert.mock.calls[0][0];
+    expect(row.user_id).toBe("u1");
+    expect(row.data).not.toHaveProperty("ownerId");
+  });
 });
 
 describe("saveCharacter and list order", () => {

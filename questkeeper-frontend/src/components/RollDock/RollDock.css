@@ -319,7 +319,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 4px 8px;
-  color: #3d2a52;
+  color: var(--qk-condition);
   font-size: 12px;
   font-weight: 700;
   text-align: right;
@@ -328,10 +328,10 @@
 .roll-dock__condition-use {
   min-height: 24px;
   padding: 0 10px;
-  border: 1px solid #7a5a9a;
+  border: 1px solid var(--qk-condition-border);
   border-radius: 999px;
-  background-color: #ece3f3;
-  color: #3d2a52;
+  background-color: var(--qk-condition-soft);
+  color: var(--qk-condition);
   font: inherit;
   cursor: pointer;
 }

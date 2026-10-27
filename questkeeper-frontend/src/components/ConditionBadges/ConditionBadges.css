@@ -33,16 +33,16 @@
   gap: 4px;
   min-height: 28px;
   padding: 0 4px 0 10px;
-  border: 1px solid #7a5a9a;
+  border: 1px solid var(--qk-condition-border);
   border-radius: 999px;
-  background-color: #ece3f3;
-  color: #3d2a52;
+  background-color: var(--qk-condition-soft);
+  color: var(--qk-condition);
   font-size: 13px;
   font-weight: 800;
 }
 
 .condition-badges__badge .rule-term__word {
-  text-decoration-color: #7a5a9a;
+  text-decoration-color: var(--qk-condition-border);
 }
 
 .condition-badges__steps {
@@ -212,10 +212,10 @@
   width: 22px;
   height: 22px;
   padding: 0;
-  border: 1px solid #7a5a9a;
+  border: 1px solid var(--qk-condition-border);
   border-radius: 50%;
   background: none;
-  color: #3d2a52;
+  color: var(--qk-condition);
   font: inherit;
   font-size: 12px;
   font-weight: 800;
@@ -224,8 +224,8 @@
 
 .condition-badges__info:hover,
 .condition-badges__info[aria-expanded="true"] {
-  background-color: #7a5a9a;
-  color: #fff;
+  background-color: var(--qk-condition-border);
+  color: var(--qk-on-condition);
 }
 
 .condition-badges__info:focus-visible {

@@ -53,11 +53,13 @@ describe("CompanionCard", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Add Attack" }));
     await userEvent.type(screen.getByPlaceholderText("Attack (e.g. Bite)"), "Bite");
-    await userEvent.type(screen.getByPlaceholderText("To Hit"), "4");
-    await userEvent.type(screen.getByPlaceholderText("Damage (e.g. 2d4+2)"), "2d4+2");
+    // Every box has a name of its own, not just a placeholder that vanishes.
+    await userEvent.type(screen.getByRole("spinbutton", { name: "To hit" }), "4");
+    await userEvent.type(screen.getByRole("textbox", { name: "Damage (e.g. 2d4+2)" }), "2d4+2");
+    expect(screen.getByRole("textbox", { name: "Type (e.g. Piercing)" })).toBeInTheDocument();
     await userEvent.click(screen.getAllByRole("button", { name: "Add Attack" }).at(-1));
 
-    expect(onAttackAdd).toHaveBeenCalledWith(expect.objectContaining({ name: "Bite", damage: "2d4+2" }));
+    expect(onAttackAdd).toHaveBeenCalledWith(expect.objectContaining({ name: "Bite", toHit: "4", damage: "2d4+2" }));
   });
 
   it("offers a picture upload beside the name, and drops the paw once there's a picture", () => {

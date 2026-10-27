@@ -4,7 +4,8 @@ import "./SaveStatus.css";
 // than "everything is saved" is going on. It says nothing at all when all is
 // well, so it never adds noise.
 //
-// status: from useSaveQueue ("saved" | "saving" | "waiting" | "signed-out").
+// status: from useSaveQueue ("saved" | "saving" | "waiting" | "signed-out" |
+// "not-allowed").
 // isOfflineCopy: the sheet shown is the copy kept on this device, because
 // QuestKeeper couldn't be reached. recovered: changes from an earlier visit
 // that hadn't saved were brought back. onRetry(): try saving now.
@@ -41,11 +42,13 @@ function SaveStatus({ status = "saved", isOfflineCopy = false, recovered = false
     lines.push("Not saved yet. Your changes are kept on this device and will save as soon as the connection is back.");
   } else if (status === "signed-out") {
     lines.push("You're signed out, so changes can't save yet. Log in again and they will. They're kept on this device.");
+  } else if (status === "not-allowed") {
+    lines.push("This change can't be saved: only the player who owns this character can change it.");
   }
 
   if (lines.length === 0 && !(status === "saving" && recovered)) return null;
 
-  const isWarning = status === "waiting" || status === "signed-out" || isOfflineCopy;
+  const isWarning = status === "waiting" || status === "signed-out" || status === "not-allowed" || isOfflineCopy;
   return (
     <div className={`save-status${isWarning ? " save-status--warning" : ""}`} role="status" aria-live="polite">
       <p className="save-status__text">{lines.join(" ")}</p>

@@ -94,6 +94,10 @@ describe("TableRecap", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save recap" }));
 
     expect(await screen.findByText(/Someone else changed this just now/)).toBeInTheDocument();
+    // Their saved words really are shown above the box, with who and when.
+    expect(screen.getByText("Their saved version")).toBeInTheDocument();
+    expect(screen.getByText("Their version.")).toBeInTheDocument();
+    expect(screen.getByText(/Last changed by Pippa/)).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /Recap for session 2/ })).toHaveValue(`${RECAP.body} Mine.`);
 
     await userEvent.click(screen.getByRole("button", { name: "Save recap" }));

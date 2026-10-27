@@ -37,6 +37,13 @@ describe("SaveStatus", () => {
     expect(screen.getByRole("status")).toHaveTextContent("You're signed out, so changes can't save yet");
   });
 
+  it("says a refused save isn't allowed, without blaming the connection or offering Try now", () => {
+    render(<SaveStatus status="not-allowed" onRetry={vi.fn()} />);
+    expect(screen.getByRole("status")).toHaveTextContent("only the player who owns this character can change it");
+    expect(screen.getByRole("status")).not.toHaveTextContent(/connection/);
+    expect(screen.queryByRole("button", { name: "Try now" })).not.toBeInTheDocument();
+  });
+
   it("asks which version to keep when the sheet changed on another device", async () => {
     const onKeepMine = vi.fn();
     const onUseSaved = vi.fn();

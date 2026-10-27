@@ -1,5 +1,5 @@
 import { getCharacter } from "./characterStore";
-import { readSheetCache, writeSheetCache } from "./sheetCache";
+import { clearSheetCache, readSheetCache, writeSheetCache } from "./sheetCache";
 
 // Opens a character sheet, using the copy kept on this device (see
 // sheetCache.js) when that's safer than the server's:
@@ -11,10 +11,13 @@ import { readSheetCache, writeSheetCache } from "./sheetCache";
 //   "conflict"   edits were waiting AND the sheet changed somewhere else (another
 //                device). The server's sheet is shown, with the waiting edits
 //                in `mine`, so the person chooses.
+//   "not-owner"  the character belongs to someone else (a DM reading a
+//                player's character). It opens for reading only, and no copy
+//                is kept on this device.
 // Resolves { sheet, source, unsynced?, mine? }; sheet is null when the
 // character isn't there. Throws when the server can't be reached and there is
-// no copy on this device.
-export async function loadSheet(id, load = getCharacter) {
+// no copy on this device. viewerId: who is signed in.
+export async function loadSheet(id, load = getCharacter, { viewerId = null } = {}) {
   const cached = readSheetCache(id);
 
   let server;
@@ -25,6 +28,12 @@ export async function loadSheet(id, load = getCharacter) {
     throw failure;
   }
   if (!server) return { sheet: null, source: "server" };
+
+  if (viewerId && server.ownerId && server.ownerId !== viewerId) {
+    // Never keep (or bring back) edits to someone else's character.
+    clearSheetCache(id);
+    return { sheet: server, source: "not-owner" };
+  }
 
   if (cached && !cached.synced) {
     if (!cached.baseUpdatedAt || cached.baseUpdatedAt === server.updatedAt) {
