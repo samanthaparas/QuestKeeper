@@ -242,8 +242,7 @@ Everything that belongs to a person goes straight from the browser to Supabase, 
 ```text
 QuestKeeper/
 |-- .github/workflows/
-|   |-- ci.yml                    Lint, tests, build, and a "install like Render" backend check
-|   `-- keep-api-awake.yml        Pings the free API during Monday game night
+|   `-- ci.yml                    Lint, tests, build, and a "install like Render" backend check
 |-- docs/
 |   |-- QA_NEW_PLAYER_WALKTHROUGH.md  New-player QA findings and fix tracker
 |   |-- QUESTKEEPER_VISION.md     Product vision and development direction
@@ -326,9 +325,9 @@ The Supabase values are needed for accounts, characters and tables. Run the SQL 
 QuestKeeper is deployed on Render from the [`render.yaml`](render.yaml) Blueprint:
 
 - [Frontend](https://questkeeper-it0i.onrender.com): `questkeeper`, a Vite static site with a single-page-app rewrite.
-- [Backend API](https://questkeeper-api.onrender.com): `questkeeper-api`, a Node/Express web service on the free plan. AI search needs `ANTHROPIC_API_KEY` set in the service's environment on Render.
+- [Backend API](https://questkeeper-api.onrender.com): `questkeeper-api`, a Node/Express web service on the Starter plan. AI search needs `ANTHROPIC_API_KEY` set in the service's environment on Render.
 
-The free API sleeps after about 15 minutes without requests, and the first request after that takes around 20 seconds. A scheduled GitHub Action pings it every 10 minutes during Monday game night so it stays awake while the group plays.
+The paid plan keeps the API awake all the time, so there's no slow first request after a quiet spell.
 
 ## Available commands
 
@@ -369,7 +368,9 @@ Run from the repository root:
 
 **What I tried:** I restarted the service, ruled out scheduled maintenance, checked the logs, and opened a support ticket (escalated past Render's AI assistant to their team).
 
-**Where it stands:** I moved back to the free plan (#137) so the site works, and added the Monday keep-awake workflow (#138) so game night isn't slowed by cold starts. The ticket is still open, and moving to the paid plan is blocked until Render fixes its routing.
+**What I did meanwhile:** I moved back to the free plan (#137) so the site works, and added a Monday keep-awake workflow (#138) so game night wasn't slowed by cold starts.
+
+**Solution:** On 2026-10-28 I tried Starter again and every request worked, so the API stays on the paid plan and the keep-awake workflow is gone.
 
 ### SRD class features came with every subclass attached
 
@@ -507,7 +508,6 @@ Run from the repository root:
 
 - **The name isn't unique.** Plan: pick a name, check the web and domain availability, then rename the text across the app and docs in one pass (the repo, the Supabase project and the Render service names can stay as they are at first). The same domain can then be used for Google sign-in.
 - **Google sign-in** is waiting on a Google Cloud OAuth client and the Google provider in Supabase. Publishing the consent screen may reject an `onrender.com` address, so the choice is test mode with a small list of users, or a domain of its own after the rename. The secret never goes in chat or the repo. The button gets built after the name is settled.
-- **Render's paid plan** returns 502s until Render fixes its routing (support ticket open). Until then the API is on the free plan and sleeps when idle, with game night covered by the keep-awake workflow.
 - **Opening a never-seen sheet with no signal.** The weak-signal tools cover sheets already opened. A progressive web app (a service worker) would make the whole app open offline. That's a bigger step and is deliberately not built yet.
 - **Migrations run by hand.** Each new feature ships a SQL file that has to be run in the Supabase SQL editor, in date order. Plan: keep listing the exact files in each pull request, and look at the Supabase CLI later.
 - **Newest features not yet played with two accounts.** Plan: the checklist now has steps for each, and they get run before game night.
