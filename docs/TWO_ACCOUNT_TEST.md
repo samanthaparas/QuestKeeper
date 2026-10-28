@@ -2,7 +2,7 @@
 
 A full run of a fight with a DM and a player on separate accounts. It is the end-to-end check for live play (Tables), run near the end of a batch of work so every new feature is tested together. It covers the table help for new groups (QA row #17), DM nudges, and the clearer monster rows (#36).
 
-**Interactive version:** [QuestKeeper Two-Account Test](https://claude.ai/artifact/4hiFkcPtrP1BSa2d1iihig) (private to the owner). It has the same steps, with Works/Problem marks, notes per stage and a copyable report. This file is the version-controlled copy of the first parts only; the interactive page is the maintained, full version (32 parts) and is where results are marked. Part 10 below is the redesigned DM screen.
+**Interactive version:** [QuestKeeper Two-Account Test](https://claude.ai/artifact/4hiFkcPtrP1BSa2d1iihig) (private to the owner). It has the same steps, with Works/Problem marks, notes per stage and a copyable report. This file is the version-controlled copy of the first parts only; the interactive page is the maintained, full version and is where results are marked. On 2026-10-27 the steps already marked Works were removed, leaving 23 parts and 212 steps, split into "Before Monday" (43) and "Later" (169). Part 10 below is the redesigned DM screen.
 
 ## How to run it
 
