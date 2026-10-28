@@ -2,7 +2,7 @@ services:
   - type: web
     name: questkeeper-api
     runtime: node
-    plan: free # back on free while Render fixes 502s on Starter; switch back when fixed
+    plan: starter # retrying Starter on 2026-10-28; if every request is a 502 again, go back to free
     rootDir: questkeeper-backend
     buildCommand: npm ci --workspaces=false
     startCommand: npm start
