@@ -1748,6 +1748,30 @@
   }
 }
 
+/* Short laptop windows (about 650 to 820 tall): with the name, HP, saves
+   and rest buttons pinned at the top, the tab content was left a strip about
+   170px tall. Here the whole right side scrolls as one instead, so the top
+   part scrolls away and the Actions list gets the height; the tab row stays
+   stuck at the top so switching tabs is always in reach. */
+@media (min-width: 1024px) and (max-height: 820px) {
+  .character-sheet__body {
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  .character-sheet__main {
+    flex: none;
+    overflow-y: visible;
+  }
+
+  .character-sheet__tabbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: var(--qk-background);
+  }
+}
+
 /* Bigger screens: give the rail and text more room */
 @media (min-width: 1500px) and (min-height: 800px) {
   .character-sheet__shell {
@@ -2791,6 +2815,51 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
 .character-sheet__row-panel {
   margin: 4px 0 12px;
   list-style: none;
+}
+
+/* In the attacks list, the row and what opens under it are one box: the
+   row keeps the top half, the panel the bottom, with a terracotta edge
+   round both so it's clear which weapon you're attacking with. */
+.character-sheet__attacks-row--open {
+  border-color: var(--qk-terracotta);
+  border-width: 2px 2px 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.character-sheet__row-panel--joined {
+  margin: -6px 0 6px; /* the list's 6px gap closed up */
+  border: 2px solid var(--qk-terracotta);
+  border-top: 1px dashed var(--qk-border);
+  border-radius: 0 0 var(--qk-radius-control) var(--qk-radius-control);
+  background-color: var(--qk-surface);
+}
+
+/* Attack on each weapon (on your turn at a table): a filled button so it's
+   easy to spot, lit darker while that weapon's attack is open. */
+.character-sheet__row-action {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--qk-terracotta);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-terracotta);
+  color: var(--qk-surface);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.character-sheet__row-action:hover,
+.character-sheet__row-action[aria-pressed="true"] {
+  background-color: var(--qk-terracotta-hover);
+  border-color: var(--qk-terracotta-hover);
+}
+
+.character-sheet__row-action:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
 }
 
 /* The ? Help button at the end of the tab row (screens with no side panel). */

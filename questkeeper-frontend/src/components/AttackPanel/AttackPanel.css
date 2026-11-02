@@ -217,3 +217,23 @@
   outline: 2px solid var(--qk-text);
   outline-offset: 3px;
 }
+
+/* Opened under a weapon on the sheet: the panel is the bottom half of the
+   weapon's box (see .character-sheet__row-panel--joined), so it drops its
+   own border and the big title. The weapon's name is just above. */
+.character-sheet__row-panel--joined .attack-panel {
+  margin: 0;
+  padding: var(--qk-space-3) var(--qk-space-4) var(--qk-space-4);
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.character-sheet__row-panel--joined .attack-panel__title {
+  font-family: var(--qk-font-body);
+  font-size: 15px;
+}
+
+.character-sheet__row-panel--joined .attack-panel__bonus {
+  margin-left: 0;
+}

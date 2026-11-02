@@ -447,19 +447,26 @@ describe("TablePage", () => {
       expect(lines).toEqual(["Kobold hits Billie for 4!", "Earlier: Kobold hits Billie for 3!"]);
     });
 
-    it("keeps a monster's history under its buttons, and opens Attack in a right-hand panel", async () => {
+    it("keeps a monster's history under its buttons, and opens Attack right under the Attack button", async () => {
       renderPage();
       const row = detailFor("Kobold");
       const left = row.querySelector(".table-page__row-left");
 
-      expect(row).not.toHaveClass("table-page__row--split");
       expect(left).toHaveTextContent("Billie attacks Kobold with Dagger");
+      expect(within(left).getByRole("group", { name: "Controls for Kobold" })).toHaveTextContent(/Take damage/);
 
       await userEvent.click(within(left).getByRole("button", { name: "Attack" }));
-      const side = row.querySelector(".table-page__row-side");
-      expect(row).toHaveClass("table-page__row--split");
-      expect(within(side).getByText("Pick a target, roll to hit, then roll damage.")).toBeInTheDocument();
-      expect(side).not.toHaveTextContent("Billie attacks Kobold with Dagger");
+      // No separate panel: the attack opens in the creature's own box, and
+      // Damage and Heal step aside until it's closed.
+      expect(row).not.toHaveClass("table-page__row--split");
+      const inline = row.querySelector(".table-page__inline-attack");
+      expect(within(inline).getByText("Pick a target, roll to hit, then roll damage.")).toBeInTheDocument();
+      expect(within(left).getByRole("group", { name: "Controls for Kobold" })).not.toHaveTextContent(/Take damage/);
+      expect(inline).not.toHaveTextContent("Billie attacks Kobold with Dagger");
+
+      await userEvent.click(within(inline).getByRole("button", { name: "Cancel" }));
+      expect(row.querySelector(".table-page__inline-attack")).toBeNull();
+      expect(within(left).getByRole("group", { name: "Controls for Kobold" })).toHaveTextContent(/Take damage/);
     });
 
     it("draws a red HP bar for a bloodied monster, filled to its HP", () => {

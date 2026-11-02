@@ -79,7 +79,7 @@ function ShortRestPanel({ sheet, onRest, onClose }) {
 
         {die > 0 && remaining === 0 && (
           <p className="short-rest__warning">
-            No Hit Dice left. A long rest gives some back.
+            No Hit Dice left. A long rest gives them all back.
           </p>
         )}
         {die > 0 && remaining > 0 && !isHurt && (

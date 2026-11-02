@@ -330,7 +330,7 @@ it("a Long Rest gives back Hit Dice and says so", async () => {
   await user.click(await screen.findByRole("button", { name: "Long Rest" }));
 
   expect(screen.getByRole("status")).toHaveTextContent(
-    "Long rest done. HP is back to full, you got 2 Hit Dice back, and spell slots and abilities are refilled.",
+    "Long rest done. HP is back to full, you got 4 Hit Dice back, and spell slots and abilities are refilled.",
   );
 });
 

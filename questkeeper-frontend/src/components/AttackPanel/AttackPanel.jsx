@@ -311,24 +311,25 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatur
             <p className="attack-panel__note">There are no enemies to attack.</p>
           ) : (
             <>
-              <label className="attack-panel__label" htmlFor="attack-target">
-                Target
-              </label>
-              <select
-                id="attack-target"
-                className="attack-panel__select"
-                value={effectiveTargetId}
-                onChange={(event) => setTargetId(event.target.value)}
-              >
-                {targets.map((target) => (
-                  <option key={target.id} value={target.id}>
-                    {target.name}
-                    {target.status === "bloodied" ? " (bloodied)" : ""}
-                  </option>
-                ))}
-              </select>
-
+              {/* Target, then the roll, on one line when there's room, so the
+                  whole first step fits inside the weapon's box. */}
               <div className="attack-panel__row">
+                <label className="attack-panel__label" htmlFor="attack-target">
+                  Target
+                </label>
+                <select
+                  id="attack-target"
+                  className="attack-panel__select"
+                  value={effectiveTargetId}
+                  onChange={(event) => setTargetId(event.target.value)}
+                >
+                  {targets.map((target) => (
+                    <option key={target.id} value={target.id}>
+                      {target.name}
+                      {target.status === "bloodied" ? " (bloodied)" : ""}
+                    </option>
+                  ))}
+                </select>
                 <Button disabled={isBusy} onClick={rollToHit}>
                   Roll d20 ({formatModifier(bonus)})
                 </Button>
