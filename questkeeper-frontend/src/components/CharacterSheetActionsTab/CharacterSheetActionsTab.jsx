@@ -687,7 +687,17 @@ function CharacterSheetActionsTab({
           ) : null
         }
         addButtonLabel="Add Weapon"
-        rowAction={onAttack ? { label: "Attack", onClick: onAttack } : null}
+        // Attack stands out on your turn, and stays lit while its panel is open.
+        rowAction={
+          onAttack
+            ? {
+                label: "Attack",
+                icon: "⚔",
+                onClick: onAttack,
+                isActive: (attack) => Boolean(attackPanelFor && attackPanelFor(attack)),
+              }
+            : null
+        }
         // Under each enchanted weapon: what's on it and End. The attack
         // panel (on your turn at a table) opens under it too.
         // Under the row: what's enchanting it, the "How it adds up" card when

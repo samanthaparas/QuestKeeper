@@ -795,7 +795,15 @@ function CombatantRow({
   // right on wide screens, so nothing needs scrolling to reach. Narrow
   // screens stack them.
   const isSplit = isDm && isNpc;
-  const hasSide = isSplit && ((canAttack && showAttack) || showEdit);
+  // In the Selected panel the attack opens right under the creature's name,
+  // in place of the Damage and Heal boxes, so on a laptop it's in view at
+  // once instead of below the boxes in a small scrolling area.
+  const attackInline = variant === "detail" && isSplit && canAttack && showAttack;
+  const hasSide = isSplit && ((canAttack && showAttack && !attackInline) || showEdit);
+  const inlineAttackRef = useRef(null);
+  useEffect(() => {
+    if (attackInline) inlineAttackRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [attackInline]);
   const creatureArt = isSplit ? getCreaturePortrait(creatureIdOf(hp?.stat_block)) : undefined;
 
   const turnBanner = (
@@ -982,19 +990,35 @@ function CombatantRow({
                     </button>
                   </div>
                 )}
-                <AmountBox
-                  creature={combatant.name}
-                  kind="damage"
-                  value={damageAmount}
-                  onChange={setDamageAmount}
-                  onApply={() => applyHp("damage")}
-                />
-                <AmountBox
-                  creature={combatant.name}
-                  kind="heal"
-                  value={healAmount}
-                  onChange={setHealAmount}
-                  onApply={() => applyHp("heal")}
+                {!attackInline && (
+                  <>
+                    <AmountBox
+                      creature={combatant.name}
+                      kind="damage"
+                      value={damageAmount}
+                      onChange={setDamageAmount}
+                      onApply={() => applyHp("damage")}
+                    />
+                    <AmountBox
+                      creature={combatant.name}
+                      kind="heal"
+                      value={healAmount}
+                      onChange={setHealAmount}
+                      onApply={() => applyHp("heal")}
+                    />
+                  </>
+                )}
+              </div>
+            )}
+            {attackInline && (
+              <div className="table-page__inline-attack" ref={inlineAttackRef}>
+                <MonsterAttackPanel
+                  attacker={combatant}
+                  targets={targets}
+                  statBlock={hp?.stat_block}
+                  tableId={tableId}
+                  onChanged={onChanged}
+                  onClose={() => setShowAttack(false)}
                 />
               </div>
             )}
@@ -1084,7 +1108,7 @@ function CombatantRow({
 
   const panels = (
     <>
-          {canAttack && showAttack && (
+          {canAttack && showAttack && !attackInline && (
             <MonsterAttackPanel
               attacker={combatant}
               targets={targets}
@@ -2717,6 +2741,26 @@ function TablePage() {
                 </ul>
               </div>
             )}
+            {/* Deleting the table is rare and can't be undone, so it stays
+                folded at the bottom of this tab, out of the way of play. */}
+            <details className="dm-players__share table-page__danger-fold">
+              <summary>Table settings</summary>
+              <p className="table-page__danger-text">
+                Deleting removes this table, its log and its handouts for everyone.
+                Characters stay with their players.
+              </p>
+              <Button
+                variant="danger"
+                onClick={async () => {
+                  if (window.confirm(`Delete "${table.name}" for everyone? This cannot be undone.`)) {
+                    await run(() => deleteTable(table.id));
+                    navigate("/dm");
+                  }
+                }}
+              >
+                Delete table
+              </Button>
+            </details>
           </DmPlayersTab>
         )}
 
@@ -2730,20 +2774,10 @@ function TablePage() {
         {/* The log is mostly about fights, so the DM sees it on Combat only. */}
         {!dmCombatLayout && activityBlock}
 
-        <footer className="table-page__footer">
-          {isDm ? (
-            <Button
-              variant="danger"
-              onClick={async () => {
-                if (window.confirm(`Delete "${table.name}" for everyone? This cannot be undone.`)) {
-                  await run(() => deleteTable(table.id));
-                  navigate("/dm");
-                }
-              }}
-            >
-              Delete table
-            </Button>
-          ) : (
+        {/* The DM's Delete table lives folded away on the Players tab instead,
+            so it can't be mistaken for a Next or Save button down here. */}
+        {!isDm && (
+          <footer className="table-page__footer">
             <Button
               variant="secondary"
               onClick={async () => {
@@ -2755,8 +2789,8 @@ function TablePage() {
             >
               Leave table
             </Button>
-          )}
-        </footer>
+          </footer>
+        )}
       </div>
     </main>
   );

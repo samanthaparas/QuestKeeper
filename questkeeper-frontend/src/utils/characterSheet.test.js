@@ -1985,13 +1985,13 @@ describe("Hit Dice and rests", () => {
     expect(takeShortRest(sheet, [1]).summary.healed).toBe(0);
   });
 
-  it("gives back half the Hit Dice on a long rest, at least one, never more than the total", () => {
-    expect(getLongRestHitDice({ total: 5 })).toBe(2);
+  it("gives back all the Hit Dice on a long rest, never more than the total", () => {
+    expect(getLongRestHitDice({ total: 5 })).toBe(5);
     expect(getLongRestHitDice({ total: 1 })).toBe(1);
 
     const spent = restingSheet();
     spent.combat.hitDice = { total: 4, remaining: 0, die: 8 };
-    expect(applyRest(spent, "long").combat.hitDice.remaining).toBe(2);
+    expect(applyRest(spent, "long").combat.hitDice.remaining).toBe(4);
 
     const nearlyFull = restingSheet();
     nearlyFull.combat.hitDice = { total: 4, remaining: 3, die: 8 };

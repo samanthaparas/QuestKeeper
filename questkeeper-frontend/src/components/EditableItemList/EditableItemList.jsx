@@ -585,8 +585,11 @@ function EditableItemList({
             return (
               <Fragment key={id}>
               {heading && <p className="character-sheet__list-group">{heading}</p>}
+              {/* With something open under it (the attack panel), the row and
+                  the panel share one box: the row loses its bottom edge and
+                  the panel carries on from it. */}
               <div
-                className="character-sheet__attacks-row"
+                className={`character-sheet__attacks-row${panel ? " character-sheet__attacks-row--open" : ""}`}
                 style={columnStyle}
               >
                 {renderPrimaryCell(item, id, notes)}
@@ -603,9 +606,11 @@ function EditableItemList({
                   {rowAction && (
                     <button
                       type="button"
-                      className="character-sheet__resource-add-button"
+                      className="character-sheet__row-action"
+                      aria-pressed={rowAction.isActive ? rowAction.isActive(item) : undefined}
                       onClick={() => rowAction.onClick(item)}
                     >
+                      {rowAction.icon && <span aria-hidden="true">{rowAction.icon} </span>}
                       {rowAction.label}
                     </button>
                   )}
@@ -618,7 +623,7 @@ function EditableItemList({
                   )}
                 </span>
               </div>
-              {panel && <div className="character-sheet__row-panel">{panel}</div>}
+              {panel && <div className="character-sheet__row-panel character-sheet__row-panel--joined">{panel}</div>}
               </Fragment>
             );
           })}

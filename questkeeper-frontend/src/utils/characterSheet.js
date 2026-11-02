@@ -2298,7 +2298,7 @@ export function applyRest(sheet, restType) {
         }
       : sheet.spellcasting;
 
-  // A long rest also gives back half your Hit Dice (at least one).
+  // A long rest also gives back all your spent Hit Dice.
   const hitDice =
     restType === "long" && sheet.combat.hitDice
       ? {
@@ -2368,10 +2368,10 @@ export function getHitDiceRemaining(hitDice) {
   return Math.max(0, Math.min(total, remaining));
 }
 
-// A long rest gives back half your total Hit Dice, rounded down, minimum 1.
+// A long rest gives back every spent Hit Die. This is the 2024 rule, which
+// the group uses as a house rule (the 2014 rule gave back only half).
 export function getLongRestHitDice(hitDice) {
-  const total = Number(hitDice?.total) || 0;
-  return total > 0 ? Math.max(1, Math.floor(total / 2)) : 0;
+  return Number(hitDice?.total) || 0;
 }
 
 // A short rest: spend Hit Dice to heal (each die roll + CON modifier, never
