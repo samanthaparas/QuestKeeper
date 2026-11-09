@@ -35,8 +35,8 @@ function PlayerCharacterCard({ sheet, characterId }) {
 
   return (
     <section className={`player-card player-card--${row.health}`} aria-label="Your character">
-      <div className="player-card__portrait" aria-hidden="true">
-        <CharacterAvatar character={sheet} />
+      <div className="player-card__portrait">
+        <CharacterAvatar character={sheet} enlargeable />
       </div>
 
       <div className="player-card__who">

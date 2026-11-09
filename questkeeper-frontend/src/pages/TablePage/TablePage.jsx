@@ -826,8 +826,9 @@ function CombatantRow({
               <span className="table-page__row-name">
                 {combatant.kind === "player" && (
                   // The character's portrait (or initials), so faces are easy to spot.
-                  <span className="table-page__row-portrait" aria-hidden="true">
-                    <CharacterAvatar character={avatarCharacter} name={combatant.name} portraitUrl={portraitUrl} />
+                  // Tap an uploaded one to see it big.
+                  <span className="table-page__row-portrait">
+                    <CharacterAvatar character={avatarCharacter} name={combatant.name} portraitUrl={portraitUrl} enlargeable />
                   </span>
                 )}
                 {isSplit && <CreatureBadge src={creatureArt} />}

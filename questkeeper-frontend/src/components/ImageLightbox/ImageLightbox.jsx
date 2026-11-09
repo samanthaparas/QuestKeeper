@@ -7,8 +7,10 @@ import { usePopupBehavior } from "../../hooks/usePopupBehavior";
 // the picture. "Open full size" is still there for zooming into a big map.
 //
 // src: the picture. alt: what it shows. caption: shown under the big one.
-// className: for the small picture on the page.
-function ImageLightbox({ src, alt, caption, className }) {
+// className: for the small picture on the page. children: something else to
+// tap instead of that small picture (a portrait coin, say), and
+// triggerClassName styles the button around it.
+function ImageLightbox({ src, alt, caption, className, children, triggerClassName = "" }) {
   const [isOpen, setIsOpen] = useState(false);
   // Page stays still behind it; the phone's Back closes it.
   usePopupBehavior(isOpen, () => setIsOpen(false));
@@ -25,11 +27,11 @@ function ImageLightbox({ src, alt, caption, className }) {
     <>
       <button
         type="button"
-        className="image-lightbox__trigger"
+        className={`image-lightbox__trigger${triggerClassName ? ` ${triggerClassName}` : ""}`}
         aria-label={`Show ${alt} bigger`}
         onClick={() => setIsOpen(true)}
       >
-        <img className={className} src={src} alt={alt} />
+        {children ?? <img className={className} src={src} alt={alt} />}
       </button>
 
       <dialog

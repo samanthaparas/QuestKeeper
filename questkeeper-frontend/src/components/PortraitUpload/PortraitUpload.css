@@ -74,6 +74,33 @@
   border: 0;
 }
 
+/* "Adjust": a quiet text button under the picture. */
+.portrait-upload__adjust {
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--qk-terracotta);
+  font: 700 13px var(--qk-font-body);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.portrait-upload__adjust:hover:not(:disabled) {
+  background-color: var(--qk-surface-muted);
+}
+
+.portrait-upload__adjust:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.portrait-upload__adjust:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
 .portrait-upload__error {
   color: var(--qk-danger);
   font-size: 12px;

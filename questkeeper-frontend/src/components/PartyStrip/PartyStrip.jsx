@@ -52,9 +52,9 @@ function PartyStrip({ rows, onSelect, selectedId, compact = false, hideStatusFor
             compact && isLongName(row.name) ? " party-strip__row--long-name" : ""
           }`}
         >
-          {/* The name sits right next to it, so the picture itself is decoration. */}
-          <span className="party-strip__portrait" aria-hidden="true">
-            <CharacterAvatar character={row} />
+          {/* Tap an uploaded portrait to see it big. */}
+          <span className="party-strip__portrait">
+            <CharacterAvatar character={row} enlargeable />
           </span>
 
           <div className="party-strip__who">

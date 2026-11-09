@@ -1,9 +1,20 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { beforeAll, describe, expect, it } from 'vitest';
 import CharacterAvatar from './CharacterAvatar';
 import { getAvatarLayers } from '../../utils/avatars';
 
 const character = { name: 'Wren', race: { index: 'aarakocra' }, class: { index: 'artificer' }, background: { index: 'acolyte' } };
+
+// jsdom has no <dialog> pop-up support; open and close just flip the flag.
+beforeAll(() => {
+  HTMLDialogElement.prototype.showModal = function showModal() {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close = function close() {
+    this.open = false;
+  };
+});
 
 describe('CharacterAvatar', () => {
   it('uses an upload alone and falls back to layers if that URL fails', () => {
@@ -40,5 +51,17 @@ describe('CharacterAvatar', () => {
     fireEvent.error(container.querySelector('.character-avatar__race'));
     expect(container.querySelector('.character-avatar__initials')).toHaveTextContent('W');
     expect(container.querySelectorAll('.character-avatar__badge')).toHaveLength(2);
+  });
+
+  it('an enlargeable portrait opens big when tapped', async () => {
+    const sheet = { ...character, portraitUrl: 'https://example.com/portrait.jpg' };
+    render(<CharacterAvatar character={sheet} enlargeable />);
+    await userEvent.click(screen.getByRole('button', { name: "Show Wren's portrait bigger" }));
+    expect(screen.getByRole('dialog', { name: 'Wren' })).toBeInTheDocument();
+  });
+
+  it('without an uploaded picture there is nothing to enlarge', () => {
+    render(<CharacterAvatar character={character} enlargeable />);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });
