@@ -83,3 +83,15 @@
 }
 
 .portrait-upload__overlay { z-index: 1; border-radius: inherit; }
+
+/* An enlargeable portrait: the button fills the frame exactly, and its focus
+   ring sits inside, since most frames clip whatever spills over. */
+.image-lightbox__trigger.character-avatar__zoom {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.image-lightbox__trigger.character-avatar__zoom:focus-visible {
+  outline-offset: -3px;
+}

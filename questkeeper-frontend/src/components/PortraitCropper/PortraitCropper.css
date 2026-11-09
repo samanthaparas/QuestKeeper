@@ -1,0 +1,147 @@
+/* "Frame your portrait": a centred panel over a dimmed page. */
+.portrait-cropper {
+  width: min(92vw, 400px);
+  max-height: 96dvh;
+  padding: 0;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  overflow-y: auto;
+}
+
+.portrait-cropper::backdrop {
+  background-color: rgba(28, 20, 16, 0.7);
+}
+
+.portrait-cropper__panel {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+}
+
+.portrait-cropper__title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 21px;
+}
+
+.portrait-cropper__hint {
+  margin: -4px 0 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+/* The frame: exactly what will be saved. The picture moves underneath it. */
+.portrait-cropper__stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  cursor: grab;
+  touch-action: none; /* the finger drags the picture, not the page */
+  user-select: none;
+}
+
+.portrait-cropper__stage:active {
+  cursor: grabbing;
+}
+
+.portrait-cropper__stage:focus-visible {
+  outline: 3px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.portrait-cropper__image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+/* A soft ring showing the round coin, with the corners dimmed outside it. */
+.portrait-cropper__circle {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgba(28, 20, 16, 0.35);
+  outline: 2px solid rgba(255, 247, 232, 0.85);
+  outline-offset: -2px;
+  pointer-events: none;
+}
+
+.portrait-cropper__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.portrait-cropper__zoom {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.portrait-cropper__zoom input {
+  width: 100%;
+  accent-color: var(--qk-terracotta);
+}
+
+.portrait-cropper__previews {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.portrait-cropper__preview-label {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.portrait-cropper__preview {
+  position: relative;
+  box-sizing: content-box; /* 56px of picture inside the border */
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border: 2px solid var(--qk-border);
+  background-color: var(--qk-surface-muted);
+}
+
+.portrait-cropper__preview--round {
+  border-radius: 50%;
+}
+
+.portrait-cropper__preview--square {
+  border-radius: var(--qk-radius-small);
+}
+
+.portrait-cropper__preview img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+}
+
+.portrait-cropper__error {
+  margin: 0;
+  color: var(--qk-danger);
+  font-size: 14px;
+}
+
+.portrait-cropper__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

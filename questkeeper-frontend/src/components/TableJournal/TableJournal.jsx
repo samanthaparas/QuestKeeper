@@ -367,8 +367,8 @@ function TableJournal({
                     }${entry.author_name === "DM" ? " table-journal__entry--dm" : ""}`}
                   >
                     {/* The writer's picture (or initials, like "DM"), then the note. */}
-                    <span className="table-journal__avatar table-journal__avatar--note" aria-hidden="true">
-                      <CharacterAvatar character={avatarCharacters?.get(entry.author_id)} name={entry.author_name} portraitUrl={portraits.get(entry.author_id)} />
+                    <span className="table-journal__avatar table-journal__avatar--note">
+                      <CharacterAvatar character={avatarCharacters?.get(entry.author_id)} name={entry.author_name} portraitUrl={portraits.get(entry.author_id)} enlargeable />
                     </span>
 
                     <div className="table-journal__entry-main">
