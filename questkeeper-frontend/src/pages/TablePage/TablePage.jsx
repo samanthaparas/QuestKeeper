@@ -1259,10 +1259,13 @@ function TablePage() {
   useEffect(() => {
     measureCombatTop.current?.();
   });
-  // Which creature's controls the DM has picked in the initiative list. Null
-  // means "follow the turn" (the panel shows whoever is up). Picking someone
-  // is separate from whose turn it is, and stays put as turns advance.
-  const [pickedId, setPickedId] = useState(null);
+  // Which creature's controls the DM has picked in the initiative list, and in
+  // which turn: { id, turn } or null for "follow the turn" (the panel shows
+  // whoever is up). The pick stays while the turn passes between players (a
+  // player ending their turn never pulls the DM's panel away mid-typing), and
+  // lets go once the turn reaches a creature the DM runs, so that monster's
+  // Attack is the one on screen (pickedId below).
+  const [pick, setPick] = useState(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [myRollNote, setMyRollNote] = useState("");
@@ -1425,6 +1428,10 @@ function TablePage() {
     setSeenCombat(combatOn);
   }
   const turnKey = table?.combat_active ? `${table.round}:${table.current_combatant_id}` : null;
+  const turnIsPlayers =
+    (combatants ?? []).find((combatant) => combatant.id === table?.current_combatant_id)?.kind === "player";
+  const pickedId = pick && (pick.turn === turnKey || turnIsPlayers) ? pick.id : null;
+  const setPickedId = (id) => setPick(id === null ? null : { id, turn: turnKey });
   if (table && turnMarker.turn !== turnKey) {
     setTurnMarker({ turn: turnKey, after: events[0]?.created_at ?? null });
   }
