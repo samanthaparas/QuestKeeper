@@ -177,3 +177,43 @@
   align-items: center;
   gap: 8px;
 }
+
+/* Picture help under the file picker, and the "Picture ready" line. */
+.table-handouts__hint {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+.table-handouts__attached {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.table-handouts__unattach {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qk-terracotta);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.table-handouts__unattach:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* A picture being dragged over the form. */
+.table-handouts__form--dragging {
+  outline: 2px dashed var(--qk-terracotta);
+  outline-offset: 4px;
+}

@@ -12,6 +12,7 @@ import {
   validateHandoutImage,
 } from "../../utils/handoutStore";
 import { getActivityIcon } from "../../utils/icons";
+import { shrinkImage } from "../../utils/portraits";
 import "./TableHandouts.css";
 
 const POLL_MS = 15000;
@@ -116,13 +117,52 @@ function HandoutForm({ initial, onSave, onCancel }) {
   const [removeImage, setRemoveImage] = useState(false);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const formId = useId();
 
-  function pickFile(event) {
-    const file = event.target.files?.[0] ?? null;
-    const problem = file ? validateHandoutImage(file) : null;
+  // A picture from the picker, a paste or a drop: a big one (a Retina
+  // screenshot, a phone photo, a large map) is shrunk in the browser first,
+  // so it fits the 5 MB limit, then checked.
+  async function attachFile(file) {
+    if (!file) return;
+    setError("");
+    setIsPreparing(true);
+    const ready = await shrinkImage(file);
+    const problem = validateHandoutImage(ready);
+    setIsPreparing(false);
     setError(problem ?? "");
-    setImageFile(problem ? null : file);
+    setImageFile(problem ? null : ready);
+    if (!problem) setRemoveImage(false);
+  }
+
+  function pickFile(event) {
+    attachFile(event.target.files?.[0] ?? null);
+  }
+
+  // Cmd/Ctrl+V of a screenshot anywhere in the form attaches it. Text pastes
+  // into the boxes as usual.
+  function handlePaste(event) {
+    const item = [...(event.clipboardData?.items ?? [])].find(
+      (entry) => entry.kind === "file" && entry.type.startsWith("image/"),
+    );
+    if (!item) return;
+    if (!event.clipboardData.getData("text")) event.preventDefault();
+    attachFile(item.getAsFile());
+  }
+
+  function handleDragOver(event) {
+    if (![...(event.dataTransfer?.types ?? [])].includes("Files")) return;
+    event.preventDefault();
+    setIsDragging(true);
+  }
+
+  function handleDrop(event) {
+    const dropped = [...(event.dataTransfer?.files ?? [])].find((entry) => entry.type.startsWith("image/"));
+    setIsDragging(false);
+    if (!dropped) return;
+    event.preventDefault();
+    attachFile(dropped);
   }
 
   async function submit(event) {
@@ -139,7 +179,14 @@ function HandoutForm({ initial, onSave, onCancel }) {
   }
 
   return (
-    <form className="table-handouts__form" onSubmit={submit}>
+    <form
+      className={`table-handouts__form${isDragging ? " table-handouts__form--dragging" : ""}`}
+      onSubmit={submit}
+      onPaste={handlePaste}
+      onDragOver={handleDragOver}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={handleDrop}
+    >
       <label className="table-handouts__label" htmlFor={`${formId}-title`}>
         Title
       </label>
@@ -164,14 +211,29 @@ function HandoutForm({ initial, onSave, onCancel }) {
         onChange={(event) => setBody(event.target.value)}
       />
       <label className="table-handouts__label" htmlFor={`${formId}-image`}>
-        Picture (optional): a map, portrait or drawing, under 5 MB
+        Picture (optional): a map, portrait or drawing
       </label>
       <input
         id={`${formId}-image`}
         type="file"
         accept="image/png,image/jpeg,image/webp,image/gif"
         onChange={pickFile}
+        aria-describedby={`${formId}-image-hint`}
       />
+      <p className="table-handouts__hint" id={`${formId}-image-hint`}>
+        Or paste a screenshot (⌘V / Ctrl+V) or drop a picture here. Big pictures are shrunk to fit.
+      </p>
+      {isPreparing && <p className="table-handouts__hint" role="status">Getting the picture ready…</p>}
+      {imageFile && !isPreparing && (
+        <p className="table-handouts__attached" role="status">
+          <span>
+            Picture ready: {imageFile.name || "pasted screenshot"} ({Math.max(1, Math.round(imageFile.size / 1024))} KB)
+          </span>
+          <button type="button" className="table-handouts__unattach" onClick={() => setImageFile(null)}>
+            Remove
+          </button>
+        </p>
+      )}
       {initial?.image_path && !imageFile && (
         <label className="table-handouts__check">
           <input
@@ -191,7 +253,7 @@ function HandoutForm({ initial, onSave, onCancel }) {
         <Button variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={!title.trim() || isSaving}>
+        <Button type="submit" disabled={!title.trim() || isSaving || isPreparing}>
           {isSaving ? "Saving..." : initial ? "Save changes" : "Save (hidden)"}
         </Button>
       </div>
