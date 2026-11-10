@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { writeSheetCache } from "../utils/sheetCache";
+import { useHoldRefresh } from "../utils/autoRefresh";
 
 // Saves a character sheet in the background, and never lets a weak signal
 // lose changes.
@@ -105,6 +106,9 @@ export function useSaveQueue({ characterId, save, onSaved, baseUpdatedAt }) {
       document.removeEventListener("visibilitychange", wake);
     };
   }, [status, retryNow]);
+
+  // A new version of the site waits to refresh until this has saved.
+  useHoldRefresh(status !== "saved");
 
   // Closing the page with changes not saved: ask first.
   useEffect(() => {

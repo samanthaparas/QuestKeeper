@@ -8,6 +8,7 @@ import {
   rollDamage as rollDamageText,
 } from "../utils/attacks";
 import { listCharacterTables, logRoll } from "../utils/tableStore";
+import { useHoldRefresh } from "../utils/autoRefresh";
 
 // Remembered per character: whether rolls are shared, and (the same choice
 // the turn banner uses) which table they go to.
@@ -53,6 +54,8 @@ export function useSheetRolls(characterId, characterName) {
   // of the app rolling. `pending` is the roll waiting for them.
   const [realChoice, setRealChoice] = useState(null);
   const [pending, setPending] = useState(null);
+  // Don't let a site update refresh the page while a roll waits for dice.
+  useHoldRefresh(Boolean(pending));
   // Every roll made on this sheet, newest first, so a quick roll can be looked
   // at again later (the Rolls tab). Kept on this device.
   const [historyState, setHistoryState] = useState({ id: null, entries: [] });

@@ -31,6 +31,7 @@ import SampleTablePage from "./pages/Samples/SampleTablePage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import { getPageTitle } from "./utils/pageTitle";
 import { CURRENT_BUILD, fetchDeployedBuild, isNewerBuild } from "./utils/api";
+import { refreshIfSafe } from "./utils/autoRefresh";
 
 // Keeps the browser tab's title in step with the page.
 function PageTitle() {
@@ -66,10 +67,12 @@ const UPDATE_CHECK_MS = 60 * 1000;
 const UPDATE_LATER_KEY = "qk-update-later";
 
 // "QuestKeeper was updated", a small card in the bottom corner when a newer
-// version is live. It never reloads by itself (that could interrupt a roll or
-// an unsent message) and doesn't move anything on the page: Refresh when
-// you're ready, or Later to hide it until the next update.
+// version is live. The page also refreshes by itself at the next safe moment:
+// when the person switches to another tab or app, or moves to another page,
+// as long as nothing would be lost or interrupted (see utils/autoRefresh.js).
+// Refresh does it now; Later hides the card (the quiet refresh still happens).
 function UpdateBanner() {
+  const { pathname } = useLocation();
   const [newBuild, setNewBuild] = useState(null);
   const [laterFor, setLaterFor] = useState(() => {
     try {
@@ -99,6 +102,27 @@ function UpdateBanner() {
     };
   }, []);
 
+  // A newer version is waiting: refresh when they look away (another tab or
+  // app) or click somewhere outside the page.
+  useEffect(() => {
+    if (!newBuild) return undefined;
+    const onHidden = () => document.visibilityState === "hidden" && refreshIfSafe(newBuild);
+    const onBlur = () => refreshIfSafe(newBuild);
+    document.addEventListener("visibilitychange", onHidden);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      document.removeEventListener("visibilitychange", onHidden);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [newBuild]);
+
+  // ...or when they move to another page in QuestKeeper.
+  useEffect(() => {
+    if (newBuild) refreshIfSafe(newBuild);
+    // Only a change of page should trigger this, not the update arriving.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   if (!newBuild || laterFor === newBuild) return null;
 
   function later() {
@@ -113,7 +137,8 @@ function UpdateBanner() {
   return (
     <aside className="update-banner" role="status" aria-label="QuestKeeper update">
       <span className="update-banner__text">
-        <span aria-hidden="true">✨</span> QuestKeeper has a fresh update. Refresh when you&apos;re ready.
+        <span aria-hidden="true">✨</span> QuestKeeper has a fresh update. It refreshes by itself when you switch
+        tabs or pages, or tap Refresh now.
       </span>
       <span className="update-banner__actions">
         <button type="button" className="update-banner__refresh" onClick={() => window.location.reload()}>
