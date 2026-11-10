@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TurnBanner from "./TurnBanner";
 import { resolveDamageRequest } from "../../utils/tableStore";
@@ -183,6 +183,30 @@ describe("TurnBanner", () => {
     await userEvent.click(screen.getByRole("button", { name: "Apply 5 damage" }));
 
     expect(await screen.findByText("Applied 5 damage: 5 from temporary HP.")).toBeInTheDocument();
+  });
+
+  it("tidies the applied-damage note away after 15 seconds", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    resolveDamageRequest.mockResolvedValue(14);
+    const onApplyDamage = vi.fn().mockReturnValue("Applied 14 damage: 14 from HP.");
+    render(
+      <TurnBanner
+        combat={makeCombat({ damageRequests: [{ id: "r1", source: "Shroom", amount: 14 }] })}
+        onApplyDamage={onApplyDamage}
+      />,
+    );
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    await user.click(screen.getByRole("button", { name: "Apply 14 damage" }));
+    expect(await screen.findByText("Applied 14 damage: 14 from HP.")).toBeInTheDocument();
+
+    try {
+      act(() => vi.advanceTimersByTime(14000));
+      expect(screen.getByText("Applied 14 damage: 14 from HP.")).toBeInTheDocument();
+      act(() => vi.advanceTimersByTime(1000));
+      expect(screen.queryByText("Applied 14 damage: 14 from HP.")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("dismisses damage without changing HP", async () => {
