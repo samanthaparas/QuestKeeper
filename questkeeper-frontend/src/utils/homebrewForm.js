@@ -77,6 +77,7 @@ const BLANK_DATA = {
   },
   feat: {
     prerequisite: "",
+    hpPerLevel: 0,
   },
 };
 

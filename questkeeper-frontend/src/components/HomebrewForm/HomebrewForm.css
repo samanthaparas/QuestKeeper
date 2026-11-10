@@ -337,3 +337,8 @@
 .homebrew-form__card button {
   scroll-margin-block: 8px;
 }
+
+/* A box for a small number (like extra hit points per level). */
+.homebrew-form__input--short {
+  max-width: 8rem;
+}

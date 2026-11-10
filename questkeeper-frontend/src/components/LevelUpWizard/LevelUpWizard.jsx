@@ -51,7 +51,9 @@ import {
   featuresForNewLevel,
   loadFeatureEntries,
   mapSubclassToPanel,
+  mapFeatToPanel,
 } from "../../utils/srdDetails";
+import { findBookFeat, listBookFeats } from "../../utils/bookFeats";
 import {
   BOOK_OPTION,
   SKIP_OPTION,
@@ -92,6 +94,12 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
   const [featSelection, setFeatSelection] = useState("");
   const [featDetails, setFeatDetails] = useState(null);
   const [isFeatLoading, setIsFeatLoading] = useState(false);
+  // A book feat (like Tough) picked in the list: shown with "Make it as
+  // homebrew", since QuestKeeper can't include its rules. featListVersion
+  // reloads the list once the homebrew version is saved.
+  const [bookFeat, setBookFeat] = useState(null);
+  const [featListVersion, setFeatListVersion] = useState(0);
+  const [featHomebrewRequest, setFeatHomebrewRequest] = useState(null);
 
   // Subclass step: every option for this class (SRD + Open5e), the one the
   // player is looking at, and what it grants.
@@ -364,7 +372,22 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
         // Feat picking degrades to an empty dropdown; not worth a hard
         // error state for this one field.
       });
-  }, []);
+  }, [featListVersion]);
+
+  // The book feats, minus any the player has already made as homebrew under
+  // the same name (that version is in the list above them instead).
+  const homebrewFeatNames = new Set(
+    allFeats.filter((feat) => feat.edition === "Homebrew").map((feat) => feat.name.trim().toLowerCase()),
+  );
+  const bookFeats = listBookFeats().filter((feat) => !homebrewFeatNames.has(feat.name.trim().toLowerCase()));
+
+  // The homebrew version of a book feat was saved: reload and pick it.
+  function handleFeatHomebrewCreated(saved) {
+    setFeatHomebrewRequest(null);
+    setBookFeat(null);
+    setFeatListVersion((version) => version + 1);
+    handleFeatSelectionChange(`Homebrew:${toHomebrewIndex(saved.id)}`);
+  }
 
   function completeStep(data) {
     setPendingLevelUp((prev) => ({
@@ -386,6 +409,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
 
   function handleFeatSelectionChange(selection) {
     setFeatSelection(selection);
+    setBookFeat(null);
 
     if (!selection) {
       setFeatDetails(null);
@@ -393,6 +417,13 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
     }
 
     const [edition, featIndex] = selection.split(":");
+    // A book feat can't be taken as it is: show it with "Make it as homebrew".
+    if (edition === "book") {
+      setFeatDetails(null);
+      const found = findBookFeat(featIndex);
+      setBookFeat(found ? { ...mapFeatToPanel(found).bookEntry, inPicker: true } : null);
+      return;
+    }
     setIsFeatLoading(true);
     getFeatDetails(featIndex, edition)
       .then(setFeatDetails)
@@ -412,6 +443,8 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
         type: "feat",
         featName: featDetails.name,
         featEdition: featDetails.edition,
+        // Extra max HP per level, from a homebrew feat like Tough.
+        hpPerLevel: Math.max(0, Number(featDetails.hp_per_level) || 0),
       };
     }
 
@@ -484,7 +517,8 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
       const earlier = gain.earlierLevels
         ? `, +${gain.earlierLevels} for earlier levels from the higher CON`
         : "";
-      return `Hit Points: +${gain.total} (${step.data.amount} rolled/taken + ${gain.conModifier} CON${earlier})`;
+      const fromFeats = gain.fromFeats ? `, +${gain.fromFeats} from feats` : "";
+      return `Hit Points: +${gain.total} (${step.data.amount} rolled/taken + ${gain.conModifier} CON${earlier}${fromFeats})`;
     }
 
     if (step.key === "abilityOrFeat") {
@@ -496,7 +530,9 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
           .map((a) => ABILITY_LABELS[a])
           .join(", +1 ")}`;
       }
-      return `Feat: ${step.data.featName}`;
+      return step.data.hpPerLevel > 0
+        ? `Feat: ${step.data.featName} (+${step.data.hpPerLevel} HP per level)`
+        : `Feat: ${step.data.featName}`;
     }
 
     if (step.key === "subclass") {
@@ -910,11 +946,42 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
                     {feat.name} ({feat.edition === "Homebrew" ? "Homebrew" : `${feat.edition} SRD`})
                   </option>
                 ))}
+                {bookFeats.length > 0 && (
+                  <optgroup label="From the books (make it as homebrew first)">
+                    {bookFeats.map((feat) => (
+                      <option key={`book:${feat.index}`} value={`book:${feat.index}`}>
+                        {feat.name} ({feat.source})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
               <p className="level-up-wizard__book-spell-hint">
-                A feat from a book (like Sharpshooter) isn&apos;t listed: make it as
-                homebrew on the Feats page, and it shows up here.
+                Feats from the books (like Tough or Sharpshooter) are at the bottom of the
+                list. Pick one to make it as homebrew in your own words, then take it.
               </p>
+
+              {bookFeat && (
+                <div className="level-up-wizard__feat-card">
+                  <BookEntryPanel entry={bookFeat} />
+                  <Button
+                    onClick={() =>
+                      setFeatHomebrewRequest({
+                        category: "feat",
+                        fields: { name: bookFeat.name, basedOn: bookFeat.book, linkUrl: bookFeat.linkUrl },
+                        data: {},
+                      })
+                    }
+                  >
+                    Make it as homebrew
+                  </Button>
+                </div>
+              )}
+              <HomebrewDialog
+                request={featHomebrewRequest}
+                onClose={() => setFeatHomebrewRequest(null)}
+                onCreated={handleFeatHomebrewCreated}
+              />
 
               {/* Only shown once there's a feat to describe, so no empty box
                   sits under the dropdown before one is picked. */}
@@ -927,6 +994,13 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
                       {getFeatDescriptionLines(featDetails).map((line, index) => (
                         <p key={index}>{line}</p>
                       ))}
+                      {featDetails.hp_per_level > 0 && (
+                        <p className="level-up-wizard__feat-hp">
+                          +{featDetails.hp_per_level} max HP for every level: +
+                          {featDetails.hp_per_level * targetLevel} now (level {targetLevel}), and +
+                          {featDetails.hp_per_level} more each level after. Level-up adds it for you.
+                        </p>
+                      )}
                     </>
                   )}
                 </div>

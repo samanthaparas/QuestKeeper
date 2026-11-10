@@ -332,10 +332,11 @@ function cleanCategoryData(category, data) {
     };
   }
 
-  // A feat is just a name, an optional prerequisite and its description (the
-  // entry's summary), so the prerequisite is all it keeps here.
+  // A feat is a name, an optional prerequisite and its description (the
+  // entry's summary), plus any extra hit points it gives per level (0 to 5),
+  // which level-up adds by itself.
   if (category === "feat") {
-    return { prerequisite: text(data.prerequisite, 200) };
+    return { prerequisite: text(data.prerequisite, 200), hpPerLevel: wholeNumber(data.hpPerLevel, 0, 5, 0) };
   }
 
   return {};
@@ -681,6 +682,7 @@ export function toHomebrewFeat(entry) {
     prerequisites: {},
     prerequisite_options: data.prerequisite ? { desc: data.prerequisite } : null,
     prerequisite: data.prerequisite,
+    hp_per_level: data.hpPerLevel,
   };
 }
 

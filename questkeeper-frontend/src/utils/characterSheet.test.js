@@ -747,6 +747,38 @@ describe("finalizeLevelUp", () => {
     expect(feat.edition).toBe("2024");
   });
 
+  it("a feat with extra HP per level (homebrew Tough) adds it for every level, and keeps it for later", () => {
+    const sheet = makeSheet();
+    sheet.pendingLevelUp.steps.push({
+      key: "abilityOrFeat",
+      data: { type: "feat", featName: "Tough", featEdition: "Homebrew", hpPerLevel: 2 },
+    });
+
+    const result = finalizeLevelUp(sheet);
+
+    // 8 + (4 roll + 2 CON) + 2 per level for both levels.
+    expect(result.combat.hitPoints.max).toBe(18);
+    expect(result.feats[0]).toMatchObject({ name: "Tough", hpPerLevel: 2 });
+
+    // The next level-up adds 2 more on its own.
+    const next = finalizeLevelUp({
+      ...result,
+      pendingLevelUp: { targetLevel: 3, steps: [{ key: "hitPoints", data: { amount: 4 } }] },
+    });
+    expect(next.combat.hitPoints.max).toBe(18 + 4 + 2 + 2);
+  });
+
+  it("a feat without extra HP doesn't change hit points", () => {
+    const sheet = makeSheet();
+    sheet.pendingLevelUp.steps.push({
+      key: "abilityOrFeat",
+      data: { type: "feat", featName: "Grappler", featEdition: "2014", hpPerLevel: 0 },
+    });
+    const result = finalizeLevelUp(sheet);
+    expect(result.combat.hitPoints.max).toBe(14);
+    expect(result.feats[0]).not.toHaveProperty("hpPerLevel");
+  });
+
   it("gives the same feat taken at two level-ups a separate id each time", () => {
     const takeFeat = (sheet) =>
       finalizeLevelUp({
@@ -2598,6 +2630,7 @@ describe("numbers that follow a level-up", () => {
       thisLevel: 8,
       earlierLevels: 3,
       conModifier: 2,
+      fromFeats: 0,
     });
     // A Dexterity increase doesn't touch HP.
     expect(getLevelUpHitPointGain(ranger, steps({ type: "asi-one", ability: "dexterity" })).total).toBe(7);

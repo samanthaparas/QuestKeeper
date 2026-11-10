@@ -1362,10 +1362,18 @@ export function applyLevelUpSpellChoices(spellcasting, characterClass, choices, 
   return { ...base, cantripsKnown, spellsKnown };
 }
 
+// Extra max HP per level from feats the character already has (a homebrew
+// feat whose "extra hit points per level" was filled in, like Tough).
+export function getFeatHitPointsPerLevel(sheet) {
+  return (sheet?.feats ?? []).reduce((sum, feat) => sum + Math.max(0, Number(feat?.hpPerLevel) || 0), 0);
+}
+
 // Hit points from a level-up: the roll (or average) plus the Constitution
 // modifier, at least 1. If this level's Ability Score Improvement raises the
 // CON modifier, the new modifier counts for this level, and the rules say it
 // counts for every earlier level too: +1 HP per earlier level for each +1.
+// Feats with extra hit points per level add theirs for this level; a feat
+// taken at this level adds its amount for every level, this one included.
 export function getLevelUpHitPointGain(sheet, steps = []) {
   const hpStep = steps.find((step) => step.key === "hitPoints");
   const abilityStep = steps.find((step) => step.key === "abilityOrFeat");
@@ -1376,7 +1384,10 @@ export function getLevelUpHitPointGain(sheet, steps = []) {
   const conModifier = getAbilityModifier(newScores.constitution);
   const thisLevel = Math.max(1, (hpStep?.data?.amount ?? 0) + conModifier);
   const earlierLevels = (conModifier - oldModifier) * (sheet.level ?? 0);
-  return { total: thisLevel + earlierLevels, thisLevel, earlierLevels, conModifier };
+  const targetLevel = (sheet.level ?? 0) + 1;
+  const newFeat = abilityStep?.data?.type === "feat" ? Math.max(0, Number(abilityStep.data.hpPerLevel) || 0) : 0;
+  const fromFeats = getFeatHitPointsPerLevel(sheet) + newFeat * targetLevel;
+  return { total: thisLevel + earlierLevels + fromFeats, thisLevel, earlierLevels, conModifier, fromFeats };
 }
 
 export function finalizeLevelUp(sheet) {
@@ -1421,6 +1432,9 @@ export function finalizeLevelUp(sheet) {
             index: crypto.randomUUID(),
             name: abilityStep.data.featName,
             edition: abilityStep.data.featEdition,
+            // Extra max HP per level (a homebrew feat like Tough), so later
+            // level-ups keep adding it.
+            ...(abilityStep.data.hpPerLevel > 0 ? { hpPerLevel: abilityStep.data.hpPerLevel } : {}),
           },
         ]
       : (sheet.feats ?? []);
