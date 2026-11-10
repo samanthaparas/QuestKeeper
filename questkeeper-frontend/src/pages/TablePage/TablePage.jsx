@@ -74,7 +74,7 @@ import ContentRules from "../../components/ContentRules/ContentRules";
 import ContentNotice from "../../components/ContentNotice/ContentNotice";
 import { bannedChoicesOf, cleanBanned } from "../../utils/contentRules";
 import { addJournalEntry, getTablePortraits } from "../../utils/journalStore";
-import { getBannerInfo } from "../../utils/redesignArt";
+import { getBannerInfo, getTableBanner } from "../../utils/redesignArt";
 import lanternArt from "../../assets/hero/inn-lantern-crop.webp";
 import StatusNote from "../../components/StatusNote/StatusNote";
 import { useFocusAfterRetry } from "../../components/StatusNote/useFocusAfterRetry";
@@ -1795,6 +1795,8 @@ function TablePage() {
   // On the DM's Combat tab, wide screens lay these out in three panels:
   // the party, the fight, and the damage form with the activity log. Other
   // tabs (and narrow screens) show them one after another as before.
+  // A table with its own banner picture (Breakfast Club Season 2); others use the shared one.
+  const tableBanner = getTableBanner(table.id);
   const dmCombatLayout = isDm && dmTab === "combat";
   // The DM's Prep tab lays its panels out in two columns (TablePage.css).
   const prepLayout = isDm && dmTab === "prep";
@@ -2426,6 +2428,16 @@ function TablePage() {
               a player's is the same sample picture their table has on My Games. */}
           {isDm ? (
             <img className="table-page__banner-art table-page__banner-art--lantern" src={lanternArt} alt="" width="940" height="370" />
+          ) : tableBanner ? (
+            // This table's own banner (see getTableBanner), in the same place and size.
+            <img
+              className="table-page__banner-art table-page__banner-art--wide"
+              src={tableBanner.src}
+              alt=""
+              width={tableBanner.width}
+              height={tableBanner.height}
+              style={{ objectPosition: tableBanner.focus }}
+            />
           ) : (
             <img
               className="table-page__banner-art table-page__banner-art--wide"

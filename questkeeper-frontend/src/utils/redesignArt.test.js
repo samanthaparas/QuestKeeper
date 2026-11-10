@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BANNER_NAMES, BANNERS, CAMPAIGN_ART, getBanner, getBannerInfo, getCampaignArt, getCampaignArtForList } from "./redesignArt";
+import { BANNER_NAMES, BANNERS, CAMPAIGN_ART, getBanner, getBannerInfo, getCampaignArt, getCampaignArtForList, getTableBanner } from "./redesignArt";
 
 describe("redesignArt", () => {
   it("has a banner for every page it names", () => {
@@ -36,5 +36,29 @@ describe("redesignArt", () => {
       expect(info.full).toBeTruthy();
     });
     expect(Object.keys(BANNERS)).toHaveLength(7);
+  });
+
+  describe("a table's own banner", () => {
+    const BREAKFAST_CLUB = "21ef3213-1b37-49a4-a9bf-85a8c1b13d57";
+
+    it("gives Breakfast Club Season 2 its breakfast-tavern banner", () => {
+      const banner = getTableBanner(BREAKFAST_CLUB);
+      expect(banner.src).toMatch(/breakfast-club-season-2/);
+      expect(banner).toMatchObject({ width: 1300, height: 294 });
+    });
+
+    it("gives every other table nothing, so they keep the shared banner", () => {
+      expect(getTableBanner("4a978f16-12e2-4006-a808-569acefb224c")).toBeNull();
+      expect(getTableBanner(undefined)).toBeNull();
+    });
+
+    it("never offers it as anyone else's picture", () => {
+      const own = getTableBanner(BREAKFAST_CLUB).src;
+      expect(CAMPAIGN_ART.some((name) => name.includes("breakfast"))).toBe(false);
+      expect(Object.values(BANNERS).some((banner) => banner.src === own || banner.full === own)).toBe(false);
+      const ids = Array.from({ length: 200 }, (_, index) => `table-${index}`);
+      expect(getCampaignArtForList([...ids, BREAKFAST_CLUB])).not.toContain(own);
+      expect(ids.map(getCampaignArt)).not.toContain(own);
+    });
   });
 });

@@ -4,6 +4,8 @@
 // pictures for table cards, never real locations. A table's picture is picked
 // from its id, so it stays the same from visit to visit and nothing about the
 // table (its name, notes or players) decides it.
+import breakfastClubBanner from "../assets/campaigns/breakfast-club-season-2/banner.jpg";
+
 const banners = import.meta.glob("../assets/banners/*.webp", { eager: true, import: "default" });
 const campaigns = import.meta.glob("../assets/campaigns/*.webp", { eager: true, import: "default" });
 
@@ -50,6 +52,19 @@ function hashOf(text) {
   let hash = 0;
   for (const letter of String(text ?? "")) hash = (hash * 31 + letter.charCodeAt(0)) >>> 0;
   return hash;
+}
+
+// A table's own banner, chosen for that one table by its id. These are private
+// pictures: they're not in CAMPAIGN_ART (and the glob above only reads the
+// top of assets/campaigns, not these subfolders), so no other table, list or
+// picker can ever show one. focus: the part of the picture to keep in view.
+const TABLE_BANNERS = {
+  // Breakfast Club Season 2: the breakfast-tavern painting.
+  "21ef3213-1b37-49a4-a9bf-85a8c1b13d57": { src: breakfastClubBanner, width: 1300, height: 294, focus: "center 62%" },
+};
+
+export function getTableBanner(tableId) {
+  return TABLE_BANNERS[tableId] ?? null;
 }
 
 export function getCampaignArt(tableId) {
