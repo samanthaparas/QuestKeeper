@@ -4,13 +4,15 @@
   z-index: 20;
 }
 
+/* One slim row: table, round, whose turn, who's next, End my turn and the
+   latest news all sit side by side, wrapping only when the screen is narrow. */
 .turn-banner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: var(--qk-space-3) var(--qk-space-5);
-  padding: var(--qk-space-3) var(--qk-space-4);
+  gap: 4px var(--qk-space-4);
+  padding: 6px var(--qk-space-4);
   background-color: var(--qk-brass-soft);
   border-bottom: 2px solid var(--qk-brass);
   color: var(--qk-text);
@@ -33,18 +35,16 @@
 
 .turn-banner__now {
   font-family: var(--qk-font-display);
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .turn-banner__next {
-  font-size: 15px;
+  font-size: 14px;
   opacity: 0.9;
 }
 
 .turn-banner__event {
-  flex-basis: 100%;
-  text-align: center;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -85,8 +85,6 @@
 }
 
 .turn-banner__table {
-  flex-basis: 100%;
-  text-align: center;
   font-size: 13px;
   letter-spacing: 0.03em;
   opacity: 0.9;
@@ -110,7 +108,8 @@
 }
 
 .turn-banner__end {
-  min-height: 36px;
+  min-height: 32px;
+  padding-block: 0;
 }
 
 /* You're next: a thicker terracotta edge and a short line, so it's hard to
