@@ -48,6 +48,24 @@
   font-weight: 600;
 }
 
+/* Damage in red and healing in green, on a light pill so the colour reads on
+   every banner (the orange "your turn" one included) and in both themes. */
+.turn-banner__event--damage,
+.turn-banner__event--healing {
+  padding: 1px 10px;
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  font-weight: 700;
+}
+
+.turn-banner__event--damage {
+  color: var(--qk-danger);
+}
+
+.turn-banner__event--healing {
+  color: var(--qk-moss);
+}
+
 .turn-banner__damage {
   display: flex;
   flex-wrap: wrap;

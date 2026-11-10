@@ -216,4 +216,19 @@ describe("TurnBanner", () => {
     expect(onApplyDamage).not.toHaveBeenCalled();
     expect(await screen.findByText(/already handled/)).toBeInTheDocument();
   });
+
+  it("shows damage news in red and healing news in green", () => {
+    const { rerender } = render(
+      <TurnBanner combat={makeCombat({ latestEvent: { message: "Vracien Marlowe takes 12 damage." } })} onApplyDamage={vi.fn()} />,
+    );
+    expect(screen.getByText("Vracien Marlowe takes 12 damage.")).toHaveClass("turn-banner__event--damage");
+
+    rerender(<TurnBanner combat={makeCombat({ latestEvent: { message: "Ash looks healthier." } })} onApplyDamage={vi.fn()} />);
+    expect(screen.getByText("Ash looks healthier.")).toHaveClass("turn-banner__event--healing");
+
+    rerender(<TurnBanner combat={makeCombat()} onApplyDamage={vi.fn()} />);
+    expect(screen.getByText(/That hits!/)).toHaveClass("turn-banner__event");
+    expect(screen.getByText(/That hits!/)).not.toHaveClass("turn-banner__event--damage");
+  });
 });
+
