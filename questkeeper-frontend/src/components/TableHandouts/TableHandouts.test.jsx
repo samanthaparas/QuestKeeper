@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TableHandouts from "./TableHandouts";
 import { installFakeStorage } from "../../test/fakeStorage";
@@ -10,6 +10,12 @@ import {
 } from "../../utils/handoutStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
+// Shrinking needs a real browser canvas: here a "big" picture comes back as a
+// small JPEG, and anything else comes back as it was.
+const SHRUNK = new File(["small"], "map.jpg", { type: "image/jpeg" });
+vi.mock("../../utils/portraits", () => ({
+  shrinkImage: vi.fn(async (file) => (file.size > 100 ? SHRUNK : file)),
+}));
 vi.mock("../../utils/handoutStore", () => ({
   listHandouts: vi.fn(),
   createHandout: vi.fn().mockResolvedValue({}),
@@ -101,7 +107,36 @@ describe("TableHandouts for the DM", () => {
       new File(["x"], "notes.txt", { type: "text/plain" }),
       { applyAccept: false },
     );
-    expect(screen.getByRole("alert")).toHaveTextContent("Pictures can be PNG");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Pictures can be PNG");
+  });
+
+  it("shrinks a big picture so it fits, and saves the smaller one", async () => {
+    render(<TableHandouts tableId="t1" isDm players={PLAYERS} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "+ New handout" }));
+    await userEvent.type(screen.getByLabelText("Title"), "The Big Map");
+    await userEvent.upload(screen.getByLabelText(/Picture/), new File(["x".repeat(500)], "huge-map.png", { type: "image/png" }));
+
+    expect(await screen.findByText(/Picture ready: map\.jpg/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Save (hidden)" }));
+    expect(createHandout).toHaveBeenCalledWith("t1", expect.objectContaining({ imageFile: SHRUNK }));
+  });
+
+  it("takes a pasted screenshot", async () => {
+    render(<TableHandouts tableId="t1" isDm players={PLAYERS} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "+ New handout" }));
+    const screenshot = new File(["png"], "Screenshot.png", { type: "image/png" });
+    fireEvent.paste(screen.getByLabelText("Text (optional)"), {
+      clipboardData: {
+        items: [{ kind: "file", type: "image/png", getAsFile: () => screenshot }],
+        getData: () => "",
+      },
+    });
+
+    expect(await screen.findByText(/Picture ready: Screenshot\.png/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(screen.queryByText(/Picture ready/)).not.toBeInTheDocument();
   });
 });
 
