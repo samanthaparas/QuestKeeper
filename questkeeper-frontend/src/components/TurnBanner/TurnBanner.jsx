@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { resolveDamageRequest } from "../../utils/tableStore";
 import { describeUpcoming } from "../../utils/initiative";
+import { eventTone } from "../../utils/tableGuidance";
 import Button from "../Button/Button";
 import TurnHeadsUp from "../TurnHeadsUp/TurnHeadsUp";
 import "./TurnBanner.css";
@@ -87,8 +88,13 @@ function TurnBanner({ combat, onApplyDamage }) {
             End my turn
           </Button>
         )}
+        {/* The latest news: red for damage, green for healing. */}
         {latestEvent && (
-          <span className="turn-banner__event">{latestEvent.message}</span>
+          <span
+            className={`turn-banner__event${eventTone(latestEvent) ? ` turn-banner__event--${eventTone(latestEvent)}` : ""}`}
+          >
+            {latestEvent.message}
+          </span>
         )}
       </div>
 

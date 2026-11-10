@@ -140,3 +140,21 @@ export function findActiveNudge(events = [], name) {
 export function hasActiveNudge(events = [], name) {
   return findActiveNudge(events, name) !== null;
 }
+
+// Whether a log line is bad news, good news or neither, so the turn banner can
+// colour it: "damage" (red) when someone gets hurt or goes down, "healing"
+// (green) when someone gets better. The database tags some lines with a kind;
+// the rest are read from the game's own wording ("takes 12 damage", "hits
+// Ash for 7!", "is down!", "looks healthier."). Anything else is "".
+const DAMAGE_WORDING = /takes \d+ damage|hits .+ for \d+!|is down!/i;
+const HEALING_WORDING = /looks healthier|\bheals?\b|\bhealed\b|regains?\b|is back up/i;
+
+export function eventTone(event) {
+  if (event?.kind === "damage") return "damage";
+  if (event?.kind === "healing") return "healing";
+  const message = String(event?.message ?? "");
+  if (HEALING_WORDING.test(message)) return "healing";
+  if (DAMAGE_WORDING.test(message)) return "damage";
+  return "";
+}
+

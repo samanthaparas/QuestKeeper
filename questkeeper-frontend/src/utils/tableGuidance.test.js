@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   NEW_ENCOUNTER_MESSAGE,
+  eventTone,
   getDmPrepSteps,
   getPlayerTableTip,
   hasActiveNudge,
@@ -209,3 +210,24 @@ describe("getDmPrepSteps: short status lines", () => {
     expect(getDmPrepSteps({ combatants: [player("Billie", 12)], combatActive: true })[3].status).toBe("Combat is on");
   });
 });
+
+describe("eventTone", () => {
+  it("calls hurting lines damage", () => {
+    expect(eventTone({ message: "Vracien Marlowe takes 12 damage." })).toBe("damage");
+    expect(eventTone({ message: "(Shroom) hits Vracien Marlowe for 17!" })).toBe("damage");
+    expect(eventTone({ message: "StarShard Corpse (Shroom) is down!" })).toBe("damage");
+    expect(eventTone({ kind: "damage", message: "Ouch" })).toBe("damage");
+  });
+
+  it("calls healing lines healing", () => {
+    expect(eventTone({ message: "Ash looks healthier." })).toBe("healing");
+    expect(eventTone({ kind: "healing", message: "Cure Wounds on Pippa" })).toBe("healing");
+  });
+
+  it("leaves everything else plain", () => {
+    expect(eventTone({ message: "Billie attacks Kobold with Dagger (rolled 15). That hits!" })).toBe("");
+    expect(eventTone({ message: "Pippa ends their turn." })).toBe("");
+    expect(eventTone(null)).toBe("");
+  });
+});
+
