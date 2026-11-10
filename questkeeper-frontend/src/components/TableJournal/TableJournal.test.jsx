@@ -11,6 +11,9 @@ import {
   updateJournalEntry,
   setSessionNumber,
   moveJournalEntries,
+  listReactions,
+  addReaction,
+  removeReaction,
 } from "../../utils/journalStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -27,6 +30,10 @@ vi.mock("../../utils/journalStore", () => ({
   nameCampaign: vi.fn(),
   getTablePortraits: vi.fn().mockResolvedValue(new Map([["dm", "https://example.com/dm.png"]])),
   subscribeToJournal: vi.fn(() => () => {}),
+  // Before the reactions migration is run, this fails and reactions hide.
+  listReactions: vi.fn().mockRejectedValue(new Error("no reactions table yet")),
+  addReaction: vi.fn().mockResolvedValue(undefined),
+  removeReaction: vi.fn().mockResolvedValue(undefined),
 }));
 
 // The recap card at the top has its own tests; here it just stays quiet.
@@ -422,5 +429,93 @@ describe("TableJournal as the DM's Story feed", () => {
     await screen.findByText("Recap: you reached Phandalin.");
     expect(document.querySelector(".table-journal--feed")).toBeNull();
     expect(screen.queryByRole("button", { name: "Session options" })).not.toBeInTheDocument();
+  });
+});
+
+describe("TableJournal reactions", () => {
+  const SHARED = [
+    { ...NOTES[0] },
+    {
+      id: "n3",
+      table_id: "t1",
+      author_id: "me",
+      author_name: "Billie",
+      session_number: 1,
+      body: "I got a snake sword!",
+      visibility: "table",
+      created_at: "2026-10-13T02:00:00Z",
+      updated_at: "2026-10-13T02:00:00Z",
+    },
+    NOTES[1],
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installFakeStorage();
+    listJournal.mockResolvedValue(SHARED);
+    listReactions.mockResolvedValue([
+      { entry_id: "n1", user_id: "ash", reactor_name: "Ash", emoji: "❤️", created_at: "2026-10-13T03:00:00Z" },
+      { entry_id: "n3", user_id: "dm", reactor_name: "DM", emoji: "😂", created_at: "2026-10-13T03:00:00Z" },
+    ]);
+  });
+
+  it("shows who reacted, and lets you react to someone else's note", async () => {
+    renderJournal();
+    const dmNote = (await screen.findByText("Recap: you reached Phandalin.")).closest("li");
+
+    expect(await within(dmNote).findByRole("button", { name: /Love: 1, from Ash/ })).toBeInTheDocument();
+    await userEvent.click(within(dmNote).getByRole("button", { name: "React" }));
+    await userEvent.click(within(dmNote).getByRole("button", { name: "Like" }));
+
+    expect(addReaction).toHaveBeenCalledWith("t1", "n1", "👍");
+    expect(within(dmNote).getByRole("button", { name: /Like: 1, from You/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("taps your own reaction again to take it back", async () => {
+    listReactions.mockResolvedValue([
+      { entry_id: "n1", user_id: "me", reactor_name: "Billie", emoji: "🎲", created_at: "2026-10-13T03:00:00Z" },
+    ]);
+    renderJournal();
+    const dmNote = (await screen.findByText("Recap: you reached Phandalin.")).closest("li");
+
+    await userEvent.click(await within(dmNote).findByRole("button", { name: /Great roll: 1, from You/ }));
+
+    expect(removeReaction).toHaveBeenCalledWith("n1", "🎲", "me");
+    expect(within(dmNote).queryByRole("button", { name: /Great roll/ })).not.toBeInTheDocument();
+  });
+
+  it("shows reactions on your own note, but you can't react to it", async () => {
+    renderJournal();
+    const myNote = (await screen.findByText("I got a snake sword!")).closest("li");
+
+    expect(await within(myNote).findByLabelText(/Funny: 1, from DM/)).toBeInTheDocument();
+    expect(within(myNote).queryByRole("button", { name: "React" })).not.toBeInTheDocument();
+  });
+
+  it("never offers reactions on a private note", async () => {
+    renderJournal();
+    const privateNote = (await screen.findByText("The innkeeper is hiding something.")).closest("li");
+    await within(screen.getByText("Recap: you reached Phandalin.").closest("li")).findByRole("button", { name: "React" });
+    expect(within(privateNote).queryByRole("button", { name: "React" })).not.toBeInTheDocument();
+  });
+
+  it("hides reactions if they can't load yet (before the database update)", async () => {
+    listReactions.mockRejectedValue(new Error("no reactions table yet"));
+    renderJournal();
+    const dmNote = (await screen.findByText("Recap: you reached Phandalin.")).closest("li");
+    await waitFor(() => expect(listReactions).toHaveBeenCalled());
+    expect(within(dmNote).queryByRole("button", { name: "React" })).not.toBeInTheDocument();
+  });
+
+  it("puts a reaction back the way it was if saving fails", async () => {
+    addReaction.mockRejectedValueOnce(new Error("offline"));
+    renderJournal();
+    const dmNote = (await screen.findByText("Recap: you reached Phandalin.")).closest("li");
+
+    await userEvent.click(await within(dmNote).findByRole("button", { name: "React" }));
+    await userEvent.click(within(dmNote).getByRole("button", { name: "Wow" }));
+
+    expect(await screen.findByText(/Couldn't save that reaction/)).toBeInTheDocument();
+    await waitFor(() => expect(within(dmNote).queryByRole("button", { name: /Wow: 1/ })).not.toBeInTheDocument());
   });
 });

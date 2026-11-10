@@ -383,3 +383,81 @@
   background-color: var(--qk-brass-soft);
   color: var(--qk-text);
 }
+
+/* Reactions under a note: small chips ("❤️ 2"), yours outlined in the accent,
+   and a quiet "React" button that opens the five choices. */
+.journal-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.journal-reactions__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.journal-reactions__chip,
+.journal-reactions__add,
+.journal-reactions__choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+button.journal-reactions__chip,
+.journal-reactions__add,
+.journal-reactions__choice {
+  cursor: pointer;
+}
+
+button.journal-reactions__chip:hover,
+.journal-reactions__add:hover,
+.journal-reactions__choice:hover {
+  border-color: var(--qk-terracotta);
+}
+
+.journal-reactions__chip--mine,
+.journal-reactions__choice--mine {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-text);
+}
+
+.journal-reactions__add {
+  color: var(--qk-text-muted);
+}
+
+.journal-reactions__picker {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.journal-reactions__choice {
+  padding: 0 8px;
+  font-size: 16px;
+}
+
+.journal-reactions__chip:focus-visible,
+.journal-reactions__add:focus-visible,
+.journal-reactions__choice:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}

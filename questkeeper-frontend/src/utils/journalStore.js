@@ -132,8 +132,33 @@ export async function getTablePortraits(tableId) {
   }
 }
 
-// Calls onChange when anyone adds, edits or removes an entry at this table
-// (row-level security still decides what each person receives).
+// --- Reactions (see 20261109_journal_reactions.sql) ------------------------------
+
+// Every reaction at this table. Throws if the reactions migration hasn't been
+// run yet, so the journal can simply leave reactions out.
+export async function listReactions(tableId) {
+  return unwrap(await supabase.from("journal_reactions").select("*").eq("table_id", tableId));
+}
+
+// The database signs it with the reactor's name and checks the note is
+// someone else's shared note at a table they're at.
+export async function addReaction(tableId, entryId, emoji) {
+  unwrap(await supabase.from("journal_reactions").insert({ table_id: tableId, entry_id: entryId, emoji }));
+}
+
+export async function removeReaction(entryId, emoji, userId) {
+  unwrap(
+    await supabase
+      .from("journal_reactions")
+      .delete()
+      .eq("entry_id", entryId)
+      .eq("emoji", emoji)
+      .eq("user_id", userId),
+  );
+}
+
+// Calls onChange when anyone adds, edits or removes an entry (or a reaction)
+// at this table (row-level security still decides what each person receives).
 export function subscribeToJournal(tableId, onChange) {
   const channel = supabase
     .channel(`journal-${tableId}`)
@@ -143,8 +168,19 @@ export function subscribeToJournal(tableId, onChange) {
       onChange,
     )
     .subscribe();
+  // Reactions get a channel of their own, so the notes stay live even before
+  // the reactions migration has been run.
+  const reactionsChannel = supabase
+    .channel(`journal-reactions-${tableId}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "journal_reactions", filter: `table_id=eq.${tableId}` },
+      onChange,
+    )
+    .subscribe();
 
   return () => {
     supabase.removeChannel(channel);
+    supabase.removeChannel(reactionsChannel);
   };
 }

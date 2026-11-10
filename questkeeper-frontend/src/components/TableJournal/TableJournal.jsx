@@ -9,6 +9,9 @@ import {
   moveJournalEntries,
   startNextSession,
   subscribeToJournal,
+  listReactions,
+  addReaction,
+  removeReaction,
   updateJournalEntry,
 } from "../../utils/journalStore";
 import {
@@ -25,6 +28,8 @@ import CampaignTools from "../CampaignTools/CampaignTools";
 import { campaignLabel, campaignNumbers, campaignOf, sessionLabel } from "../../utils/campaigns";
 import "./TableJournal.css";
 import InlineLoading from "../StatusNote/InlineLoading";
+import JournalReactions from "./JournalReactions";
+import { summarizeReactions, toggleReaction } from "../../utils/journalReactions";
 
 const POLL_MS = 15000;
 const MAX_LENGTH = 4000;
@@ -110,6 +115,9 @@ function TableJournal({
   const [viewCampaign, setViewCampaign] = useState(null);
   // Each writer's portrait, from the table's members (initials where there's none).
   const [portraits, setPortraits] = useState(() => new Map());
+  // Reactions on the notes; null until loaded, or if the reactions migration
+  // hasn't been run yet (then reactions simply don't show).
+  const [reactions, setReactions] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [draft, setDraftText] = useState(() => readDraft(tableId));
@@ -145,6 +153,15 @@ function TableJournal({
     writeDraft(tableId, text);
   }
 
+  // Reactions load alongside the notes; if they can't (no reactions table yet),
+  // the notes still show, just without reactions.
+  const loadReactions = useCallback(() => {
+    Promise.resolve()
+      .then(() => listReactions(tableId))
+      .then((loaded) => setReactions(Array.isArray(loaded) ? loaded : null))
+      .catch(() => setReactions(null));
+  }, [tableId]);
+
   const load = useCallback(() => {
     listJournal(tableId)
       .then((loaded) => {
@@ -153,7 +170,24 @@ function TableJournal({
       })
       .catch(() => setError("Couldn't load the journal. It will try again shortly."))
       .finally(() => setIsLoading(false));
-  }, [tableId]);
+    loadReactions();
+  }, [tableId, loadReactions]);
+
+  // Add or take back one of your reactions: shown at once, then saved. If
+  // saving fails, the reactions are reloaded and the problem is shown.
+  async function toggleMyReaction(entry, emoji) {
+    const had = (reactions ?? []).some(
+      (reaction) => reaction.entry_id === entry.id && reaction.emoji === emoji && reaction.user_id === userId,
+    );
+    setReactions((current) => toggleReaction(current, { entryId: entry.id, emoji, userId }));
+    try {
+      if (had) await removeReaction(entry.id, emoji, userId);
+      else await addReaction(tableId, entry.id, emoji);
+    } catch {
+      setError("Couldn't save that reaction. Try again in a moment.");
+      loadReactions();
+    }
+  }
 
   useEffect(() => {
     let ignore = false;
@@ -483,6 +517,16 @@ function TableJournal({
                         </form>
                       ) : (
                         <p className="table-journal__body">{entry.body}</p>
+                      )}
+
+                      {/* Reactions on shared notes: anyone can see them; only
+                          other people can react (not on your own note). */}
+                      {reactions && !isEditing && entry.visibility !== "private" && (
+                        <JournalReactions
+                          summary={summarizeReactions(reactions, entry.id, userId)}
+                          canReact={!isMine}
+                          onToggle={(emoji) => toggleMyReaction(entry, emoji)}
+                        />
                       )}
 
                       {movingId === entry.id && !isMine && (
