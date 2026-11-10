@@ -283,88 +283,139 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
-/* "QuestKeeper has a fresh update": a small card floating in the bottom-left
-   corner, above the dice bar, so nothing on the page moves. It fades in once
-   (not under Reduce motion) and stays quiet until tapped. */
-.update-banner {
+/* "✨ Update": a small pill in the bottom-left corner when a newer version is
+   live. It sparkles once as it arrives, then dims so it doesn't nag, and
+   brightens again under the pointer or keyboard focus. Without animation
+   (Reduce Motion) it simply sits there dimmed. */
+.update-badge {
   position: fixed;
-  bottom: 96px;
+  bottom: 16px;
   left: 16px;
   z-index: 60;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 12px;
+  display: inline-flex;
   align-items: center;
-  max-width: min(360px, calc(100vw - 32px));
-  padding: 10px 12px 10px 14px;
   border: 1px solid var(--qk-border);
-  border-left: 3px solid var(--qk-terracotta);
-  border-radius: var(--qk-radius-control);
+  border-radius: 999px;
   background-color: var(--qk-surface);
-  box-shadow: 0 6px 18px -10px var(--qk-shadow, rgba(0, 0, 0, 0.35));
-  color: var(--qk-text);
-  font-size: 14px;
-  animation: update-banner-in 0.4s ease-out;
+  box-shadow: 0 4px 14px var(--qk-shadow);
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
 }
 
-.update-banner__actions {
-  display: flex;
-  gap: 8px;
-  margin-left: auto;
+.update-badge:hover,
+.update-badge:focus-within {
+  opacity: 1;
 }
 
-.update-banner__refresh,
-.update-banner__later {
+.update-badge__refresh,
+.update-badge__hide {
   min-height: 32px;
-  padding: 2px 12px;
-  border-radius: var(--qk-radius-control);
+  border: 0;
+  background: none;
+  color: var(--qk-text);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.update-banner__refresh {
-  border: 1px solid var(--qk-terracotta);
-  background-color: var(--qk-terracotta);
-  color: var(--qk-surface);
+.update-badge__refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 4px 0 10px;
+  border-radius: 999px 0 0 999px;
 }
 
-.update-banner__later {
-  border: 1px solid var(--qk-border);
-  background: none;
+.update-badge__hide {
+  padding: 0 10px 0 6px;
+  border-radius: 0 999px 999px 0;
   color: var(--qk-text-muted);
+  font-size: 15px;
 }
 
-.update-banner__refresh:focus-visible,
-.update-banner__later:focus-visible {
-  outline: 2px solid var(--qk-text);
-  outline-offset: 2px;
+.update-badge__refresh:hover,
+.update-badge__hide:hover {
+  color: var(--qk-terracotta);
 }
 
-@keyframes update-banner-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
+.update-badge__refresh:focus-visible,
+.update-badge__hide:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 1px;
+}
+
+/* For screen readers only. */
+.update-badge__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.update-badge__spark {
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Arrives bright with a glow, stays bright a few seconds, then settles to
+     its resting dim (the animation ends exactly where the badge rests, so
+     hovering can still brighten it afterwards). */
+  .update-badge {
+    animation: update-badge-arrive 5s ease-out;
   }
-  to {
+
+  .update-badge__spark {
+    animation: update-badge-sparkle 1.8s ease-out;
+  }
+}
+
+@keyframes update-badge-arrive {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  8% {
     opacity: 1;
     transform: none;
+    box-shadow: 0 0 0 0 rgba(180, 84, 55, 0);
+  }
+  18% {
+    box-shadow: 0 0 0 6px rgba(180, 84, 55, 0.25);
+  }
+  36% {
+    box-shadow: 0 4px 14px var(--qk-shadow);
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .update-banner {
-    animation: none;
+@keyframes update-badge-sparkle {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: scale(1.35) rotate(-15deg);
+  }
+  50% {
+    transform: scale(0.9) rotate(10deg);
+  }
+  75% {
+    transform: scale(1.15) rotate(-5deg);
   }
 }
 
-/* Phones: across the bottom, just above the dice bar. */
+/* Phones: still small and on the left, just above the dice bar. */
 @media screen and (max-width: 600px) {
-  .update-banner {
-    right: 16px;
-    bottom: 112px;
-    max-width: none;
+  .update-badge {
+    bottom: 88px;
   }
 }
 
