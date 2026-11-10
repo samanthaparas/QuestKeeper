@@ -134,20 +134,28 @@ function UpdateBanner() {
     }
   }
 
+  // A small "✨ Update" badge in the bottom-left corner: it sparkles once when
+  // it appears, then dims so it doesn't nag. Tap it to refresh now; × hides it
+  // (the quiet refresh still happens). The full sentence is for screen readers
+  // and the hover tooltip.
+  const explanation =
+    "QuestKeeper has a fresh update. It refreshes by itself when you switch tabs or pages, or tap to refresh now.";
   return (
-    <aside className="update-banner" role="status" aria-label="QuestKeeper update">
-      <span className="update-banner__text">
-        <span aria-hidden="true">✨</span> QuestKeeper has a fresh update. It refreshes by itself when you switch
-        tabs or pages, or tap Refresh now.
-      </span>
-      <span className="update-banner__actions">
-        <button type="button" className="update-banner__refresh" onClick={() => window.location.reload()}>
-          Refresh
-        </button>
-        <button type="button" className="update-banner__later" onClick={later}>
-          Later
-        </button>
-      </span>
+    <aside className="update-badge" role="status" aria-label="QuestKeeper update">
+      <span className="update-badge__sr">{explanation}</span>
+      <button
+        type="button"
+        className="update-badge__refresh"
+        onClick={() => window.location.reload()}
+        title={explanation}
+        aria-label="Refresh to get the QuestKeeper update"
+      >
+        <span className="update-badge__spark" aria-hidden="true">✨</span>
+        Update
+      </button>
+      <button type="button" className="update-badge__hide" onClick={later} aria-label="Hide the update notice">
+        ×
+      </button>
     </aside>
   );
 }
