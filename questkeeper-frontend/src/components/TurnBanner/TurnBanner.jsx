@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { resolveDamageRequest } from "../../utils/tableStore";
 import { describeUpcoming } from "../../utils/initiative";
 import { eventTone } from "../../utils/tableGuidance";
@@ -6,11 +6,22 @@ import Button from "../Button/Button";
 import TurnHeadsUp from "../TurnHeadsUp/TurnHeadsUp";
 import "./TurnBanner.css";
 
+// How long the "Applied 14 damage" confirmation stays before it tidies itself away.
+export const APPLIED_NOTE_MS = 15000;
+
 // Sits at the top of a player's character sheet while their table is in combat.
 // `combat` comes from useTableTurn; `onApplyDamage` lowers this character's HP.
 function TurnBanner({ combat, onApplyDamage }) {
   const [error, setError] = useState("");
   const [appliedNote, setAppliedNote] = useState("");
+
+  // The "Applied …" line is just a confirmation: it goes away by itself after
+  // 15 seconds so it doesn't keep taking up space on the sheet.
+  useEffect(() => {
+    if (!appliedNote) return undefined;
+    const timer = setTimeout(() => setAppliedNote(""), APPLIED_NOTE_MS);
+    return () => clearTimeout(timer);
+  }, [appliedNote]);
 
   if (!combat) return null;
 
