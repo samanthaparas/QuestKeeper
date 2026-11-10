@@ -1,0 +1,35 @@
+/* "Every enemy is down": a calm green card at the top of the DM's Combat panel. */
+.combat-over {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--qk-moss);
+  border-left-width: 5px;
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-moss-soft);
+  color: var(--qk-text);
+}
+
+.combat-over__title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.combat-over__text {
+  margin: 0;
+  font-size: 14px;
+}
+
+.combat-over__clock {
+  font-variant-numeric: tabular-nums;
+}
+
+.combat-over__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
