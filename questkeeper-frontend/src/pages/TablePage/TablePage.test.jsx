@@ -1863,6 +1863,23 @@ describe("TablePage, DM Combat tab: compact rows, the party summary and the dama
     expect(screen.getByRole("heading", { name: "Selected · Kobold" })).toBeInTheDocument();
   });
 
+  it("lets go of a pick when the turn reaches a monster, so that monster's Attack is the one showing", async () => {
+    mockTable({ isDm: true, currentId: "c-billie" });
+    withAlly();
+    const { rerender } = renderPage();
+
+    // During Billie's turn the DM picks Sir Pip...
+    await userEvent.click(rowFor("Sir Pip").querySelector(".table-page__row-select"));
+    expect(screen.getByRole("heading", { name: "Selected · Sir Pip" })).toBeInTheDocument();
+
+    // ...then the turn moves on to the Kobold: the panel follows it.
+    withAlly({ table: { ...currentTable.table, current_combatant_id: "c-kobold" } });
+    rerender(pageTree());
+    expect(screen.getByRole("heading", { name: "Selected · Kobold" })).toBeInTheDocument();
+    expect(screen.getByText("Following the turn")).toBeInTheDocument();
+    expect(within(detailFor("Kobold")).getByRole("button", { name: "Attack" })).toBeInTheDocument();
+  });
+
   it("lets go of a picked creature when you tap it again, and follows the turn", async () => {
     mockTable({ isDm: true });
     withAlly();
