@@ -80,6 +80,7 @@ import LevelUpWizard from "./LevelUpWizard";
 import { loadHomebrew } from "../../utils/homebrewCache";
 import {
   getFeats,
+  getFeatDetails,
   getClassFeatures,
   getClassSpells,
   getFeatureDetails,
@@ -771,8 +772,47 @@ describe("LevelUpWizard feats for a 2014 character", () => {
     // Only the 2014 list is asked for.
     expect(getFeats.mock.calls.every((call) => call[0] !== "2024")).toBe(true);
     const names = within(screen.getByRole("combobox")).getAllByRole("option").map((option) => option.textContent);
-    expect(names).toEqual(["Choose a feat", "Grappler (2014 SRD)", "Sharpshooter (my version) (Homebrew)"]);
-    expect(screen.getByText(/make it as homebrew on the Feats page/)).toBeInTheDocument();
+    expect(names.slice(0, 3)).toEqual(["Choose a feat", "Grappler (2014 SRD)", "Sharpshooter (my version) (Homebrew)"]);
+    expect(names).not.toContain("Boon of Fate (2024 SRD)");
+    // The book feats come after, to be made as homebrew first.
+    expect(names).toContain("Tough (Player's Handbook (2014))");
+    expect(screen.getByText(/Feats from the books/)).toBeInTheDocument();
+    getFeats.mockResolvedValue([]);
+  });
+
+  it("offers a book feat like Tough as homebrew, right inside level-up", async () => {
+    getFeats.mockResolvedValue([{ index: "grappler", name: "Grappler", edition: "2014" }]);
+    render(
+      <MemoryRouter>
+        <LevelUpWizard sheet={makeCharacter("fighter", "Fighter", 3)} onComplete={vi.fn()} onCancel={vi.fn()} />
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Take Average/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Take a Feat" }));
+    await userEvent.selectOptions(screen.getByRole("combobox"), "Tough (Player's Handbook (2014))");
+
+    expect(screen.getByRole("button", { name: "Make it as homebrew" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Read the full rules/ })).toBeInTheDocument();
+    // It can't be taken as it is.
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    getFeats.mockResolvedValue([]);
+  });
+
+  it("a homebrew feat with extra HP per level says what it adds", async () => {
+    getFeats.mockResolvedValue([{ index: "hb_tough", name: "Tough", edition: "Homebrew" }]);
+    getFeatDetails.mockResolvedValue({ name: "Tough", edition: "Homebrew", desc: ["Sturdier."], hp_per_level: 2 });
+    render(
+      <MemoryRouter>
+        <LevelUpWizard sheet={makeCharacter("fighter", "Fighter", 3)} onComplete={vi.fn()} onCancel={vi.fn()} />
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Take Average/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Take a Feat" }));
+    await userEvent.selectOptions(screen.getByRole("combobox"), "Tough (Homebrew)");
+
+    expect(await screen.findByText(/\+2 max HP for every level: \+8 now \(level 4\)/)).toBeInTheDocument();
     getFeats.mockResolvedValue([]);
   });
 });

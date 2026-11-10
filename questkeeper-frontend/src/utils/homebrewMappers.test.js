@@ -7,6 +7,7 @@ import {
   toHomebrewSubrace,
   toHomebrewBackground,
   toHomebrewSubclass,
+  toHomebrewFeat,
   getHomebrewSubraceRefs,
   getHomebrewSubclassRefs,
   findHomebrew,
@@ -323,7 +324,7 @@ describe("drafts that still need details", () => {
       expect(cleanHomebrewData(category, { needsDetails: true }).needsDetails).toBe(true);
       expect(cleanHomebrewData(category, { needsDetails: "yes" }).needsDetails).toBeUndefined();
     }
-    expect(cleanHomebrewData("feat", { needsDetails: true })).toEqual({ prerequisite: "" });
+    expect(cleanHomebrewData("feat", { needsDetails: true })).toEqual({ prerequisite: "", hpPerLevel: 0 });
   });
 
   it("turns a bare draft into a usable race, background and subclass", () => {
@@ -342,3 +343,17 @@ describe("drafts that still need details", () => {
   });
 });
 
+describe("homebrew feats with extra hit points per level", () => {
+  it("keeps a whole number from 0 to 5", () => {
+    expect(cleanHomebrewData("feat", { hpPerLevel: 2 }).hpPerLevel).toBe(2);
+    expect(cleanHomebrewData("feat", { hpPerLevel: "3" }).hpPerLevel).toBe(3);
+    expect(cleanHomebrewData("feat", { hpPerLevel: 50 }).hpPerLevel).toBe(5);
+    expect(cleanHomebrewData("feat", { hpPerLevel: -1 }).hpPerLevel).toBe(0);
+    expect(cleanHomebrewData("feat", {}).hpPerLevel).toBe(0);
+  });
+
+  it("passes it on to level-up", () => {
+    const feat = toHomebrewFeat({ id: "f1", name: "Tough", category: "feat", summary: "Sturdier.", data: { hpPerLevel: 2 } });
+    expect(feat.hp_per_level).toBe(2);
+  });
+});

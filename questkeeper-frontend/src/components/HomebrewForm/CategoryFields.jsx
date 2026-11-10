@@ -663,9 +663,11 @@ function BonusSpellsField({ spells, onChange }) {
   );
 }
 
-// A feat is a name, a prerequisite and what it does (the Summary box above).
+// A feat is a name, a prerequisite and what it does (the Summary box above),
+// plus any extra hit points per level, which level-up adds by itself.
 function FeatFields({ data, set }) {
   return (
+    <>
     <label className="homebrew-form__field" htmlFor="homebrew-prerequisite">
       <span className="homebrew-form__label">Prerequisite (optional)</span>
       <input
@@ -677,6 +679,25 @@ function FeatFields({ data, set }) {
         onChange={(event) => set({ prerequisite: event.target.value })}
       />
     </label>
+    <label className="homebrew-form__field" htmlFor="homebrew-hp-per-level">
+      <span className="homebrew-form__label">Extra hit points per level (optional)</span>
+      <input
+        id="homebrew-hp-per-level"
+        className="homebrew-form__input homebrew-form__input--short"
+        type="number"
+        min="0"
+        max="5"
+        inputMode="numeric"
+        value={data.hpPerLevel ?? 0}
+        onChange={(event) => set({ hpPerLevel: event.target.value === "" ? 0 : Number(event.target.value) })}
+        aria-describedby="homebrew-hp-per-level-hint"
+      />
+      <span className="homebrew-form__hint" id="homebrew-hp-per-level-hint">
+        Leave at 0 for most feats. If this feat raises your hit point maximum for every level you have, put that
+        number here, and level-up adds it for you: for all your levels when you take the feat, then again each level.
+      </span>
+    </label>
+    </>
   );
 }
 
