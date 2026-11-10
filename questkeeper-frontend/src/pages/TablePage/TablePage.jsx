@@ -57,6 +57,7 @@ import { toPartyRow } from "../../utils/partyStrip";
 import { shouldReduceMotion } from "../../utils/motionPreference";
 import Button from "../../components/Button/Button";
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
+import CombatOverPrompt from "../../components/CombatOverPrompt/CombatOverPrompt";
 import AddCombatantForm from "../../components/AddCombatantForm/AddCombatantForm";
 import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEditPanel";
 import PlayerCharacterCard from "../../components/PlayerCharacterCard/PlayerCharacterCard";
@@ -1515,6 +1516,10 @@ function TablePage() {
   const myMember = members.find((member) => member.user_id === user?.id);
   const players = combatants.filter((combatant) => combatant.kind === "player");
   const monsters = combatants.filter((combatant) => combatant.kind === "monster");
+  // Mid-fight with every enemy down: the DM is offered to end combat (with a
+  // countdown). A new monster, or one healed back up, takes the offer away.
+  const allEnemiesDown =
+    table.combat_active && monsters.length > 0 && monsters.every((monster) => monster.status === "down");
   const npcs = combatants.filter((combatant) => combatant.kind !== "player");
   const amUp = Boolean(now && now.kind === "player" && now.user_id === user?.id);
   const myCombatant = players.find((player) => player.user_id === user?.id);
@@ -2012,6 +2017,14 @@ function TablePage() {
                   )}
                 </div>
               </div>
+              {allEnemiesDown && (
+                <CombatOverPrompt
+                  // A different set of fallen enemies starts a fresh countdown.
+                  key={monsters.map((monster) => monster.id).join(",")}
+                  onEnd={() => run(() => endCombat(table.id))}
+                  onAddMonster={() => setShowMonsterForm(true)}
+                />
+              )}
             </>
           )}
           {!isDm && (

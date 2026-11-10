@@ -29,6 +29,7 @@ import {
   unbanMember,
   listBans,
   startCombat,
+  endCombat,
 } from "../../utils/tableStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -2435,3 +2436,38 @@ describe("TablePage when the table can't be shown", () => {
     expect(refresh).toHaveBeenCalled();
   });
 });
+
+describe("TablePage, when every enemy is down", () => {
+  const downKobold = combatants.map((combatant) =>
+    combatant.kind === "monster" ? { ...combatant, status: "down", damage_taken: 30 } : combatant,
+  );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installFakeStorage();
+  });
+
+  it("offers the DM to end combat, with a countdown", async () => {
+    mockTable({ isDm: true });
+    useTable.mockReturnValue({ ...currentTable, combatants: downKobold });
+    renderPage();
+
+    expect(screen.getByText("Every enemy is down.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "End combat now" }));
+    expect(endCombat).toHaveBeenCalledWith("t1");
+  });
+
+  it("doesn't offer it while an enemy is still standing, or to players", () => {
+    mockTable({ isDm: true });
+    renderPage();
+    expect(screen.queryByText("Every enemy is down.")).not.toBeInTheDocument();
+  });
+
+  it("never shows it on a player's game page", () => {
+    mockTable({ isDm: false });
+    useTable.mockReturnValue({ ...currentTable, combatants: downKobold });
+    renderPage();
+    expect(screen.queryByText("Every enemy is down.")).not.toBeInTheDocument();
+  });
+});
+
