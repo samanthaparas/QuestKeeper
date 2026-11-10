@@ -324,6 +324,9 @@ export function useSheetRolls(characterId, characterName) {
     cancelRealDice: () => setPending(null),
     tableId: table?.id ?? null,
     tableSession: table?.session_number ?? 1,
+    // The table's current campaign, so the sheet's journal writes into it.
+    tableCampaign: table?.campaign_number ?? 1,
+    tableCampaignNames: table?.campaign_names ?? {},
     tableName: table?.name ?? null,
     share,
     sharing,

@@ -19,6 +19,24 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("useSheetRolls", () => {
+  it("knows the table's current session and campaign, for the sheet's journal", async () => {
+    listCharacterTables.mockResolvedValue([
+      { id: "t1", name: "Breakfast Club", session_number: 2, campaign_number: 2, campaign_names: { 2: "Season 2" } },
+    ]);
+    const { result } = renderHook(() => useSheetRolls("char-1", "Pippa"));
+    await waitFor(() => expect(result.current.tableName).toBe("Breakfast Club"));
+    expect(result.current.tableSession).toBe(2);
+    expect(result.current.tableCampaign).toBe(2);
+    expect(result.current.tableCampaignNames).toEqual({ 2: "Season 2" });
+  });
+
+  it("treats a table that never used campaigns as Campaign 1", async () => {
+    listCharacterTables.mockResolvedValue([{ id: "t1", name: "Friday Game" }]);
+    const { result } = renderHook(() => useSheetRolls("char-1", "Billie"));
+    await waitFor(() => expect(result.current.tableName).toBe("Friday Game"));
+    expect(result.current.tableCampaign).toBe(1);
+  });
+
   it("shares rolls with the character's table", async () => {
     listCharacterTables.mockResolvedValue([{ id: "t1", name: "Friday Game" }]);
     const { result } = renderHook(() => useSheetRolls("char-1", "Billie"));

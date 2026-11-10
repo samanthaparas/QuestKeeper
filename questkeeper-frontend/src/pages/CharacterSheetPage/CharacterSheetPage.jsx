@@ -3218,6 +3218,8 @@ function CharacterSheetPage() {
                             userId={user.id}
                             isDm={false}
                             sessionNumber={roller.tableSession}
+                            campaignNumber={roller.tableCampaign}
+                            campaignNames={roller.tableCampaignNames}
                             avatarCharacters={new Map([[user.id, sheet]])}
                           />
                         </>
