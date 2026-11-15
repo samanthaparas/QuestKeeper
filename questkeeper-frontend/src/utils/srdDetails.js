@@ -981,3 +981,11 @@ export function formatTraitDetails(trait) {
     blocks: groupMarkdownTables(toLines(trait.desc)),
   };
 }
+
+// Is this an item index the rules server knows ("chain-mail", "longsword")?
+// A player's own items have long random ids ("c29b9fe7-0263-…") or homebrew
+// ids ("hb_…"), and asking the server about them only gets "not found".
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isRulesItemIndex(index) {
+  return typeof index === "string" && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(index) && !UUID_PATTERN.test(index);
+}

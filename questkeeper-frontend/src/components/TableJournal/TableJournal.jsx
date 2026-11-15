@@ -59,6 +59,34 @@ function writeDraft(tableId, text) {
   }
 }
 
+// The session number typed in the note box, kept on this device so it
+// survives switching tabs or a reload. It's tied to the table's current
+// session at the time, so once the DM starts a new one it's let go.
+function sessionPickKey(tableId) {
+  return `qk-journal-session-${tableId}`;
+}
+
+function readSessionPick(tableId, currentSession) {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(sessionPickKey(tableId)) ?? "null");
+    return saved && saved.base === currentSession && typeof saved.value === "string" ? saved.value : "";
+  } catch {
+    return "";
+  }
+}
+
+function writeSessionPick(tableId, currentSession, value) {
+  try {
+    if (value.trim()) {
+      window.localStorage.setItem(sessionPickKey(tableId), JSON.stringify({ value, base: currentSession }));
+    } else {
+      window.localStorage.removeItem(sessionPickKey(tableId));
+    }
+  } catch {
+    // Remembering it is a convenience; the box still works without it.
+  }
+}
+
 // "Whole table" or "Just me" for one note.
 function VisibilityChoice({ value, onChange, name }) {
   return (
@@ -127,7 +155,17 @@ function TableJournal({
   const [editing, setEditing] = useState(null); // { id, body, visibility, session }
   // Which session a new note goes under ("" = the table's current one), and
   // what's being looked at: "recent", "all", or a session number.
-  const [noteSession, setNoteSession] = useState("");
+  // { value, base }: what was typed, and the table's session when it was. A
+  // new session (base no longer matches) shows the box empty again.
+  const [sessionPick, setSessionPick] = useState(() => ({
+    value: readSessionPick(tableId, sessionNumber),
+    base: sessionNumber,
+  }));
+  const noteSession = sessionPick.base === sessionNumber ? sessionPick.value : "";
+  function setNoteSession(value) {
+    setSessionPick({ value, base: sessionNumber });
+    writeSessionPick(tableId, sessionNumber, value);
+  }
   const [view, setView] = useState("recent");
   const [currentInput, setCurrentInput] = useState("");
   // The note whose "Move to another campaign" picker is open (someone else's note).

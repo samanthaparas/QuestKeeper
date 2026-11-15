@@ -140,7 +140,7 @@ import {
   findArmorConflicts,
 } from "../../utils/armorClass";
 import { getEquipment, getEquipmentDetails } from "../../utils/api";
-import { featuresForNewLevel, loadFeatureEntries, normalizeItemName } from "../../utils/srdDetails";
+import { featuresForNewLevel, isRulesItemIndex, loadFeatureEntries, normalizeItemName } from "../../utils/srdDetails";
 import CompanionCard from "../../components/CompanionCard/CompanionCard";
 import CharacterDetailsDialog from "../../components/CharacterDetailsDialog/CharacterDetailsDialog";
 import PortraitUpload from "../../components/PortraitUpload/PortraitUpload";
@@ -470,7 +470,9 @@ function CharacterSheetPage() {
                 // in the plain list; look up the armor it's made from instead.
                 const magicArmor = match ? null : magicArmorFor(item.name);
                 const index = match?.index ?? magicArmor?.base ?? item.index;
-                const details = index ? await getEquipmentDetails(index).catch(() => null) : null;
+                // Only rules items have details to fetch; the player's own items
+                // (long random ids) would just come back "not found".
+                const details = isRulesItemIndex(index) ? await getEquipmentDetails(index).catch(() => null) : null;
                 return [normalizeItemName(item.name), withArmorBonus(details, magicArmor?.bonus)];
               }),
             ),
