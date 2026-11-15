@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { installFakeStorage } from "../../test/fakeStorage";
@@ -89,7 +89,8 @@ describe("character creation from the quiz", () => {
     renderFromQuiz({ quizBuild: "iron-guardian", name: "Bram" });
     const heading = await screen.findByRole("heading", { level: 1, name: /skill proficiencies/i });
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(heading).toHaveFocus();
+    // Focus moves just after the step appears; wait for it rather than racing it.
+    await waitFor(() => expect(heading).toHaveFocus());
   });
 
   it("asks for a name first when the quiz didn't bring one", async () => {
@@ -161,7 +162,7 @@ describe("moving between creation steps", () => {
       loadQuizBuild.mockResolvedValue(IRON_GUARDIAN);
       renderFromQuiz({ quizBuild: "iron-guardian", name: "Bram" });
       const heading = await screen.findByRole("heading", { level: 1, name: /skill proficiencies/i });
-      expect(heading).toHaveFocus();
+      await waitFor(() => expect(heading).toHaveFocus());
       expect(heading.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
     } finally {
       rect.mockRestore();

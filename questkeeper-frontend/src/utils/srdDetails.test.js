@@ -1110,3 +1110,15 @@ describe("featuresForNewLevel", () => {
   });
 });
 
+
+describe("isRulesItemIndex", () => {
+  it("knows rules items from the player's own", async () => {
+    const { isRulesItemIndex } = await import("./srdDetails");
+    expect(isRulesItemIndex("chain-mail")).toBe(true);
+    expect(isRulesItemIndex("longsword")).toBe(true);
+    expect(isRulesItemIndex("c29b9fe7-0263-4e32-a855-20d8f7cb3d4f")).toBe(false);
+    expect(isRulesItemIndex("hb_1234")).toBe(false);
+    expect(isRulesItemIndex("")).toBe(false);
+    expect(isRulesItemIndex(undefined)).toBe(false);
+  });
+});

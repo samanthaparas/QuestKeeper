@@ -519,3 +519,28 @@ describe("TableJournal reactions", () => {
     await waitFor(() => expect(within(dmNote).queryByRole("button", { name: /Wow: 1/ })).not.toBeInTheDocument());
   });
 });
+
+describe("TableJournal session box", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installFakeStorage();
+    listJournal.mockResolvedValue(NOTES);
+  });
+
+  it("remembers the session you typed after a reload, until the DM starts a new one", async () => {
+    const first = renderJournal({ sessionNumber: 1 });
+    const box = await screen.findByLabelText("Session");
+    await userEvent.type(box, "2");
+    first.unmount();
+
+    // Same table session: the 2 is still there (switching tabs, a reload).
+    const second = renderJournal({ sessionNumber: 1 });
+    expect(await screen.findByLabelText("Session")).toHaveValue(2);
+    second.unmount();
+
+    // The DM started session 2: the box is empty again.
+    renderJournal({ sessionNumber: 2 });
+    expect(await screen.findByLabelText("Session")).toHaveValue(null);
+  });
+});
+
