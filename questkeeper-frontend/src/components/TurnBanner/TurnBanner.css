@@ -51,7 +51,8 @@
 /* Damage in red and healing in green, on a light pill so the colour reads on
    every banner (the orange "your turn" one included) and in both themes. */
 .turn-banner__event--damage,
-.turn-banner__event--healing {
+.turn-banner__event--healing,
+.turn-banner__event--victory {
   padding: 1px 10px;
   border-radius: 999px;
   background-color: var(--qk-surface);
@@ -62,7 +63,8 @@
   color: var(--qk-danger);
 }
 
-.turn-banner__event--healing {
+.turn-banner__event--healing,
+.turn-banner__event--victory {
   color: var(--qk-moss);
 }
 

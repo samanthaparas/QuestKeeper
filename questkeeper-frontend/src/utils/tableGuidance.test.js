@@ -216,12 +216,27 @@ describe("eventTone", () => {
     expect(eventTone({ message: "Vracien Marlowe takes 12 damage." })).toBe("damage");
     expect(eventTone({ message: "(Shroom) hits Vracien Marlowe for 17!" })).toBe("damage");
     expect(eventTone({ message: "StarShard Corpse (Shroom) is down!" })).toBe("damage");
+    expect(eventTone({ message: "Pippa is down!" }, [{ kind: "player", name: "Pippa" }])).toBe("damage");
     expect(eventTone({ kind: "damage", message: "Ouch" })).toBe("damage");
   });
 
   it("calls healing lines healing", () => {
     expect(eventTone({ message: "Ash looks healthier." })).toBe("healing");
     expect(eventTone({ kind: "healing", message: "Cure Wounds on Pippa" })).toBe("healing");
+  });
+
+  it("calls a fallen enemy good news", () => {
+    const fight = [
+      { kind: "monster", name: "Brown Bear" },
+      { kind: "player", name: "Pippa" },
+      { kind: "ally", name: "Victory" },
+    ];
+    expect(eventTone({ message: "Brown Bear is down!" }, fight)).toBe("victory");
+    // A friendly NPC going down is bad news, like a player.
+    expect(eventTone({ message: "Victory is down!" }, fight)).toBe("damage");
+    // Someone else with a similar name, or no list at all, stays red.
+    expect(eventTone({ message: "Brown Bear Cub is down!" }, fight)).toBe("damage");
+    expect(eventTone({ message: "Brown Bear is down!" })).toBe("damage");
   });
 
   it("leaves everything else plain", () => {

@@ -254,5 +254,19 @@ describe("TurnBanner", () => {
     expect(screen.getByText(/That hits!/)).toHaveClass("turn-banner__event");
     expect(screen.getByText(/That hits!/)).not.toHaveClass("turn-banner__event--damage");
   });
+
+  it("shows a fallen enemy in green and a fallen friend in red", () => {
+    const combatants = [
+      { id: "c-bear", kind: "monster", name: "Brown Bear" },
+      { id: "c-me", kind: "player", name: "Billie" },
+    ];
+    const { rerender } = render(
+      <TurnBanner combat={makeCombat({ combatants, latestEvent: { message: "Brown Bear is down!" } })} onApplyDamage={vi.fn()} />,
+    );
+    expect(screen.getByText("Brown Bear is down!")).toHaveClass("turn-banner__event--victory");
+
+    rerender(<TurnBanner combat={makeCombat({ combatants, latestEvent: { message: "Billie is down!" } })} onApplyDamage={vi.fn()} />);
+    expect(screen.getByText("Billie is down!")).toHaveClass("turn-banner__event--damage");
+  });
 });
 
