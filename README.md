@@ -192,20 +192,22 @@ A DM creates a table with a join code, and players join with one of their charac
 
 **On the Dungeon Master's screen** (tabs for Combat, Story, Players and Prep):
 
-- An initiative tracker and a private Monster Library. Add many identical monsters at once with nicknames and icons, and roll initiative for every monster in one click. From the table screen the DM can either **Add to the fight** or **Save for later (library only)**, which saves a monster to the library without putting it in the fight and without leaving the screen.
+- An initiative tracker and a private Monster Library. Add many identical monsters at once with nicknames and icons, and roll initiative for every monster in one click. Tick **Same creatures roll together** and copies of one creature (Goblin 1, Goblin 2, a nicknamed goblin) share one roll, so they act back to back. From the table screen the DM can either **Add to the fight** or **Save for later (library only)**, which saves a monster to the library without putting it in the fight and without leaving the screen.
 - **Clear monster turns:** each monster has a DM-only HP bar, the current fighter gets a banner saying what to do ("Kobold's turn: tap Attack, then Next turn"), and history from earlier turns is faded so it doesn't look new. On wide screens the attack panel opens beside the row so the Roll button never needs scrolling, and every box in it is labelled.
-- A full attack flow: players roll a virtual d20 or type a real one, and the database decides hit or miss against the **secret** AC. The DM can attack with monsters, send damage as a request the player applies, or deny an attack.
+- A full attack flow: players roll a virtual d20 or type a real one, and the database decides hit or miss against the **secret** AC. The DM can attack with monsters, send damage as a request the player applies, or deny an attack. **Roll attack + damage** rolls a monster's attack and, on a hit, its damage in one tap, so the DM only has to tap Send.
 - A **party strip** showing every character's portrait, HP, AC and conditions, plus concentration, death saves when someone is down, condition timers, and each companion's HP on its own line. A DM switch shares it with the players (the DM decides whether the party can see each other).
 - **Handouts**: pictures and notes the DM reveals to the whole table or to chosen players only. Revealing one adds a note to the journal, and pictures open in a pop-up. Big pictures (a Retina screenshot, a phone photo, a large map) are shrunk in the browser to fit the upload limit, and a screenshot can be pasted or dropped straight into the form.
 - **Secret messages** between the DM and individual players, with pictures, read receipts, and pasted or dropped screenshots that are shrunk automatically.
 - **Table rules:** the DM writes session-zero lines ("no PvP", "phones away") on the Prep tab, and players read them in a collapsed card that shows a "New" tag when it changes.
 - **Allowed content:** the DM blocks races, classes, backgrounds, feats or spells for the table. Players see the list, and the Players tab flags a character who doesn't match. It's a guide, not a lock.
-- **Away players:** the DM marks someone away and their turns are skipped until they're back.
+- **Away players:** the DM marks someone away and their turns are skipped until they're back. Players can do it themselves too, with **Step away (brb)** and **I'm back** on the sheet's turn banner and the game page; stepping away on your own turn passes it on.
+- **Monster concentration (DM only):** the DM notes the spell a monster or ally is holding. When it takes damage, a reminder asks for the Constitution save (DC 10 or half the damage) with a one-tap roll, and going down ends it. It's kept in the DM-only part of the database, so players never see it.
 - **Encounter helper:** suggest a fight by difficulty for the party's level (2014 XP-budget method, SRD monsters), or build your own and add it with stat blocks in one click. **Loot ideas** (coins, a magic item, a small hoard) sit beside it.
 - **Previously on... recaps:** one per session, edited by anyone at the table. "Draft from the notes" asks Claude to write a first version from notes shared with the whole table only; private notes never go in.
 - **Monster turns that follow along:** if the DM had picked a creature to act for, the pick lets go when the turn reaches a monster, so the right monster attacks.
 - **"Every enemy is down":** when the last enemy falls, the DM gets a prompt to end the fight, add a surprise monster, or hold off. If they do nothing, combat ends by itself after 60 seconds. A new or healed enemy takes the offer away, and players never see it.
 - **"⏳ Still in combat?":** a fight left open after the session (nothing has happened in it for 3 hours) shows a reminder on the DM Screen list and on the table's own screen, with **End combat** and **Keep fighting**.
+- **Fight summary:** when a fight ends, the DM gets a short summary made from the activity log (rounds, who was defeated, who went down, damage dealt and taken, healing and critical hits). They can change the words, then post it to the journal for the whole table, or skip it. It only uses lines everyone could already read, so nothing hidden leaks.
 - **Campaigns:** a table's journal can be split into Campaign 1 and Campaign 2 (anyone at the table can do it), older campaigns stay readable, notes are labelled 1.17 or 2.3 when there's more than one, and each campaign has its own recaps.
 
 **On each player's game page:**
@@ -643,7 +645,7 @@ What would make QuestKeeper even better than it was yesterday (encounter prep, r
 4. **Automated database and end-to-end tests** for the table rules, so the two-account test can run itself.
 5. **Backend caching and timeouts,** and global search that keeps working if one category fails.
 6. **A beginner mode toggle** to hide hints once a player doesn't need them.
-7. **More table tools:** a shared list of NPCs and places, open quests and threads, a quiet pause button for comfort, the DM tracking a monster's concentration, and table hints.
+7. **More table tools:** a shared list of NPCs and places, open quests and threads, a quiet pause button for comfort, and table hints. (The DM tracking a monster's concentration, group initiative, one-tap monster attacks, a player brb button and fight summaries are built.)
 8. **More AI help** on top of search by meaning: backstory ideas, "describe the vibe" character suggestions, and AI search over Open5e and homebrew too.
 9. **Works with no signal at all** as an installable app, and **Google sign-in** after the rename.
 10. **Table banners a DM can upload,** framed the same way as portraits.
@@ -667,8 +669,9 @@ The roadmap stays incremental: each feature should be small enough to understand
 - **October 27 to November 2, 2026:** a live audit with fixes for dark-mode condition colours, read-only views of other people's characters, and recap clashes; Render's paid plan finally worked; laptop-sized combat layout fixes and the long-rest house rule.
 - **November 9, 2026:** a full live game night with the group. Framed portraits, self-refreshing updates, book feats in level-up, handout picture shrinking, a table banner, journal reactions, a slimmer turn banner with red and green news, monster turns that follow along, the end-of-fight prompt, and damage taken that keeps max HP secret were all built that day.
 - **November 15, 2026:** housekeeping, a new screenshot round (light, dark, phone and signed-in), and the "Still in combat?" reminder.
+- **November 16, 2026:** a fallen enemy shows in green, and five game-night tools: one-tap monster attacks, a player brb button, monster concentration for the DM, group initiative, and a fight summary for the journal.
 
-As of November 15, 2026 there are 269 merged pull requests and 340+ commits.
+As of November 16, 2026 there are 272 merged pull requests and 350+ commits.
 
 ## Content and licensing principles
 

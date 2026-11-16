@@ -2,7 +2,7 @@
 
 A full run of a fight with a DM and a player on separate accounts. It is the end-to-end check for live play (Tables), run near the end of a batch of work so every new feature is tested together. It covers the table help for new groups (QA row #17), DM nudges, and the clearer monster rows (#36).
 
-**Interactive version:** [QuestKeeper Two-Account Test](https://claude.ai/artifact/4hiFkcPtrP1BSa2d1iihig) (private to the owner). It has the same steps, with Works/Problem marks, notes per stage and a copyable report. This file is the version-controlled copy of the first parts only; the interactive page is the maintained, full version and is where results are marked. On 2026-10-27 the steps already marked Works were removed, leaving 23 parts and 212 steps, split into "Before Monday" (43) and "Later" (169). Part 10 below is the redesigned DM screen.
+**Interactive version:** [QuestKeeper Two-Account Test](https://claude.ai/artifact/4hiFkcPtrP1BSa2d1iihig) (private to the owner). It has the same steps, with Works/Problem marks, notes per stage and a copyable report. This file is the version-controlled copy of the first parts only; the interactive page is the maintained, full version and is where results are marked. On 2026-10-27 the steps already marked Works were removed, leaving 23 parts and 212 steps, split into "Before Monday" (43) and "Later" (169). On 2026-11-16 a part for the game-night tools was added (24 parts, 229 steps: 59 before Monday, 170 later). Part 10 below is the redesigned DM screen, and part 11 is the game-night tools.
 
 ## How to run it
 
@@ -218,6 +218,45 @@ The Story, Players and Prep tabs were redesigned in October 2026 and have so far
   *Expect:* Panels stack in normal page flow. Players folds its list into a **Choose a player** button. Prep goes Before the fight, Encounter helper, Add monsters, Initiative setup, then the table settings. No sideways scrolling.
 - [ ] **10.35 · DM:** Zoom the browser to 200% (Cmd and plus) and tab through each of the three tabs.\
   *Expect:* Nothing is cut off or overlapping, and the control you are on always stays on screen with a visible outline.
+
+## 11. Game night tools: one-tap attacks, brb, concentration, group rolls, fight summary
+
+Added 2026-11-16 (#271, #272). Needs `20261116_player_brb.sql` and `20261116_monster_concentration.sql` run in Supabase. Use a test table with made-up monsters. The player keeps their sheet open in one tab and the game page in another.
+
+- [ ] **11.1 · DM:** Tap **New encounter**, then add **Goblin** with a count of **3** (with an attack like Scimitar +4, 1d6+2) and one **Wolf**. Don't roll yet.\
+  *Expect:* Beside **Roll initiative for 4 monsters** there's a tick box: **Same creatures roll together**. It only shows when there are copies of one creature.
+- [ ] **11.2 · DM:** Tick it and tap **Roll initiative for 4 monsters**.\
+  *Expect:* Goblin 1, 2 and 3 get the same number and sit together in the order. The Wolf gets its own roll.
+- [ ] **11.3 · Both:** The player rolls, then the DM taps **Start combat**.\
+  *Expect:* The activity log shows **⚔️ The fight begins.**
+- [ ] **11.4 · DM:** On a goblin's turn, open **Attack**.\
+  *Expect:* **Roll attack + damage** (the main button) and **Roll d20 only (+4)**.
+- [ ] **11.5 · DM:** Target the player and tap **Roll attack + damage**.\
+  *Expect:* On a hit the damage is already rolled, with **Send N damage to <player>** ready (a crit doubles the dice). On a miss it says **That misses!** and rolls no damage.
+- [ ] **11.6 · Player:** Apply the damage that arrives.\
+  *Expect:* Your HP drops by that amount, as before.
+- [ ] **11.7 · DM:** On a goblin, tap **🧠 Concentrating?**, type **Hold Person** and tap **Start**.\
+  *Expect:* **🧠 Concentrating on Hold Person** with **End**, and **🧠 Concentrating** on its line in the initiative list.
+- [ ] **11.8 · Player:** Look at that goblin on your game page and sheet.\
+  *Expect:* Nothing about concentration or Hold Person anywhere.
+- [ ] **11.9 · Player:** Hit that goblin and deal damage.\
+  *Expect:* On the DM's screen: **Concentration check: … Constitution save, DC 10** (or half the damage if more), and **🧠 Concentration save** on its list line.
+- [ ] **11.10 · DM:** Tap **Roll CON save**.\
+  *Expect:* A line like **CON save: 12 + 0 = 12 against DC 10. Hold Person holds.** A pass clears the reminder; a fail ends the spell. **Kept it** and **Lost it** do the same by hand.
+- [ ] **11.11 · Player:** On your sheet's turn banner, during your turn, tap **Step away (brb)**.\
+  *Expect:* The turn passes on. The banner says **You're away: your turns are skipped.** with **I'm back**. The log says **… stepped away (brb).** The DM sees an **Away** tag.
+- [ ] **11.12 · DM:** Tap **Next turn** around the order.\
+  *Expect:* The away player is skipped.
+- [ ] **11.13 · Player:** Open your game page.\
+  *Expect:* **You're marked away, so your turns are skipped.** with **I'm back**. Tapping it logs **… is back.** and your turns come round again.
+- [ ] **11.14 · Player:** Watch your sheet's turn banner when a goblin goes down.\
+  *Expect:* **Goblin 1 is down!** is green. A player or ally going down stays red.
+- [ ] **11.15 · DM:** Defeat the last enemy (or tap **End combat**).\
+  *Expect:* A **Fight summary** card with rounds, Defeated, damage dealt and taken, and crits, matching what happened.
+- [ ] **11.16 · DM:** Change a word and tap **Post to the journal**.\
+  *Expect:* The card closes, and the note is in the journal for the whole table, signed DM, with your change.
+- [ ] **11.17 · DM:** Start and end a quick second fight, then tap **Skip** on its summary.\
+  *Expect:* Nothing new is posted.
 
 ## Results log
 
