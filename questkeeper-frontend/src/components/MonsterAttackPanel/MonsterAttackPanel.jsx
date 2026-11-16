@@ -90,7 +90,10 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
     }
   }
 
-  async function submitAttack(natural) {
+  // withDamage: the one-tap roll. On a hit (or a crit) the damage is rolled
+  // straight away too, so the DM only has to tap Send. A miss, or a target with
+  // no AC saved (the DM calls it), rolls nothing more.
+  async function submitAttack(natural, { withDamage = false } = {}) {
     await run(async () => {
       const result = await dmAttackRoll({
         attackerId: attacker.id,
@@ -105,9 +108,15 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
         summary: `Rolled ${natural} ${bonus >= 0 ? "+" : "-"} ${Math.abs(bonus)} = ${natural + bonus}${against}.`,
       });
       setPhysicalRoll("");
+      const landed = result.result === "hit" || result.result === "crit";
+      setDamageRolled(
+        withDamage && landed ? rollDamage(damageText, { crit: result.result === "crit" }) : null,
+      );
       onChanged();
     });
   }
+
+  const canRollBoth = parseDamage(damageText) !== null;
 
   function submitPhysicalRoll(event) {
     event.preventDefault();
@@ -177,7 +186,9 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
         <>
           {/* The three steps, for DMs new to running a monster's attack. */}
           <p className="monster-attack__note">
-            Pick a target, roll to hit, then roll damage.
+            {canRollBoth
+              ? "Pick a target, then Roll attack + damage: on a hit, the damage is rolled too, ready to send."
+              : "Pick a target, roll to hit, then roll damage."}
           </p>
           <div className="monster-attack__row">
             {/* Visible labels so each box says what it's for before it's
@@ -270,8 +281,20 @@ function MonsterAttackPanel({ attacker, targets, statBlock, tableId, onChanged, 
           )}
 
           <div className="monster-attack__row">
-            <Button disabled={isBusy || !target} onClick={() => submitAttack(rollDie(20))}>
-              Roll d20 ({formatModifier(bonus)})
+            {canRollBoth && (
+              <Button
+                disabled={isBusy || !target}
+                onClick={() => submitAttack(rollDie(20), { withDamage: true })}
+              >
+                Roll attack + damage
+              </Button>
+            )}
+            <Button
+              variant={canRollBoth ? "secondary" : undefined}
+              disabled={isBusy || !target}
+              onClick={() => submitAttack(rollDie(20))}
+            >
+              {canRollBoth ? `Roll d20 only (${formatModifier(bonus)})` : `Roll d20 (${formatModifier(bonus)})`}
             </Button>
             <span className="monster-attack__or">or</span>
             <form className="monster-attack__row" onSubmit={submitPhysicalRoll}>
