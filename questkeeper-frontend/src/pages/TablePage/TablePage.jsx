@@ -39,6 +39,7 @@ import {
   setMyInitiative,
   setShareParty,
   setCombatantAway,
+  setMyAway,
   startCombat,
 } from "../../utils/tableStore";
 import { creatureIdOf, isSameTemplate, pieceNames, readStatBlock, recentEventsFor, savesOf } from "../../utils/statBlock";
@@ -2104,11 +2105,17 @@ function TablePage() {
             </p>
           )}
 
-          {!isDm && myCombatant?.away && (
-            <p className="table-page__hint" role="status">
-              Your DM has marked you away, so your turns are skipped. Ask them to bring you back when you&apos;re
-              ready.
-            </p>
+          {/* "brb": a player marks themselves away (their turns are skipped)
+              and back again. The DM can also do it from the Players tab. */}
+          {!isDm && myCombatant && (
+            <div className="table-page__brb" role="status">
+              {myCombatant.away && (
+                <span>You&apos;re marked away, so your turns are skipped. Tap I&apos;m back when you return.</span>
+              )}
+              <Button variant="secondary" onClick={() => run(() => setMyAway(table.id, !myCombatant.away))}>
+                {myCombatant.away ? "I'm back" : "Step away (brb)"}
+              </Button>
+            </div>
           )}
           {!isDm && playerTip && <p className="table-page__hint">{playerTip}</p>}
 

@@ -120,6 +120,16 @@
   line-height: 1.5;
 }
 
+/* The player's "Step away (brb)" / "I'm back" line. */
+.table-page__brb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  color: var(--qk-text-muted);
+  line-height: 1.5;
+}
+
 .table-page__order {
   display: grid;
   gap: 10px;

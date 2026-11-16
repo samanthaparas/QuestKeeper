@@ -293,6 +293,13 @@ export async function setCombatantAway(combatantId, away) {
   unwrap(await supabase.from("combatants").update({ away: Boolean(away) }).eq("id", combatantId));
 }
 
+// A player: "Step away (brb)" or "I'm back" for yourself. Away players' turns
+// are skipped; stepping away on your own turn ends it first (see
+// 20261116_player_brb.sql).
+export async function setMyAway(tableId, away) {
+  unwrap(await supabase.rpc("set_my_away", { p_table_id: tableId, p_away: Boolean(away) }));
+}
+
 // A dice roll in the table's activity log, for everyone at the table.
 export async function logRoll(tableId, { who, label, detail, total }) {
   unwrap(

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import TablePage from "./TablePage";
@@ -8,6 +8,7 @@ import { useTable } from "../../hooks/useTable";
 import { getCharactersByIds } from "../../utils/characterStore";
 import {
   setMyInitiative,
+  setMyAway,
   setCombatantInitiative,
   applyDamage,
   postPlayerDamage,
@@ -95,6 +96,7 @@ vi.mock("../../utils/tableStore", () => ({
   getPartyStrip: vi.fn().mockResolvedValue([]),
   setShareParty: vi.fn().mockResolvedValue(undefined),
   setCombatantAway: vi.fn().mockResolvedValue(undefined),
+  setMyAway: vi.fn().mockResolvedValue(undefined),
   listTemplates: vi.fn().mockResolvedValue([]),
   applyDamage: vi.fn().mockResolvedValue(undefined),
   deleteTable: vi.fn(),
@@ -271,6 +273,21 @@ describe("TablePage", () => {
       expect(screen.getByText(/11 damage taken/)).toBeInTheDocument();
       expect(screen.queryByText(/DM only/)).not.toBeInTheDocument();
       expect(screen.queryByText(/9\/20/)).not.toBeInTheDocument();
+    });
+
+    it("lets a player step away (brb) and come back", async () => {
+      renderPage();
+      await userEvent.click(screen.getByRole("button", { name: "Step away (brb)" }));
+      expect(setMyAway).toHaveBeenCalledWith("t1", true);
+
+      currentTable.combatants = combatants.map((combatant) =>
+        combatant.id === "c-billie" ? { ...combatant, away: true } : combatant,
+      );
+      cleanup();
+      renderPage();
+      expect(screen.getByText(/You're marked away, so your turns are skipped/)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "I'm back" }));
+      expect(setMyAway).toHaveBeenCalledWith("t1", false);
     });
 
     it("doesn't show players the DM's turn banner", () => {

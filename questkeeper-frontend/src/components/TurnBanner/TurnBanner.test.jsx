@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TurnBanner from "./TurnBanner";
-import { resolveDamageRequest } from "../../utils/tableStore";
+import { resolveDamageRequest, setMyAway } from "../../utils/tableStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
 vi.mock("../../utils/tableStore", () => ({
   resolveDamageRequest: vi.fn(),
+  setMyAway: vi.fn(),
 }));
 
 function makeCombat(overrides = {}) {
@@ -253,6 +254,23 @@ describe("TurnBanner", () => {
     rerender(<TurnBanner combat={makeCombat()} onApplyDamage={vi.fn()} />);
     expect(screen.getByText(/That hits!/)).toHaveClass("turn-banner__event");
     expect(screen.getByText(/That hits!/)).not.toHaveClass("turn-banner__event--damage");
+  });
+
+  it("lets the player step away (brb) and come back from the sheet", async () => {
+    setMyAway.mockResolvedValue(undefined);
+    const combat = makeCombat({ table: { id: "t1" } });
+    const { rerender } = render(<TurnBanner combat={combat} onApplyDamage={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Step away (brb)" }));
+    expect(setMyAway).toHaveBeenCalledWith("t1", true);
+    expect(combat.refresh).toHaveBeenCalled();
+
+    rerender(
+      <TurnBanner combat={makeCombat({ table: { id: "t1" }, myCombatant: { id: "c-me", away: true } })} onApplyDamage={vi.fn()} />,
+    );
+    expect(screen.getByText("You're away: your turns are skipped.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "I'm back" }));
+    expect(setMyAway).toHaveBeenCalledWith("t1", false);
   });
 
   it("shows a fallen enemy in green and a fallen friend in red", () => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { resolveDamageRequest } from "../../utils/tableStore";
+import { resolveDamageRequest, setMyAway } from "../../utils/tableStore";
 import { describeUpcoming } from "../../utils/initiative";
 import { eventTone } from "../../utils/tableGuidance";
 import Button from "../Button/Button";
@@ -42,6 +42,19 @@ function TurnBanner({ combat, onApplyDamage }) {
       setError(endError.message ?? "Could not end your turn.");
     }
   }
+
+  // "Step away (brb)" / "I'm back": away players' turns are skipped.
+  async function handleAway(away) {
+    setError("");
+    try {
+      await setMyAway(combat.table.id, away);
+      combat.refresh();
+    } catch (awayError) {
+      setError(awayError.message ?? "Could not change that.");
+    }
+  }
+
+  const isAway = Boolean(combat.myCombatant?.away);
 
   async function handleDamageRequest(request, shouldApply) {
     setError("");
@@ -98,6 +111,12 @@ function TurnBanner({ combat, onApplyDamage }) {
         {isMyTurn && combat.endTurn && (
           <Button variant="secondary" className="turn-banner__end" onClick={handleEndTurn}>
             End my turn
+          </Button>
+        )}
+        {isAway && <span className="turn-banner__away">You&apos;re away: your turns are skipped.</span>}
+        {combat.myCombatant && (
+          <Button variant="secondary" className="turn-banner__end" onClick={() => handleAway(!isAway)}>
+            {isAway ? "I'm back" : "Step away (brb)"}
           </Button>
         )}
         {/* The latest news: red for damage, green for healing or a fallen enemy. */}
