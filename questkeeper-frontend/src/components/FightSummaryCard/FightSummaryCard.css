@@ -1,0 +1,43 @@
+/* DM only, after a fight: the summary to post to the journal or skip. */
+.fight-summary {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--qk-border);
+  border-left: 5px solid var(--qk-moss);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+}
+
+.fight-summary__title {
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 18px;
+}
+
+.fight-summary__note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--qk-text-muted);
+}
+
+.fight-summary__text {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.fight-summary__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fight-summary__error {
+  margin: 0;
+  color: var(--qk-danger);
+}

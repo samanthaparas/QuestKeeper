@@ -6,6 +6,7 @@ import TablePage from "./TablePage";
 import { installFakeStorage } from "../../test/fakeStorage";
 import { useTable } from "../../hooks/useTable";
 import { getCharactersByIds } from "../../utils/characterStore";
+import { addJournalEntry } from "../../utils/journalStore";
 import {
   setMyInitiative,
   setMyAway,
@@ -33,6 +34,7 @@ import {
   listBans,
   startCombat,
   endCombat,
+  listEvents,
 } from "../../utils/tableStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -108,6 +110,7 @@ vi.mock("../../utils/tableStore", () => ({
   dmLog: vi.fn().mockResolvedValue(undefined),
   dmResolveAttack: vi.fn(),
   endCombat: vi.fn(),
+  listEvents: vi.fn().mockResolvedValue([]),
   leaveTable: vi.fn(),
   postPlayerDamage: vi.fn(),
   removeCombatant: vi.fn(),
@@ -2531,6 +2534,37 @@ describe("TablePage, when every enemy is down", () => {
     expect(screen.getByText("Every enemy is down.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "End combat now" }));
     expect(endCombat).toHaveBeenCalledWith("t1");
+  });
+
+  it("offers a fight summary to post to the journal once the fight ends", async () => {
+    mockTable({ isDm: true });
+    useTable.mockReturnValue({ ...currentTable, combatants: downKobold });
+    listEvents.mockResolvedValueOnce(
+      [
+        "⚔️ The fight begins.",
+        "Billie deals 11 damage to Kobold (critical hit).",
+        "Kobold is down!",
+      ]
+        .reverse()
+        .map((message, index) => ({ id: `e${index}`, message })),
+    );
+    addJournalEntry.mockResolvedValueOnce({ id: "j1" });
+    renderPage();
+
+    await userEvent.click(screen.getByRole("button", { name: "End combat now" }));
+    expect(dmLog).toHaveBeenCalledWith("t1", "🏁 The fight is over.");
+    const box = await screen.findByRole("textbox", { name: "Fight summary" });
+    expect(box).toHaveValue(
+      "⚔️ Fight summary (2 rounds)\nDefeated: Kobold\nDamage dealt: Billie 11\nCritical hits: Billie (1)",
+    );
+
+    await userEvent.type(box, "\nGreat teamwork!");
+    await userEvent.click(screen.getByRole("button", { name: "Post to the journal" }));
+    expect(addJournalEntry).toHaveBeenCalledWith("t1", {
+      body: expect.stringContaining("Great teamwork!"),
+      visibility: "table",
+    });
+    await waitFor(() => expect(screen.queryByRole("textbox", { name: "Fight summary" })).not.toBeInTheDocument());
   });
 
   it("doesn't offer it while an enemy is still standing, or to players", () => {

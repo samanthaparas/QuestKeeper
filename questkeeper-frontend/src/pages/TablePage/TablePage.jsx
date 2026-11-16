@@ -22,6 +22,7 @@ import {
   dmResolveAttack,
   editCombatant,
   endCombat,
+  listEvents,
   endMyTurn,
   getPartyStrip,
   leaveTable,
@@ -69,6 +70,8 @@ import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttac
 import CombatOverPrompt from "../../components/CombatOverPrompt/CombatOverPrompt";
 import StillInCombat from "../../components/StillInCombat/StillInCombat";
 import MonsterConcentration from "../../components/MonsterConcentration/MonsterConcentration";
+import FightSummaryCard from "../../components/FightSummaryCard/FightSummaryCard";
+import { FIGHT_END_MESSAGE, FIGHT_START_MESSAGE, buildFightSummary } from "../../utils/fightSummary";
 import { concentrationCheck, concentrationOf } from "../../utils/monsterConcentration";
 import { describeQuiet, isStaleCombat } from "../../utils/staleCombat";
 import AddCombatantForm from "../../components/AddCombatantForm/AddCombatantForm";
@@ -1301,6 +1304,8 @@ function TablePage() {
   const [nudgeCooling, setNudgeCooling] = useState(false);
   // "Same creatures roll together" for the roll-all button (off: each rolls its own).
   const [rollTogether, setRollTogether] = useState(false);
+  // After a fight ends: the summary the DM can post to the journal ("" = none).
+  const [fightSummary, setFightSummary] = useState("");
   const nudgeTimer = useRef(null);
 
   useEffect(() => () => clearTimeout(nudgeTimer.current), []);
@@ -1683,6 +1688,25 @@ function TablePage() {
     setHitAmount("");
   }
 
+  // Starting a fight marks the log, so the summary at the end knows where
+  // this fight's lines begin.
+  async function startFight() {
+    await startCombat(table.id, combatants);
+    await dmLog(table.id, FIGHT_START_MESSAGE);
+  }
+
+  // Ending a fight (the End combat button, the "every enemy is down" prompt or
+  // the "Still in combat?" reminder): the summary is made from the log first,
+  // while the fight's creatures and round are still known, then offered to
+  // the DM to post or skip.
+  async function endFight() {
+    const log = await listEvents(table.id, 200);
+    const summary = buildFightSummary({ events: log, combatants, rounds: table.round });
+    await endCombat(table.id);
+    await dmLog(table.id, FIGHT_END_MESSAGE);
+    setFightSummary(summary);
+  }
+
   // Rolls initiative for every monster and ally that has none yet. Anyone who
   // already has one (a boss the DM rolled with real dice) is left alone.
   // With "Same creatures roll together", copies of one creature (Goblin 1,
@@ -1987,7 +2011,7 @@ function TablePage() {
                     </Button>
                   )}
                   {table.combat_active && (
-                    <Button variant="secondary" onClick={() => run(() => endCombat(table.id))}>
+                    <Button variant="secondary" onClick={() => run(endFight)}>
                       End combat
                     </Button>
                   )}
@@ -2058,7 +2082,7 @@ function TablePage() {
                       <Button
                         className="table-page__next-turn"
                         disabled={!canStart}
-                        onClick={() => run(() => startCombat(table.id, combatants))}
+                        onClick={() => run(startFight)}
                       >
                         Start combat
                       </Button>
@@ -2066,11 +2090,14 @@ function TablePage() {
                   )}
                 </div>
               </div>
+              {fightSummary && (
+                <FightSummaryCard tableId={table.id} summary={fightSummary} onDone={() => setFightSummary("")} />
+              )}
               {allEnemiesDown && (
                 <CombatOverPrompt
                   // A different set of fallen enemies starts a fresh countdown.
                   key={monsters.map((monster) => monster.id).join(",")}
-                  onEnd={() => run(() => endCombat(table.id))}
+                  onEnd={() => run(endFight)}
                   onAddMonster={() => setShowMonsterForm(true)}
                 />
               )}
@@ -2502,7 +2529,7 @@ function TablePage() {
         {isDm && !keepFighting && isStaleCombat(table, events[0]?.created_at) && (
           <StillInCombat
             quiet={describeQuiet(events[0].created_at)}
-            onEnd={() => run(() => endCombat(table.id))}
+            onEnd={() => run(endFight)}
             onKeep={() => setKeepFighting(true)}
           />
         )}
@@ -2686,7 +2713,7 @@ function TablePage() {
                         className="table-page__next-turn"
                         disabled={!canStart}
                         aria-describedby={canStart ? undefined : "prep-start-hint"}
-                        onClick={() => run(() => startCombat(table.id, combatants))}
+                        onClick={() => run(startFight)}
                       >
                         Start combat
                       </Button>
