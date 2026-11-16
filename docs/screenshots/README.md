@@ -82,7 +82,17 @@ Folder: [`2026-11-15/`](2026-11-15/). Public pages taken from the running app (n
 - `...-dark.png`: the same ten pages in dark mode
 - `home-phone.png`, `races-phone.png`, `sample-character-phone.png`, `sample-table-phone.png`: 375-wide phone views (saved at double resolution, 750x1624)
 
-Signed-in pages from this round (taken by hand) are added to the same folder; see the list below as they arrive.
+Signed-in pages (`.jpg`, 1440 wide, dark theme), taken from a real account in Chrome. DM screens use the maker's own test table ("Sam's Silly Garden Chase"), never the group's real campaign:
+
+- `characters-list.jpg`: Your Characters, with portraits and Reorder
+- `character-sheet.jpg`: Pippa's sheet, Actions tab, with the slim turn banner from a live fight at the top
+- `character-inventory.jpg`: Inventory with sorting by category and the Equipped / Proficient / Attuned icons
+- `portrait-framing.jpg`: the "Frame your portrait" pop-up (drag, zoom, round and square previews)
+- `my-games.jpg`: My Games (Adventurer side)
+- `game-page.jpg`: the Breakfast Club Season 2 game page with its own breakfast-tavern banner and the player card
+- `settings.jpg`: Settings (display name, appearance, reduce motion)
+- `dm-screen.jpg`: the DM Screen's list of tables
+- `dm-prep.jpg`: DM Prep tab: encounter helper and table rules
 
 ## Taking a new round
 
