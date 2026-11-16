@@ -392,3 +392,28 @@
   padding: 4px 14px;
   font-size: 14px;
 }
+
+/* "Set up your companion": a short guide while a new one is blank. */
+.companion-card__setup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--qk-brass);
+  border-left-width: 4px;
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* The bottom "Done editing" button. */
+.companion-card__done {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0;
+}
+

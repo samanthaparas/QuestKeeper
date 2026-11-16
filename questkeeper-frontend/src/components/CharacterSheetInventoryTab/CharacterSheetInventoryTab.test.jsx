@@ -77,6 +77,40 @@ describe("CharacterSheetInventoryTab", () => {
     expect(rows).toEqual(["Treasure & keepsakes", expect.stringContaining("Lucky rock"), expect.stringContaining("Silver locket")]);
   });
 
+  it("pins starred favourites to the top, whatever the sort, and stars on tap", async () => {
+    installFakeStorage();
+    const onEquipmentFavoriteToggle = vi.fn();
+    renderTab({
+      onEquipmentFavoriteToggle,
+      equipment: [...EQUIPMENT.slice(0, 2), { ...EQUIPMENT[2] }, { index: "i4", name: "Rope", quantity: 1, favorite: true }],
+    });
+
+    const rows = screen.getAllByRole("listitem").map((row) => row.textContent);
+    expect(rows[0]).toBe("★ Favourites");
+    expect(rows[1]).toContain("Rope");
+    expect(rows[2]).toBe("Armor & shields");
+    expect(screen.getByRole("button", { name: "Favourite Rope" })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(screen.getByRole("button", { name: "Favourite Pouch" }));
+    expect(onEquipmentFavoriteToggle).toHaveBeenCalledWith(expect.objectContaining({ index: "i2" }));
+  });
+
+  it("can show only the favourites", async () => {
+    installFakeStorage();
+    renderTab({
+      onEquipmentFavoriteToggle: vi.fn(),
+      equipment: [...EQUIPMENT, { index: "i4", name: "Rope", quantity: 1, favorite: true }],
+    });
+    await userEvent.selectOptions(screen.getByLabelText("Show Inventory"), "favorites");
+    const rows = screen.getAllByRole("listitem").map((row) => row.textContent);
+    expect(rows).toEqual(["Gear & tools", expect.stringContaining("Rope")]);
+  });
+
+  it("has no stars where favourites aren't offered", () => {
+    renderTab();
+    expect(screen.queryByRole("button", { name: /^Favourite / })).not.toBeInTheDocument();
+  });
+
   it("keeps the pencil and trash buttons behind an Edit button", async () => {
     renderTab();
 

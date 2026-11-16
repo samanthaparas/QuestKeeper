@@ -219,6 +219,12 @@ function EditableItemList({
   sortOptions = null,
   filterOptions = null,
   viewKey = null,
+  // Favourites (spells and inventory): isFavorite(item) and
+  // onToggleFavorite(item). When given, each row has a ☆ to star it, starred
+  // rows are pinned at the top under "★ Favourites" whatever the Sort, and
+  // Show gets a "★ Favourites" choice.
+  isFavorite = null,
+  onToggleFavorite = null,
 }) {
   const primaryField = fields[0];
   const textareaField = fields.find((field) => field.type === "textarea");
@@ -241,20 +247,32 @@ function EditableItemList({
     setView(next);
     saveListView(viewKey, next);
   }
-  const availableFilters = (filterOptions ?? []).filter((option) => items.some(option.match));
+  const allFilters = isFavorite
+    ? [{ key: "favorites", label: "★ Favourites", match: (item) => isFavorite(item) }, ...(filterOptions ?? [])]
+    : (filterOptions ?? []);
+  const availableFilters = allFilters.filter((option) => items.some(option.match));
   const sort = sortOptions?.find((option) => option.key === view.sort) ?? sortOptions?.[0] ?? null;
   // A remembered filter that matches nothing now (the last potion was drunk)
   // quietly goes back to All.
   const filter = availableFilters.find((option) => option.key === view.filter) ?? null;
   const filtered = filter ? items.filter(filter.match) : items;
-  const shownItems = sort?.compare
+  const sorted = sort?.compare
     ? [...filtered].sort((a, b) => sort.compare(a, b) || byName(a, b))
     : filtered;
+  // Starred rows first, keeping the Sort order within each part.
+  const pinned = isFavorite && filter?.key !== "favorites" ? sorted.filter((item) => isFavorite(item)) : [];
+  const unpinned = pinned.length > 0 ? sorted.filter((item) => !isFavorite(item)) : sorted;
+  const shownItems = [...pinned, ...unpinned];
   // The group heading to put before each row that starts a new group.
   const groupHeadings = new Map();
+  if (pinned.length > 0) {
+    groupHeadings.set(getItemId(pinned[0]), "★ Favourites");
+    // Without the Sort's own groups, the rest still gets a heading of its own.
+    if (!sort?.groupOf && unpinned.length > 0) groupHeadings.set(getItemId(unpinned[0]), "Everything else");
+  }
   if (sort?.groupOf) {
     let last = null;
-    shownItems.forEach((item) => {
+    unpinned.forEach((item) => {
       const group = sort.groupOf(item);
       if (group !== last) groupHeadings.set(getItemId(item), group);
       last = group;
@@ -426,8 +444,21 @@ function EditableItemList({
   function renderPrimaryCell(item, id, notes) {
     const isExpanded = expandedIds.has(id);
 
+    const starred = Boolean(isFavorite?.(item));
     return (
       <span className="character-sheet__resource-name">
+        {onToggleFavorite && (
+          <button
+            type="button"
+            className={`character-sheet__favorite${starred ? " character-sheet__favorite--on" : ""}`}
+            aria-pressed={starred}
+            aria-label={`Favourite ${getLabel(item)}`}
+            title={starred ? "Unpin from the top" : "Pin to the top as a favourite"}
+            onClick={() => onToggleFavorite(item)}
+          >
+            {starred ? "★" : "☆"}
+          </button>
+        )}
         {isNameClickable?.(item) ? (
           <button
             type="button"
