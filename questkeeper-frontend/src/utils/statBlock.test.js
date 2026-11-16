@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  groupForInitiative,
+  initiativeGroupOf,
   emptyStatBlock,
   readStatBlock,
   cleanStatBlock,
@@ -212,5 +214,29 @@ describe("creatureIdOf", () => {
   it("doesn't change what the stat block form reads or saves", () => {
     expect(Object.keys(readStatBlock({ creature: "kobold" }))).not.toContain("creature");
     expect(cleanStatBlock(readStatBlock({ creature: "kobold" }))).not.toHaveProperty("creature");
+  });
+});
+
+describe("groups for a shared initiative roll", () => {
+  const monster = (name, kind = "monster") => ({ id: name, name, kind });
+
+  it("puts copies of the same creature together, whatever their number, nickname or icon", () => {
+    const fight = [
+      monster("Goblin 1"),
+      monster("🦆 Goblin (red duck)"),
+      monster("Goblin"),
+      monster("Goblin Boss"),
+      monster("Wolf 1"),
+      monster("Wolf 2"),
+    ];
+    expect(groupForInitiative(fight).map((group) => group.map((one) => one.name))).toEqual([
+      ["Goblin 1", "🦆 Goblin (red duck)", "Goblin"],
+      ["Goblin Boss"],
+      ["Wolf 1", "Wolf 2"],
+    ]);
+  });
+
+  it("never groups an ally with a monster of the same name", () => {
+    expect(initiativeGroupOf(monster("Guard 1"))).not.toBe(initiativeGroupOf(monster("Guard 2", "ally")));
   });
 });

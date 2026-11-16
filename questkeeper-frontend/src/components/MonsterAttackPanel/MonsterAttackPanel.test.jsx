@@ -97,6 +97,46 @@ describe("MonsterAttackPanel", () => {
     expect(props.onChanged).toHaveBeenCalled();
   });
 
+  it("rolls the attack and, on a hit, the damage in one tap, ready to send", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // d20 -> 11, d6 -> 4
+    dmAttackRoll.mockResolvedValue({ result: "hit", ac: 12 });
+    postPlayerDamage.mockResolvedValue(undefined);
+    const props = setup();
+
+    await userEvent.click(screen.getByRole("button", { name: "Roll attack + damage" }));
+
+    expect(dmAttackRoll).toHaveBeenCalledWith(expect.objectContaining({ natural: 11, bonus: 4 }));
+    // 1d6+2 rolling a 4 is 6, already rolled: one more tap sends it.
+    await userEvent.click(await screen.findByRole("button", { name: "Send 6 damage to Billie" }));
+    expect(postPlayerDamage).toHaveBeenCalledWith("t1", "u-billie", 6, "Kobold");
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it("doubles the dice for a critical hit in the one-tap roll", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // d6 -> 4
+    dmAttackRoll.mockResolvedValue({ result: "crit", ac: 12 });
+    setup();
+
+    await userEvent.click(screen.getByRole("button", { name: "Roll attack + damage" }));
+
+    // The group's crit rule: dice total doubled, then the bonus (4 x 2 + 2).
+    expect(await screen.findByRole("button", { name: "Send 10 damage to Billie" })).toBeInTheDocument();
+  });
+
+  it("rolls no damage on a miss, or when the DM has to call the hit", async () => {
+    dmAttackRoll.mockResolvedValue({ result: "miss", ac: 18 });
+    setup();
+    await userEvent.click(screen.getByRole("button", { name: "Roll attack + damage" }));
+    expect(await screen.findByText(/That misses!/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /damage to/ })).not.toBeInTheDocument();
+  });
+
+  it("only offers the one-tap roll when the attack has damage dice", async () => {
+    setup({ statBlock: { attacks: [] } });
+    expect(screen.queryByRole("button", { name: "Roll attack + damage" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Roll d20 \(/ })).toBeInTheDocument();
+  });
+
   it("accepts a physical d20 roll and rejects numbers outside 1-20", async () => {
     dmAttackRoll.mockResolvedValue({ result: "miss", ac: 18 });
     setup();

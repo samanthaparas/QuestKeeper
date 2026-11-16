@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import TablePage from "./TablePage";
 import { installFakeStorage } from "../../test/fakeStorage";
 import { useTable } from "../../hooks/useTable";
 import { getCharactersByIds } from "../../utils/characterStore";
+import { addJournalEntry } from "../../utils/journalStore";
 import {
   setMyInitiative,
+  setMyAway,
+  setMonsterConcentration,
+  keepMonsterConcentration,
   setCombatantInitiative,
   applyDamage,
   postPlayerDamage,
@@ -30,6 +34,7 @@ import {
   listBans,
   startCombat,
   endCombat,
+  listEvents,
 } from "../../utils/tableStore";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
@@ -95,6 +100,9 @@ vi.mock("../../utils/tableStore", () => ({
   getPartyStrip: vi.fn().mockResolvedValue([]),
   setShareParty: vi.fn().mockResolvedValue(undefined),
   setCombatantAway: vi.fn().mockResolvedValue(undefined),
+  setMyAway: vi.fn().mockResolvedValue(undefined),
+  setMonsterConcentration: vi.fn().mockResolvedValue(undefined),
+  keepMonsterConcentration: vi.fn().mockResolvedValue(undefined),
   listTemplates: vi.fn().mockResolvedValue([]),
   applyDamage: vi.fn().mockResolvedValue(undefined),
   deleteTable: vi.fn(),
@@ -102,6 +110,7 @@ vi.mock("../../utils/tableStore", () => ({
   dmLog: vi.fn().mockResolvedValue(undefined),
   dmResolveAttack: vi.fn(),
   endCombat: vi.fn(),
+  listEvents: vi.fn().mockResolvedValue([]),
   leaveTable: vi.fn(),
   postPlayerDamage: vi.fn(),
   removeCombatant: vi.fn(),
@@ -271,6 +280,21 @@ describe("TablePage", () => {
       expect(screen.getByText(/11 damage taken/)).toBeInTheDocument();
       expect(screen.queryByText(/DM only/)).not.toBeInTheDocument();
       expect(screen.queryByText(/9\/20/)).not.toBeInTheDocument();
+    });
+
+    it("lets a player step away (brb) and come back", async () => {
+      renderPage();
+      await userEvent.click(screen.getByRole("button", { name: "Step away (brb)" }));
+      expect(setMyAway).toHaveBeenCalledWith("t1", true);
+
+      currentTable.combatants = combatants.map((combatant) =>
+        combatant.id === "c-billie" ? { ...combatant, away: true } : combatant,
+      );
+      cleanup();
+      renderPage();
+      expect(screen.getByText(/You're marked away, so your turns are skipped/)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "I'm back" }));
+      expect(setMyAway).toHaveBeenCalledWith("t1", false);
     });
 
     it("doesn't show players the DM's turn banner", () => {
@@ -969,6 +993,31 @@ describe("rolling initiative for monsters", () => {
     expect(setCombatantInitiative).not.toHaveBeenCalledWith("c-dragon", expect.anything());
   });
 
+  it("can give copies of one creature a single shared roll, so they go together", async () => {
+    setupFight();
+    currentTable.combatants = [...currentTable.combatants, goblin(4, { id: "c-wolf", name: "Wolf" })];
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Same creatures roll together" }));
+    await userEvent.click(screen.getByRole("button", { name: "Roll initiative for 4 monsters" }));
+
+    // The goblins share Goblin 1's roll (11 + 2); the wolf rolls its own.
+    await waitFor(() => expect(setCombatantInitiative).toHaveBeenCalledTimes(4));
+    expect(setCombatantInitiative).toHaveBeenCalledWith("c-g1", 13);
+    expect(setCombatantInitiative).toHaveBeenCalledWith("c-g2", 13);
+    expect(setCombatantInitiative).toHaveBeenCalledWith("c-g3", 13);
+    expect(setCombatantInitiative).toHaveBeenCalledWith("c-wolf", 11);
+  });
+
+  it("only offers rolling together when there are copies of one creature", async () => {
+    setupFight();
+    currentTable.combatants = [goblin(1), goblin(4, { id: "c-wolf", name: "Wolf" })];
+    renderPage();
+
+    await screen.findByRole("button", { name: "Roll initiative for 2 monsters" });
+    expect(screen.queryByRole("checkbox", { name: "Same creatures roll together" })).not.toBeInTheDocument();
+  });
+
   it("rolls for a single monster with its bonus and shows the roll", async () => {
     setupFight();
     renderPage();
@@ -1328,6 +1377,8 @@ describe("monster row layout", () => {
       .getAllByRole("button")
       .map((button) => button.getAttribute("aria-label") ?? button.textContent);
     expect(names).toEqual([
+      // In the monster's details, under its HP: the concentration note.
+      "🧠 Concentrating?",
       "Edit Kobold",
       "Remove Kobold",
       "Attack",
@@ -1338,6 +1389,34 @@ describe("monster row layout", () => {
       "Increase healing amount",
       "Apply healing to Kobold",
     ]);
+  });
+
+  it("lets the DM note a monster's concentration, and shows it in the list", async () => {
+    renderPage();
+    const row = await waitFor(() => detailFor("Kobold"));
+    await userEvent.click(within(row).getByRole("button", { name: /Concentrating\?/ }));
+    await userEvent.type(within(row).getByLabelText("Spell Kobold is concentrating on"), "Hold Person");
+    await userEvent.click(within(row).getByRole("button", { name: "Start" }));
+    // Its damage taken right now (11) is the starting point for saves.
+    expect(setMonsterConcentration).toHaveBeenCalledWith("c-kobold", "Hold Person", 11);
+  });
+
+  it("asks for the save when a concentrating monster takes damage, and never tells players", async () => {
+    currentTable.enemyHp = {
+      "c-kobold": { current_hp: 9, max_hp: 20, armor_class: 12, concentration: "Hold Person", concentration_damage: 3 },
+    };
+    renderPage();
+
+    expect(rowFor("Kobold")).toHaveTextContent("🧠 Concentration save");
+    const row = await waitFor(() => detailFor("Kobold"));
+    expect(row).toHaveTextContent("Kobold took 8 damage while holding Hold Person. Constitution save, DC 10 (+0).");
+    await userEvent.click(within(row).getByRole("button", { name: "Kept it" }));
+    expect(keepMonsterConcentration).toHaveBeenCalledWith("c-kobold", 11);
+
+    cleanup();
+    mockTable({ isDm: false });
+    renderPage();
+    expect(screen.queryByText(/Concentrat/)).not.toBeInTheDocument();
   });
 
   it("asks before removing a monster, and Keep leaves it alone", async () => {
@@ -2455,6 +2534,37 @@ describe("TablePage, when every enemy is down", () => {
     expect(screen.getByText("Every enemy is down.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "End combat now" }));
     expect(endCombat).toHaveBeenCalledWith("t1");
+  });
+
+  it("offers a fight summary to post to the journal once the fight ends", async () => {
+    mockTable({ isDm: true });
+    useTable.mockReturnValue({ ...currentTable, combatants: downKobold });
+    listEvents.mockResolvedValueOnce(
+      [
+        "⚔️ The fight begins.",
+        "Billie deals 11 damage to Kobold (critical hit).",
+        "Kobold is down!",
+      ]
+        .reverse()
+        .map((message, index) => ({ id: `e${index}`, message })),
+    );
+    addJournalEntry.mockResolvedValueOnce({ id: "j1" });
+    renderPage();
+
+    await userEvent.click(screen.getByRole("button", { name: "End combat now" }));
+    expect(dmLog).toHaveBeenCalledWith("t1", "🏁 The fight is over.");
+    const box = await screen.findByRole("textbox", { name: "Fight summary" });
+    expect(box).toHaveValue(
+      "⚔️ Fight summary (2 rounds)\nDefeated: Kobold\nDamage dealt: Billie 11\nCritical hits: Billie (1)",
+    );
+
+    await userEvent.type(box, "\nGreat teamwork!");
+    await userEvent.click(screen.getByRole("button", { name: "Post to the journal" }));
+    expect(addJournalEntry).toHaveBeenCalledWith("t1", {
+      body: expect.stringContaining("Great teamwork!"),
+      visibility: "table",
+    });
+    await waitFor(() => expect(screen.queryByRole("textbox", { name: "Fight summary" })).not.toBeInTheDocument());
   });
 
   it("doesn't offer it while an enemy is still standing, or to players", () => {

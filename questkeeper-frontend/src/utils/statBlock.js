@@ -142,6 +142,29 @@ export function splitIcon(name) {
   return icon ? { icon, text: text.slice(icon.length + 1) } : { icon: "", text };
 }
 
+// Which group a monster or ally belongs to for a shared initiative roll:
+// copies of the same creature, whatever number, nickname or icon they were
+// given ("Goblin 2", "🦆 Goblin (red duck)" and "Goblin" are one group).
+// Monsters and allies never share a group.
+export function initiativeGroupOf(combatant) {
+  const base = splitIcon(combatant?.name)
+    .text.trim()
+    .replace(/\s*\([^)]*\)$/, "")
+    .replace(/\s+\d+$/, "")
+    .toLowerCase();
+  return `${combatant?.kind}:${base}`;
+}
+
+// Splits fighters into groups of the same creature, in the order given.
+export function groupForInitiative(combatants) {
+  const groups = new Map();
+  for (const combatant of combatants) {
+    const key = initiativeGroupOf(combatant);
+    groups.set(key, [...(groups.get(key) ?? []), combatant]);
+  }
+  return [...groups.values()];
+}
+
 export function withIcon(text, icon) {
   return icon ? `${icon} ${text}` : text;
 }

@@ -1,0 +1,43 @@
+/* DM only: a monster's concentration on its controls panel. */
+.monster-conc {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  font-size: 14px;
+}
+
+.monster-conc__line,
+.monster-conc__form,
+.monster-conc__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+/* The save that's due: amber like the other "needs your call" reminders. */
+.monster-conc__check {
+  display: grid;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--qk-brass);
+  border-left-width: 4px;
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+}
+
+.monster-conc__input {
+  min-width: 0;
+  width: 220px;
+  max-width: 100%;
+}
+
+.monster-conc__result {
+  color: var(--qk-text-muted);
+}
+
+.monster-conc__error {
+  margin: 0;
+  color: var(--qk-danger);
+}

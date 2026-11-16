@@ -120,6 +120,26 @@
   line-height: 1.5;
 }
 
+/* "Same creatures roll together", beside the roll-all initiative button. */
+.table-page__roll-together {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--qk-text-muted);
+  cursor: pointer;
+}
+
+/* The player's "Step away (brb)" / "I'm back" line. */
+.table-page__brb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  color: var(--qk-text-muted);
+  line-height: 1.5;
+}
+
 .table-page__order {
   display: grid;
   gap: 10px;

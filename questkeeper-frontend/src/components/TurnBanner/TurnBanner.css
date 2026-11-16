@@ -132,6 +132,11 @@
   padding-block: 0;
 }
 
+/* Shown while the player has stepped away. */
+.turn-banner__away {
+  font-weight: 700;
+}
+
 /* You're next: a thicker terracotta edge and a short line, so it's hard to
    miss on a phone while staying quiet. */
 .turn-banner--soon {

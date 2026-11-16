@@ -22,6 +22,7 @@ import {
   dmResolveAttack,
   editCombatant,
   endCombat,
+  listEvents,
   endMyTurn,
   getPartyStrip,
   leaveTable,
@@ -39,9 +40,18 @@ import {
   setMyInitiative,
   setShareParty,
   setCombatantAway,
+  setMyAway,
   startCombat,
 } from "../../utils/tableStore";
-import { creatureIdOf, isSameTemplate, pieceNames, readStatBlock, recentEventsFor, savesOf } from "../../utils/statBlock";
+import {
+  creatureIdOf,
+  groupForInitiative,
+  isSameTemplate,
+  pieceNames,
+  readStatBlock,
+  recentEventsFor,
+  savesOf,
+} from "../../utils/statBlock";
 import { getActivityIcon, getCreaturePortrait } from "../../utils/icons";
 import { conditionWord } from "../../utils/conditions";
 import {
@@ -59,6 +69,10 @@ import Button from "../../components/Button/Button";
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
 import CombatOverPrompt from "../../components/CombatOverPrompt/CombatOverPrompt";
 import StillInCombat from "../../components/StillInCombat/StillInCombat";
+import MonsterConcentration from "../../components/MonsterConcentration/MonsterConcentration";
+import FightSummaryCard from "../../components/FightSummaryCard/FightSummaryCard";
+import { FIGHT_END_MESSAGE, FIGHT_START_MESSAGE, buildFightSummary } from "../../utils/fightSummary";
+import { concentrationCheck, concentrationOf } from "../../utils/monsterConcentration";
 import { describeQuiet, isStaleCombat } from "../../utils/staleCombat";
 import AddCombatantForm from "../../components/AddCombatantForm/AddCombatantForm";
 import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEditPanel";
@@ -569,6 +583,16 @@ function CombatantSummaryRow({
               {pendingCalls.length > 0 && (
                 <span className="table-page__tag table-page__tag--call">⚠ Needs your call</span>
               )}
+              {isNpc && concentrationCheck(combatant, hp) ? (
+                <span className="table-page__tag table-page__tag--call">🧠 Concentration save</span>
+              ) : (
+                isNpc &&
+                concentrationOf(combatant, hp) && (
+                  <span className="table-page__tag" title={`Concentrating on ${concentrationOf(combatant, hp)}`}>
+                    🧠 Concentrating
+                  </span>
+                )
+              )}
             </span>
             {isNpc && (
               <span className={`table-page__status table-page__status--${combatant.status}`}>
@@ -881,6 +905,9 @@ function CombatantRow({
 
               {/* DM only: its saving throws, each a roll that stays on this screen. */}
               {isNpc && isDm && hp && <MonsterSaves name={combatant.name} statBlock={hp.stat_block} />}
+
+              {/* DM only: the spell it's concentrating on, and the save when it's hit. */}
+              {isNpc && isDm && hp && <MonsterConcentration combatant={combatant} secret={hp} onChanged={onChanged} />}
 
               {/* DM only: what to do on this turn, so it's clear the monster
                   hasn't acted yet (its history below may be from earlier). */}
@@ -1275,6 +1302,10 @@ function TablePage() {
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [myRollNote, setMyRollNote] = useState("");
   const [nudgeCooling, setNudgeCooling] = useState(false);
+  // "Same creatures roll together" for the roll-all button (off: each rolls its own).
+  const [rollTogether, setRollTogether] = useState(false);
+  // After a fight ends: the summary the DM can post to the journal ("" = none).
+  const [fightSummary, setFightSummary] = useState("");
   const nudgeTimer = useRef(null);
 
   useEffect(() => () => clearTimeout(nudgeTimer.current), []);
@@ -1507,6 +1538,8 @@ function TablePage() {
   const prepSteps = getDmPrepSteps({ combatants, combatActive: table.combat_active, canStart });
   const unrolledNpcs = waiting.filter((combatant) => combatant.kind !== "player");
   const unrolledNpcCount = unrolledNpcs.length;
+  // Two or more copies of one creature still to roll (Goblin 1, Goblin 2...).
+  const hasSameCreatures = groupForInitiative(unrolledNpcs).some((group) => group.length > 1);
   // "2 monsters and 1 NPC", so friendly NPCs are not called monsters.
   const unrolledMonsterCount = unrolledNpcs.filter((combatant) => combatant.kind === "monster").length;
   const unrolledAllyCount = unrolledNpcCount - unrolledMonsterCount;
@@ -1655,8 +1688,30 @@ function TablePage() {
     setHitAmount("");
   }
 
+  // Starting a fight marks the log, so the summary at the end knows where
+  // this fight's lines begin.
+  async function startFight() {
+    await startCombat(table.id, combatants);
+    await dmLog(table.id, FIGHT_START_MESSAGE);
+  }
+
+  // Ending a fight (the End combat button, the "every enemy is down" prompt or
+  // the "Still in combat?" reminder): the summary is made from the log first,
+  // while the fight's creatures and round are still known, then offered to
+  // the DM to post or skip.
+  async function endFight() {
+    const log = await listEvents(table.id, 200);
+    const summary = buildFightSummary({ events: log, combatants, rounds: table.round });
+    await endCombat(table.id);
+    await dmLog(table.id, FIGHT_END_MESSAGE);
+    setFightSummary(summary);
+  }
+
   // Rolls initiative for every monster and ally that has none yet. Anyone who
   // already has one (a boss the DM rolled with real dice) is left alone.
+  // With "Same creatures roll together", copies of one creature (Goblin 1,
+  // Goblin 2...) share one roll, with the first one's bonus, so they take
+  // their turns one after another.
   async function rollForAllNpcs() {
     const unrolled = combatants.filter(
       (combatant) =>
@@ -1665,11 +1720,14 @@ function TablePage() {
     );
     if (unrolled.length === 0) return;
 
+    const groups = rollTogether ? groupForInitiative(unrolled) : unrolled.map((combatant) => [combatant]);
     await run(async () => {
-      for (const combatant of unrolled) {
-        const bonus = readStatBlock(enemyHp[combatant.id]?.stat_block).initiativeBonus;
+      for (const group of groups) {
+        const bonus = readStatBlock(enemyHp[group[0].id]?.stat_block).initiativeBonus;
         const { total } = rollMonsterInitiative(bonus);
-        await setCombatantInitiative(combatant.id, total);
+        for (const combatant of group) {
+          await setCombatantInitiative(combatant.id, total);
+        }
       }
     });
   }
@@ -1953,7 +2011,7 @@ function TablePage() {
                     </Button>
                   )}
                   {table.combat_active && (
-                    <Button variant="secondary" onClick={() => run(() => endCombat(table.id))}>
+                    <Button variant="secondary" onClick={() => run(endFight)}>
                       End combat
                     </Button>
                   )}
@@ -1987,6 +2045,17 @@ function TablePage() {
                       {`Roll initiative for ${unrolledLabel}`}
                     </Button>
                   )}
+                  {/* Only offered when there are copies of one creature to group. */}
+                  {hasSameCreatures && (
+                    <label className="table-page__roll-together">
+                      <input
+                        type="checkbox"
+                        checked={rollTogether}
+                        onChange={(event) => setRollTogether(event.target.checked)}
+                      />
+                      Same creatures roll together
+                    </label>
+                  )}
                   <Button
                     variant="secondary"
                     onClick={() => {
@@ -2013,7 +2082,7 @@ function TablePage() {
                       <Button
                         className="table-page__next-turn"
                         disabled={!canStart}
-                        onClick={() => run(() => startCombat(table.id, combatants))}
+                        onClick={() => run(startFight)}
                       >
                         Start combat
                       </Button>
@@ -2021,11 +2090,14 @@ function TablePage() {
                   )}
                 </div>
               </div>
+              {fightSummary && (
+                <FightSummaryCard tableId={table.id} summary={fightSummary} onDone={() => setFightSummary("")} />
+              )}
               {allEnemiesDown && (
                 <CombatOverPrompt
                   // A different set of fallen enemies starts a fresh countdown.
                   key={monsters.map((monster) => monster.id).join(",")}
-                  onEnd={() => run(() => endCombat(table.id))}
+                  onEnd={() => run(endFight)}
                   onAddMonster={() => setShowMonsterForm(true)}
                 />
               )}
@@ -2104,11 +2176,17 @@ function TablePage() {
             </p>
           )}
 
-          {!isDm && myCombatant?.away && (
-            <p className="table-page__hint" role="status">
-              Your DM has marked you away, so your turns are skipped. Ask them to bring you back when you&apos;re
-              ready.
-            </p>
+          {/* "brb": a player marks themselves away (their turns are skipped)
+              and back again. The DM can also do it from the Players tab. */}
+          {!isDm && myCombatant && (
+            <div className="table-page__brb" role="status">
+              {myCombatant.away && (
+                <span>You&apos;re marked away, so your turns are skipped. Tap I&apos;m back when you return.</span>
+              )}
+              <Button variant="secondary" onClick={() => run(() => setMyAway(table.id, !myCombatant.away))}>
+                {myCombatant.away ? "I'm back" : "Step away (brb)"}
+              </Button>
+            </div>
           )}
           {!isDm && playerTip && <p className="table-page__hint">{playerTip}</p>}
 
@@ -2451,7 +2529,7 @@ function TablePage() {
         {isDm && !keepFighting && isStaleCombat(table, events[0]?.created_at) && (
           <StillInCombat
             quiet={describeQuiet(events[0].created_at)}
-            onEnd={() => run(() => endCombat(table.id))}
+            onEnd={() => run(endFight)}
             onKeep={() => setKeepFighting(true)}
           />
         )}
@@ -2635,7 +2713,7 @@ function TablePage() {
                         className="table-page__next-turn"
                         disabled={!canStart}
                         aria-describedby={canStart ? undefined : "prep-start-hint"}
-                        onClick={() => run(() => startCombat(table.id, combatants))}
+                        onClick={() => run(startFight)}
                       >
                         Start combat
                       </Button>
