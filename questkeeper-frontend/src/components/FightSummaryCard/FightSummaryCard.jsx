@@ -8,7 +8,9 @@ import "./FightSummaryCard.css";
 // the table's journal for everyone, or skip it. Nothing is posted by itself.
 //
 // summary: the starting text. onDone(): hides the card.
-function FightSummaryCard({ tableId, summary, onDone }) {
+// tableName: shown in the title on the DM Screen list, where there can be
+// several tables.
+function FightSummaryCard({ tableId, summary, onDone, tableName = "" }) {
   const [text, setText] = useState(summary);
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
@@ -26,9 +28,9 @@ function FightSummaryCard({ tableId, summary, onDone }) {
   }
 
   return (
-    <section className="fight-summary" aria-labelledby="fight-summary-title">
-      <h3 id="fight-summary-title" className="fight-summary__title">
-        Fight summary
+    <section className="fight-summary" aria-labelledby={`fight-summary-title-${tableId}`}>
+      <h3 id={`fight-summary-title-${tableId}`} className="fight-summary__title">
+        Fight summary{tableName ? ` · ${tableName}` : ""}
       </h3>
       <p className="fight-summary__note">
         Made from the activity log. Change anything you like, then post it to the journal for the whole table.

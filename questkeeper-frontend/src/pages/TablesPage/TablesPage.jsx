@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { listCharacters } from "../../utils/characterStore";
-import { createTable, endCombat, joinTable, listEvents, listMyTables } from "../../utils/tableStore";
+import { createTable, joinTable, listEvents, listMyTables } from "../../utils/tableStore";
+import { endFightWithSummary } from "../../utils/endFight";
+import FightSummaryCard from "../../components/FightSummaryCard/FightSummaryCard";
 import { describeQuiet, isStaleCombat } from "../../utils/staleCombat";
 import StillInCombat from "../../components/StillInCombat/StillInCombat";
 import Button from "../../components/Button/Button";
@@ -32,6 +34,8 @@ function TablesPage({ mode = "player" }) {
   // for the "Still in combat?" reminders, and which one is being ended.
   const [lastActivity, setLastActivity] = useState({});
   const [endingId, setEndingId] = useState(null);
+  // Fight summaries from fights just ended here, by table id: { name, text }.
+  const [summaries, setSummaries] = useState({});
   const [hasRetried, setHasRetried] = useState(false);
   const [createError, setCreateError] = useState("");
   const [joinError, setJoinError] = useState("");
@@ -88,13 +92,17 @@ function TablesPage({ mode = "player" }) {
     ? myTables.filter((table) => isStaleCombat(table, lastActivity[table.id]))
     : [];
 
-  async function endForgottenFight(tableId) {
+  // Ends it the same way as the table screen, and offers its fight summary
+  // right here, to post to that table's journal or skip.
+  async function endForgottenFight(table) {
+    const tableId = table.id;
     setEndingId(tableId);
     try {
-      await endCombat(tableId);
+      const summary = await endFightWithSummary(table);
       setTables((current) =>
-        current.map((table) => (table.id === tableId ? { ...table, combat_active: false } : table)),
+        current.map((entry) => (entry.id === tableId ? { ...entry, combat_active: false } : entry)),
       );
+      if (summary) setSummaries((current) => ({ ...current, [tableId]: { name: table.name, text: summary } }));
     } catch {
       setLoadError(true);
     } finally {
@@ -151,9 +159,26 @@ function TablesPage({ mode = "player" }) {
             key={table.id}
             tableName={table.name}
             quiet={describeQuiet(lastActivity[table.id])}
-            onEnd={() => endForgottenFight(table.id)}
+            onEnd={() => endForgottenFight(table)}
             openTo={`/dm/tables/${table.id}`}
             isBusy={endingId === table.id}
+          />
+        ))}
+
+        {/* A fight just ended from the reminder above: its summary for that table's journal. */}
+        {Object.entries(summaries).map(([tableId, summary]) => (
+          <FightSummaryCard
+            key={tableId}
+            tableId={tableId}
+            tableName={summary.name}
+            summary={summary.text}
+            onDone={() =>
+              setSummaries((current) => {
+                const next = { ...current };
+                delete next[tableId];
+                return next;
+              })
+            }
           />
         ))}
 
