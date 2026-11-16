@@ -1282,6 +1282,34 @@
   justify-content: flex-end;
 }
 
+/* The ☆ / ★ that pins a spell or item to the top of its list. A 32px
+   target so it's easy to tap on a phone, without making the row taller. */
+.character-sheet__favorite {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  margin: -6px 2px -6px -6px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--qk-text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.character-sheet__favorite:hover {
+  color: var(--qk-brass);
+}
+
+.character-sheet__favorite--on {
+  color: var(--qk-brass);
+}
+
 .character-sheet__details-toggle {
   display: inline-block;
   margin-left: 8px;

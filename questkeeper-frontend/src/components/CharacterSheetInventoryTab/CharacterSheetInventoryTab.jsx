@@ -299,6 +299,8 @@ function CharacterSheetInventoryTab({
   onEquipmentRemove,
   onEquipmentAttuneToggle,
   onEquipmentProficientToggle,
+  // ☆ Favourites: starred items are pinned to the top of the list.
+  onEquipmentFavoriteToggle = null,
   // Armor and shields can be equipped; their AC then counts on the sheet.
   isArmor = () => false,
   onEquipToggle = () => {},
@@ -391,6 +393,8 @@ function CharacterSheetInventoryTab({
         title="Inventory"
         items={sortedEquipment}
         viewKey="inventory"
+        isFavorite={(item) => Boolean(item.favorite)}
+        onToggleFavorite={onEquipmentFavoriteToggle}
         sortOptions={sortOptions}
         filterOptions={filterOptions}
         getItemId={(item) => item.index}
