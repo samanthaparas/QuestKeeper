@@ -26,6 +26,7 @@ function TurnBanner({ combat, onApplyDamage }) {
   if (!combat) return null;
 
   const { now, next, isMyTurn, latestEvent, damageRequests } = combat;
+  const tone = latestEvent ? eventTone(latestEvent, combat.combatants) : "";
   const upcomingText = describeUpcoming(
     combat.upcoming ?? (next ? [next] : []),
     combat.myCombatant?.id,
@@ -99,11 +100,9 @@ function TurnBanner({ combat, onApplyDamage }) {
             End my turn
           </Button>
         )}
-        {/* The latest news: red for damage, green for healing. */}
+        {/* The latest news: red for damage, green for healing or a fallen enemy. */}
         {latestEvent && (
-          <span
-            className={`turn-banner__event${eventTone(latestEvent) ? ` turn-banner__event--${eventTone(latestEvent)}` : ""}`}
-          >
+          <span className={`turn-banner__event${tone ? ` turn-banner__event--${tone}` : ""}`}>
             {latestEvent.message}
           </span>
         )}

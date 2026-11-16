@@ -143,18 +143,33 @@ export function hasActiveNudge(events = [], name) {
 
 // Whether a log line is bad news, good news or neither, so the turn banner can
 // colour it: "damage" (red) when someone gets hurt or goes down, "healing"
-// (green) when someone gets better. The database tags some lines with a kind;
-// the rest are read from the game's own wording ("takes 12 damage", "hits
-// Ash for 7!", "is down!", "looks healthier."). Anything else is "".
+// (green) when someone gets better, and "victory" (green too) when an enemy
+// goes down, because that's good news for the party. The database tags some
+// lines with a kind; the rest are read from the game's own wording ("takes 12
+// damage", "hits Ash for 7!", "is down!", "looks healthier."). Anything else
+// is "".
+//
+// combatants: the fight's list, used to tell whether the one who went down
+// was an enemy (a monster) or on the party's side (a player, or an ally the
+// DM runs, like a friendly NPC). Without it, "is down!" stays red, the
+// careful choice.
 const DAMAGE_WORDING = /takes \d+ damage|hits .+ for \d+!|is down!/i;
 const HEALING_WORDING = /looks healthier|\bheals?\b|\bhealed\b|regains?\b|is back up/i;
+const DOWN_WORDING = /^(.+) is down!$/i;
 
-export function eventTone(event) {
+export function eventTone(event, combatants = []) {
   if (event?.kind === "damage") return "damage";
   if (event?.kind === "healing") return "healing";
-  const message = String(event?.message ?? "");
+  const message = String(event?.message ?? "").trim();
   if (HEALING_WORDING.test(message)) return "healing";
+  const fallen = message.match(DOWN_WORDING)?.[1];
+  if (fallen && isEnemyNamed(combatants, fallen)) return "victory";
   if (DAMAGE_WORDING.test(message)) return "damage";
   return "";
+}
+
+// True when the fight has a monster with exactly this name.
+function isEnemyNamed(combatants, name) {
+  return (combatants ?? []).some((combatant) => combatant.kind === "monster" && combatant.name === name);
 }
 

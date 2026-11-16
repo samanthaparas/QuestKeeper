@@ -164,7 +164,7 @@ The header splits the app by who you are tonight: **Explore** (reference pages),
 - **Sort and Show** on every sheet list, inventory categories, and resource maximums that follow the proficiency bonus or an ability modifier.
 - **Updates arrive by themselves.** When a new version is live, the page refreshes quietly the next time you look away or move to another page, but never while a change is still saving, a real-dice roll is waiting, a pop-up is open, or you've typed something not yet sent. Until then a small **✨ Update** badge sparkles once and then dims, for anyone who'd rather refresh now.
 - **Dark mode** follows your device, with an Appearance choice in Settings.
-- **A slim turn banner** on the sheet during a fight: whose turn it is, and the latest news about you, with damage in red and healing in green. The "Applied … damage" note clears itself after 15 seconds.
+- **A slim turn banner** on the sheet during a fight: whose turn it is, and the latest news about you, with damage in red and healing in green. An enemy going down is good news, so it shows in green too; one of the party going down stays red. The "Applied … damage" note clears itself after 15 seconds.
 - **Safe on a weak signal:** if a save can't get through, the sheet keeps your changes, retries by itself, and tells you plainly. See _Playing on a weak signal_ below.
 - A **companion card** for a mount, familiar or animal friend: picture, HP, AC, speed, all six ability scores and saves to roll, attacks, and bulleted notes, with its own Edit stats lock. A Long Rest heals it with its character.
 - A full level-up flow: hit points, ability score improvements or feats, subclass choice at the right level, and new spells that follow each class's own spell slot rules. **Book feats** (Tough, Sharpshooter…) are at the end of the level-up feat list with their summary and link; **Make it as homebrew** right in the wizard saves your own version and picks it.
@@ -597,7 +597,6 @@ Run from the repository root:
 ### Working on now
 
 - **Learning from real game nights.** The November 9 session produced a list of small fixes that were built that night; the next session is the check that they hold up with the whole group.
-- **A fallen enemy still shows in green** where it should be red. It's on the list as the next small fix.
 - A **real-device check** of the redesign and the mobile audit (a signed-in pass on a real phone), since the browser checks so far used sample data and stand-in stores.
 - Running the **two-account test** for the newest features (frame your portrait, journal reactions, the turn banner's colours, the end-of-fight prompt and the "Still in combat?" reminder).
 - **Choosing a new name.** Other sites already use "QuestKeeper" for a similar idea, so the name is changing. The rename is on hold until a name is chosen.
