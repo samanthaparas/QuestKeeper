@@ -15,7 +15,10 @@ vi.mock("../../utils/tableStore", () => ({
   listMyTables: vi.fn(),
   listEvents: vi.fn().mockResolvedValue([]),
   endCombat: vi.fn().mockResolvedValue(undefined),
+  dmLog: vi.fn().mockResolvedValue(undefined),
+  listCombatants: vi.fn().mockResolvedValue([]),
 }));
+vi.mock("../../utils/journalStore", () => ({ addJournalEntry: vi.fn().mockResolvedValue({ id: "j1" }) }));
 
 function renderPage(mode, url = "/") {
   return render(
@@ -167,8 +170,37 @@ describe("TablesPage, a fight left open", () => {
     expect(screen.getByRole("link", { name: "Open table" })).toHaveAttribute("href", "/dm/tables/t1");
 
     fireEvent.click(screen.getByRole("button", { name: "End combat" }));
-    expect(endCombat).toHaveBeenCalledWith("t1");
+    await waitFor(() => expect(endCombat).toHaveBeenCalledWith("t1"));
     await waitFor(() => expect(screen.queryByText("Still in combat?")).not.toBeInTheDocument());
+  });
+
+  it("offers that fight's summary right on the list, to post to its journal", async () => {
+    const { listMyTables, listEvents, listCombatants, dmLog } = await import("../../utils/tableStore");
+    const { addJournalEntry } = await import("../../utils/journalStore");
+    listMyTables.mockResolvedValue([{ ...RUN, name: "Breakfast Club", combat_active: true, round: 4 }]);
+    listCombatants.mockResolvedValue([
+      { name: "Pippa", kind: "player" },
+      { name: "Brown Bear", kind: "monster" },
+    ]);
+    listEvents.mockResolvedValue(
+      ["Brown Bear is down!", "Pippa deals 9 damage to Brown Bear.", "⚔️ The fight begins."].map((message, index) => ({
+        id: `e${index}`,
+        message,
+        created_at: sixDaysAgo,
+      })),
+    );
+    renderPage("dm");
+
+    fireEvent.click(await screen.findByRole("button", { name: "End combat" }));
+    expect(await screen.findByRole("heading", { name: "Fight summary · Breakfast Club" })).toBeInTheDocument();
+    expect(dmLog).toHaveBeenCalledWith("t1", "🏁 The fight is over.");
+    expect(screen.getByRole("textbox", { name: "Fight summary" })).toHaveValue(
+      "⚔️ Fight summary (4 rounds)\nDefeated: Brown Bear\nDamage dealt: Pippa 9",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Post to the journal" }));
+    expect(addJournalEntry).toHaveBeenCalledWith("t1", { body: expect.stringContaining("Defeated: Brown Bear"), visibility: "table" });
+    await waitFor(() => expect(screen.queryByRole("heading", { name: /Fight summary/ })).not.toBeInTheDocument());
   });
 
   it("stays quiet for a fight that's still going", async () => {

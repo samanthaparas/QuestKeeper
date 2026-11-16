@@ -21,8 +21,6 @@ import {
   dmLog,
   dmResolveAttack,
   editCombatant,
-  endCombat,
-  listEvents,
   endMyTurn,
   getPartyStrip,
   leaveTable,
@@ -71,7 +69,9 @@ import CombatOverPrompt from "../../components/CombatOverPrompt/CombatOverPrompt
 import StillInCombat from "../../components/StillInCombat/StillInCombat";
 import MonsterConcentration from "../../components/MonsterConcentration/MonsterConcentration";
 import FightSummaryCard from "../../components/FightSummaryCard/FightSummaryCard";
-import { FIGHT_END_MESSAGE, FIGHT_START_MESSAGE, buildFightSummary } from "../../utils/fightSummary";
+import FightHowTo from "../../components/FightHowTo/FightHowTo";
+import { FIGHT_START_MESSAGE } from "../../utils/fightSummary";
+import { endFightWithSummary } from "../../utils/endFight";
 import { concentrationCheck, concentrationOf } from "../../utils/monsterConcentration";
 import { describeQuiet, isStaleCombat } from "../../utils/staleCombat";
 import AddCombatantForm from "../../components/AddCombatantForm/AddCombatantForm";
@@ -1700,11 +1700,7 @@ function TablePage() {
   // while the fight's creatures and round are still known, then offered to
   // the DM to post or skip.
   async function endFight() {
-    const log = await listEvents(table.id, 200);
-    const summary = buildFightSummary({ events: log, combatants, rounds: table.round });
-    await endCombat(table.id);
-    await dmLog(table.id, FIGHT_END_MESSAGE);
-    setFightSummary(summary);
+    setFightSummary(await endFightWithSummary(table, combatants));
   }
 
   // Rolls initiative for every monster and ally that has none yet. Anyone who
@@ -2090,6 +2086,8 @@ function TablePage() {
                   )}
                 </div>
               </div>
+              {/* For a DM new to running fights: the short how-to (folds away after Got it). */}
+              {!prepLayout && <FightHowTo side="dm" />}
               {fightSummary && (
                 <FightSummaryCard tableId={table.id} summary={fightSummary} onDone={() => setFightSummary("")} />
               )}
@@ -2175,6 +2173,9 @@ function TablePage() {
               Your initiative: {myRollNote}.
             </p>
           )}
+
+          {/* For a player new to fights: the short how-to (folds away after Got it). */}
+          {!isDm && myCombatant && <FightHowTo side="player" />}
 
           {/* "brb": a player marks themselves away (their turns are skipped)
               and back again. The DM can also do it from the Players tab. */}

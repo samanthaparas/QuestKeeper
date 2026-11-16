@@ -1,0 +1,47 @@
+/* "How a fight works": a quiet card that folds down to one line. */
+.fight-howto {
+  margin: 0 0 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font-size: 15px;
+}
+
+.fight-howto__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fight-howto__new {
+  padding: 0 8px;
+  border-radius: 999px;
+  background-color: var(--qk-brass-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fight-howto__steps {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding-left: 22px;
+  line-height: 1.5;
+}
+
+.fight-howto__done {
+  margin-top: 8px;
+  padding: 4px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-surface-muted);
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
