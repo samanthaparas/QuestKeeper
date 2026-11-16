@@ -111,3 +111,31 @@ describe("CharacterSheetSpellsTab: prepared spells", () => {
     });
   });
 });
+
+describe("CharacterSheetSpellsTab: favourite spells", () => {
+  it("pins a starred spell above the level groups, and stars on tap", async () => {
+    const onFavoriteToggle = vi.fn();
+    renderTab({
+      onFavoriteToggle,
+      spellcasting: {
+        cantripsKnown: SPELLS.filter((spell) => spell.level === 0),
+        spellsKnown: SPELLS.filter((spell) => spell.level > 0).map((spell) =>
+          spell.index === "haste" ? { ...spell, favorite: true } : spell,
+        ),
+      },
+    });
+
+    // The first group heading (the Show menu has a "★ Favourites" choice too).
+    const favourites = document.querySelector(".character-sheet__list-group");
+    expect(favourites).toHaveTextContent("★ Favourites");
+    const haste = screen.getByRole("button", { name: "Favourite Haste" });
+    const fireBolt = screen.getByRole("button", { name: "Favourite Fire Bolt" });
+    // Haste (level 3) now comes before the cantrips.
+    expect(favourites.compareDocumentPosition(haste) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(haste.compareDocumentPosition(fireBolt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(haste).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(fireBolt);
+    expect(onFavoriteToggle).toHaveBeenCalledWith(expect.objectContaining({ index: "fire-bolt" }));
+  });
+});

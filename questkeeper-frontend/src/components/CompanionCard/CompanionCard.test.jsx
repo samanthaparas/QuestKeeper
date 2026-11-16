@@ -29,6 +29,42 @@ function renderCard(props = {}) {
   return handlers;
 }
 
+const blank = { id: "c-new", name: "", armorClass: 10, speed: 30, hitPoints: { current: 0, max: 0 }, attacks: [] };
+
+describe("CompanionCard: setting up a new companion", () => {
+  it("opens a just-added companion unlocked, with the name box ready and a short guide", () => {
+    renderCard({ companion: blank, isNew: true });
+
+    expect(screen.getByLabelText("Companion's name")).toHaveFocus();
+    expect(screen.getByText(/Set up your companion:/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Companion's max HP")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "✓ Done editing" })).toBeInTheDocument();
+  });
+
+  it("explains that Summon Fey rules are only for that spell", () => {
+    renderCard({ companion: blank, isNew: true });
+    expect(screen.getByText(/Only for a companion you bring in with the/)).toHaveTextContent(
+      "A pet, mount, familiar or beast companion doesn't need this",
+    );
+  });
+
+  it("offers a clear Set up button on a companion left blank, and Done editing locks it", async () => {
+    renderCard({ companion: blank });
+    expect(screen.getByText("This companion isn't set up yet.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Set up Companion" }));
+    expect(screen.getByLabelText("Companion's name")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "✓ Done editing" }));
+    expect(screen.queryByLabelText("Companion's name")).not.toBeInTheDocument();
+  });
+
+  it("doesn't nag about set-up once it has a name or HP", () => {
+    renderCard();
+    expect(screen.queryByText(/isn't set up yet/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Set up your companion/)).not.toBeInTheDocument();
+  });
+});
+
 describe("CompanionCard", () => {
   it("shows the companion's HP, AC, speed and attacks", () => {
     renderCard();

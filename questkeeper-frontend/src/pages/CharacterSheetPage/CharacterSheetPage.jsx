@@ -238,6 +238,8 @@ function CharacterSheetPage() {
   const [sheet, setSheet] = useState(null);
   const [loadedId, setLoadedId] = useState(null);
   const [showSkillBonuses, setShowSkillBonuses] = useState(false);
+  // The companion just added this visit, which opens ready to fill in.
+  const [newCompanionId, setNewCompanionId] = useState(null);
   // Below 1024px the skills list would sit under everything else, so a
   // Stats | Skills switch by the name flips the top of the sheet instead.
   const isCompact = useMediaQuery("(max-width: 1023px)");
@@ -1225,7 +1227,11 @@ function CharacterSheetPage() {
       persistSheet(saveCompanions(sheet, [{ ...sheet.companionCreature, id: sheet.companionCreature.id ?? "companion-1" }]));
       return;
     }
-    persistSheet(addCompanion(sheet));
+    const next = addCompanion(sheet);
+    // The brand-new one opens ready to fill in (see CompanionCard's isNew).
+    const added = getCompanions(next).find((creature) => !existing.some((old) => old.id === creature.id));
+    setNewCompanionId(added?.id ?? null);
+    persistSheet(next);
   }
 
   // Removes one companion (its card asks first). A summon of its ends.
@@ -1726,6 +1732,25 @@ function CharacterSheetPage() {
       { locked: !spell.locked },
     );
     persistSheet({ ...sheet, spellcasting });
+  }
+
+  // ☆ / ★: pins a spell to the top of the Spells list.
+  function handleSpellFavoriteToggle(spell) {
+    const spellcasting = updateSpell(
+      sheet.spellcasting,
+      findSpellListKey(spell.index),
+      spell.index,
+      { favorite: !spell.favorite },
+    );
+    persistSheet({ ...sheet, spellcasting });
+  }
+
+  // ☆ / ★: pins an item to the top of the Inventory list.
+  function handleEquipmentFavoriteToggle(item) {
+    persistSheet({
+      ...sheet,
+      equipment: updateEquipmentItem(sheet.equipment, item.index, { favorite: !item.favorite }),
+    });
   }
 
   // Prepared / not prepared, for casters who ready only some of their spells.
@@ -2977,6 +3002,7 @@ function CharacterSheetPage() {
                             onAttackUpdate={(attackId, values) => handleCompanionAttackUpdate(creature.id, attackId, values)}
                             onAttackRemove={(attackId) => handleCompanionAttackRemove(creature.id, attackId)}
                             onRemove={() => handleCompanionRemove(creature.id)}
+                            isNew={creature.id === newCompanionId}
                             // A companion that follows a summon spell (Fable and
                             // Summon Fey); null for an ordinary one.
                             summon={getSummonInfo(
@@ -3020,6 +3046,7 @@ function CharacterSheetPage() {
                       onSpellLockToggle={handleSpellLockToggle}
                       preparedLimit={getPreparedLimit(sheet)}
                       onPreparedToggle={handleSpellPreparedToggle}
+                      onFavoriteToggle={handleSpellFavoriteToggle}
                       spellsStartAt={getSpellsStartAt(sheet.class, sheet.level)}
                       onFillComponents={handleFillComponents}
                       castOptionsFor={castOptionsFor}
@@ -3059,6 +3086,7 @@ function CharacterSheetPage() {
                       onEquipmentProficientToggle={
                         handleEquipmentProficientToggle
                       }
+                      onEquipmentFavoriteToggle={handleEquipmentFavoriteToggle}
                       isArmor={(item) => isArmorDetails(gearDetailsFor(item))}
                       categoryOf={(item) => getInventoryCategory(item, gearDetailsFor(item))}
                       onEquipToggle={handleEquipToggle}

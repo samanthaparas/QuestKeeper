@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import RollButton from "../RollDock/RollButton";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import PortraitUpload from "../PortraitUpload/PortraitUpload";
@@ -208,7 +208,10 @@ function SummonLink({ name, companion, summon, onSummon }) {
           </Button>
         ))}
         <span className="companion-card__summon-hint">
-          For a companion you summon with a spell. Its saved numbers are kept.
+          Only for a companion you bring in with the <strong>Summon Fey</strong> spell (rangers, druids, warlocks
+          and wizards can learn it): its numbers then come from the spell&apos;s level. A pet, mount, familiar or
+          beast companion doesn&apos;t need this, and other summon spells aren&apos;t built in yet: just type their
+          stats. Its saved numbers are kept either way.
         </span>
       </div>
     );
@@ -336,8 +339,15 @@ function CompanionCard({
   // Removes this companion (a character can have several). Only offered
   // while its stats are unlocked, and it asks once first.
   onRemove = null,
+  // Just added: the card opens unlocked with its name box ready to type in,
+  // so setting it up doesn't mean hunting for "Edit stats".
+  isNew = false,
 }) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(isNew);
+  const nameInput = useRef(null);
+  useEffect(() => {
+    if (isNew) nameInput.current?.focus();
+  }, [isNew]);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const name = companion.name || "Companion";
   // A summon away (not cast) has no numbers to show; one that's here uses
@@ -347,6 +357,8 @@ function CompanionCard({
   const editNumbers = isEditing && !isSummon;
   const hp = isSummon ? (summon.hp ?? { current: 0, max: 0 }) : (companion.hitPoints ?? { current: 0, max: 0 });
   const scores = createCompanionAbilityScores(isSummon ? summon.stats.abilityScores : companion.abilityScores);
+  // Nothing filled in yet (no name, no HP, not a summon): it asks to be set up.
+  const isBlank = !isSummon && !companion.name?.trim() && !(Number(companion.hitPoints?.max) > 0);
   const shown = isSummon
     ? { ...companion, armorClass: summon.stats.armorClass, speed: summon.stats.speed, savingThrows: {}, abilityScores: scores }
     : companion;
@@ -375,6 +387,7 @@ function CompanionCard({
           )}
           {isEditing ? (
             <input
+              ref={nameInput}
               type="text"
               className="companion-card__name-input"
               aria-label="Companion's name"
@@ -460,6 +473,23 @@ function CompanionCard({
           {isEditing ? "🔓 Done editing" : "🔒 Edit stats"}
         </button>
       </div>
+
+      {/* Setting up a new one: what to fill in, in plain words. */}
+      {isEditing && isBlank && (
+        <p className="companion-card__setup">
+          <strong>Set up your companion:</strong> type its name, then its HP, AC, speed and ability scores from its
+          stat block (a wolf, a riding horse, an owl familiar). Add its attacks and notes below. Tap{" "}
+          <strong>Done editing</strong> when you&apos;re finished, so a stray tap can&apos;t change them.
+        </p>
+      )}
+
+      {/* Left blank: a clear way back in, instead of a small lock button. */}
+      {!isEditing && isBlank && (
+        <p className="companion-card__setup">
+          <span>This companion isn&apos;t set up yet.</span>
+          <Button onClick={() => setIsEditing(true)}>Set up {name}</Button>
+        </p>
+      )}
 
       {isEditing && <SummonLink name={name} companion={companion} summon={summon} onSummon={onSummon} />}
 
@@ -603,6 +633,13 @@ function CompanionCard({
       )}
 
       <CompanionNotes name={name} notes={notes} onChange={onNotesChange} isEditing={isEditing} />
+
+      {/* A plain way to finish at the bottom too, after filling in the stats. */}
+      {isEditing && (
+        <p className="companion-card__done">
+          <Button onClick={() => setIsEditing(false)}>✓ Done editing</Button>
+        </p>
+      )}
 
     </section>
   );
