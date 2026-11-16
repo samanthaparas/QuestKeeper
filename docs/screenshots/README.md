@@ -70,6 +70,20 @@ Both folders are made from the running app with **made-up sample data**, not a r
 - `2026-11-01-dm-prep-spacing/`: the Prep tab after the spacing pass (a slim readiness bar, Initiative setup first in the right column, shorter guidance with disclosures, tighter initiative rows): 1440x900, 1280x720 and 1100x800, the helper search with portraits and fallback badges, a mixed encounter, expanded step details and settings, a selected creature and a long name, all initiatives set, the empty and fight-is-on states, tablet and phone, Combat checks for the shared HP/AC colour, and real 200% browser zoom. Sample data. 36 images.
 - `2026-11-02-combat-prefight-list/`: the Combat tab before a fight starts, after the waiting-for-initiative list stopped overlapping the Initiative order heading (1440x900 and 1280x720 in both themes) plus the unchanged in-fight view. Sample data. 5 images.
 
+## 2026-11-15: a month of live play
+
+Folder: [`2026-11-15/`](2026-11-15/). Public pages taken from the running app (no account needed), each in **light** (same file names as 2026-10-15, so the pairs match) and **dark** (`-dark`). The two sample pages use made-up data built into the app.
+
+- `home.png`: the tavern homepage (hero art, search with "By name / By meaning", three "Where would you like to start?" cards)
+- `races.png`, `classes.png`, `spells.png`, `magic-items.png`: reference pages with page banners
+- `feats.png`: the Feats page (new since 2026-10-15), with SRD and book feats
+- `guide.png`, `quiz.png`: Learn the Basics and the character quiz
+- `sample-character.png`, `sample-table.png`: the sample character sheet and sample DM table (new since 2026-10-15)
+- `...-dark.png`: the same ten pages in dark mode
+- `home-phone.png`, `races-phone.png`, `sample-character-phone.png`, `sample-table-phone.png`: 375-wide phone views (saved at double resolution, 750x1624)
+
+Signed-in pages from this round (taken by hand) are added to the same folder; see the list below as they arrive.
+
 ## Taking a new round
 
 1. Make a folder named with today's date, for example `docs/screenshots/2026-11-20/`.
