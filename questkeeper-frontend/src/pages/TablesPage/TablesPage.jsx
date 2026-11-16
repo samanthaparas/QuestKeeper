@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { listCharacters } from "../../utils/characterStore";
-import { createTable, joinTable, listMyTables } from "../../utils/tableStore";
+import { createTable, endCombat, joinTable, listEvents, listMyTables } from "../../utils/tableStore";
+import { describeQuiet, isStaleCombat } from "../../utils/staleCombat";
+import StillInCombat from "../../components/StillInCombat/StillInCombat";
 import Button from "../../components/Button/Button";
 import StatusNote from "../../components/StatusNote/StatusNote";
 import { useFocusAfterRetry } from "../../components/StatusNote/useFocusAfterRetry";
@@ -26,6 +28,10 @@ function TablesPage({ mode = "player" }) {
   // The tables couldn't load: said in friendly words, with a retry (never the raw system message).
   const [loadError, setLoadError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  // DM side: when each table in combat last had activity ({ tableId: time }),
+  // for the "Still in combat?" reminders, and which one is being ended.
+  const [lastActivity, setLastActivity] = useState({});
+  const [endingId, setEndingId] = useState(null);
   const [hasRetried, setHasRetried] = useState(false);
   const [createError, setCreateError] = useState("");
   const [joinError, setJoinError] = useState("");
@@ -60,6 +66,41 @@ function TablesPage({ mode = "player" }) {
 
   // Only this side's tables: the ones you run, or the ones you play in.
   const myTables = tables.filter((table) => (table.dm_id === user?.id) === isDmSide);
+
+  // DM side: look up the newest activity of each table that's still in combat.
+  const inCombatIds = myTables.filter((table) => table.combat_active).map((table) => table.id).join(",");
+  useEffect(() => {
+    if (!isDmSide || !inCombatIds) return undefined;
+    let ignore = false;
+    Promise.all(
+      inCombatIds.split(",").map((id) =>
+        listEvents(id, 1)
+          .then((events) => [id, events[0]?.created_at ?? null])
+          .catch(() => [id, null]),
+      ),
+    ).then((pairs) => !ignore && setLastActivity(Object.fromEntries(pairs)));
+    return () => {
+      ignore = true;
+    };
+  }, [isDmSide, inCombatIds]);
+
+  const staleTables = isDmSide
+    ? myTables.filter((table) => isStaleCombat(table, lastActivity[table.id]))
+    : [];
+
+  async function endForgottenFight(tableId) {
+    setEndingId(tableId);
+    try {
+      await endCombat(tableId);
+      setTables((current) =>
+        current.map((table) => (table.id === tableId ? { ...table, combat_active: false } : table)),
+      );
+    } catch {
+      setLoadError(true);
+    } finally {
+      setEndingId(null);
+    }
+  }
 
   // A sample picture for each table card (never a real place), with no two neighbours alike.
   const tableArt = getCampaignArtForList(myTables.map((table) => table.id));
@@ -103,6 +144,18 @@ function TablesPage({ mode = "player" }) {
             </Link>
           </p>
         </PageBanner>
+
+        {/* A fight left open after the last session, first thing on the DM's screen. */}
+        {staleTables.map((table) => (
+          <StillInCombat
+            key={table.id}
+            tableName={table.name}
+            quiet={describeQuiet(lastActivity[table.id])}
+            onEnd={() => endForgottenFight(table.id)}
+            openTo={`/dm/tables/${table.id}`}
+            isBusy={endingId === table.id}
+          />
+        ))}
 
         <div className="tables-page__forms">
           {isDmSide ? (

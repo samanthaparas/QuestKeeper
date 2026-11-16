@@ -2471,3 +2471,42 @@ describe("TablePage, when every enemy is down", () => {
   });
 });
 
+describe("TablePage, a fight left open", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installFakeStorage();
+  });
+
+  const quietEvents = [{ id: "e1", message: "Kobold hits Billie for 3!", created_at: new Date(Date.now() - 6 * 24 * 3600 * 1000 - 60000).toISOString() }];
+
+  it("reminds the DM with End combat and Keep fighting", async () => {
+    mockTable({ isDm: true });
+    useTable.mockReturnValue({ ...currentTable, events: quietEvents });
+    renderPage();
+
+    expect(screen.getByText("Still in combat?")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Keep fighting" }));
+    expect(screen.queryByText("Still in combat?")).not.toBeInTheDocument();
+  });
+
+  it("ends the fight from the reminder", async () => {
+    mockTable({ isDm: true });
+    useTable.mockReturnValue({ ...currentTable, events: quietEvents });
+    renderPage();
+    await userEvent.click(within(screen.getByRole("region", { name: "Still in combat?" })).getByRole("button", { name: "End combat" }));
+    expect(endCombat).toHaveBeenCalledWith("t1");
+  });
+
+  it("never shows it to players, or during an active fight", () => {
+    mockTable({ isDm: false });
+    useTable.mockReturnValue({ ...currentTable, events: quietEvents });
+    const { unmount } = renderPage();
+    expect(screen.queryByText("Still in combat?")).not.toBeInTheDocument();
+    unmount();
+
+    mockTable({ isDm: true });
+    renderPage();
+    expect(screen.queryByText("Still in combat?")).not.toBeInTheDocument();
+  });
+});
+
