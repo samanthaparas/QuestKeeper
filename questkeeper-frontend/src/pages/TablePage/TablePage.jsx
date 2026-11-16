@@ -60,6 +60,8 @@ import Button from "../../components/Button/Button";
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
 import CombatOverPrompt from "../../components/CombatOverPrompt/CombatOverPrompt";
 import StillInCombat from "../../components/StillInCombat/StillInCombat";
+import MonsterConcentration from "../../components/MonsterConcentration/MonsterConcentration";
+import { concentrationCheck, concentrationOf } from "../../utils/monsterConcentration";
 import { describeQuiet, isStaleCombat } from "../../utils/staleCombat";
 import AddCombatantForm from "../../components/AddCombatantForm/AddCombatantForm";
 import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEditPanel";
@@ -570,6 +572,16 @@ function CombatantSummaryRow({
               {pendingCalls.length > 0 && (
                 <span className="table-page__tag table-page__tag--call">⚠ Needs your call</span>
               )}
+              {isNpc && concentrationCheck(combatant, hp) ? (
+                <span className="table-page__tag table-page__tag--call">🧠 Concentration save</span>
+              ) : (
+                isNpc &&
+                concentrationOf(combatant, hp) && (
+                  <span className="table-page__tag" title={`Concentrating on ${concentrationOf(combatant, hp)}`}>
+                    🧠 Concentrating
+                  </span>
+                )
+              )}
             </span>
             {isNpc && (
               <span className={`table-page__status table-page__status--${combatant.status}`}>
@@ -882,6 +894,9 @@ function CombatantRow({
 
               {/* DM only: its saving throws, each a roll that stays on this screen. */}
               {isNpc && isDm && hp && <MonsterSaves name={combatant.name} statBlock={hp.stat_block} />}
+
+              {/* DM only: the spell it's concentrating on, and the save when it's hit. */}
+              {isNpc && isDm && hp && <MonsterConcentration combatant={combatant} secret={hp} onChanged={onChanged} />}
 
               {/* DM only: what to do on this turn, so it's clear the monster
                   hasn't acted yet (its history below may be from earlier). */}

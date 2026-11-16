@@ -9,6 +9,8 @@ import { getCharactersByIds } from "../../utils/characterStore";
 import {
   setMyInitiative,
   setMyAway,
+  setMonsterConcentration,
+  keepMonsterConcentration,
   setCombatantInitiative,
   applyDamage,
   postPlayerDamage,
@@ -97,6 +99,8 @@ vi.mock("../../utils/tableStore", () => ({
   setShareParty: vi.fn().mockResolvedValue(undefined),
   setCombatantAway: vi.fn().mockResolvedValue(undefined),
   setMyAway: vi.fn().mockResolvedValue(undefined),
+  setMonsterConcentration: vi.fn().mockResolvedValue(undefined),
+  keepMonsterConcentration: vi.fn().mockResolvedValue(undefined),
   listTemplates: vi.fn().mockResolvedValue([]),
   applyDamage: vi.fn().mockResolvedValue(undefined),
   deleteTable: vi.fn(),
@@ -1345,6 +1349,8 @@ describe("monster row layout", () => {
       .getAllByRole("button")
       .map((button) => button.getAttribute("aria-label") ?? button.textContent);
     expect(names).toEqual([
+      // In the monster's details, under its HP: the concentration note.
+      "🧠 Concentrating?",
       "Edit Kobold",
       "Remove Kobold",
       "Attack",
@@ -1355,6 +1361,34 @@ describe("monster row layout", () => {
       "Increase healing amount",
       "Apply healing to Kobold",
     ]);
+  });
+
+  it("lets the DM note a monster's concentration, and shows it in the list", async () => {
+    renderPage();
+    const row = await waitFor(() => detailFor("Kobold"));
+    await userEvent.click(within(row).getByRole("button", { name: /Concentrating\?/ }));
+    await userEvent.type(within(row).getByLabelText("Spell Kobold is concentrating on"), "Hold Person");
+    await userEvent.click(within(row).getByRole("button", { name: "Start" }));
+    // Its damage taken right now (11) is the starting point for saves.
+    expect(setMonsterConcentration).toHaveBeenCalledWith("c-kobold", "Hold Person", 11);
+  });
+
+  it("asks for the save when a concentrating monster takes damage, and never tells players", async () => {
+    currentTable.enemyHp = {
+      "c-kobold": { current_hp: 9, max_hp: 20, armor_class: 12, concentration: "Hold Person", concentration_damage: 3 },
+    };
+    renderPage();
+
+    expect(rowFor("Kobold")).toHaveTextContent("🧠 Concentration save");
+    const row = await waitFor(() => detailFor("Kobold"));
+    expect(row).toHaveTextContent("Kobold took 8 damage while holding Hold Person. Constitution save, DC 10 (+0).");
+    await userEvent.click(within(row).getByRole("button", { name: "Kept it" }));
+    expect(keepMonsterConcentration).toHaveBeenCalledWith("c-kobold", 11);
+
+    cleanup();
+    mockTable({ isDm: false });
+    renderPage();
+    expect(screen.queryByText(/Concentrat/)).not.toBeInTheDocument();
   });
 
   it("asks before removing a monster, and Keep leaves it alone", async () => {

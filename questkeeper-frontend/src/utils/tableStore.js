@@ -293,6 +293,29 @@ export async function setCombatantAway(combatantId, away) {
   unwrap(await supabase.from("combatants").update({ away: Boolean(away) }).eq("id", combatantId));
 }
 
+// DM: which spell a monster or ally is concentrating on (null to end it).
+// damageTaken is its damage taken right now, so only damage after this point
+// asks for a save (see 20261116_monster_concentration.sql).
+export async function setMonsterConcentration(combatantId, spell, damageTaken) {
+  const name = String(spell ?? "").trim();
+  unwrap(
+    await supabase
+      .from("combatant_secrets")
+      .update({ concentration: name || null, concentration_damage: Number(damageTaken) || 0 })
+      .eq("combatant_id", combatantId),
+  );
+}
+
+// DM: the monster made its concentration save, so damage so far is settled.
+export async function keepMonsterConcentration(combatantId, damageTaken) {
+  unwrap(
+    await supabase
+      .from("combatant_secrets")
+      .update({ concentration_damage: Number(damageTaken) || 0 })
+      .eq("combatant_id", combatantId),
+  );
+}
+
 // A player: "Step away (brb)" or "I'm back" for yourself. Away players' turns
 // are skipped; stepping away on your own turn ends it first (see
 // 20261116_player_brb.sql).
