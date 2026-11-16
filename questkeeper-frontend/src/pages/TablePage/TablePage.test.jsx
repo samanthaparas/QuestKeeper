@@ -990,6 +990,31 @@ describe("rolling initiative for monsters", () => {
     expect(setCombatantInitiative).not.toHaveBeenCalledWith("c-dragon", expect.anything());
   });
 
+  it("can give copies of one creature a single shared roll, so they go together", async () => {
+    setupFight();
+    currentTable.combatants = [...currentTable.combatants, goblin(4, { id: "c-wolf", name: "Wolf" })];
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Same creatures roll together" }));
+    await userEvent.click(screen.getByRole("button", { name: "Roll initiative for 4 monsters" }));
+
+    // The goblins share Goblin 1's roll (11 + 2); the wolf rolls its own.
+    await waitFor(() => expect(setCombatantInitiative).toHaveBeenCalledTimes(4));
+    expect(setCombatantInitiative).toHaveBeenCalledWith("c-g1", 13);
+    expect(setCombatantInitiative).toHaveBeenCalledWith("c-g2", 13);
+    expect(setCombatantInitiative).toHaveBeenCalledWith("c-g3", 13);
+    expect(setCombatantInitiative).toHaveBeenCalledWith("c-wolf", 11);
+  });
+
+  it("only offers rolling together when there are copies of one creature", async () => {
+    setupFight();
+    currentTable.combatants = [goblin(1), goblin(4, { id: "c-wolf", name: "Wolf" })];
+    renderPage();
+
+    await screen.findByRole("button", { name: "Roll initiative for 2 monsters" });
+    expect(screen.queryByRole("checkbox", { name: "Same creatures roll together" })).not.toBeInTheDocument();
+  });
+
   it("rolls for a single monster with its bonus and shows the roll", async () => {
     setupFight();
     renderPage();

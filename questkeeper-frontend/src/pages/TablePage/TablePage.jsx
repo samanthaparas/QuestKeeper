@@ -42,7 +42,15 @@ import {
   setMyAway,
   startCombat,
 } from "../../utils/tableStore";
-import { creatureIdOf, isSameTemplate, pieceNames, readStatBlock, recentEventsFor, savesOf } from "../../utils/statBlock";
+import {
+  creatureIdOf,
+  groupForInitiative,
+  isSameTemplate,
+  pieceNames,
+  readStatBlock,
+  recentEventsFor,
+  savesOf,
+} from "../../utils/statBlock";
 import { getActivityIcon, getCreaturePortrait } from "../../utils/icons";
 import { conditionWord } from "../../utils/conditions";
 import {
@@ -1291,6 +1299,8 @@ function TablePage() {
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [myRollNote, setMyRollNote] = useState("");
   const [nudgeCooling, setNudgeCooling] = useState(false);
+  // "Same creatures roll together" for the roll-all button (off: each rolls its own).
+  const [rollTogether, setRollTogether] = useState(false);
   const nudgeTimer = useRef(null);
 
   useEffect(() => () => clearTimeout(nudgeTimer.current), []);
@@ -1523,6 +1533,8 @@ function TablePage() {
   const prepSteps = getDmPrepSteps({ combatants, combatActive: table.combat_active, canStart });
   const unrolledNpcs = waiting.filter((combatant) => combatant.kind !== "player");
   const unrolledNpcCount = unrolledNpcs.length;
+  // Two or more copies of one creature still to roll (Goblin 1, Goblin 2...).
+  const hasSameCreatures = groupForInitiative(unrolledNpcs).some((group) => group.length > 1);
   // "2 monsters and 1 NPC", so friendly NPCs are not called monsters.
   const unrolledMonsterCount = unrolledNpcs.filter((combatant) => combatant.kind === "monster").length;
   const unrolledAllyCount = unrolledNpcCount - unrolledMonsterCount;
@@ -1673,6 +1685,9 @@ function TablePage() {
 
   // Rolls initiative for every monster and ally that has none yet. Anyone who
   // already has one (a boss the DM rolled with real dice) is left alone.
+  // With "Same creatures roll together", copies of one creature (Goblin 1,
+  // Goblin 2...) share one roll, with the first one's bonus, so they take
+  // their turns one after another.
   async function rollForAllNpcs() {
     const unrolled = combatants.filter(
       (combatant) =>
@@ -1681,11 +1696,14 @@ function TablePage() {
     );
     if (unrolled.length === 0) return;
 
+    const groups = rollTogether ? groupForInitiative(unrolled) : unrolled.map((combatant) => [combatant]);
     await run(async () => {
-      for (const combatant of unrolled) {
-        const bonus = readStatBlock(enemyHp[combatant.id]?.stat_block).initiativeBonus;
+      for (const group of groups) {
+        const bonus = readStatBlock(enemyHp[group[0].id]?.stat_block).initiativeBonus;
         const { total } = rollMonsterInitiative(bonus);
-        await setCombatantInitiative(combatant.id, total);
+        for (const combatant of group) {
+          await setCombatantInitiative(combatant.id, total);
+        }
       }
     });
   }
@@ -2002,6 +2020,17 @@ function TablePage() {
                     <Button variant={prepLayout ? undefined : "secondary"} onClick={rollForAllNpcs}>
                       {`Roll initiative for ${unrolledLabel}`}
                     </Button>
+                  )}
+                  {/* Only offered when there are copies of one creature to group. */}
+                  {hasSameCreatures && (
+                    <label className="table-page__roll-together">
+                      <input
+                        type="checkbox"
+                        checked={rollTogether}
+                        onChange={(event) => setRollTogether(event.target.checked)}
+                      />
+                      Same creatures roll together
+                    </label>
                   )}
                   <Button
                     variant="secondary"
