@@ -58,6 +58,8 @@ import { shouldReduceMotion } from "../../utils/motionPreference";
 import Button from "../../components/Button/Button";
 import MonsterAttackPanel from "../../components/MonsterAttackPanel/MonsterAttackPanel";
 import CombatOverPrompt from "../../components/CombatOverPrompt/CombatOverPrompt";
+import StillInCombat from "../../components/StillInCombat/StillInCombat";
+import { describeQuiet, isStaleCombat } from "../../utils/staleCombat";
 import AddCombatantForm from "../../components/AddCombatantForm/AddCombatantForm";
 import CombatantEditPanel from "../../components/CombatantEditPanel/CombatantEditPanel";
 import PlayerCharacterCard from "../../components/PlayerCharacterCard/PlayerCharacterCard";
@@ -1267,6 +1269,8 @@ function TablePage() {
   // lets go once the turn reaches a creature the DM runs, so that monster's
   // Attack is the one on screen (pickedId below).
   const [pick, setPick] = useState(null);
+  // "Keep fighting" on the Still in combat? reminder hides it for this visit.
+  const [keepFighting, setKeepFighting] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [myRollNote, setMyRollNote] = useState("");
@@ -2440,6 +2444,15 @@ function TablePage() {
           <TurnHeadsUp
             isMyTurn={amUp}
             isNext={Boolean(myCombatant && !amUp && upcoming[0]?.id === myCombatant.id)}
+          />
+        )}
+
+        {/* A fight left open after the last session: remind the DM to end it. */}
+        {isDm && !keepFighting && isStaleCombat(table, events[0]?.created_at) && (
+          <StillInCombat
+            quiet={describeQuiet(events[0].created_at)}
+            onEnd={() => run(() => endCombat(table.id))}
+            onKeep={() => setKeepFighting(true)}
           />
         )}
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import TablesPage from "./TablesPage";
@@ -13,6 +13,8 @@ vi.mock("../../utils/tableStore", () => ({
   createTable: vi.fn(),
   joinTable: vi.fn(),
   listMyTables: vi.fn(),
+  listEvents: vi.fn().mockResolvedValue([]),
+  endCombat: vi.fn().mockResolvedValue(undefined),
 }));
 
 function renderPage(mode, url = "/") {
@@ -150,3 +152,33 @@ describe("help for new groups", () => {
     expect(listMyTables).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("TablesPage, a fight left open", () => {
+  const sixDaysAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000 - 60000).toISOString();
+
+  it("reminds the DM first thing, and ends it on request", async () => {
+    const { listMyTables, listEvents, endCombat } = await import("../../utils/tableStore");
+    listMyTables.mockResolvedValue([{ ...RUN, name: "Breakfast Club", combat_active: true }]);
+    listEvents.mockResolvedValue([{ id: "e1", message: "Pippa ends their turn.", created_at: sixDaysAgo }]);
+    renderPage("dm");
+
+    expect(await screen.findByText("Still in combat?")).toBeInTheDocument();
+    expect(screen.getByText(/nothing has happened in it for 6 days/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open table" })).toHaveAttribute("href", "/dm/tables/t1");
+
+    fireEvent.click(screen.getByRole("button", { name: "End combat" }));
+    expect(endCombat).toHaveBeenCalledWith("t1");
+    await waitFor(() => expect(screen.queryByText("Still in combat?")).not.toBeInTheDocument());
+  });
+
+  it("stays quiet for a fight that's still going", async () => {
+    const { listMyTables, listEvents } = await import("../../utils/tableStore");
+    listMyTables.mockResolvedValue([{ ...RUN, combat_active: true }]);
+    listEvents.mockResolvedValue([{ id: "e1", message: "Kobold hits Dangit for 7!", created_at: new Date().toISOString() }]);
+    renderPage("dm");
+
+    expect(await screen.findByText(/In combat/)).toBeInTheDocument();
+    expect(screen.queryByText("Still in combat?")).not.toBeInTheDocument();
+  });
+});
+
