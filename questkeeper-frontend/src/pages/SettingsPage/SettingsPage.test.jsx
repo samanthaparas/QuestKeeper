@@ -4,8 +4,10 @@ import userEvent from "@testing-library/user-event";
 import SettingsPage from "./SettingsPage";
 import { updateDisplayName, updateEmail, updatePassword } from "../../utils/account";
 import { installFakeStorage } from "../../test/fakeStorage";
+import { runDbChecks } from "../../utils/dbCheck";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
+vi.mock("../../utils/dbCheck", () => ({ runDbChecks: vi.fn() }));
 vi.mock("../../context/useAuth", () => ({
   useAuth: () => ({ user: { email: "sam@example.com", user_metadata: { display_name: "Sam" } } }),
 }));
@@ -51,6 +53,25 @@ describe("SettingsPage", () => {
     await userEvent.click(screen.getByLabelText("Match my device"));
     expect(document.documentElement.dataset.theme).toBeUndefined();
     expect(window.localStorage.getItem("qk-theme")).toBeNull();
+  });
+
+  it("checks whether the newest SQL files have been run, and names any that haven't", async () => {
+    runDbChecks.mockResolvedValue([
+      { file: "20261122_campaign_start_session.sql", what: "Start a new campaign at any session", status: "missing" },
+      { file: "20261116_player_brb.sql", what: "Players can step away (brb)", status: "ok" },
+    ]);
+    render(<SettingsPage />);
+    await userEvent.click(screen.getByRole("button", { name: "Check the database" }));
+
+    expect(await screen.findByText("1 SQL file needs running in the Supabase SQL editor.")).toBeInTheDocument();
+    expect(screen.getByText("20261122_campaign_start_session.sql").closest("li")).toHaveTextContent("Not run yet");
+  });
+
+  it("says when everything is up to date", async () => {
+    runDbChecks.mockResolvedValue([{ file: "a.sql", what: "A", status: "ok" }]);
+    render(<SettingsPage />);
+    await userEvent.click(screen.getByRole("button", { name: "Check the database" }));
+    expect(await screen.findByText("✓ Everything is up to date.")).toBeInTheDocument();
   });
 
   it("lets an experienced player turn beginner tips off, and remembers it on this device", async () => {

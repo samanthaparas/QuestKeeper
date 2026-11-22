@@ -102,3 +102,32 @@
   flex-wrap: wrap;
   gap: 6px 24px;
 }
+
+/* "Database check": one line per SQL file, ✓ run, ✗ not run, ? can't tell. */
+.settings-page__db-list {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.settings-page__db-row--ok > span:first-child {
+  color: var(--qk-moss);
+}
+
+.settings-page__db-row--missing {
+  font-weight: 700;
+}
+
+.settings-page__db-row--missing > span:first-child {
+  color: var(--qk-danger);
+}
+
+.settings-page__db-file {
+  color: var(--qk-text-muted);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+

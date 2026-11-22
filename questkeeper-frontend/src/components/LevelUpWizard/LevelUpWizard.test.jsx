@@ -178,7 +178,7 @@ function makeRanger(level, spellsKnown) {
   };
 }
 
-async function reachSpellStep(sheet, onComplete = vi.fn()) {
+async function reachSpellStep(sheet, onComplete = vi.fn(), extraProps = {}) {
   getClassFeatures.mockResolvedValue([]);
   getClassSpells.mockResolvedValue(rangerSpells);
   getSpellDetails.mockImplementation((index) =>
@@ -186,7 +186,7 @@ async function reachSpellStep(sheet, onComplete = vi.fn()) {
   );
   render(
     <MemoryRouter>
-      <LevelUpWizard sheet={sheet} onComplete={onComplete} onCancel={vi.fn()} />
+      <LevelUpWizard sheet={sheet} onComplete={onComplete} onCancel={vi.fn()} {...extraProps} />
     </MemoryRouter>,
   );
   await userEvent.click(screen.getByRole("button", { name: /Take Average/ }));
@@ -201,6 +201,20 @@ async function reachSpellStep(sheet, onComplete = vi.fn()) {
 }
 
 describe("LevelUpWizard spell step", () => {
+  it("hides spells the character's table doesn't allow, one tap away", async () => {
+    await reachSpellStep(makeRanger(1, []), vi.fn(), {
+      rulesTableName: "Breakfast Club",
+      rulesBanned: { spell: ["Hunter's Mark"] },
+    });
+
+    const first = await screen.findByLabelText("New spell 1");
+    expect(within(first).queryByRole("option", { name: /Hunter's Mark/ })).toBeNull();
+    expect(screen.getByText(/1 not allowed at Breakfast Club is hidden\./)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Show them" }));
+    expect(within(screen.getByLabelText("New spell 1")).getByRole("option", { name: /Hunter's Mark/ })).toBeInTheDocument();
+  });
+
   it("asks a level 1 Ranger for two new spells", async () => {
     await reachSpellStep(makeRanger(1, []));
 

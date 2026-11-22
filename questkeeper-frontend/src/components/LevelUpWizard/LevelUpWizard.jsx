@@ -75,7 +75,7 @@ const BOOK_PICK = "__book__";
 // setupTasks: choices still open from earlier (a level 1 Favored Enemy, a
 // language), listed so they aren't mixed up with this level's new ones.
 // rulesTableName / rulesBanned: the character's table and what its DM doesn't
-// allow; those feats are hidden in "Take a Feat", one tap away.
+// allow; those feats and spells are hidden in their picks, one tap away.
 function LevelUpWizard({
   sheet,
   onComplete,
@@ -136,6 +136,8 @@ function LevelUpWizard({
   const [isSwapping, setIsSwapping] = useState(false);
   const [swapRemoveIndex, setSwapRemoveIndex] = useState("");
   const [swapAddIndex, setSwapAddIndex] = useState("");
+  // Spells the character's table doesn't allow: hidden unless asked for.
+  const [showBlockedSpells, setShowBlockedSpells] = useState(false);
   const [isSavingSpells, setIsSavingSpells] = useState(false);
   const [selectedSpellIndex, setSelectedSpellIndex] = useState("");
   // What was typed for each "Book spell instead" pick, by slot ("cantrip-0",
@@ -167,11 +169,20 @@ function LevelUpWizard({
   ];
   const knownSpellIndexes = new Set(sheetSpells.map((s) => s.index));
   const knownSpellNames = new Set(sheetSpells.map((s) => s.name?.toLowerCase()));
-  const availableSpells = classSpells.filter(
+  // What the character's table doesn't allow (rulesTableName/rulesBanned).
+  // Those spells are hidden from the picks unless shown, or already picked.
+  const tableBanned = cleanBanned(rulesBanned);
+  const isBlockedSpell = (spell) => Boolean(rulesTableName) && isBanned(tableBanned, "spell", spell.name);
+  const pickedSpellIndexes = new Set([...cantripPicks, ...spellPicks, swapAddIndex].filter(Boolean));
+  const learnableSpells = classSpells.filter(
     (spell) =>
       spell.level <= maxSpellLevel &&
       !knownSpellIndexes.has(spell.index) &&
       !knownSpellNames.has(spell.name.toLowerCase()),
+  );
+  const blockedSpellCount = learnableSpells.filter(isBlockedSpell).length;
+  const availableSpells = learnableSpells.filter(
+    (spell) => showBlockedSpells || !isBlockedSpell(spell) || pickedSpellIndexes.has(spell.index),
   );
   const availableCantrips = availableSpells.filter((spell) => spell.level === 0);
   const availableLeveled = availableSpells.filter((spell) => spell.level > 0);
@@ -1285,6 +1296,20 @@ function LevelUpWizard({
 
           {!isSpellsLoading && !spellsError && (
             <>
+              {blockedSpellCount > 0 && (
+                <p className="level-up-wizard__book-spell-hint" role="note">
+                  {showBlockedSpells
+                    ? `Showing ${blockedSpellCount} not allowed at ${rulesTableName}.`
+                    : `${blockedSpellCount} not allowed at ${rulesTableName} ${blockedSpellCount === 1 ? "is" : "are"} hidden.`}{" "}
+                  <button
+                    type="button"
+                    className="level-up-wizard__blocked-toggle"
+                    onClick={() => setShowBlockedSpells((shown) => !shown)}
+                  >
+                    {showBlockedSpells ? "Hide them" : "Show them"}
+                  </button>
+                </p>
+              )}
               {cantripPicks.map((value, slot) => (
                 <SpellPickSelect
                   key={`cantrip-${slot}`}
