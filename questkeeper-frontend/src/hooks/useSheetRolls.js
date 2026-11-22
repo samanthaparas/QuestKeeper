@@ -331,6 +331,9 @@ export function useSheetRolls(characterId, characterName) {
     tableCampaign: table?.campaign_number ?? 1,
     tableCampaignNames: table?.campaign_names ?? {},
     tableName: table?.name ?? null,
+    // What the table's DM doesn't allow (see contentRules.js), so level-up
+    // can hide those feats.
+    tableBanned: table?.banned_content ?? {},
     share,
     sharing,
     setShare,

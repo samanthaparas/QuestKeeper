@@ -350,7 +350,7 @@ export async function listCharacterTables(characterId) {
 
   const ids = memberships.map((membership) => membership.table_id);
   const tables = unwrap(
-    await supabase.from("game_tables").select("id, name, session_number, campaign_number, campaign_names").in("id", ids),
+    await supabase.from("game_tables").select("id, name, session_number, campaign_number, campaign_names, banned_content").in("id", ids),
   );
   return [...tables].sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
 }

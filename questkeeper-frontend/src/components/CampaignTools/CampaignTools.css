@@ -176,3 +176,15 @@
 .campaign-tools__more[open] > summary {
   margin-bottom: 8px;
 }
+
+/* "Start at session [12]" for a new campaign. */
+.campaign-tools__first-session {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.campaign-tools__input--number {
+  width: 6em;
+}

@@ -780,6 +780,36 @@ describe("LevelUpWizard feats for a 2014 character", () => {
     getFeats.mockResolvedValue([]);
   });
 
+  it("hides feats the character's table doesn't allow, one tap away", async () => {
+    getFeats.mockResolvedValue([
+      { index: "grappler", name: "Grappler", edition: "2014" },
+      { index: "alert", name: "Alert", edition: "2014" },
+    ]);
+    render(
+      <MemoryRouter>
+        <LevelUpWizard
+          sheet={makeCharacter("fighter", "Fighter", 3)}
+          onComplete={vi.fn()}
+          onCancel={vi.fn()}
+          rulesTableName="Breakfast Club"
+          rulesBanned={{ feat: ["Grappler", "Tough"] }}
+        />
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Take Average/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Take a Feat" }));
+
+    const names = () => within(screen.getByRole("combobox")).getAllByRole("option").map((option) => option.textContent);
+    await screen.findByText("2 not allowed at Breakfast Club are hidden.", { exact: false });
+    expect(names()).toContain("Alert (2014 SRD)");
+    expect(names().some((name) => name.startsWith("Grappler") || name.startsWith("Tough"))).toBe(false);
+
+    await userEvent.click(screen.getByRole("button", { name: "Show them" }));
+    expect(names()).toContain("Grappler (2014 SRD), not allowed at Breakfast Club");
+    getFeats.mockResolvedValue([]);
+  });
+
   it("offers a book feat like Tough as homebrew, right inside level-up", async () => {
     getFeats.mockResolvedValue([{ index: "grappler", name: "Grappler", edition: "2014" }]);
     render(
