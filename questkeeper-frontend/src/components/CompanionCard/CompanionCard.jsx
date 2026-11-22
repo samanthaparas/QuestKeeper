@@ -30,6 +30,9 @@ import "./CompanionCard.css";
 //
 // Like the character's own stats, the name, AC, speed, max HP and scores are
 // locked until the player taps "Edit stats", so a stray tap can't change them.
+// A companion that's just been added opens unlocked instead, with its name
+// box ready and a short "Set up your companion" guide; one left blank offers
+// a "Set up <name>" button, and "Done editing" also sits at the bottom.
 //
 // A companion can also follow a summon spell's rules (Fable and Summon Fey,
 // switched on under "Edit stats"). Then a Summon panel casts it (choosing

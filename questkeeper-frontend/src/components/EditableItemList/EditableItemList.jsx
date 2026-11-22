@@ -1,3 +1,10 @@
+// The list used all over the character sheet (spells, inventory, attacks,
+// features, resources): rows you can add, edit and remove, with optional
+// Sort and Show menus, group headings, a lock for spells, and an "Edit"
+// toggle that keeps the pencil and trash buttons out of the way in play.
+// Spells and inventory also get favourites: a ☆ on each row, and starred
+// rows pinned to the top under "★ Favourites" whatever the Sort.
+
 import { Fragment, useState, useId } from "react";
 import RulesText from "../RulesText/RulesText";
 import "../../pages/CharacterSheetPage/CharacterSheetPage.css";
