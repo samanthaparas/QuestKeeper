@@ -66,6 +66,7 @@ import { isHomebrewId, toHomebrewIndex } from "../../utils/homebrewMappers";
 import { OFFICIAL_BOOKS_GROUP } from "../../utils/bookBackgrounds";
 import { spellFactsFrom } from "../../utils/spellComponents";
 import InlineLoading from "../StatusNote/InlineLoading";
+import { cleanBanned, isBanned } from "../../utils/contentRules";
 
 // The dropdown value for "Book spell instead": the player types the spell in
 // themselves, for spells from books that aren't in the SRD list.
@@ -73,7 +74,17 @@ const BOOK_PICK = "__book__";
 
 // setupTasks: choices still open from earlier (a level 1 Favored Enemy, a
 // language), listed so they aren't mixed up with this level's new ones.
-function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setupTasks = [] }) {
+// rulesTableName / rulesBanned: the character's table and what its DM doesn't
+// allow; those feats are hidden in "Take a Feat", one tap away.
+function LevelUpWizard({
+  sheet,
+  onComplete,
+  onCancel,
+  isFinishing = false,
+  setupTasks = [],
+  rulesTableName = null,
+  rulesBanned = null,
+}) {
   const targetLevel = sheet.level + 1;
   const hitDie = sheet.class?.hitDie ?? 8;
   const conModifier = getAbilityModifier(sheet.abilityScores.constitution);
@@ -379,7 +390,17 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
   const homebrewFeatNames = new Set(
     allFeats.filter((feat) => feat.edition === "Homebrew").map((feat) => feat.name.trim().toLowerCase()),
   );
-  const bookFeats = listBookFeats().filter((feat) => !homebrewFeatNames.has(feat.name.trim().toLowerCase()));
+  const allBookFeats = listBookFeats().filter((feat) => !homebrewFeatNames.has(feat.name.trim().toLowerCase()));
+
+  // Feats the character's table doesn't allow: hidden unless asked for (or
+  // already picked, so a choice never vanishes).
+  const [showBlockedFeats, setShowBlockedFeats] = useState(false);
+  const banned = cleanBanned(rulesBanned);
+  const isBlockedFeat = (feat) => Boolean(rulesTableName) && isBanned(banned, "feat", feat.name);
+  const blockedFeatCount = [...allFeats, ...allBookFeats].filter(isBlockedFeat).length;
+  const showFeat = (feat, value) => showBlockedFeats || !isBlockedFeat(feat) || featSelection === value;
+  const shownFeats = allFeats.filter((feat) => showFeat(feat, `${feat.edition}:${feat.index}`));
+  const bookFeats = allBookFeats.filter((feat) => showFeat(feat, `book:${feat.index}`));
 
   // The homebrew version of a book feat was saved: reload and pick it.
   function handleFeatHomebrewCreated(saved) {
@@ -938,12 +959,13 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
                 onChange={(e) => handleFeatSelectionChange(e.target.value)}
               >
                 <option value="">Choose a feat</option>
-                {allFeats.map((feat) => (
+                {shownFeats.map((feat) => (
                   <option
                     key={`${feat.edition}:${feat.index}`}
                     value={`${feat.edition}:${feat.index}`}
                   >
                     {feat.name} ({feat.edition === "Homebrew" ? "Homebrew" : `${feat.edition} SRD`})
+                    {isBlockedFeat(feat) ? `, not allowed at ${rulesTableName}` : ""}
                   </option>
                 ))}
                 {bookFeats.length > 0 && (
@@ -951,6 +973,7 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
                     {bookFeats.map((feat) => (
                       <option key={`book:${feat.index}`} value={`book:${feat.index}`}>
                         {feat.name} ({feat.source})
+                        {isBlockedFeat(feat) ? `, not allowed at ${rulesTableName}` : ""}
                       </option>
                     ))}
                   </optgroup>
@@ -960,6 +983,20 @@ function LevelUpWizard({ sheet, onComplete, onCancel, isFinishing = false, setup
                 Feats from the books (like Tough or Sharpshooter) are at the bottom of the
                 list. Pick one to make it as homebrew in your own words, then take it.
               </p>
+              {blockedFeatCount > 0 && (
+                <p className="level-up-wizard__book-spell-hint" role="note">
+                  {showBlockedFeats
+                    ? `Showing ${blockedFeatCount} not allowed at ${rulesTableName}.`
+                    : `${blockedFeatCount} not allowed at ${rulesTableName} ${blockedFeatCount === 1 ? "is" : "are"} hidden.`}{" "}
+                  <button
+                    type="button"
+                    className="level-up-wizard__blocked-toggle"
+                    onClick={() => setShowBlockedFeats((shown) => !shown)}
+                  >
+                    {showBlockedFeats ? "Hide them" : "Show them"}
+                  </button>
+                </p>
+              )}
 
               {bookFeat && (
                 <div className="level-up-wizard__feat-card">

@@ -96,9 +96,19 @@ export async function splitCampaign(tableId, { oldFrom, oldUntil, firstName, sec
   );
 }
 
-// Starts the next campaign from session 1.
-export async function startCampaign(tableId, name) {
-  return unwrap(await supabase.rpc("start_campaign", { p_table_id: tableId, p_name: name }));
+// Starts the next campaign, from session 1 or any session number (for a game
+// moving into QuestKeeper partway through). The number is only sent when it
+// isn't 1, so starting from 1 works even before
+// 20261122_campaign_start_session.sql has been run.
+export async function startCampaign(tableId, name, firstSession = 1) {
+  const first = Number(firstSession) || 1;
+  return unwrap(
+    await supabase.rpc("start_campaign", {
+      p_table_id: tableId,
+      p_name: name,
+      ...(first !== 1 ? { p_first_session: first } : {}),
+    }),
+  );
 }
 
 export async function nameCampaign(tableId, campaign, name) {

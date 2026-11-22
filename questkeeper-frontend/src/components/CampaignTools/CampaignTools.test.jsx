@@ -169,8 +169,29 @@ describe("CampaignTools", () => {
 
     startCampaign.mockResolvedValue({ campaign: 3 });
     await userEvent.click(screen.getByText("Start a brand new campaign"));
-    await userEvent.type(screen.getByLabelText("Starting a brand new campaign from session 1?"), "Season 3");
+    await userEvent.type(screen.getByLabelText("Starting a brand new campaign?"), "Season 3");
+    // Session 1 unless changed.
+    expect(screen.getByLabelText("Start at session")).toHaveValue(1);
     await userEvent.click(screen.getByRole("button", { name: "Start campaign 3" }));
-    expect(startCampaign).toHaveBeenCalledWith("t1", "Season 3");
+    expect(startCampaign).toHaveBeenCalledWith("t1", "Season 3", 1);
+  });
+
+  it("can start a new campaign partway through, at any session number", async () => {
+    const two = MIXED.map((entry) => ({ ...entry, campaign_number: entry.id.startsWith("o") ? 1 : 2 }));
+    renderTools({ entries: two, campaignNumber: 2 });
+    await userEvent.click(screen.getByText(/^Campaigns/));
+    startCampaign.mockResolvedValue({ campaign: 3 });
+    await userEvent.click(screen.getByText("Start a brand new campaign"));
+
+    const box = screen.getByLabelText("Start at session");
+    await userEvent.clear(box);
+    await userEvent.type(box, "0");
+    expect(screen.getByRole("button", { name: "Start campaign 3" })).toBeDisabled();
+
+    await userEvent.clear(box);
+    await userEvent.type(box, "12");
+    await userEvent.click(screen.getByRole("button", { name: "Start campaign 3" }));
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("starting at session 12"));
+    expect(startCampaign).toHaveBeenCalledWith("t1", "", 12);
   });
 });

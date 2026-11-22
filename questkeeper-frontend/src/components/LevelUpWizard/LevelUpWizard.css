@@ -393,3 +393,16 @@
   color: var(--qk-text-muted);
   font-size: 14px;
 }
+
+/* "Show them" for feats the table doesn't allow. */
+.level-up-wizard__blocked-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--qk-terracotta);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+

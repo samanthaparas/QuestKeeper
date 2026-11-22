@@ -2227,6 +2227,10 @@ function CharacterSheetPage() {
         {isLevelingUp && (
           <LevelUpWizard
             sheet={sheet}
+            // The character's table and what its DM doesn't allow: those
+            // feats are hidden in "Take a Feat" (one tap brings them back).
+            rulesTableName={roller.tableName}
+            rulesBanned={roller.tableBanned}
             onComplete={handleLevelUpComplete}
             setupTasks={setupTasks}
             onCancel={() => setIsLevelingUp(false)}

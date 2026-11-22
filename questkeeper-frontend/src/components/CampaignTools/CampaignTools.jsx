@@ -58,6 +58,10 @@ function CampaignTools({ tableId, entries = [], campaignNumber = 1, campaignName
   const [secondName, setSecondName] = useState("");
   const [restart, setRestart] = useState(true);
   const [newName, setNewName] = useState("");
+  // Which session the new campaign starts at (1 unless the game is already under way).
+  const [firstSession, setFirstSession] = useState("1");
+  const firstSessionNumber = Number(firstSession);
+  const firstSessionOk = Number.isInteger(firstSessionNumber) && firstSessionNumber >= 1 && firstSessionNumber <= 9999;
   const [renames, setRenames] = useState({});
   const [message, setMessage] = useState("");
   const [isBusy, setIsBusy] = useState(false);
@@ -258,7 +262,7 @@ function CampaignTools({ tableId, entries = [], campaignNumber = 1, campaignName
         <details className="campaign-tools__more">
           <summary>Start a brand new campaign</summary>
           <div className="campaign-tools__fields">
-            <label htmlFor={`${baseId}-new`}>Starting a brand new campaign from session 1?</label>
+            <label htmlFor={`${baseId}-new`}>Starting a brand new campaign?</label>
             <input
               id={`${baseId}-new`}
               className="campaign-tools__input"
@@ -267,13 +271,30 @@ function CampaignTools({ tableId, entries = [], campaignNumber = 1, campaignName
               value={newName}
               onChange={(event) => setNewName(event.target.value)}
             />
+            {/* For a game that moves into QuestKeeper partway through. */}
+            <label className="campaign-tools__first-session" htmlFor={`${baseId}-first`}>
+              Start at session
+              <input
+                id={`${baseId}-first`}
+                className="campaign-tools__input campaign-tools__input--number"
+                type="number"
+                min={1}
+                max={9999}
+                value={firstSession}
+                onChange={(event) => setFirstSession(event.target.value)}
+              />
+            </label>
             <button
               type="button"
               className="campaign-tools__button"
-              disabled={isBusy}
+              disabled={isBusy || !firstSessionOk}
               onClick={() => {
-                if (!window.confirm(`Start campaign ${campaignNumber + 1}? New notes will go under it, starting at session 1. Everything so far stays as campaign ${campaignNumber}.`)) return;
-                run(() => startCampaign(tableId, newName), `Campaign ${campaignNumber + 1} has started.`).then((ok) => ok && setNewName(""));
+                if (!window.confirm(`Start campaign ${campaignNumber + 1}? New notes will go under it, starting at session ${firstSessionNumber}. Everything so far stays as campaign ${campaignNumber}.`)) return;
+                run(() => startCampaign(tableId, newName, firstSessionNumber), `Campaign ${campaignNumber + 1} has started.`).then((ok) => {
+                  if (!ok) return;
+                  setNewName("");
+                  setFirstSession("1");
+                });
               }}
             >
               Start campaign {campaignNumber + 1}
