@@ -57,16 +57,7 @@ $$;
 -- Supabase's realtime publication (tables are added to it by the migrations).
 do $$ begin create publication supabase_realtime; exception when duplicate_object then null; end $$;
 
--- The characters table was made in the Supabase dashboard before migrations
--- were kept in the repository, so it has no SQL file of its own.
-create table if not exists public.characters (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  data jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-alter table public.characters enable row level security;
-grant all on public.characters to anon, authenticated, service_role;
+-- The characters table (shared with the two-browser tests).
+\ir characters_table.sql
 grant execute on function auth.uid(), auth.role() to anon, authenticated;
 

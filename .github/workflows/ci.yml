@@ -87,3 +87,44 @@ jobs:
 
       - name: Build the database and check its rules
         run: scripts/test-database.sh
+
+  # Two-browser tests (e2e/): a DM and two players, each in their own browser,
+  # play through joining a table, a fight and giving an item, against a local
+  # Supabase started fresh on the runner with every migration. Never touches
+  # the real database. Run it yourself with: npm run test:e2e
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 25
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Set up the Supabase tool
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start a local Supabase
+        run: supabase --workdir e2e start -x studio,imgproxy,edge-runtime,logflare,vector,mailpit,postgres-meta,supavisor
+
+      - name: Install the test browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the two-browser tests
+        run: npm run test:e2e
+
+      - name: Keep screenshots if something failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: e2e/test-results/
+          retention-days: 7

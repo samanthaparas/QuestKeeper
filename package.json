@@ -11,6 +11,10 @@
     "dev:backend": "npm run dev --workspace questkeeper-backend",
     "start:backend": "npm run start --workspace questkeeper-backend",
     "build": "npm run build --workspace questkeeper-frontend",
-    "lint": "npm run lint --workspace questkeeper-frontend"
+    "lint": "npm run lint --workspace questkeeper-frontend",
+    "test:e2e": "playwright test --config e2e/playwright.config.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
   }
 }
