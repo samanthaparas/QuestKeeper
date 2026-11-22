@@ -110,6 +110,7 @@ vi.mock("../../utils/tableStore", () => ({
   dmLog: vi.fn().mockResolvedValue(undefined),
   dmResolveAttack: vi.fn(),
   endCombat: vi.fn(),
+  listCombatants: vi.fn().mockRejectedValue(new Error("not in this test")),
   listEvents: vi.fn().mockResolvedValue([]),
   leaveTable: vi.fn(),
   postPlayerDamage: vi.fn(),
@@ -1587,6 +1588,23 @@ describe("DM screen tabs", () => {
     // The Party panel stays out of Prep, and Start combat isn't in the initiative toolbar any more.
     expect(screen.queryByRole("heading", { name: /^Party · / })).not.toBeInTheDocument();
     expect(within(document.querySelector(".table-page__combat .table-page__toolbar")).queryByRole("button", { name: "Start combat" })).not.toBeInTheDocument();
+  });
+
+  it("starts the fight from the database's latest turn order, not a stale screen", async () => {
+    // The screen still shows Billie without an initiative, but she has just
+    // rolled 17: the fight must start with her, not the kobold.
+    const { listCombatants } = await import("../../utils/tableStore");
+    const fresh = combatants.map((combatant) =>
+      combatant.id === "c-billie" ? { ...combatant, initiative: 17 } : combatant,
+    );
+    listCombatants.mockResolvedValueOnce(fresh);
+    mockTable({ isDm: true, combatActive: false, currentId: null });
+    renderPage();
+
+    await userEvent.click(
+      within(screen.getByRole("region", { name: "Before the fight" })).getByRole("button", { name: "Start combat" }),
+    );
+    await waitFor(() => expect(startCombat).toHaveBeenCalledWith("t1", fresh));
   });
 
   it("starts the fight from the readiness panel, and keeps the per-creature initiative controls", async () => {

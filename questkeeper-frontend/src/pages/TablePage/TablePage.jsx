@@ -22,6 +22,7 @@ import {
   dmResolveAttack,
   editCombatant,
   endMyTurn,
+  listCombatants,
   getPartyStrip,
   leaveTable,
   listTemplates,
@@ -1693,8 +1694,12 @@ function TablePage() {
 
   // Starting a fight marks the log, so the summary at the end knows where
   // this fight's lines begin.
+  // The turn order comes fresh from the database, not from this screen: a
+  // player who rolled a moment ago may not have reached the DM's screen yet,
+  // and the fight must still start with whoever rolled highest.
   async function startFight() {
-    await startCombat(table.id, combatants);
+    const fresh = await listCombatants(table.id).catch(() => combatants);
+    await startCombat(table.id, fresh?.length ? fresh : combatants);
     await dmLog(table.id, FIGHT_START_MESSAGE);
   }
 
