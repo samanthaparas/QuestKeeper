@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
@@ -7,6 +7,7 @@ import { useSheetRolls } from "../../hooks/useSheetRolls";
 import RollButton from "../../components/RollDock/RollButton";
 import RollDock, { DiceHelp, DiceHelpBody } from "../../components/RollDock/RollDock";
 import { getBeginnerTips } from "../../utils/beginnerTips";
+import { cancelGift, giveItem, listGiftReceivers, listGiftsFor, returnGift, takeGift } from "../../utils/giftStore";
 import { RollContext } from "../../components/RollDock/rollContext";
 import ConditionBadges from "../../components/ConditionBadges/ConditionBadges";
 import DeathSaves from "../../components/DeathSaves/DeathSaves";
@@ -59,6 +60,8 @@ import {
   createEquipmentItem,
   updateEquipmentItem,
   splitEquipmentItem,
+  giftCopyOf,
+  receivedItem,
   getAttunedCount,
   cycleSkillProficiency,
   setTemporaryHp,
@@ -318,6 +321,40 @@ function CharacterSheetPage() {
   // Click-to-roll: any bonus on the sheet rolls, and can be shared with the
   // character's table.
   const roller = useSheetRolls(sheet?.id, sheet?.name);
+
+  // Giving items to another player at the same table (see giftStore.js):
+  // the gift box's contents, and who can be given to. Checked when the sheet
+  // opens, when the window comes back into view, and every 30 seconds.
+  const [gifts, setGifts] = useState(null);
+  const [giftReceivers, setGiftReceivers] = useState([]);
+  const giftTableId = roller.tableId;
+  const giftSheetId = sheet?.id ?? null;
+  const reloadGifts = useCallback(() => {
+    if (!giftSheetId) return;
+    listGiftsFor(giftSheetId)
+      .then(setGifts)
+      .catch(() => setGifts(null)); // No gift box yet (SQL not run) or offline: none shown.
+  }, [giftSheetId]);
+  useEffect(() => {
+    reloadGifts();
+    const timer = setInterval(reloadGifts, 30000);
+    window.addEventListener("focus", reloadGifts);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", reloadGifts);
+    };
+  }, [reloadGifts]);
+  useEffect(() => {
+    if (!giftTableId || !user?.id) return undefined;
+    let ignore = false;
+    listGiftReceivers(giftTableId, user.id)
+      .then((people) => !ignore && setGiftReceivers(people))
+      .catch(() => !ignore && setGiftReceivers([]));
+    return () => {
+      ignore = true;
+    };
+  }, [giftTableId, user?.id]);
+
 
   // A Tireless roll (Deft Explorer) waiting for the player to choose whether
   // it becomes their temporary HP. Kept here, not read from the roll card,
@@ -1750,6 +1787,26 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, spellcasting });
   }
 
+  // Gives some (or all) of an item: it goes into their gift box first, and
+  // only then leaves this sheet, so a failed gift never loses anything.
+  async function handleGiveItem(item, toUserId, amount) {
+    await giveItem(giftTableId, toUserId, giftCopyOf(item, amount));
+    const total = Number(item.quantity) || 1;
+    persistSheet(
+      amount >= total
+        ? removeEquipmentKeepingAttacks(sheet, item.index)
+        : { ...sheet, equipment: updateEquipmentItem(sheet.equipment, item.index, { quantity: total - amount }) },
+    );
+    reloadGifts();
+  }
+
+  // Taking a gift (or taking back one nobody took): its details come out of
+  // the gift box and go into Inventory as a fresh item.
+  async function addFromGift(details) {
+    persistSheet({ ...sheet, equipment: [...(sheet.equipment ?? []), receivedItem(details)] });
+    reloadGifts();
+  }
+
   // Split a stack: some of it into a new row of its own.
   function handleEquipmentSplit(item, amount) {
     persistSheet({ ...sheet, equipment: splitEquipmentItem(sheet.equipment, item.index, amount) });
@@ -3106,6 +3163,15 @@ function CharacterSheetPage() {
                       }
                       onEquipmentFavoriteToggle={handleEquipmentFavoriteToggle}
                       onEquipmentSplit={handleEquipmentSplit}
+                      giftReceivers={giftReceivers}
+                      onGiveItem={handleGiveItem}
+                      gifts={gifts}
+                      onTakeGift={async (gift) => addFromGift(await takeGift(gift.id))}
+                      onReturnGift={async (gift) => {
+                        await returnGift(gift.id);
+                        reloadGifts();
+                      }}
+                      onCancelGift={async (gift) => addFromGift(await cancelGift(gift.id))}
                       isArmor={(item) => isArmorDetails(gearDetailsFor(item))}
                       categoryOf={(item) => getInventoryCategory(item, gearDetailsFor(item))}
                       onEquipToggle={handleEquipToggle}

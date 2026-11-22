@@ -2521,6 +2521,26 @@ export function splitEquipmentItem(equipment, index, amount) {
   return [...list.slice(0, position), { ...original, quantity: total - count }, copy, ...list.slice(position + 1)];
 }
 
+// What goes to another player when an item is given: its details (name,
+// notes, category, weapon and magic details) and how many, but nothing that
+// belongs to this character (worn, attuned, proficient, favourite, its id).
+const NOT_GIVEN = ["index", "equipped", "wielded", "attuned", "proficient", "favorite"];
+
+export function giftCopyOf(item, amount) {
+  const details = Object.fromEntries(Object.entries(item ?? {}).filter(([key]) => !NOT_GIVEN.includes(key)));
+  return { ...details, quantity: Math.max(1, Math.floor(Number(amount) || 1)) };
+}
+
+// A received (or returned) item, ready for this character's Inventory: a
+// fresh id, and not worn, attuned or a favourite until they choose.
+export function receivedItem(details) {
+  return {
+    ...giftCopyOf(details, details?.quantity ?? 1),
+    index: crypto.randomUUID(),
+    attuned: false,
+  };
+}
+
 export function getAttunedCount(equipment) {
   return (equipment ?? []).filter((item) => item.attuned).length;
 }

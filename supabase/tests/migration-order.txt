@@ -41,3 +41,4 @@
 20261116_monster_concentration.sql
 20261116_player_brb.sql
 20261122_campaign_start_session.sql
+20261122_item_gifts.sql
