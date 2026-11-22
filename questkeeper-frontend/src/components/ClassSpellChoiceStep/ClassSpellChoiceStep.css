@@ -62,3 +62,22 @@
   font-size: 12px;
   font-style: italic;
 }
+
+/* "1 not allowed at Breakfast Club is hidden. Show them" */
+.class-spell-choice-step__blocked {
+  margin: 0 0 8px;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.class-spell-choice-step__blocked-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--qk-terracotta);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+

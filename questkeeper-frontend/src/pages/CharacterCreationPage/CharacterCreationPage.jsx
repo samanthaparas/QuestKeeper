@@ -948,7 +948,7 @@ function CharacterCreationPage({ onStartFresh }) {
                 </div>
               )}
 
-              {["race", "subrace", "class", "background"].includes(step) && (
+              {["race", "subrace", "class", "background", "classSpells"].includes(step) && (
                 <CreationTableChoice
                   tables={rulesTables}
                   value={rulesTableId ?? ""}
@@ -1019,6 +1019,20 @@ function CharacterCreationPage({ onStartFresh }) {
                     })
                   }
                   makeOwnLabel={`Make your own ${race?.name ?? ""} subrace`}
+                  // Player's Handbook subraces (Wood Elf, Drow...): a quick
+                  // draft to fill in later, or the homebrew form, both
+                  // already set to this race.
+                  onDraftFrom={(book) =>
+                    saveDraftFrom("subrace", book, { parentRace: race.id, parentRaceName: race.name })
+                  }
+                  onMakeHomebrewFrom={(book) =>
+                    setHomebrewRequest({
+                      category: "subrace",
+                      fields: { name: book.name, basedOn: book.book, linkUrl: book.link_url },
+                      data: { parentRace: race.id, parentRaceName: race.name },
+                      raceOptions: [{ index: race.id, name: race.name }],
+                    })
+                  }
                   onStartFrom={(prefill) =>
                     startHomebrewFrom(prefill, {
                       raceOptions: [{ index: race.id, name: race.name }],
@@ -1237,6 +1251,7 @@ function CharacterCreationPage({ onStartFresh }) {
 
               {step === "classSpells" && (
                 <ClassSpellChoiceStep
+                  {...blockedProps("spell")}
                   characterClass={characterClass}
                   knownCantrip={subraceCantrip}
                   knownCantripSource={subrace?.name ?? race?.name}

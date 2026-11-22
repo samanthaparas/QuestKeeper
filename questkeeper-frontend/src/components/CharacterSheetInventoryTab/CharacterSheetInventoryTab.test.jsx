@@ -86,7 +86,7 @@ describe("CharacterSheetInventoryTab", () => {
     });
 
     const rows = screen.getAllByRole("listitem").map((row) => row.textContent);
-    expect(rows[0]).toBe("★ Favourites");
+    expect(rows[0]).toBe("♥ Favourites");
     expect(rows[1]).toContain("Rope");
     expect(rows[2]).toBe("Armor & shields");
     expect(screen.getByRole("button", { name: "Favourite Rope" })).toHaveAttribute("aria-pressed", "true");
@@ -104,6 +104,29 @@ describe("CharacterSheetInventoryTab", () => {
     await userEvent.selectOptions(screen.getByLabelText("Show Inventory"), "favorites");
     const rows = screen.getAllByRole("listitem").map((row) => row.textContent);
     expect(rows).toEqual(["Gear & tools", expect.stringContaining("Rope")]);
+  });
+
+  it("splits some of a stack into a row of its own", async () => {
+    const onEquipmentSplit = vi.fn();
+    renderTab({ onEquipmentSplit, equipment: [{ index: "a1", name: "Arrows", quantity: 10 }, EQUIPMENT[1]] });
+
+    // Only stacks of 2 or more offer it.
+    expect(screen.getAllByRole("button", { name: "Split stack" })).toHaveLength(1);
+    await userEvent.click(screen.getByRole("button", { name: "Split stack" }));
+    const box = screen.getByLabelText("How many Arrows to split off");
+    expect(box).toHaveValue(5);
+    await userEvent.clear(box);
+    await userEvent.type(box, "3");
+    await userEvent.click(screen.getByRole("button", { name: "Split" }));
+    expect(onEquipmentSplit).toHaveBeenCalledWith(expect.objectContaining({ index: "a1" }), 3);
+  });
+
+  it("won't split off all of a stack", async () => {
+    renderTab({ onEquipmentSplit: vi.fn(), equipment: [{ index: "a1", name: "Arrows", quantity: 10 }] });
+    await userEvent.click(screen.getByRole("button", { name: "Split stack" }));
+    await userEvent.clear(screen.getByLabelText("How many Arrows to split off"));
+    await userEvent.type(screen.getByLabelText("How many Arrows to split off"), "10");
+    expect(screen.getByRole("button", { name: "Split" })).toBeDisabled();
   });
 
   it("has no stars where favourites aren't offered", () => {

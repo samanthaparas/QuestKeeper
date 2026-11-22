@@ -67,4 +67,24 @@ describe("ClassSpellChoiceStep", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: /Light/ })).toBeDisabled();
   });
+
+  it("hides spells the table doesn't allow, one tap away", async () => {
+    render(
+      <ClassSpellChoiceStep
+        characterClass={wizard}
+        onNext={vi.fn()}
+        onBack={vi.fn()}
+        isBlocked={(spell) => spell.name === "Sleep"}
+        blockedAt="Breakfast Club"
+      />,
+    );
+
+    expect(await screen.findByText("Magic Missile")).toBeInTheDocument();
+    expect(screen.queryByText("Sleep")).not.toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent("1 not allowed at Breakfast Club is hidden.");
+
+    await userEvent.click(screen.getByRole("button", { name: "Show them" }));
+    expect(screen.getByText("Sleep")).toBeInTheDocument();
+    expect(screen.getByText("Not allowed at Breakfast Club")).toBeInTheDocument();
+  });
 });

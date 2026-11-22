@@ -2,8 +2,9 @@
 // features, resources): rows you can add, edit and remove, with optional
 // Sort and Show menus, group headings, a lock for spells, and an "Edit"
 // toggle that keeps the pencil and trash buttons out of the way in play.
-// Spells and inventory also get favourites: a ☆ on each row, and starred
-// rows pinned to the top under "★ Favourites" whatever the Sort.
+// Spells and inventory also get favourites: a ♡ on each row, and favourite
+// rows pinned to the top under "♥ Favourites" whatever the Sort. (A heart,
+// not a star: the inventory's ☆/★ already means attuned.)
 
 import { Fragment, useState, useId } from "react";
 import RulesText from "../RulesText/RulesText";
@@ -227,9 +228,9 @@ function EditableItemList({
   filterOptions = null,
   viewKey = null,
   // Favourites (spells and inventory): isFavorite(item) and
-  // onToggleFavorite(item). When given, each row has a ☆ to star it, starred
-  // rows are pinned at the top under "★ Favourites" whatever the Sort, and
-  // Show gets a "★ Favourites" choice.
+  // onToggleFavorite(item). When given, each row has a ♡ to favourite it,
+  // favourites are pinned at the top under "♥ Favourites" whatever the Sort,
+  // and Show gets a "♥ Favourites" choice.
   isFavorite = null,
   onToggleFavorite = null,
 }) {
@@ -255,7 +256,7 @@ function EditableItemList({
     saveListView(viewKey, next);
   }
   const allFilters = isFavorite
-    ? [{ key: "favorites", label: "★ Favourites", match: (item) => isFavorite(item) }, ...(filterOptions ?? [])]
+    ? [{ key: "favorites", label: "♥ Favourites", match: (item) => isFavorite(item) }, ...(filterOptions ?? [])]
     : (filterOptions ?? []);
   const availableFilters = allFilters.filter((option) => items.some(option.match));
   const sort = sortOptions?.find((option) => option.key === view.sort) ?? sortOptions?.[0] ?? null;
@@ -273,7 +274,7 @@ function EditableItemList({
   // The group heading to put before each row that starts a new group.
   const groupHeadings = new Map();
   if (pinned.length > 0) {
-    groupHeadings.set(getItemId(pinned[0]), "★ Favourites");
+    groupHeadings.set(getItemId(pinned[0]), "♥ Favourites");
     // Without the Sort's own groups, the rest still gets a heading of its own.
     if (!sort?.groupOf && unpinned.length > 0) groupHeadings.set(getItemId(unpinned[0]), "Everything else");
   }
@@ -463,7 +464,7 @@ function EditableItemList({
             title={starred ? "Unpin from the top" : "Pin to the top as a favourite"}
             onClick={() => onToggleFavorite(item)}
           >
-            {starred ? "★" : "☆"}
+            {starred ? "♥" : "♡"}
           </button>
         )}
         {isNameClickable?.(item) ? (

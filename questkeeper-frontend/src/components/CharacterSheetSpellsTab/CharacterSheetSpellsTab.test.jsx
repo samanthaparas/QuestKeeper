@@ -125,9 +125,9 @@ describe("CharacterSheetSpellsTab: favourite spells", () => {
       },
     });
 
-    // The first group heading (the Show menu has a "★ Favourites" choice too).
+    // The first group heading (the Show menu has a "♥ Favourites" choice too).
     const favourites = document.querySelector(".character-sheet__list-group");
-    expect(favourites).toHaveTextContent("★ Favourites");
+    expect(favourites).toHaveTextContent("♥ Favourites");
     const haste = screen.getByRole("button", { name: "Favourite Haste" });
     const fireBolt = screen.getByRole("button", { name: "Favourite Fire Bolt" });
     // Haste (level 3) now comes before the cantrips.

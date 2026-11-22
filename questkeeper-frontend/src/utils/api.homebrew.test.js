@@ -120,7 +120,8 @@ describe("api with homebrew", () => {
 
   it("adds homebrew subraces to an SRD race", async () => {
     const elf = await getRaceDetails("elf");
-    expect(elf.subraces.map((subrace) => subrace.name)).toEqual(["High Elf", "Moon Elf"]);
+    // SRD, then homebrew, then the Player's Handbook ones the SRD leaves out.
+    expect(elf.subraces.map((subrace) => subrace.name)).toEqual(["High Elf", "Moon Elf", "Wood Elf", "Drow"]);
   });
 
   it("adds homebrew backgrounds to the 2014 list only", async () => {

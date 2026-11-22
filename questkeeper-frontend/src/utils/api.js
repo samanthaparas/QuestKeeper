@@ -5,6 +5,7 @@ import {
   listBookBackgrounds,
 } from "./bookBackgrounds";
 import { findBookRace, listBookRaces } from "./bookRaces";
+import { findBookSubrace, getBookSubraceRefs } from "./bookSubraces";
 import { findBookFeat, listBookFeats } from "./bookFeats";
 import {
   findBookClass,
@@ -161,7 +162,8 @@ export async function getRaceDetails(raceId) {
     ),
     loadHomebrew(),
   ]);
-  const extra = getHomebrewSubraceRefs(entries, raceId);
+  // Homebrew subraces, then the book ones the SRD leaves out (Wood Elf...).
+  const extra = [...getHomebrewSubraceRefs(entries, raceId), ...getBookSubraceRefs(raceId)];
   return extra.length > 0
     ? { ...race, subraces: [...(race.subraces ?? []), ...extra] }
     : race;
@@ -356,6 +358,10 @@ export async function getClassLevels(classId) {
 }
 
 export function getSubraceDetails(subraceId) {
+  if (isBookEntryId(subraceId)) {
+    const entry = findBookSubrace(subraceId);
+    return entry ? Promise.resolve(entry) : Promise.reject(new Error(`Book subrace ${subraceId} not found`));
+  }
   if (isHomebrewId(subraceId)) return findInHomebrew(subraceId, findHomebrew);
   return requestJson(
     `/subraces/${encodeURIComponent(subraceId)}`,

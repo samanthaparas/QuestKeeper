@@ -1282,7 +1282,7 @@
   justify-content: flex-end;
 }
 
-/* The ☆ / ★ that pins a spell or item to the top of its list. A 32px
+/* The ♡ / ♥ that pins a spell or item to the top of its list. A 32px
    target so it's easy to tap on a phone, without making the row taller. */
 .character-sheet__favorite {
   display: inline-flex;
@@ -1307,7 +1307,34 @@
 }
 
 .character-sheet__favorite--on {
-  color: var(--qk-brass);
+  color: var(--qk-terracotta);
+}
+
+/* "Split stack" under a stack of 2 or more, and its one-line form. */
+.character-sheet__split-open {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.character-sheet__split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: 13px;
+}
+
+.character-sheet__split label {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 
 .character-sheet__details-toggle {

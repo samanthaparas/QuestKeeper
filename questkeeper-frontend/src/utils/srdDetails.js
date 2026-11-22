@@ -447,6 +447,23 @@ export function mapRaceToPanel(data) {
 }
 
 export function mapSubraceToPanel(data) {
+  // A Player's Handbook subrace: summary and link only (see bookSubraces.js).
+  if (data.is_book_entry) {
+    return {
+      name: data.name,
+      category: "Subrace",
+      source: data.source,
+      sourceGroup: data.sourceGroup,
+      bookEntry: {
+        category: "subrace",
+        name: data.name,
+        book: data.book,
+        summary: data.summary,
+        linkUrl: data.link_url,
+        openVersion: data.open_version ?? null,
+      },
+    };
+  }
   return {
     name: data.name,
     category: "Subrace",
