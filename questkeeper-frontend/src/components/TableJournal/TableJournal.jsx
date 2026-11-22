@@ -29,7 +29,7 @@ import { campaignLabel, campaignNumbers, campaignOf, sessionLabel } from "../../
 import "./TableJournal.css";
 import InlineLoading from "../StatusNote/InlineLoading";
 import JournalReactions from "./JournalReactions";
-import { summarizeReactions, toggleReaction } from "../../utils/journalReactions";
+import { mostLovedNotes, summarizeReactions, toggleReaction } from "../../utils/journalReactions";
 
 const POLL_MS = 15000;
 const MAX_LENGTH = 4000;
@@ -38,6 +38,13 @@ const SHOWN_NOTES = 5;
 
 // The note you're writing is kept per table, so switching tabs or reloading
 // doesn't lose it.
+// The start of a note for the "Most-loved" list, cut at a word.
+function shortText(body, max = 70) {
+  const text = String(body ?? "").replace(/\s+/g, " ").trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max).replace(/\s+\S*$/, "")}…`;
+}
+
 function draftKey(tableId) {
   return `qk-journal-draft-${tableId}`;
 }
@@ -326,9 +333,12 @@ function TableJournal({
     }
   }
 
-  function startSession() {
+  // Starting the next session also offers the one that just ended a recap
+  // (see TableRecap's promptFor).
+  const [recapPromptFor, setRecapPromptFor] = useState(null);
+  async function startSession() {
     if (window.confirm(`Start session ${sessionNumber + 1}? New notes will go under it.`)) {
-      run(() => startNextSession(tableId, sessionNumber));
+      if (await run(() => startNextSession(tableId, sessionNumber))) setRecapPromptFor(sessionNumber);
     }
   }
 
@@ -427,6 +437,34 @@ function TableJournal({
               <p className="table-journal__empty">No notes yet this session.</p>
             )}
 
+            {/* The session's best-loved notes (2+ reactions), to find the great
+                moments again. Tapping one jumps to it. */}
+            {reactions && mostLovedNotes(group.entries, reactions).length > 0 && (
+              <details className="table-journal__loved">
+                <summary>♥ Most-loved this session</summary>
+                <ul>
+                  {mostLovedNotes(group.entries, reactions).map(({ entry, summary }) => (
+                    <li key={entry.id}>
+                      <button
+                        type="button"
+                        className="table-journal__loved-link"
+                        onClick={() =>
+                          document
+                            .getElementById(`journal-entry-${entry.id}`)
+                            ?.scrollIntoView({ block: "center", behavior: "smooth" })
+                        }
+                      >
+                        <strong>{entry.author_name}:</strong> {shortText(entry.body)}
+                      </button>{" "}
+                      <span className="table-journal__loved-count">
+                        {summary.map((item) => `${item.emoji}${item.count}`).join(" ")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+
             <ol className="table-journal__entries">
               {group.entries.map((entry) => {
                 const isMine = entry.author_id === userId;
@@ -434,6 +472,7 @@ function TableJournal({
                 return (
                   <li
                     key={entry.id}
+                    id={`journal-entry-${entry.id}`}
                     className={`table-journal__entry${
                       entry.visibility === "private" ? " table-journal__entry--private" : ""
                     }${entry.author_name === "DM" ? " table-journal__entry--dm" : ""}`}
@@ -626,6 +665,8 @@ function TableJournal({
       currentSession={viewSession}
       campaign={shownCampaign}
       showCampaign={hasSeveral}
+      promptFor={recapPromptFor}
+      onPromptDone={() => setRecapPromptFor(null)}
     />
   );
   const campaignTools = (

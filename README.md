@@ -396,8 +396,8 @@ Run from the repository root:
 
 - **About 2,000 frontend tests** (Vitest and React Testing Library) cover the game rules as plain functions (ability scores, HP, level-up, rests, armor class, skill grants, feature sources and choices, spell components, death saves, concentration, condition timers, journal and handout rules, party strip) and the sheet, creation, table, journal, Messages, sign-in and search components, including the focus, retry and load-failure behaviour. Whole-character "audit" tests build sample characters of every SRD class and race and check the result.
 - **Backend tests** cover the Open5e mappers, the magic item catalog, the spells controller, and AI search (the catalog, checking Claude's answer, the rate limit, and the main failure paths, with the Anthropic SDK replaced by a stand-in so tests never call the API).
-- **CI** runs on every push and pull request to `main`: lint, frontend tests, build, backend tests, and a second job that installs the backend exactly the way Render does (`npm ci --workspaces=false`), so a broken lockfile fails CI instead of the deploy.
-- **Database security rules** are checked by running each migration in a throwaway local Postgres and calling the functions as a DM, a player and an outsider.
+- **CI** runs on every push and pull request to `main`: lint, frontend tests, build, backend tests, a job that installs the backend exactly the way Render does (`npm ci --workspaces=false`), so a broken lockfile fails CI instead of the deploy, and a database job (below).
+- **Database tests** (`scripts/test-database.sh`, run in CI): the whole database is built from scratch on a throwaway Postgres 17, the version Supabase runs, by running every SQL file in `supabase/migrations` in the order they were run for real (`supabase/tests/migration-order.txt`; a new file left off that list fails the test). Small stand-ins take the place of what Supabase provides (`supabase/tests/supabase_stubs.sql`). Then `supabase/tests/security.test.sql` signs in as a DM, two players, an outsider and a signed-out visitor and checks the rules: enemy HP and AC stay with the DM, private notes stay private (even from the DM), handouts stay hidden until revealed, outsiders and visitors see nothing, only the DM changes a monster's HP, damage taken never reveals max HP, brb only changes your own turn, and campaigns can't be started by outsiders. Each check was shown to fail when its rule is broken on purpose. New migrations are still also tested by hand first.
 - **Hands-on QA:** a [new-player walkthrough](docs/QA_NEW_PLAYER_WALKTHROUGH.md) tracks more than 60 usability findings from a first-time player's point of view, and a [two-account test](docs/TWO_ACCOUNT_TEST.md) (DM and player) walks through live play end to end, with a stage added for each new live-play feature (the latest are recaps and campaigns, allowed content, the weak-signal sheet and the redesigned DM screen).
 - **Real game nights:** our group plays on Mondays, and on November 9 the app was used for a whole live session. Problems found at the table were fixed, tested and shipped the same evening (see the challenges below).
 - **Browser checks for the redesign:** pages were checked in real Chrome at phone, tablet and desktop sizes, in both themes and at real 200% zoom, with real key presses and text-contrast measured from pixels. Those checks used sample data and stand-in stores; a pass with real signed-in accounts on a real phone is still to do.
@@ -630,7 +630,7 @@ Run from the repository root:
 - Every player needs an account to join a table. A DM can track a friend without an account as a hand-run party member.
 - A homebrew class's features and spells are entered by hand.
 - Item stacks can't be split.
-- The table and combat rules are checked by hand in a local Postgres and by component tests, not yet by automated database or end-to-end tests.
+- The database rules have automated tests, but live play across two browsers (the two-account test) is still checked by hand, not by end-to-end tests.
 - AI search covers the SRD's spells, magic items, classes, races and backgrounds, not Open5e, book listings or homebrew yet, and needs an Anthropic API key.
 - The encounter helper uses the 2014 XP-budget method and SRD monsters only, and its loot scale is my own rough guide.
 - The allowed-content list is a guide: it flags mismatches but doesn't stop a player from picking something, and it doesn't filter the builder's pickers yet.
@@ -649,7 +649,7 @@ What would make QuestKeeper even better than it was yesterday (encounter prep, r
 1. **Book subraces as link-outs:** Wood Elf, Drow, Mountain Dwarf, Stout Halfling and Forest Gnome as names, summaries and links, with a one-tap "Make as homebrew".
 2. **Favorites** on the sheet, and **splitting item stacks** (sorting and filtering are built).
 3. **Better paste-fill** that reads more formats of pasted rules text.
-4. **Automated database and end-to-end tests** for the table rules, so the two-account test can run itself.
+4. **End-to-end tests** across two browsers, so the two-account test can run itself (the database rules are tested automatically already).
 5. **Backend caching and timeouts,** and global search that keeps working if one category fails.
 6. **A beginner mode toggle** to hide hints once a player doesn't need them.
 7. **More table tools:** a shared list of NPCs and places, open quests and threads, a quiet pause button for comfort, and table hints. (The DM tracking a monster's concentration, group initiative, one-tap monster attacks, a player brb button and fight summaries are built.)

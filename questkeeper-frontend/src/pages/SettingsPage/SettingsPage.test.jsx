@@ -74,6 +74,23 @@ describe("SettingsPage", () => {
     expect(await screen.findByText("✓ Everything is up to date.")).toBeInTheDocument();
   });
 
+  it("makes text bigger and contrast higher, saved on this device", async () => {
+    render(<SettingsPage />);
+    expect(screen.getByRole("radio", { name: "Normal" })).toBeChecked();
+
+    await userEvent.click(screen.getByRole("radio", { name: "Largest" }));
+    expect(document.documentElement.dataset.textSize).toBe("larger");
+    expect(window.localStorage.getItem("qk-text-size")).toBe("larger");
+
+    await userEvent.click(screen.getByLabelText("High contrast"));
+    expect(document.documentElement.dataset.contrast).toBe("high");
+
+    await userEvent.click(screen.getByRole("radio", { name: "Normal" }));
+    await userEvent.click(screen.getByLabelText("High contrast"));
+    expect(document.documentElement.dataset.textSize).toBeUndefined();
+    expect(document.documentElement.dataset.contrast).toBeUndefined();
+  });
+
   it("lets an experienced player turn beginner tips off, and remembers it on this device", async () => {
     render(<SettingsPage />);
     const box = screen.getByLabelText("Show beginner tips");

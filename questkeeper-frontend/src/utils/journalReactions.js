@@ -45,3 +45,20 @@ export function describeNames(names, shown = 3) {
   }
   return `${names.slice(0, shown).join(", ")} and ${names.length - shown} more`;
 }
+
+// "Most-loved this session": a session's shared notes with the most
+// reactions, best first: [{ entry, total, summary }]. Only notes with at
+// least `atLeast` reactions count, so one stray 👍 doesn't make a list.
+// Private notes never appear.
+export function mostLovedNotes(entries, reactions, { limit = 3, atLeast = 2 } = {}) {
+  return (entries ?? [])
+    .filter((entry) => entry.visibility !== "private")
+    .map((entry) => {
+      const summary = summarizeReactions(reactions, entry.id, null);
+      return { entry, total: summary.reduce((sum, item) => sum + item.count, 0), summary };
+    })
+    .filter((item) => item.total >= atLeast)
+    .sort((a, b) => b.total - a.total || String(a.entry.created_at).localeCompare(String(b.entry.created_at)))
+    .slice(0, limit);
+}
+

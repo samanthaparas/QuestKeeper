@@ -457,3 +457,36 @@ html {
     font-size: 16px !important;
   }
 }
+
+/* --- Settings: text size and high contrast (see displayPreference.js) -------
+   Text size scales the whole page like the browser's zoom, so everything
+   (buttons, boxes, gaps) grows together and nothing overlaps; the layouts are
+   already checked at 200% zoom. */
+html[data-text-size="large"] body {
+  zoom: 1.125;
+}
+
+html[data-text-size="larger"] body {
+  zoom: 1.25;
+}
+
+/* High contrast: quiet text and borders stand out more, in both themes. */
+:root[data-contrast="high"] {
+  --qk-text-muted: #4a372c;
+  --qk-border: #8a6f55;
+  --qk-terracotta: #933f26;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-contrast="high"]:not([data-theme="light"]) {
+    --qk-text-muted: #e8d9c6;
+    --qk-border: #9b836d;
+    --qk-terracotta: #f0a284;
+  }
+}
+
+:root[data-contrast="high"][data-theme="dark"] {
+  --qk-text-muted: #e8d9c6;
+  --qk-border: #9b836d;
+  --qk-terracotta: #f0a284;
+}

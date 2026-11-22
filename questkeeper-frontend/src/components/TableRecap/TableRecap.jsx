@@ -21,7 +21,19 @@ import "./TableRecap.css";
 const POLL_MS = 15000;
 const MAX_LENGTH = 3000;
 
-function TableRecap({ tableId, entries = [], currentSession = 1, campaign = 1, showCampaign = false }) {
+//
+// promptFor: a session that just ended (the DM started the next one). The card
+// opens on it and offers to write its recap now, while it's fresh;
+// onPromptDone() clears that once it's answered.
+function TableRecap({
+  tableId,
+  entries = [],
+  currentSession = 1,
+  campaign = 1,
+  showCampaign = false,
+  promptFor = null,
+  onPromptDone = () => {},
+}) {
   const headingId = useId();
   const textareaId = useId();
   const [recaps, setRecaps] = useState([]);
@@ -33,6 +45,14 @@ function TableRecap({ tableId, entries = [], currentSession = 1, campaign = 1, s
   const [message, setMessage] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
+  // A session that just ended: open on it once (adjusting state during
+  // render, the same pattern as the auto-open below).
+  const [promptShownFor, setPromptShownFor] = useState(null);
+  if (promptFor && promptShownFor !== promptFor) {
+    setPromptShownFor(promptFor);
+    setPick(promptFor);
+    setIsOpen(true);
+  }
 
   const load = useCallback(() => {
     listRecaps(tableId)
@@ -186,6 +206,44 @@ function TableRecap({ tableId, entries = [], currentSession = 1, campaign = 1, s
               ))}
             </select>
           </label>
+        )}
+
+        {/* Just started the next session: offer this one's recap while it's fresh. */}
+        {promptFor === selected && !recap && !editing && (
+          <div className="table-recap__prompt" role="status">
+            <p>
+              <strong>Session {selectedLabel} is done.</strong> Write its &ldquo;Previously on&hellip;&rdquo; now,
+              while everyone remembers it?
+            </p>
+            <div className="table-recap__actions">
+              {sharedNotes.length > 0 && (
+                <button
+                  type="button"
+                  className="table-recap__button table-recap__button--primary"
+                  disabled={isDrafting}
+                  onClick={() => {
+                    onPromptDone();
+                    draft();
+                  }}
+                >
+                  {isDrafting ? "Writing..." : "Draft it from the notes"}
+                </button>
+              )}
+              <button
+                type="button"
+                className="table-recap__button"
+                onClick={() => {
+                  onPromptDone();
+                  startEditing("");
+                }}
+              >
+                Write it myself
+              </button>
+              <button type="button" className="table-recap__button" onClick={onPromptDone}>
+                Not now
+              </button>
+            </div>
+          </div>
         )}
 
         {editing ? (

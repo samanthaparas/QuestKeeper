@@ -8,11 +8,14 @@ import { AuthProvider } from "./context/AuthProvider";
 import "./index.css";
 import { applyMotionPreference } from "./utils/motionPreference";
 import { applyThemePreference } from "./utils/themePreference";
+import { applyDisplayPreferences } from "./utils/displayPreference";
 
 // The Settings page's Reduce Motion choice, before anything draws.
 applyMotionPreference();
 // And the Appearance choice (light, dark or follow the device).
 applyThemePreference();
+// And Text size and High contrast.
+applyDisplayPreferences();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

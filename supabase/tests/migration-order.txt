@@ -1,0 +1,43 @@
+# The order the SQL files in supabase/migrations were run in Supabase, oldest
+# first. Files that share a date don't sort into the right order by name (the
+# header of each file says what it must run after), so the database test
+# (scripts/test-database.sh) runs them in this order. Add each new migration
+# at the end.
+20261003_dm_tables.sql
+20261003_combat_actions.sql
+20261003_attack_counter.sql
+20261003_monster_attacks.sql
+20261003_dm_toolkit.sql
+20261005_player_ac_bonus.sql
+20261011_homebrew.sql
+20261012_roll_log.sql
+20261012_table_messages.sql
+20261014_party_strip.sql
+20261015_table_journal.sql
+20261015_table_handouts.sql
+20261015_character_order.sql
+20261015_party_strip_portraits.sql
+20261016_party_strip_death_saves.sql
+20261016_remove_unused_functions.sql
+20261017_party_strip_companions.sql
+20261017_table_bans.sql
+20261018_character_journal.sql
+20261018_journal_pick_session.sql
+20261018_journal_portraits.sql
+20261019_party_strip_summons.sql
+20261019_typed_damage.sql
+20261019_cancel_attack.sql
+20261019_party_strip_multiple_companions.sql
+20261021_table_rules.sql
+20261021_away_players.sql
+20261022_table_recaps.sql
+20261022_campaigns.sql
+20261023_campaign_split_range.sql
+20261023_content_rules.sql
+20261024_activity_kinds.sql
+20261109_journal_reactions.sql
+20261109_damage_taken_counts_real_damage.sql
+20261115_drop_old_recap_save.sql
+20261116_monster_concentration.sql
+20261116_player_brb.sql
+20261122_campaign_start_session.sql

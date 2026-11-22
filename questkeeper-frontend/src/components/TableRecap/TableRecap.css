@@ -157,3 +157,20 @@
   color: var(--qk-text);
   font-size: 14px;
 }
+
+/* "Session 4 is done. Write its Previously on… now?" after the DM starts the next one. */
+.table-recap__prompt {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--qk-brass);
+  border-left-width: 4px;
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+}
+
+.table-recap__prompt p {
+  margin: 0;
+}

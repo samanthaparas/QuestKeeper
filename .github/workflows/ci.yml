@@ -56,3 +56,34 @@ jobs:
 
       - name: Run backend tests
         run: npm test -- run
+
+  # Builds the database from scratch on a throwaway Postgres (the version
+  # Supabase runs), with every SQL file in supabase/migrations in order, then
+  # signs in as a DM, players, an outsider and a signed-out visitor to check
+  # the security rules (scripts/test-database.sh). Never touches the real
+  # database.
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Build the database and check its rules
+        run: scripts/test-database.sh
