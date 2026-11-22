@@ -162,11 +162,12 @@ The header splits the app by who you are tonight: **Explore** (reference pages),
 - **Weapons and armor that do the math:** magic bonuses, typed extra damage (a smite, Elemental Weapon), Sharpshooter, attacks linked to inventory items, and a one-armor swap. Item bonuses to spell save DC and spell attack count everywhere.
 - **Prepared spells** for Wizards, Clerics, Druids and Paladins with a limit counter, a one-tap **Concentrate** button that asks first if it would end the spell you're holding, and charges on magic items that recharge at dawn or by hand.
 - **Sort and Show** on every sheet list, inventory categories, and resource maximums that follow the proficiency bonus or an ability modifier.
+- **Favourite spells and items:** tap the ☆ on a spell or an inventory item to pin it to the top of its list under **★ Favourites**, whatever the Sort. Show has a Favourites choice too, and the stars are saved with the character.
 - **Updates arrive by themselves.** When a new version is live, the page refreshes quietly the next time you look away or move to another page, but never while a change is still saving, a real-dice roll is waiting, a pop-up is open, or you've typed something not yet sent. Until then a small **✨ Update** badge sparkles once and then dims, for anyone who'd rather refresh now.
 - **Dark mode** follows your device, with an Appearance choice in Settings.
 - **A slim turn banner** on the sheet during a fight: whose turn it is, and the latest news about you, with damage in red and healing in green. An enemy going down is good news, so it shows in green too; one of the party going down stays red. The "Applied … damage" note clears itself after 15 seconds.
 - **Safe on a weak signal:** if a save can't get through, the sheet keeps your changes, retries by itself, and tells you plainly. See _Playing on a weak signal_ below.
-- A **companion card** for a mount, familiar or animal friend: picture, HP, AC, speed, all six ability scores and saves to roll, attacks, and bulleted notes, with its own Edit stats lock. A Long Rest heals it with its character.
+- A **companion card** for a mount, familiar or animal friend: picture, HP, AC, speed, all six ability scores and saves to roll, attacks, and bulleted notes, with its own Edit stats lock. A Long Rest heals it with its character. A new companion opens ready to fill in, with a short setup guide and a **Done editing** button, and the Summon Fey switch explains it's only for that spell.
 - A full level-up flow: hit points, ability score improvements or feats, subclass choice at the right level, and new spells that follow each class's own spell slot rules. **Book feats** (Tough, Sharpshooter…) are at the end of the level-up feat list with their summary and link; **Make it as homebrew** right in the wizard saves your own version and picks it.
 - Everything is editable after creation, and race, class, subclass and background can be retyped for homebrew and non-SRD characters.
 - **Frame your portrait** before it uploads: drag, zoom (slider, pinch, + / - or arrow keys), with round and square previews; only the framed square is uploaded, and **Adjust** reframes it later without choosing the file again. Tap a portrait in the party strip, journal, turn order or your own card to see it big.
@@ -669,9 +670,9 @@ The roadmap stays incremental: each feature should be small enough to understand
 - **October 27 to November 2, 2026:** a live audit with fixes for dark-mode condition colours, read-only views of other people's characters, and recap clashes; Render's paid plan finally worked; laptop-sized combat layout fixes and the long-rest house rule.
 - **November 9, 2026:** a full live game night with the group. Framed portraits, self-refreshing updates, book feats in level-up, handout picture shrinking, a table banner, journal reactions, a slimmer turn banner with red and green news, monster turns that follow along, the end-of-fight prompt, and damage taken that keeps max HP secret were all built that day.
 - **November 15, 2026:** housekeeping, a new screenshot round (light, dark, phone and signed-in), and the "Still in combat?" reminder.
-- **November 16, 2026:** a fallen enemy shows in green, and five game-night tools: one-tap monster attacks, a player brb button, monster concentration for the DM, group initiative, and a fight summary for the journal.
+- **November 16, 2026:** a fallen enemy shows in green, and five game-night tools: one-tap monster attacks, a player brb button, monster concentration for the DM, group initiative, and a fight summary for the journal. Then a "How a fight works" card for players and the DM, favourite spells and items, a clearer companion setup, and a security patch for the backend.
 
-As of November 16, 2026 there are 272 merged pull requests and 350+ commits.
+As of November 22, 2026 there are 276 merged pull requests and 355+ commits.
 
 ## Content and licensing principles
 
