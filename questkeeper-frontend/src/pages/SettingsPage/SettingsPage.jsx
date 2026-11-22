@@ -12,6 +12,7 @@ import { getMotionPreference, setMotionPreference } from "../../utils/motionPref
 import { getThemePreference, setThemePreference } from "../../utils/themePreference";
 import { getHeadsUpPreference, setHeadsUpPreference } from "../../utils/turnHeadsUp";
 import { getBeginnerTips, setBeginnerTips } from "../../utils/beginnerTips";
+import { runDbChecks } from "../../utils/dbCheck";
 import PageBanner from "../../components/PageBanner/PageBanner";
 import "./SettingsPage.css";
 
@@ -55,6 +56,18 @@ function SettingsPage() {
   const [theme, setTheme] = useState(getThemePreference);
   const [headsUp, setHeadsUp] = useState(getHeadsUpPreference);
   const [tips, setTips] = useState(getBeginnerTips);
+  // "Database check": null until run, then [{ file, what, status }].
+  const [dbResults, setDbResults] = useState(null);
+  const [isChecking, setIsChecking] = useState(false);
+
+  async function handleDbCheck() {
+    setIsChecking(true);
+    setDbResults(await runDbChecks());
+    setIsChecking(false);
+  }
+
+  const missingFiles = (dbResults ?? []).filter((result) => result.status === "missing");
+  const unsureFiles = (dbResults ?? []).filter((result) => result.status === "unknown");
 
   const [email, setEmail] = useState("");
   const [emailState, saveEmail] = useSaveState();
@@ -208,6 +221,46 @@ function SettingsPage() {
           <input type="checkbox" checked={motion === "reduce"} onChange={handleMotion} />
           <span>Reduce motion</span>
         </label>
+      </section>
+
+      {/* For whoever runs QuestKeeper: have the newest SQL files been run? */}
+      <section className="settings-page__card" aria-labelledby="settings-db-heading">
+        <h2 className="settings-page__heading" id="settings-db-heading">
+          Database check
+        </h2>
+        <p className="settings-page__hint">
+          For whoever runs QuestKeeper: checks that the newest SQL files have been run in Supabase, so a
+          new feature isn&apos;t waiting on one (for example after the SQL editor timed out). It only looks;
+          nothing is changed.
+        </p>
+        <div>
+          <Button variant="secondary" disabled={isChecking} onClick={handleDbCheck}>
+            {isChecking ? "Checking…" : "Check the database"}
+          </Button>
+        </div>
+        {dbResults && (
+          <div role="status">
+            <p className="settings-page__hint">
+              {missingFiles.length === 0 && unsureFiles.length === 0
+                ? "✓ Everything is up to date."
+                : missingFiles.length > 0
+                  ? `${missingFiles.length} SQL ${missingFiles.length === 1 ? "file needs" : "files need"} running in the Supabase SQL editor.`
+                  : "Couldn't check everything just now. Try again in a moment."}
+            </p>
+            <ul className="settings-page__db-list">
+              {dbResults.map((result) => (
+                <li key={result.file} className={`settings-page__db-row settings-page__db-row--${result.status}`}>
+                  <span aria-hidden="true">{result.status === "ok" ? "✓" : result.status === "missing" ? "✗" : "?"}</span>{" "}
+                  {result.what}{" "}
+                  <span className="settings-page__db-file">
+                    {result.status === "ok" ? "" : result.status === "missing" ? "Not run yet: " : "Couldn't check: "}
+                    <code>{result.file}</code>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       <form className="settings-page__card" onSubmit={handleEmail}>
