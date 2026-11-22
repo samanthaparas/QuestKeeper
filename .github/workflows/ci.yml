@@ -93,7 +93,8 @@ jobs:
   # Supabase started fresh on the runner with every migration. Never touches
   # the real database. Run it yourself with: npm run test:e2e
   e2e:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright's browser install doesn't support the newest Ubuntu yet.
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out code
         uses: actions/checkout@v4
