@@ -16,6 +16,7 @@ import aiSearchRouter from "./routes/aiSearch.js";
 import homebrewSummaryRouter from "./routes/homebrewSummary.js";
 import monstersRouter from "./routes/monsters.js";
 import recapRouter from "./routes/recap.js";
+import healthRouter from "./routes/health.js";
 
 const app = express();
 
@@ -48,6 +49,8 @@ app.use("/api/ai-search", aiSearchRouter);
 app.use("/api/homebrew-summary", homebrewSummaryRouter);
 app.use("/api/monsters", monstersRouter);
 app.use("/api/recap", recapRouter);
+// "Is the API alive?", for a quick check or a monitoring tool.
+app.use("/api/health", healthRouter);
 
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({

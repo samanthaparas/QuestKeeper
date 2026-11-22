@@ -372,6 +372,11 @@ QuestKeeper is deployed on Render from the [`render.yaml`](render.yaml) Blueprin
 
 The paid plan keeps the API awake all the time, so there's no slow first request after a quiet spell.
 
+**How deploys happen, and when they don't:** Render deploys each service from `main`, but only when files inside that service's own folder change. A change only under `questkeeper-backend/` redeploys the API and leaves the site as it is, and a change only to the README or `docs/` redeploys nothing. If a merged change ever isn't live (for example, GitHub had an error while merging and Render never heard about it), use **Manual Deploy → Deploy latest commit** on that service in Render. To check what's running:
+
+- The API: `https://questkeeper-api.onrender.com/api/health` answers `{"status":"ok", ...}`, with how long it has been up and whether the AI features have their key (a yes or no; the key itself is never shown).
+- The site: the page's `last-modified` header shows when the current build went live.
+
 ## Available commands
 
 Run from the repository root:
@@ -672,7 +677,7 @@ The roadmap stays incremental: each feature should be small enough to understand
 - **November 15, 2026:** housekeeping, a new screenshot round (light, dark, phone and signed-in), and the "Still in combat?" reminder.
 - **November 16, 2026:** a fallen enemy shows in green, and five game-night tools: one-tap monster attacks, a player brb button, monster concentration for the DM, group initiative, and a fight summary for the journal. Then a "How a fight works" card for players and the DM, favourite spells and items, a clearer companion setup, and a security patch for the backend.
 
-As of November 22, 2026 there are 276 merged pull requests and 355+ commits.
+As of November 22, 2026 there are 277 merged pull requests and 355+ commits.
 
 ## Content and licensing principles
 
