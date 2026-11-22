@@ -471,6 +471,20 @@ describe("TableJournal reactions", () => {
     expect(within(dmNote).getByRole("button", { name: /Like: 1, from You/ })).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("lists the session's most-loved notes (two or more reactions) to jump back to", async () => {
+    listReactions.mockResolvedValue([
+      { entry_id: "n3", user_id: "dm", reactor_name: "DM", emoji: "😂", created_at: "2026-10-13T03:00:00Z" },
+      { entry_id: "n3", user_id: "ash", reactor_name: "Ash", emoji: "😂", created_at: "2026-10-13T03:01:00Z" },
+      { entry_id: "n1", user_id: "ash", reactor_name: "Ash", emoji: "❤️", created_at: "2026-10-13T03:00:00Z" },
+    ]);
+    renderJournal();
+    const loved = await screen.findByText("♥ Most-loved this session");
+    await userEvent.click(loved);
+    const list = loved.closest("details");
+    expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+    expect(within(list).getByRole("listitem")).toHaveTextContent("Billie: I got a snake sword! 😂2");
+  });
+
   it("taps your own reaction again to take it back", async () => {
     listReactions.mockResolvedValue([
       { entry_id: "n1", user_id: "me", reactor_name: "Billie", emoji: "🎲", created_at: "2026-10-13T03:00:00Z" },

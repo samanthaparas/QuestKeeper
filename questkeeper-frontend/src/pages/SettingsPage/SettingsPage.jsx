@@ -13,6 +13,13 @@ import { getThemePreference, setThemePreference } from "../../utils/themePrefere
 import { getHeadsUpPreference, setHeadsUpPreference } from "../../utils/turnHeadsUp";
 import { getBeginnerTips, setBeginnerTips } from "../../utils/beginnerTips";
 import { runDbChecks } from "../../utils/dbCheck";
+import {
+  TEXT_SIZES,
+  getHighContrast,
+  getTextSize,
+  setHighContrast as saveHighContrast,
+  setTextSize as saveTextSize,
+} from "../../utils/displayPreference";
 import PageBanner from "../../components/PageBanner/PageBanner";
 import "./SettingsPage.css";
 
@@ -56,6 +63,8 @@ function SettingsPage() {
   const [theme, setTheme] = useState(getThemePreference);
   const [headsUp, setHeadsUp] = useState(getHeadsUpPreference);
   const [tips, setTips] = useState(getBeginnerTips);
+  const [textSize, setTextSize] = useState(getTextSize);
+  const [highContrast, setHighContrast] = useState(getHighContrast);
   // "Database check": null until run, then [{ file, what, status }].
   const [dbResults, setDbResults] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -176,6 +185,46 @@ function SettingsPage() {
             </label>
           ))}
         </div>
+      </section>
+
+      <section className="settings-page__card" aria-labelledby="settings-reading-heading">
+        <h2 className="settings-page__heading" id="settings-reading-heading">
+          Easier reading
+        </h2>
+        <p className="settings-page__hint">
+          Make everything bigger (buttons and boxes grow with the words), or make quiet grey text and
+          lines stand out more. Saved on this device.
+        </p>
+        <p className="settings-page__hint" id="settings-text-size-label">
+          Text size
+        </p>
+        <div className="settings-page__choices" role="radiogroup" aria-labelledby="settings-text-size-label">
+          {TEXT_SIZES.map(({ value, label }) => (
+            <label key={value} className="settings-page__switch">
+              <input
+                type="radio"
+                name="text-size"
+                checked={textSize === value}
+                onChange={() => {
+                  setTextSize(value);
+                  saveTextSize(value);
+                }}
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+        <label className="settings-page__switch">
+          <input
+            type="checkbox"
+            checked={highContrast}
+            onChange={(event) => {
+              setHighContrast(event.target.checked);
+              saveHighContrast(event.target.checked);
+            }}
+          />
+          <span>High contrast</span>
+        </label>
       </section>
 
       <section className="settings-page__card" aria-labelledby="settings-tips-heading">

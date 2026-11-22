@@ -41,6 +41,40 @@ describe("TableRecap", () => {
     writeRecapFromNotes.mockReset();
   });
 
+  it("offers the session that just ended a recap, drafted from its shared notes", async () => {
+    writeRecapFromNotes.mockResolvedValue({ recap: "The bridge fell, and Pippa caught the rope." });
+    const onPromptDone = vi.fn();
+    renderRecap({ promptFor: 2, onPromptDone });
+
+    expect(await screen.findByText(/Session 2 is done\./)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Draft it from the notes" }));
+    expect(onPromptDone).toHaveBeenCalled();
+    // Only the whole-table notes, never the private one.
+    expect(writeRecapFromNotes).toHaveBeenCalledWith({
+      sessionNumber: 2,
+      entries: [
+        { author: "DM", text: "The bridge collapsed." },
+        { author: "Pippa", text: "I caught the rope." },
+      ],
+    });
+    expect(await screen.findByDisplayValue("The bridge fell, and Pippa caught the rope.")).toBeInTheDocument();
+    expect(saveRecap).not.toHaveBeenCalled();
+  });
+
+  it("doesn't ask when that session already has a recap, and Not now puts it away", async () => {
+    listRecaps.mockResolvedValue([RECAP]);
+    const onPromptDone = vi.fn();
+    const { unmount } = renderRecap({ promptFor: 2, onPromptDone });
+    expect(await screen.findByText("The bridge fell.")).toBeInTheDocument();
+    expect(screen.queryByText(/Session 2 is done/)).not.toBeInTheDocument();
+    unmount();
+
+    listRecaps.mockResolvedValue([]);
+    renderRecap({ promptFor: 2, onPromptDone });
+    await userEvent.click(await screen.findByRole("button", { name: "Not now" }));
+    expect(onPromptDone).toHaveBeenCalled();
+  });
+
   it("shows the last session before the current one, and says when nobody wrote a recap", async () => {
     renderRecap();
     expect(screen.getByText("Session 2")).toBeInTheDocument();
