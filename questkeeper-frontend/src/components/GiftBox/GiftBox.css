@@ -1,0 +1,40 @@
+/* Gifts waiting at the top of Inventory. */
+.gift-box {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.gift-box__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--qk-brass);
+  border-left-width: 4px;
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+  font-size: 14px;
+}
+
+.gift-box__row--sent {
+  border-color: var(--qk-border);
+  background-color: var(--qk-surface);
+  color: var(--qk-text-muted);
+}
+
+.gift-box__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gift-box__error {
+  margin: 0;
+  color: var(--qk-danger);
+  font-size: 14px;
+}

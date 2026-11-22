@@ -1,6 +1,7 @@
 import { useState } from "react";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import Button from "../Button/Button";
+import GiftBox from "../GiftBox/GiftBox";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
 import { useSrdEquipmentLookup } from "../../hooks/useSrdEquipmentLookup";
@@ -344,6 +345,83 @@ function SplitStack({ item, onSplit }) {
   );
 }
 
+// "Give…" under an item, when the character is at a table with other
+// players: who to give it to, and how many. The item then waits in their
+// gift box until they take it.
+function GiveItem({ item, receivers, onGive }) {
+  const total = Number(item.quantity) || 1;
+  const [isOpen, setIsOpen] = useState(false);
+  const [to, setTo] = useState(receivers[0]?.userId ?? "");
+  const [amount, setAmount] = useState(String(total));
+  const [error, setError] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
+  const count = Number(amount);
+  const isValid = Boolean(to) && Number.isInteger(count) && count >= 1 && count <= total;
+
+  if (!isOpen) {
+    return (
+      <button type="button" className="character-sheet__split-open" onClick={() => setIsOpen(true)}>
+        Give…
+      </button>
+    );
+  }
+  return (
+    <form
+      className="character-sheet__split"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        if (!isValid) return;
+        setError("");
+        setIsBusy(true);
+        try {
+          await onGive(item, to, count);
+          setIsOpen(false);
+        } catch (failure) {
+          setError(failure?.message ?? "Couldn't give that. Try again in a moment.");
+        } finally {
+          setIsBusy(false);
+        }
+      }}
+    >
+      <label>
+        Give to
+        <select aria-label={`Who to give ${item.name} to`} value={to} onChange={(event) => setTo(event.target.value)}>
+          {receivers.map((person) => (
+            <option key={person.userId} value={person.userId}>
+              {person.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {total > 1 && (
+        <label>
+          How many
+          <input
+            type="number"
+            className="character-sheet__resource-input"
+            aria-label={`How many ${item.name} to give`}
+            min={1}
+            max={total}
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+          />
+        </label>
+      )}
+      <Button type="submit" variant="secondary" disabled={!isValid || isBusy}>
+        {isBusy ? "Giving…" : "Give"}
+      </Button>
+      <button type="button" className="character-sheet__split-open" onClick={() => setIsOpen(false)}>
+        Cancel
+      </button>
+      {error && (
+        <span className="gift-box__error" role="alert">
+          {error}
+        </span>
+      )}
+    </form>
+  );
+}
+
 function CharacterSheetInventoryTab({
   equipment,
   onEquipmentAdd,
@@ -355,6 +433,15 @@ function CharacterSheetInventoryTab({
   onEquipmentFavoriteToggle = null,
   // Split a stack: onEquipmentSplit(item, amount) moves that many into a new row.
   onEquipmentSplit = null,
+  // Giving to another player at the table: who can be given to
+  // ([{ userId, name }]) and onGiveItem(item, toUserId, amount).
+  giftReceivers = [],
+  onGiveItem = null,
+  // The gift box: { incoming, outgoing } and its three buttons.
+  gifts = null,
+  onTakeGift = null,
+  onReturnGift = null,
+  onCancelGift = null,
   // Armor and shields can be equipped; their AC then counts on the sheet.
   isArmor = () => false,
   onEquipToggle = () => {},
@@ -504,6 +591,9 @@ function CharacterSheetInventoryTab({
 
   return (
     <section className="character-sheet__section">
+      {/* Gifts from (and to) other players at the table. */}
+      {gifts && <GiftBox gifts={gifts} onTake={onTakeGift} onReturn={onReturnGift} onCancel={onCancelGift} />}
+
       {/* If the item look-up can't reach the rules server, say so (item names
           can't link to their details and armor isn't recognised), with a retry. */}
       {equipmentLookup.status === "failed" && (
@@ -621,6 +711,9 @@ function CharacterSheetInventoryTab({
             {/* A stack of 2 or more can be split into two rows. */}
             {onEquipmentSplit && Number(item.quantity) > 1 && (
               <SplitStack item={item} onSplit={(amount) => onEquipmentSplit(item, amount)} />
+            )}
+            {onGiveItem && giftReceivers.length > 0 && (
+              <GiveItem item={item} receivers={giftReceivers} onGive={onGiveItem} />
             )}
           </>
         )}

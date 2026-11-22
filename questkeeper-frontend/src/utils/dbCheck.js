@@ -32,6 +32,7 @@ const column = (table, name) => () => supabase.from(table).select(name).limit(0)
 
 // Newest first: the files most likely not to have been run yet.
 export const DB_CHECKS = [
+  { file: "20261122_item_gifts.sql", what: "Giving items to another player", run: column("item_gifts", "id, item") },
   {
     file: "20261122_campaign_start_session.sql",
     what: "Start a new campaign at any session",

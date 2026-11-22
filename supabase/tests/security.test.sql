@@ -161,7 +161,8 @@ set test.uid = :billie;
 select public.start_campaign('00000000-0000-0000-0000-0000000000c1', 'Season 2', 12);
 reset role;
 do $$ begin
-  if (select (campaign_number, session_number) from public.game_tables) is distinct from (2, 12) then
+  if (select (campaign_number, session_number) from public.game_tables
+      where id = '00000000-0000-0000-0000-0000000000c1') is distinct from (2, 12) then
     raise exception 'FAILED: the new campaign did not start at session 12';
   end if;
 end $$;

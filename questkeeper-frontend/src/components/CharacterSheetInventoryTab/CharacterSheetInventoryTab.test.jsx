@@ -121,6 +121,27 @@ describe("CharacterSheetInventoryTab", () => {
     expect(onEquipmentSplit).toHaveBeenCalledWith(expect.objectContaining({ index: "a1" }), 3);
   });
 
+  it("gives some of an item to another player at the table", async () => {
+    const onGiveItem = vi.fn().mockResolvedValue();
+    renderTab({
+      onGiveItem,
+      giftReceivers: [{ userId: "u-bo", name: "Bo" }, { userId: "u-cy", name: "Cy" }],
+      equipment: [{ index: "a1", name: "Arrows", quantity: 10 }],
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Give…" }));
+    await userEvent.selectOptions(screen.getByLabelText("Who to give Arrows to"), "u-cy");
+    await userEvent.clear(screen.getByLabelText("How many Arrows to give"));
+    await userEvent.type(screen.getByLabelText("How many Arrows to give"), "3");
+    await userEvent.click(screen.getByRole("button", { name: "Give" }));
+    expect(onGiveItem).toHaveBeenCalledWith(expect.objectContaining({ index: "a1" }), "u-cy", 3);
+  });
+
+  it("only offers Give when there's someone at the table to give to", () => {
+    renderTab({ onGiveItem: vi.fn(), giftReceivers: [] });
+    expect(screen.queryByRole("button", { name: "Give…" })).not.toBeInTheDocument();
+  });
+
   it("won't split off all of a stack", async () => {
     renderTab({ onEquipmentSplit: vi.fn(), equipment: [{ index: "a1", name: "Arrows", quantity: 10 }] });
     await userEvent.click(screen.getByRole("button", { name: "Split stack" }));

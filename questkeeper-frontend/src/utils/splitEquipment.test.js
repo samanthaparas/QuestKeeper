@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { splitEquipmentItem } from "./characterSheet";
+import { giftCopyOf, receivedItem, splitEquipmentItem } from "./characterSheet";
 
 const arrows = { index: "a1", name: "Arrows", quantity: 10, description: "+1", attuned: true, equipped: true, favorite: true };
 
@@ -22,5 +22,18 @@ describe("splitting a stack", () => {
     expect(splitEquipmentItem(list, "a1", 10)).toBe(list);
     expect(splitEquipmentItem(list, "a1", 0)).toBe(list);
     expect(splitEquipmentItem(list, "missing", 2)).toBe(list);
+  });
+});
+
+describe("giving an item", () => {
+  it("sends its details and how many, but nothing that belongs to the giver", () => {
+    const copy = giftCopyOf({ ...arrows, proficient: true, wielded: true }, 4);
+    expect(copy).toEqual({ name: "Arrows", quantity: 4, description: "+1" });
+  });
+
+  it("arrives as a fresh item that isn't worn or attuned", () => {
+    const item = receivedItem({ name: "Arrows", quantity: 4, description: "+1", attuned: true });
+    expect(item).toMatchObject({ name: "Arrows", quantity: 4, description: "+1", attuned: false });
+    expect(item.index).toEqual(expect.any(String));
   });
 });
