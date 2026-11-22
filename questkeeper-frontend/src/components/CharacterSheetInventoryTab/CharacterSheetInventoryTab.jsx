@@ -708,12 +708,17 @@ function CharacterSheetInventoryTab({
         primaryExtra={(item) => (
           <>
             {itemMeta(item)}
-            {/* A stack of 2 or more can be split into two rows. */}
-            {onEquipmentSplit && Number(item.quantity) > 1 && (
-              <SplitStack item={item} onSplit={(amount) => onEquipmentSplit(item, amount)} />
-            )}
-            {onGiveItem && giftReceivers.length > 0 && (
-              <GiveItem item={item} receivers={giftReceivers} onGive={onGiveItem} />
+            {/* Their own small line under the name: Split stack (2 or more)
+                and Give… (at a table with other players). */}
+            {((onEquipmentSplit && Number(item.quantity) > 1) || (onGiveItem && giftReceivers.length > 0)) && (
+              <span className="character-sheet__item-tools">
+                {onEquipmentSplit && Number(item.quantity) > 1 && (
+                  <SplitStack item={item} onSplit={(amount) => onEquipmentSplit(item, amount)} />
+                )}
+                {onGiveItem && giftReceivers.length > 0 && (
+                  <GiveItem item={item} receivers={giftReceivers} onGive={onGiveItem} />
+                )}
+              </span>
             )}
           </>
         )}

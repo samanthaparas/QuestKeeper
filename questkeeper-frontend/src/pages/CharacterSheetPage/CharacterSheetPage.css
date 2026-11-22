@@ -1310,6 +1310,18 @@
   color: var(--qk-terracotta);
 }
 
+/* Split stack and Give… on their own quiet line under an item's name, like
+   the item's details line, so they never run into the name. */
+.character-sheet__item-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 400;
+}
+
 /* "Split stack" under a stack of 2 or more, and its one-line form. */
 .character-sheet__split-open {
   padding: 0;
