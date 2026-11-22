@@ -144,7 +144,7 @@ function CharacterSheetSpellsTab({
   // Paladin): { limit, ability } and the toggle. Null for everyone else.
   preparedLimit = null,
   onPreparedToggle = () => {},
-  // ☆ Favourites: starred spells are pinned to the top of the list.
+  // ♥ Favourites: these spells are pinned to the top of the list.
   onFavoriteToggle = null,
   // When the class's own spellcasting hasn't started yet (a level 1 Ranger):
   // { className, level }. Null otherwise.

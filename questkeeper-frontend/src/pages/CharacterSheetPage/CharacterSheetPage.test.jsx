@@ -1232,8 +1232,8 @@ describe("calm spell list", () => {
       "Lv 1",
       "Lv 2",
     ]);
-    // Each name starts with its ☆ (tap to pin it to the top), left out here.
-    expect(rows.map((row) => row.querySelector(".character-sheet__resource-name").textContent.replace(/^[☆★]/, ""))).toEqual([
+    // Each name starts with its ♡ (tap to pin it to the top), left out here.
+    expect(rows.map((row) => row.querySelector(".character-sheet__resource-name").textContent.replace(/^[♡♥]/, ""))).toEqual([
       "Druidcraft",
       "absorb Elements",
       "Charm Person",
@@ -1483,7 +1483,7 @@ describe("sort and show on the sheet's lists", () => {
 
     // The default: by level, then A to Z.
     // Each row starts with the level, then the components, then the name.
-    expect(rowNames(list())[0]).toMatch(/^Lv 1V, S, M☆Goodberry/);
+    expect(rowNames(list())[0]).toMatch(/^Lv 1V, S, M♡Goodberry/);
     expect(screen.getAllByText("Conc", { selector: "span" })).toHaveLength(2);
     expect(screen.getByText("Ritual", { selector: "span" })).toBeInTheDocument();
 

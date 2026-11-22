@@ -2497,6 +2497,30 @@ export function updateEquipmentItem(equipment, index, updates) {
   );
 }
 
+// Splits `amount` off a stack into a new row right after it: the same item
+// (name, notes, category, weapon and magic details), but a fresh id, so it
+// starts unequipped, unattuned and not a favourite, and linked attacks and
+// charges stay with the original. Returns the list unchanged if the amount
+// doesn't leave at least 1 in each stack.
+export function splitEquipmentItem(equipment, index, amount) {
+  const list = equipment ?? [];
+  const position = list.findIndex((item) => item.index === index);
+  const original = list[position];
+  const count = Math.floor(Number(amount));
+  const total = Number(original?.quantity) || 0;
+  if (!original || !(count >= 1) || count >= total) return list;
+  const copy = {
+    ...original,
+    index: crypto.randomUUID(),
+    quantity: count,
+    equipped: false,
+    wielded: false,
+    attuned: false,
+    favorite: false,
+  };
+  return [...list.slice(0, position), { ...original, quantity: total - count }, copy, ...list.slice(position + 1)];
+}
+
 export function getAttunedCount(equipment) {
   return (equipment ?? []).filter((item) => item.attuned).length;
 }

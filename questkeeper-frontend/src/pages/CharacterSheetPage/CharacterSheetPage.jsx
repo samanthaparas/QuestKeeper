@@ -58,6 +58,7 @@ import {
   getHitDiceRemaining,
   createEquipmentItem,
   updateEquipmentItem,
+  splitEquipmentItem,
   getAttunedCount,
   cycleSkillProficiency,
   setTemporaryHp,
@@ -1738,7 +1739,7 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, spellcasting });
   }
 
-  // ☆ / ★: pins a spell to the top of the Spells list.
+  // ♡ / ♥: pins a spell to the top of the Spells list.
   function handleSpellFavoriteToggle(spell) {
     const spellcasting = updateSpell(
       sheet.spellcasting,
@@ -1749,7 +1750,12 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, spellcasting });
   }
 
-  // ☆ / ★: pins an item to the top of the Inventory list.
+  // Split a stack: some of it into a new row of its own.
+  function handleEquipmentSplit(item, amount) {
+    persistSheet({ ...sheet, equipment: splitEquipmentItem(sheet.equipment, item.index, amount) });
+  }
+
+  // ♡ / ♥: pins an item to the top of the Inventory list.
   function handleEquipmentFavoriteToggle(item) {
     persistSheet({
       ...sheet,
@@ -3095,6 +3101,7 @@ function CharacterSheetPage() {
                         handleEquipmentProficientToggle
                       }
                       onEquipmentFavoriteToggle={handleEquipmentFavoriteToggle}
+                      onEquipmentSplit={handleEquipmentSplit}
                       isArmor={(item) => isArmorDetails(gearDetailsFor(item))}
                       categoryOf={(item) => getInventoryCategory(item, gearDetailsFor(item))}
                       onEquipToggle={handleEquipToggle}

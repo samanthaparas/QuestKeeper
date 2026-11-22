@@ -1,4 +1,6 @@
+import { useState } from "react";
 import EditableItemList from "../EditableItemList/EditableItemList";
+import Button from "../Button/Button";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
 import { useSrdEquipmentLookup } from "../../hooks/useSrdEquipmentLookup";
@@ -292,6 +294,56 @@ function WeaponItemFields({ value, values, onChange }) {
 
 const ORDER = INVENTORY_CATEGORIES.map((category) => category.key);
 
+// "Split" under a stack of 2 or more: how many to move into a stack of their
+// own (to hand some to a friend, or keep a few apart). The new stack is a copy
+// that starts unequipped and unattuned.
+function SplitStack({ item, onSplit }) {
+  const total = Number(item.quantity) || 0;
+  const [isOpen, setIsOpen] = useState(false);
+  const [amount, setAmount] = useState(String(Math.floor(total / 2)));
+  const count = Number(amount);
+  const isValid = Number.isInteger(count) && count >= 1 && count < total;
+
+  if (!isOpen) {
+    return (
+      <button type="button" className="character-sheet__split-open" onClick={() => setIsOpen(true)}>
+        Split stack
+      </button>
+    );
+  }
+  return (
+    <form
+      className="character-sheet__split"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!isValid) return;
+        onSplit(count);
+        setIsOpen(false);
+      }}
+    >
+      <label>
+        Move
+        <input
+          type="number"
+          className="character-sheet__resource-input"
+          aria-label={`How many ${item.name} to split off`}
+          min={1}
+          max={total - 1}
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+        />
+        of {total} into their own stack
+      </label>
+      <Button type="submit" variant="secondary" disabled={!isValid}>
+        Split
+      </Button>
+      <button type="button" className="character-sheet__split-open" onClick={() => setIsOpen(false)}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
 function CharacterSheetInventoryTab({
   equipment,
   onEquipmentAdd,
@@ -299,8 +351,10 @@ function CharacterSheetInventoryTab({
   onEquipmentRemove,
   onEquipmentAttuneToggle,
   onEquipmentProficientToggle,
-  // ☆ Favourites: starred items are pinned to the top of the list.
+  // ♥ Favourites: these items are pinned to the top of the list.
   onEquipmentFavoriteToggle = null,
+  // Split a stack: onEquipmentSplit(item, amount) moves that many into a new row.
+  onEquipmentSplit = null,
   // Armor and shields can be equipped; their AC then counts on the sheet.
   isArmor = () => false,
   onEquipToggle = () => {},
@@ -371,6 +425,82 @@ function CharacterSheetInventoryTab({
     { key: "wielded", label: "Equipped weapons", match: (item) => Boolean(item.wielded) },
     { key: "proficient", label: "Proficient", match: (item) => Boolean(item.proficient) },
   ];
+
+  // Under an item's name: what kind of magic item it is, whether it needs
+  // attunement, its spells' numbers, and its charges to spend right here.
+  function itemMeta(item) {
+    const about = describeMagicItem(item);
+    const charges = chargesFor(item);
+    // Its spells' DC and attack, worked out now ("Use mine" follows
+    // the character), with the attack as a roll.
+    const numbers = itemSpellNumbers(item, mySpellNumbers);
+    const usesMineButNone = (item.saveDc === "mine" || item.spellAttack === "mine") && !mySpellNumbers;
+    const hasNumbers = numbers.saveDc !== null || numbers.spellAttack !== null || usesMineButNone;
+    // What it adds to your own spells, and whether it counts right now.
+    const bonusText = [
+      item.spellAttackBonus ? `+${item.spellAttackBonus} spell attack` : "",
+      item.spellDcBonus ? `+${item.spellDcBonus} spell save DC` : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const bonusCounts = !item.requiresAttunement || item.attuned;
+    if (!about && !charges && !hasNumbers && !bonusText) return null;
+    return (
+      <span className="character-sheet__item-meta">
+        {about && (
+          <span>
+            {about}
+            {item.requiresAttunement ? (item.attuned ? " (attuned)" : " (not attuned yet)") : ""}
+          </span>
+        )}
+        {bonusText && (
+          <span>
+            {bonusText}
+            {bonusCounts ? " (counted in your spells)" : " (counts once attuned)"}
+          </span>
+        )}
+        {hasNumbers && (
+          <span className="character-sheet__item-charges">
+            {numbers.saveDc !== null && <span className="character-sheet__item-charges-label">DC {numbers.saveDc}</span>}
+            {numbers.spellAttack !== null && (
+              <RollButton label={`${item.name} spell attack`} bonus={numbers.spellAttack}>
+                {formatModifier(numbers.spellAttack)} to hit
+              </RollButton>
+            )}
+            {usesMineButNone && <span>Uses your spellcasting (none set)</span>}
+          </span>
+        )}
+        {charges && (
+          <span className="character-sheet__item-charges">
+            <span className="character-sheet__item-charges-label">Charges</span>
+            {charges.max <= MAX_PIPS ? (
+              <UsePips
+                label={`${item.name} charges`}
+                current={charges.current}
+                max={charges.max}
+                onChange={(next) => onChargesChange(charges.id, next)}
+              />
+            ) : (
+              <span className="character-sheet__resource-count">
+                <input
+                  type="number"
+                  className="character-sheet__resource-input"
+                  aria-label={`${item.name} charges left`}
+                  value={charges.current}
+                  min={0}
+                  max={charges.max}
+                  onChange={(event) => onChargesChange(charges.id, event.target.value)}
+                />
+                {" / "}
+                {charges.max}
+              </span>
+            )}
+            <span className="character-sheet__damage-type">{describeReset(charges)}</span>
+          </span>
+        )}
+      </span>
+    );
+  }
 
   return (
     <section className="character-sheet__section">
@@ -484,81 +614,16 @@ function CharacterSheetInventoryTab({
             : null
         }
         rowPanel={(item) => linkChoiceFor(item)}
-        // Under the name: what kind of magic item it is, whether it needs
-        // attunement, and its charges to spend right here.
-        primaryExtra={(item) => {
-          const about = describeMagicItem(item);
-          const charges = chargesFor(item);
-          // Its spells' DC and attack, worked out now ("Use mine" follows
-          // the character), with the attack as a roll.
-          const numbers = itemSpellNumbers(item, mySpellNumbers);
-          const usesMineButNone = (item.saveDc === "mine" || item.spellAttack === "mine") && !mySpellNumbers;
-          const hasNumbers = numbers.saveDc !== null || numbers.spellAttack !== null || usesMineButNone;
-          // What it adds to your own spells, and whether it counts right now.
-          const bonusText = [
-            item.spellAttackBonus ? `+${item.spellAttackBonus} spell attack` : "",
-            item.spellDcBonus ? `+${item.spellDcBonus} spell save DC` : "",
-          ]
-            .filter(Boolean)
-            .join(", ");
-          const bonusCounts = !item.requiresAttunement || item.attuned;
-          if (!about && !charges && !hasNumbers && !bonusText) return null;
-          return (
-            <span className="character-sheet__item-meta">
-              {about && (
-                <span>
-                  {about}
-                  {item.requiresAttunement ? (item.attuned ? " (attuned)" : " (not attuned yet)") : ""}
-                </span>
-              )}
-              {bonusText && (
-                <span>
-                  {bonusText}
-                  {bonusCounts ? " (counted in your spells)" : " (counts once attuned)"}
-                </span>
-              )}
-              {hasNumbers && (
-                <span className="character-sheet__item-charges">
-                  {numbers.saveDc !== null && <span className="character-sheet__item-charges-label">DC {numbers.saveDc}</span>}
-                  {numbers.spellAttack !== null && (
-                    <RollButton label={`${item.name} spell attack`} bonus={numbers.spellAttack}>
-                      {formatModifier(numbers.spellAttack)} to hit
-                    </RollButton>
-                  )}
-                  {usesMineButNone && <span>Uses your spellcasting (none set)</span>}
-                </span>
-              )}
-              {charges && (
-                <span className="character-sheet__item-charges">
-                  <span className="character-sheet__item-charges-label">Charges</span>
-                  {charges.max <= MAX_PIPS ? (
-                    <UsePips
-                      label={`${item.name} charges`}
-                      current={charges.current}
-                      max={charges.max}
-                      onChange={(next) => onChargesChange(charges.id, next)}
-                    />
-                  ) : (
-                    <span className="character-sheet__resource-count">
-                      <input
-                        type="number"
-                        className="character-sheet__resource-input"
-                        aria-label={`${item.name} charges left`}
-                        value={charges.current}
-                        min={0}
-                        max={charges.max}
-                        onChange={(event) => onChargesChange(charges.id, event.target.value)}
-                      />
-                      {" / "}
-                      {charges.max}
-                    </span>
-                  )}
-                  <span className="character-sheet__damage-type">{describeReset(charges)}</span>
-                </span>
-              )}
-            </span>
-          );
-        }}
+        // Under the name: the item's details (itemMeta), and Split for a stack.
+        primaryExtra={(item) => (
+          <>
+            {itemMeta(item)}
+            {/* A stack of 2 or more can be split into two rows. */}
+            {onEquipmentSplit && Number(item.quantity) > 1 && (
+              <SplitStack item={item} onSplit={(amount) => onEquipmentSplit(item, amount)} />
+            )}
+          </>
+        )}
         isNameClickable={(item) =>
           equipmentLookup.findMatches(item.name).length > 0
         }

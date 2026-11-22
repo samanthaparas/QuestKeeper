@@ -14,6 +14,11 @@ function ClassSpellChoiceStep({
   initialSpells,
   onNext,
   onBack,
+  // The table this character is for doesn't allow some spells (see
+  // creationTable.js): isBlocked(spell) and the table's name. They're hidden
+  // unless already chosen, with a "Show them" link.
+  isBlocked = null,
+  blockedAt = "",
 }) {
   const isCaster = Boolean(characterClass?.spellcastingType);
 
@@ -47,6 +52,11 @@ function ClassSpellChoiceStep({
 
   const cantripOptions = classSpells.filter((spell) => spell.level === 0);
   const spellOptions = classSpells.filter((spell) => spell.level === 1);
+  const [showBlocked, setShowBlocked] = useState(false);
+  const blockedCount = isBlocked ? [...cantripOptions, ...spellOptions].filter((spell) => isBlocked(spell)).length : 0;
+  // What's on screen: not-allowed spells stay hidden unless asked for, or
+  // already picked (so a choice never vanishes).
+  const shown = (spell, chosen) => showBlocked || !isBlocked?.(spell) || chosen.includes(spell.index);
 
   const isComplete =
     chosenCantrips.length === spellCounts.cantrips &&
@@ -110,11 +120,26 @@ function ClassSpellChoiceStep({
             .
           </p>
 
+          {blockedCount > 0 && (
+            <p className="class-spell-choice-step__blocked" role="note">
+              {showBlocked
+                ? `Showing ${blockedCount} not allowed at ${blockedAt}.`
+                : `${blockedCount} not allowed at ${blockedAt} ${blockedCount === 1 ? "is" : "are"} hidden.`}{" "}
+              <button
+                type="button"
+                className="class-spell-choice-step__blocked-toggle"
+                onClick={() => setShowBlocked((open) => !open)}
+              >
+                {showBlocked ? "Hide them" : "Show them"}
+              </button>
+            </p>
+          )}
+
           <h3 className="class-spell-choice-step__section-title">
             Cantrips ({chosenCantrips.length}/{spellCounts.cantrips})
           </h3>
           <div className="class-spell-choice-step__checklist">
-            {cantripOptions.map((spell) => {
+            {cantripOptions.filter((spell) => shown(spell, chosenCantrips)).map((spell) => {
               const isAlreadyKnown = spell.index === knownCantrip?.index;
 
               return (
@@ -130,7 +155,9 @@ function ClassSpellChoiceStep({
                   note={
                     isAlreadyKnown
                       ? `Already known from ${knownCantripSource}`
-                      : undefined
+                      : isBlocked?.(spell)
+                        ? `Not allowed at ${blockedAt}`
+                        : undefined
                   }
                   onToggle={() =>
                     toggleChoice(
@@ -151,10 +178,11 @@ function ClassSpellChoiceStep({
                 Level 1 Spells ({chosenSpells.length}/{spellCounts.spells})
               </h3>
               <div className="class-spell-choice-step__checklist">
-                {spellOptions.map((spell) => (
+                {spellOptions.filter((spell) => shown(spell, chosenSpells)).map((spell) => (
                   <SpellChoiceOption
                     key={spell.index}
                     spell={spell}
+                    note={isBlocked?.(spell) ? `Not allowed at ${blockedAt}` : undefined}
                     checked={chosenSpells.includes(spell.index)}
                     disabled={
                       !chosenSpells.includes(spell.index) &&
