@@ -24,6 +24,33 @@ function renderPicker(props = {}) {
   );
 }
 
+describe("PickerStep: options the table doesn't allow", () => {
+  const races = () => Promise.resolve([{ index: "elf", name: "Elf" }, { index: "tiefling", name: "Tiefling" }]);
+
+  it("hides them, says how many, and shows them on request with a note on each", async () => {
+    renderPicker({
+      fetchList: races,
+      isBlocked: (item) => item.name === "Tiefling",
+      blockedAt: "Breakfast Club",
+    });
+    await screen.findByRole("heading", { name: "Elf" });
+    expect(screen.queryByRole("heading", { name: "Tiefling" })).not.toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent("1 not allowed at Breakfast Club is hidden.");
+
+    await userEvent.click(screen.getByRole("button", { name: "Show them" }));
+    expect(screen.getByRole("heading", { name: "Tiefling" })).toBeInTheDocument();
+    expect(screen.getByText("Not allowed at Breakfast Club")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Hide them" }));
+    expect(screen.queryByRole("heading", { name: "Tiefling" })).not.toBeInTheDocument();
+  });
+
+  it("says nothing when the table allows everything here", async () => {
+    renderPicker({ fetchList: races, isBlocked: () => false, blockedAt: "Breakfast Club" });
+    await screen.findByRole("heading", { name: "Tiefling" });
+    expect(screen.queryByText(/not allowed/)).not.toBeInTheDocument();
+  });
+});
+
 describe("PickerStep", () => {
   it("offers 'Make your own' when given a handler", async () => {
     const onMakeOwn = vi.fn();

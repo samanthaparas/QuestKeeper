@@ -39,6 +39,11 @@ function PickerStep({
   // Free (SRD/Open5e) entries can be copied into a homebrew form to make
   // your own version (gets the filled-in form values).
   onStartFrom,
+  // The table this character is for doesn't allow some options:
+  // isBlocked(item) says which, blockedAt is the table's name. They're
+  // hidden, with a "Show them" link; shown, each says it's not allowed.
+  isBlocked = null,
+  blockedAt = "",
 }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,6 +61,7 @@ function PickerStep({
   // "all" or one book name, picked with the SourceFilter buttons.
   const [sourceFilter, setSourceFilter] = useState("all");
   const [isDrafting, setIsDrafting] = useState(false);
+  const [showBlocked, setShowBlocked] = useState(false);
   // Shown beside the details, so a failed draft never hides the list.
   const [draftError, setDraftError] = useState("");
   // Book entries with no way to pick them here (like Artificer: homebrew
@@ -64,9 +70,10 @@ function PickerStep({
   const isReadOnly = (item) =>
     String(item?.index ?? "").startsWith("book_") && !onMakeHomebrewFrom;
   const isBookItem = (item) => String(item?.index ?? "").startsWith("book_");
-  const visibleItems = [...filterBySource(items, sourceFilter)].sort(
-    (a, b) => Number(isReadOnly(a)) - Number(isReadOnly(b)),
-  );
+  const blocked = isBlocked ? items.filter((item) => isBlocked(item)) : [];
+  const visibleItems = [...filterBySource(items, sourceFilter)]
+    .filter((item) => showBlocked || !isBlocked?.(item))
+    .sort((a, b) => Number(isReadOnly(a)) - Number(isReadOnly(b)));
   // When a list holds both pickable options and book ones that need a
   // homebrew version, they get their own labelled sections (nothing is
   // hidden), pickable ones first.
@@ -132,10 +139,12 @@ function PickerStep({
           source: item.source,
           sourceGroup: item.sourceGroup,
           preview: getCardPreview(category, item),
-          // Read-only entries say so right on the card.
-          tagline: isReadOnly(item)
-            ? "Read only: can't be picked yet"
-            : getTagline?.(item),
+          // Read-only and not-allowed entries say so right on the card.
+          tagline: isBlocked?.(item)
+            ? `Not allowed at ${blockedAt}`
+            : isReadOnly(item)
+              ? "Read only: can't be picked yet"
+              : getTagline?.(item),
           chip: showChips && !isReadOnly(item) ? (isBookItem(item) ? "Make it yours" : "Ready to pick") : null,
         }}
         isSelected={selectedIndex === item.index}
@@ -165,6 +174,18 @@ function PickerStep({
       {isLoading && <InlineLoading className="picker-step__status">Loading options...</InlineLoading>}
       {apiError && <p className="picker-step__error">{apiError}</p>}
       {showEmptyState && <p className="picker-step__status">{emptyMessage}</p>}
+
+      {/* What the table this character is for doesn't allow: hidden, one tap away. */}
+      {!isLoading && !apiError && blocked.length > 0 && (
+        <p className="picker-step__blocked" role="note">
+          {showBlocked
+            ? `Showing ${blocked.length} not allowed at ${blockedAt}.`
+            : `${blocked.length} not allowed at ${blockedAt} ${blocked.length === 1 ? "is" : "are"} hidden.`}{" "}
+          <button type="button" className="picker-step__blocked-toggle" onClick={() => setShowBlocked((shown) => !shown)}>
+            {showBlocked ? "Hide them" : "Show them"}
+          </button>
+        </p>
+      )}
 
       {!isLoading && !apiError && !showEmptyState && (
         <SourceFilter

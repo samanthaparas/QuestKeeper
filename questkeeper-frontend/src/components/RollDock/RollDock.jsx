@@ -2,6 +2,8 @@ import { useEffect, useId, useState } from "react";
 import { checkExtraDamage, describeDiceNeeded, diceNeeded, readExtra, rememberExtra } from "../../utils/attacks";
 import ExtraDamagePicker from "../ExtraDamagePicker/ExtraDamagePicker";
 import { useRoller } from "./rollContext";
+import { explainRoll } from "../../utils/rollMeaning";
+import { getBeginnerTips } from "../../utils/beginnerTips";
 import "./RollDock.css";
 
 const MODE_LABELS = { normal: "Normal", advantage: "Advantage", disadvantage: "Disadvantage" };
@@ -23,14 +25,18 @@ function RollDock() {
   const roller = useRoller();
   const rollId = roller?.lastRoll?.id;
   const dismiss = roller?.dismiss;
+  // The roll whose "What does this mean?" is open: it stays up while it's
+  // being read (until it's closed with × or a new roll replaces it).
+  const [readingId, setReadingId] = useState(null);
+  const isReading = Boolean(rollId) && readingId === rollId;
 
   useEffect(() => {
-    if (!rollId) return undefined;
+    if (!rollId || isReading) return undefined;
     const timer = setTimeout(dismiss, roller.lastRoll?.kind === "damage" ? SHOW_DAMAGE_MS : SHOW_MS);
     return () => clearTimeout(timer);
     // A new roll restarts the timer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rollId]);
+  }, [rollId, isReading]);
 
   if (!roller) return null;
   const { lastRoll, mode, setMode, tableName, share, setShare, conditionNotes = [] } = roller;
@@ -39,7 +45,14 @@ function RollDock() {
   return (
     <div className="roll-dock">
       {pending && <RealDiceEntry key={`${pending.label}-${pending.type}`} roller={roller} />}
-      {lastRoll && <RollResult key={lastRoll.id} roll={lastRoll} roller={roller} />}
+      {lastRoll && (
+        <RollResult
+          key={lastRoll.id}
+          roll={lastRoll}
+          roller={roller}
+          onReading={(open) => setReadingId(open ? lastRoll.id : null)}
+        />
+      )}
 
       <div className="roll-dock__bar" role="group" aria-label="Dice rolls">
         <span className="roll-dock__hint">
@@ -318,7 +331,8 @@ const STATUS_TEXT = {
   private: "Only you saw this",
 };
 
-function RollResult({ roll, roller }) {
+function RollResult({ roll, roller, onReading = () => {} }) {
+  const [showMeaning] = useState(getBeginnerTips);
   const flourish = roll.isNatural20 ? " roll-result--twenty" : roll.isNatural1 ? " roll-result--one" : "";
   const keptIndex = roll.rolls ? roll.rolls.indexOf(roll.natural) : -1;
 
@@ -371,6 +385,16 @@ function RollResult({ roll, roller }) {
         >
           Roll critical damage
         </button>
+      )}
+
+      {/* For new players: what this number is for (off with Beginner tips). */}
+      {showMeaning && (
+        <details className="roll-result__meaning" onToggle={(event) => onReading(event.currentTarget.open)}>
+          <summary>What does this mean?</summary>
+          {explainRoll(roll).map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </details>
       )}
 
       <p className="roll-result__status">{STATUS_TEXT[roll.status]}</p>

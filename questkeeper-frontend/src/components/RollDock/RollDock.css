@@ -570,3 +570,25 @@
     text-align: center;
   }
 }
+
+/* "What does this mean?" under a roll: closed by default, plain sentences. */
+.roll-result__meaning {
+  margin-top: 6px;
+  max-width: 34ch;
+  font-size: 13px;
+  text-align: left;
+}
+
+.roll-result__meaning > summary {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--qk-terracotta-hover);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.roll-result__meaning p {
+  margin: 4px 0 0;
+  line-height: 1.45;
+}

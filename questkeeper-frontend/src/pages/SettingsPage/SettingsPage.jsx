@@ -11,6 +11,7 @@ import {
 import { getMotionPreference, setMotionPreference } from "../../utils/motionPreference";
 import { getThemePreference, setThemePreference } from "../../utils/themePreference";
 import { getHeadsUpPreference, setHeadsUpPreference } from "../../utils/turnHeadsUp";
+import { getBeginnerTips, setBeginnerTips } from "../../utils/beginnerTips";
 import PageBanner from "../../components/PageBanner/PageBanner";
 import "./SettingsPage.css";
 
@@ -53,6 +54,7 @@ function SettingsPage() {
   const [motion, setMotion] = useState(getMotionPreference);
   const [theme, setTheme] = useState(getThemePreference);
   const [headsUp, setHeadsUp] = useState(getHeadsUpPreference);
+  const [tips, setTips] = useState(getBeginnerTips);
 
   const [email, setEmail] = useState("");
   const [emailState, saveEmail] = useSaveState();
@@ -65,6 +67,11 @@ function SettingsPage() {
     const value = event.target.checked ? "reduce" : "device";
     setMotion(value);
     setMotionPreference(value);
+  }
+
+  function handleTips(event) {
+    setTips(event.target.checked);
+    setBeginnerTips(event.target.checked);
   }
 
   function handleHeadsUp(event) {
@@ -156,6 +163,22 @@ function SettingsPage() {
             </label>
           ))}
         </div>
+      </section>
+
+      <section className="settings-page__card" aria-labelledby="settings-tips-heading">
+        <h2 className="settings-page__heading" id="settings-tips-heading">
+          Beginner tips
+        </h2>
+        <p className="settings-page__hint">
+          The extra explanations for new players: &ldquo;What does this mean?&rdquo; on a roll, &ldquo;New to
+          dice?&rdquo; on the sheet, &ldquo;How a fight works&rdquo;, the Tips cards in character creation and the
+          tip on your game page. Know the game well? Turn them off. Rules words still explain themselves when
+          you point at them. Saved on this device.
+        </p>
+        <label className="settings-page__switch">
+          <input type="checkbox" checked={tips} onChange={handleTips} />
+          <span>Show beginner tips</span>
+        </label>
       </section>
 
       <section className="settings-page__card" aria-labelledby="settings-headsup-heading">

@@ -70,6 +70,7 @@ import StillInCombat from "../../components/StillInCombat/StillInCombat";
 import MonsterConcentration from "../../components/MonsterConcentration/MonsterConcentration";
 import FightSummaryCard from "../../components/FightSummaryCard/FightSummaryCard";
 import FightHowTo from "../../components/FightHowTo/FightHowTo";
+import { getBeginnerTips } from "../../utils/beginnerTips";
 import { FIGHT_START_MESSAGE } from "../../utils/fightSummary";
 import { endFightWithSummary } from "../../utils/endFight";
 import { concentrationCheck, concentrationOf } from "../../utils/monsterConcentration";
@@ -1304,6 +1305,8 @@ function TablePage() {
   const [nudgeCooling, setNudgeCooling] = useState(false);
   // "Same creatures roll together" for the roll-all button (off: each rolls its own).
   const [rollTogether, setRollTogether] = useState(false);
+  // "Beginner tips" in Settings: off hides the player's one-line tip.
+  const [beginnerTips] = useState(getBeginnerTips);
   // After a fight ends: the summary the DM can post to the journal ("" = none).
   const [fightSummary, setFightSummary] = useState("");
   const nudgeTimer = useRef(null);
@@ -2189,7 +2192,7 @@ function TablePage() {
               </Button>
             </div>
           )}
-          {!isDm && playerTip && <p className="table-page__hint">{playerTip}</p>}
+          {!isDm && playerTip && beginnerTips && <p className="table-page__hint">{playerTip}</p>}
 
           {/* Listed first: these are who the table is waiting on. */}
           {waiting.length > 0 && (
