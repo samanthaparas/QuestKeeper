@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getBeginnerTips } from "../../utils/beginnerTips";
 import "./FightHowTo.css";
 
 // "How a fight works": a short, numbered guide on the Combat tab for anyone
@@ -35,8 +36,9 @@ function readSeen(side) {
   }
 }
 
-// side: "player" or "dm".
+// side: "player" or "dm". Hidden when "Beginner tips" is off in Settings.
 function FightHowTo({ side = "player" }) {
+  const [show] = useState(getBeginnerTips);
   const [seen, setSeen] = useState(() => readSeen(side));
   const [open, setOpen] = useState(() => !readSeen(side));
 
@@ -50,6 +52,7 @@ function FightHowTo({ side = "player" }) {
     }
   }
 
+  if (!show) return null;
   return (
     <details
       className="fight-howto"

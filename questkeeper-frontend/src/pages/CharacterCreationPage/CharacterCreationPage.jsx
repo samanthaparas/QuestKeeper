@@ -96,6 +96,16 @@ import {
   saveCreationDraft,
 } from "../../utils/creationDraft";
 import CreationTips from "../../components/CreationTips/CreationTips";
+import CreationTableChoice from "../../components/CreationTableChoice/CreationTableChoice";
+import { useAuth } from "../../context/useAuth";
+import { listMyTables } from "../../utils/tableStore";
+import {
+  chooseRulesTable,
+  isBlockedAt,
+  readSavedRulesTable,
+  saveRulesTable,
+  tablesWithRules,
+} from "../../utils/creationTable";
 import Button from "../../components/Button/Button";
 import PageBanner from "../../components/PageBanner/PageBanner";
 import HomebrewDialog from "../../components/HomebrewDialog/HomebrewDialog";
@@ -114,6 +124,30 @@ const mapClassToDetailPanelResult = mapClassToPanel;
 
 function CharacterCreationPage({ onStartFresh }) {
   const navigate = useNavigate();
+  const user = useAuth()?.user ?? null;
+  // "Making this character for: [table]": the player's tables whose DM marked
+  // some options as not allowed, and the one picked (those options are then
+  // hidden in the race, class and background pickers).
+  const [rulesTables, setRulesTables] = useState([]);
+  const [rulesTableId, setRulesTableId] = useState(null);
+  useEffect(() => {
+    let ignore = false;
+    listMyTables()
+      .then((tables) => {
+        if (ignore) return;
+        const withRules = tablesWithRules(tables, user?.id);
+        setRulesTables(withRules);
+        setRulesTableId((current) => current ?? chooseRulesTable(withRules, readSavedRulesTable())?.id ?? "");
+      })
+      .catch(() => {}); // Signed out or offline: creation works as before.
+    return () => {
+      ignore = true;
+    };
+  }, [user?.id]);
+  const rulesTable = rulesTables.find((table) => table.id === rulesTableId) ?? null;
+  // Props for a picker, so options the chosen table doesn't allow are hidden.
+  const blockedProps = (kind) =>
+    rulesTable ? { isBlocked: (item) => isBlockedAt(rulesTable, kind, item), blockedAt: rulesTable.name } : {};
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   // The character in progress, saved on this device as you go (see the
@@ -914,8 +948,20 @@ function CharacterCreationPage({ onStartFresh }) {
                 </div>
               )}
 
+              {["race", "subrace", "class", "background"].includes(step) && (
+                <CreationTableChoice
+                  tables={rulesTables}
+                  value={rulesTableId ?? ""}
+                  onChange={(value) => {
+                    setRulesTableId(value);
+                    saveRulesTable(value);
+                  }}
+                />
+              )}
+
               {step === "race" && (
                 <PickerStep
+                  {...blockedProps("race")}
                   key={`race-${pickerVersion}`}
                   onMakeOwn={() => setHomebrewRequest({ category: "race" })}
                   makeOwnLabel="Make your own race"
@@ -963,6 +1009,7 @@ function CharacterCreationPage({ onStartFresh }) {
 
               {step === "subrace" && (
                 <PickerStep
+                  {...blockedProps("race")}
                   key={`subrace-${pickerVersion}`}
                   onMakeOwn={() =>
                     setHomebrewRequest({
@@ -1019,6 +1066,7 @@ function CharacterCreationPage({ onStartFresh }) {
 
               {step === "class" && (
                 <PickerStep
+                  {...blockedProps("class")}
                   key={`class-${pickerVersion}`}
                   onMakeOwn={() => setHomebrewRequest({ category: "class" })}
                   makeOwnLabel="Make your own class"
@@ -1208,6 +1256,7 @@ function CharacterCreationPage({ onStartFresh }) {
 
               {step === "background" && (
                 <PickerStep
+                  {...blockedProps("background")}
                   key={`background-${pickerVersion}`}
                   onStartFrom={startHomebrewFrom}
                   onMakeOwn={() =>

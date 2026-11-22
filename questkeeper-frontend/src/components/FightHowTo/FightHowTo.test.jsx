@@ -33,4 +33,10 @@ describe("How a fight works", () => {
     expect(screen.getByText(/post a fight summary/)).toBeVisible();
     expect(screen.queryByText(/tap Attack next to a weapon/)).not.toBeInTheDocument();
   });
+
+  it("steps aside when Beginner tips are off in Settings", () => {
+    window.localStorage.setItem("qk-beginner-tips", "off");
+    const { container } = render(<FightHowTo side="player" />);
+    expect(container).toBeEmptyDOMElement();
+  });
 });

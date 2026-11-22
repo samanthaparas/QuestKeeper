@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import CreationTips from "./CreationTips";
+import { installFakeStorage } from "../../test/fakeStorage";
 
 describe("CreationTips", () => {
   it("shows a title and each tip", () => {
@@ -36,5 +37,12 @@ describe("CreationTips", () => {
       "src",
       "/creation-art/abilities.png",
     );
+  });
+
+  it("steps aside when Beginner tips are off in Settings", () => {
+    installFakeStorage();
+    window.localStorage.setItem("qk-beginner-tips", "off");
+    const { container } = render(<CreationTips title="Picking skills" tips={["Perception comes up a lot."]} />);
+    expect(container).toBeEmptyDOMElement();
   });
 });

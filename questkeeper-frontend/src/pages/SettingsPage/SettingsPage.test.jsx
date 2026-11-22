@@ -53,6 +53,18 @@ describe("SettingsPage", () => {
     expect(window.localStorage.getItem("qk-theme")).toBeNull();
   });
 
+  it("lets an experienced player turn beginner tips off, and remembers it on this device", async () => {
+    render(<SettingsPage />);
+    const box = screen.getByLabelText("Show beginner tips");
+    expect(box).toBeChecked();
+
+    await userEvent.click(box);
+    expect(window.localStorage.getItem("qk-beginner-tips")).toBe("off");
+
+    await userEvent.click(box);
+    expect(window.localStorage.getItem("qk-beginner-tips")).toBeNull();
+  });
+
   it("lets a player turn the turn heads-up off, and remembers it on this device", async () => {
     render(<SettingsPage />);
     const box = screen.getByLabelText("Give me a heads-up");

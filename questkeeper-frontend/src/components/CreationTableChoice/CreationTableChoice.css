@@ -1,0 +1,21 @@
+/* "Making this character for [table]": one quiet line above the pickers. */
+.creation-table-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.creation-table-choice label {
+  font-weight: 700;
+}
+
+.creation-table-choice select {
+  max-width: 100%;
+}
+
+.creation-table-choice__note {
+  color: var(--qk-text-muted);
+}

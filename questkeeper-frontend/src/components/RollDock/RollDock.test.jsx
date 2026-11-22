@@ -197,3 +197,36 @@ describe("RollDock: extra damage", () => {
   });
 });
 
+
+describe("RollDock: what a roll means", () => {
+  const stealth = { id: 7, kind: "check", label: "Stealth", total: 16, detail: "d20 11 + 5", status: "private", natural: 11, bonus: 5, mode: "normal", rolls: [11] };
+
+  it("explains the roll in plain words, closed until asked", async () => {
+    installFakeStorage();
+    renderDock({ lastRoll: stealth });
+
+    const meaning = screen.getByText("What does this mean?");
+    expect(screen.getByText(/compares 16 with a difficulty \(DC\)/)).not.toBeVisible();
+    await userEvent.click(meaning);
+    expect(screen.getByText(/compares 16 with a difficulty \(DC\)/)).toBeVisible();
+  });
+
+  it("stays up while the explanation is open, instead of hiding itself", async () => {
+    installFakeStorage();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const roller = renderDock({ lastRoll: stealth });
+
+    await user.click(screen.getByText("What does this mean?"));
+    vi.advanceTimersByTime(20000);
+    expect(roller.dismiss).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it("leaves it out when Beginner tips are off in Settings", () => {
+    installFakeStorage();
+    window.localStorage.setItem("qk-beginner-tips", "off");
+    renderDock({ lastRoll: stealth });
+    expect(screen.queryByText("What does this mean?")).not.toBeInTheDocument();
+  });
+});

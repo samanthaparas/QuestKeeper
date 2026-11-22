@@ -6,6 +6,7 @@ import { useTableTurn } from "../../hooks/useTableTurn";
 import { useSheetRolls } from "../../hooks/useSheetRolls";
 import RollButton from "../../components/RollDock/RollButton";
 import RollDock, { DiceHelp, DiceHelpBody } from "../../components/RollDock/RollDock";
+import { getBeginnerTips } from "../../utils/beginnerTips";
 import { RollContext } from "../../components/RollDock/rollContext";
 import ConditionBadges from "../../components/ConditionBadges/ConditionBadges";
 import DeathSaves from "../../components/DeathSaves/DeathSaves";
@@ -240,6 +241,9 @@ function CharacterSheetPage() {
   const [showSkillBonuses, setShowSkillBonuses] = useState(false);
   // The companion just added this visit, which opens ready to fill in.
   const [newCompanionId, setNewCompanionId] = useState(null);
+  // "Beginner tips" in Settings: off hides "New to dice?" (and the roll card's
+  // "What does this mean?").
+  const [beginnerTips] = useState(getBeginnerTips);
   // Below 1024px the skills list would sit under everything else, so a
   // Stats | Skills switch by the name flips the top of the sheet instead.
   const isCompact = useMediaQuery("(max-width: 1023px)");
@@ -2860,8 +2864,12 @@ function CharacterSheetPage() {
                   <section id="character-sheet-help" className="character-sheet__help-panel" aria-label="Help with the sheet">
                     <h2 className="character-sheet__help-title">What do these boxes mean?</h2>
                     {glossaryBody}
-                    <h2 className="character-sheet__help-title">New to dice? What does this mean?</h2>
-                    <DiceHelpBody />
+                    {beginnerTips && (
+                      <>
+                        <h2 className="character-sheet__help-title">New to dice? What does this mean?</h2>
+                        <DiceHelpBody />
+                      </>
+                    )}
                   </section>
                 )}
 
@@ -3305,7 +3313,7 @@ function CharacterSheetPage() {
                     <summary>What do these boxes mean?</summary>
                     {glossaryBody}
                   </details>
-                  <DiceHelp />
+                  {beginnerTips && <DiceHelp />}
                 </aside>
               )}
             </div>
