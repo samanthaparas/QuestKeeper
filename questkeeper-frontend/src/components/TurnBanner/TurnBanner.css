@@ -4,14 +4,11 @@
   z-index: 20;
 }
 
-/* One slim row: table, round, whose turn, who's next, End my turn and the
-   latest news all sit side by side, wrapping only when the screen is narrow. */
+/* One quiet row (see TurnBanner.jsx), then whatever needs you, then the
+   Details when open. */
 .turn-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 4px var(--qk-space-4);
+  display: grid;
+  gap: 4px;
   padding: 6px var(--qk-space-4);
   background-color: var(--qk-brass-soft);
   border-bottom: 2px solid var(--qk-brass);
@@ -160,5 +157,115 @@
 @keyframes turn-banner-soon {
   50% {
     filter: brightness(1.12);
+  }
+}
+
+/* Left: "Round 4 · Ash's turn". Middle: "You're next". Right: the buttons. */
+.turn-banner__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.turn-banner__where {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+}
+
+.turn-banner__dot {
+  opacity: 0.7;
+}
+
+.turn-banner__main > .turn-banner__ready {
+  margin-inline: auto;
+}
+
+.turn-banner__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 10px;
+  margin-left: auto;
+}
+
+/* Details ▾ */
+.turn-banner__details-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.turn-banner__details-toggle:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.turn-banner__away-row,
+.turn-banner__details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 16px;
+}
+
+.turn-banner__details[hidden] {
+  display: none;
+}
+
+.turn-banner__details {
+  padding-top: 4px;
+  border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  font-size: 14px;
+}
+
+.turn-banner__help {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.turn-banner__event {
+  justify-self: center;
+  text-align: center;
+}
+
+/* The news while Details is closed: read out, not shown. */
+.turn-banner__event--quiet {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .turn-banner {
+    padding: 6px 12px;
+  }
+
+  .turn-banner__main {
+    justify-content: center;
+  }
+
+  .turn-banner__actions {
+    justify-content: center;
+    margin-left: 0;
   }
 }

@@ -1,0 +1,7 @@
+/* The same copper fills as the weapon and inventory icons, from the theme's
+   own tokens. The outline follows the button's text colour. */
+.control-icon {
+  flex: 0 0 auto;
+  --qk-icon-metal: color-mix(in srgb, var(--qk-brass) 35%, var(--qk-surface));
+  --qk-icon-wood: color-mix(in srgb, var(--qk-brass) 60%, var(--qk-surface));
+}

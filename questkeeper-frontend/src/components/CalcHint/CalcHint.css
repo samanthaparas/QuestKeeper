@@ -1,0 +1,57 @@
+.calc-hint {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+/* Small, but a comfortable 24px target. */
+.calc-hint__button {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--qk-text-muted);
+  cursor: pointer;
+}
+
+.calc-hint__button:hover,
+.calc-hint__button[aria-expanded="true"] {
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-text);
+}
+
+.calc-hint__button:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 1px;
+}
+
+.calc-hint__note {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  z-index: 25;
+  width: max-content;
+  max-width: min(240px, 80vw);
+  padding: 8px 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  box-shadow: 0 6px 18px var(--qk-shadow);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.4;
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
+  transform: translateX(-50%);
+}
+
+.calc-hint__note[hidden] {
+  display: none;
+}

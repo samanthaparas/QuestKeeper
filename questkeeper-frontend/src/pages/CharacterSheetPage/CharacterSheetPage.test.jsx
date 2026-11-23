@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import CharacterSheetPage from "./CharacterSheetPage";
@@ -240,6 +240,10 @@ it("adds a bonus to all saves, like a Paladin's Aura of Protection", async () =>
   expect(saves[0]).toHaveTextContent("Save +0");
   await user.click(screen.getByRole("button", { name: /Edit stats/ }));
 
+  // The bonus sits in a small "Save bonus" disclosure, closed until opened.
+  const toggle = screen.getByRole("button", { name: /^Save bonus/ });
+  expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await user.click(toggle);
   const bonus = screen.getByLabelText("Bonus to all saves");
   await user.clear(bonus);
   await user.type(bonus, "3");
@@ -247,6 +251,9 @@ it("adds a bonus to all saves, like a Paladin's Aura of Protection", async () =>
   for (const save of screen.getAllByRole("button", { name: /^Roll \w+ save/ })) {
     expect(save).toHaveTextContent("Save +3");
   }
+  // A bonus that isn't 0 shows on the closed disclosure too, so it's never hidden.
+  await user.click(screen.getByRole("button", { name: /^All saves \+3/ }));
+  expect(screen.getByRole("button", { name: /^All saves \+3/ })).toHaveAttribute("aria-expanded", "false");
 });
 
 it("clicking a skill badge steps through proficient and expertise", async () => {
@@ -413,10 +420,11 @@ it("labels each attack value so phones can show it without the header row", asyn
   renderSheet(sheet);
 
   const row = (await screen.findByText("Javelin")).closest(".character-sheet__attacks-row");
-  expect(row.style.getPropertyValue("--item-columns")).toContain("minmax(220px, 1fr)");
+  // Weapon, To hit and Damage share one grid, so they line up.
+  expect(row.style.getPropertyValue("--item-columns")).toBe("minmax(0, 44fr) minmax(112px, 16fr) minmax(0, 40fr) auto");
   expect([...row.querySelectorAll(".character-sheet__attacks-cell")].map((cell) => cell.dataset.label)).toEqual([
-    "To Hit",
-    "Damage",
+    "To hit",
+    "Damage · Roll after a hit",
   ]);
   // The type sits beside the damage it belongs to.
   expect(row).toHaveTextContent("1d6+5 piercing");
@@ -560,8 +568,8 @@ describe("click to roll", () => {
   });
 });
 
-describe("spell slot and resource pips", () => {
-  it("spends a spell slot with a tap", async () => {
+describe("spell slot and resource trackers", () => {
+  it("spends a spell slot with −, and + gives it back", async () => {
     const user = userEvent.setup();
     const sheet = makeSheet({ class: { id: "wizard", name: "Wizard", spellcastingType: "prepared", spellcastingAbility: "intelligence" } });
     sheet.spellcasting = {
@@ -573,12 +581,14 @@ describe("spell slot and resource pips", () => {
     renderSheet(sheet);
 
     await user.click(await screen.findByRole("tab", { name: "Spells" }));
-    expect(screen.getByRole("group", { name: "Level 1 spell slots: 4 of 4 left" })).toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: /Spend one/ })[0]);
-    expect(screen.getByRole("group", { name: "Level 1 spell slots: 3 of 4 left" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Level 1: 4 of 4 spell slots remaining" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Spend one level 1 spell slot" }));
+    expect(screen.getByRole("group", { name: "Level 1: 3 of 4 spell slots remaining" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Restore one level 1 spell slot" }));
+    expect(screen.getByRole("group", { name: "Level 1: 4 of 4 spell slots remaining" })).toBeInTheDocument();
   });
 
-  it("uses pips for a few uses and a number box for a big pool", async () => {
+  it("uses − / + for every pool, keeping a big pool's typed box as its count", async () => {
     const user = userEvent.setup();
     const sheet = makeSheet();
     sheet.resources = [
@@ -588,8 +598,80 @@ describe("spell slot and resource pips", () => {
     renderSheet(sheet);
 
     await user.click(await screen.findByRole("tab", { name: "Resources" }));
-    expect(screen.getByRole("group", { name: "Channel Divinity: 2 of 2 left" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Lay on Hands left")).toHaveValue(60);
+    expect(screen.getByRole("group", { name: "Channel Divinity: 2 of 2 uses remaining" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Lay on Hands uses remaining")).toHaveValue(60);
+    // Quiet recovery words from the resource's own setting, in their column.
+    const channel = screen.getByRole("group", { name: /^Channel Divinity:/ }).closest("li");
+    expect(within(channel).getByText("Short rest")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Spend one use from Lay on Hands" }));
+    expect(screen.getByLabelText("Lay on Hands uses remaining")).toHaveValue(59);
+  });
+});
+
+describe("an item's charges, the same on Inventory and Resources", () => {
+  it("spends from Inventory with one save per press, and Resources shows the same count", async () => {
+    installFakeStorage();
+    saveCharacter.mockClear();
+    const user = userEvent.setup();
+    const sheet = makeSheet();
+    sheet.equipment = [{ index: "staff", name: "Staff of Flowers", quantity: 1 }];
+    sheet.resources = [
+      { id: "c1", name: "Staff of Flowers", max: 10, current: 10, resetOn: "dawn", regain: "1d6+4", itemIndex: "staff", notes: "" },
+    ];
+    renderSheet(sheet);
+
+    await user.click(await screen.findByRole("tab", { name: "Inventory" }));
+    expect(screen.getByRole("group", { name: "Staff of Flowers: 10 of 10 charges remaining" })).toBeInTheDocument();
+    expect(screen.getByText("Recovers at dawn · +1d6+4")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Restore one charge to Staff of Flowers" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Spend one charge from Staff of Flowers" }));
+    await user.click(screen.getByRole("button", { name: "Spend one charge from Staff of Flowers" }));
+    expect(screen.getByRole("group", { name: "Staff of Flowers: 8 of 10 charges remaining" })).toBeInTheDocument();
+    await waitFor(() => expect(saveCharacter.mock.calls.at(-1)[0].resources[0].current).toBe(8));
+
+    await user.click(screen.getByRole("tab", { name: "Resources" }));
+    expect(screen.getByRole("group", { name: "Staff of Flowers: 8 of 10 charges remaining" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Restore one charge to Staff of Flowers" }));
+    await user.click(screen.getByRole("tab", { name: "Inventory" }));
+    expect(screen.getByRole("group", { name: "Staff of Flowers: 9 of 10 charges remaining" })).toBeInTheDocument();
+  });
+});
+
+describe("Resources: the Recovery column", () => {
+  it("shows View item for an item's charges, From only when the names differ, and Depleted outside the tracker", async () => {
+    installFakeStorage();
+    const user = userEvent.setup();
+    const sheet = makeSheet();
+    sheet.equipment = [
+      { index: "staff", name: "Staff of Flowers", quantity: 1 },
+      { index: "wand", name: "Wand of Magic Missiles", quantity: 1 },
+    ];
+    sheet.resources = [
+      { id: "c1", name: "Staff of Flowers", max: 10, current: 7, resetOn: "dawn", regain: "1d6+4", itemIndex: "staff", notes: "" },
+      { id: "c2", name: "Missile charges", max: 7, current: 0, resetOn: "dawn", regain: "1d6+1", itemIndex: "wand", notes: "" },
+      { id: "r1", name: "Second Wind", max: 1, current: 1, resetOn: "short", notes: "" },
+    ];
+    renderSheet(sheet);
+    await user.click(await screen.findByRole("tab", { name: "Resources" }));
+
+    const rowOf = (name) => screen.getByRole("group", { name: new RegExp(`^${name}:`) }).closest("li");
+    // Same name: no extra source line, just View item.
+    expect(within(rowOf("Staff of Flowers")).queryByText(/^From /)).toBeNull();
+    expect(within(rowOf("Staff of Flowers")).getByText("Dawn · +1d6+4")).toBeInTheDocument();
+    // Different name: says where the charges come from.
+    expect(within(rowOf("Missile charges")).getByText("From Wand of Magic Missiles")).toBeInTheDocument();
+    // Depleted is in the Recovery column, not inside the tracker.
+    const tracker = screen.getByRole("group", { name: "Missile charges: 0 of 7 charges remaining" });
+    expect(within(tracker).queryByText("Depleted")).toBeNull();
+    expect(within(rowOf("Missile charges")).getByText("Depleted")).toBeInTheDocument();
+    // Nothing extra for a resource with no item and nothing special.
+    expect(within(rowOf("Second Wind")).queryByRole("button", { name: /View/ })).toBeNull();
+    expect(within(rowOf("Second Wind")).queryByText("Depleted")).toBeNull();
+
+    // View item opens the Inventory tab at that item.
+    await user.click(screen.getByRole("button", { name: "View Staff of Flowers in inventory" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Manage Staff of Flowers" })).toHaveFocus());
+    expect(screen.getByRole("tab", { name: "Inventory" })).toHaveAttribute("aria-selected", "true");
   });
 });
 
@@ -946,16 +1028,19 @@ describe("armor look-up when the rules server is slow", () => {
     renderSheet(sheet);
 
     await screen.findByRole("tab", { name: "Inventory" });
-    await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(screen.getByRole("tab", { name: "Inventory" }));
-    // Not recognised as armor yet...
-    expect(screen.queryByRole("button", { name: "Wearing Leather Armor" })).not.toBeInTheDocument();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    await user.click(screen.getByRole("tab", { name: "Inventory" }));
+    // Its controls are under Manage. Not recognised as armor yet...
+    await user.click(screen.getByRole("button", { name: "Manage Leather Armor" }));
+    expect(screen.queryByRole("button", { name: "Wear Leather Armor" })).not.toBeInTheDocument();
 
-    // ...but once the server is awake, the next retry finds it and the shield button appears.
+    // ...but once the server is awake, the next retry finds it and Wear appears
+    // (Manage stays open on the same item).
     asleep = false;
     await act(async () => {
       await vi.advanceTimersByTimeAsync(RETRY_DELAYS[0] + 100);
     });
-    expect(await screen.findByRole("button", { name: "Wearing Leather Armor" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Wear Leather Armor" })).toBeInTheDocument();
   });
 });
 
@@ -1187,9 +1272,9 @@ describe("compact Spells tab", () => {
 
     expect(screen.getByText("Save DC")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Spell attack/ })).toBeInTheDocument();
-    // "1st ●●●○ 3/4": the count is short, the screen reader label is full.
-    expect(screen.getByRole("group", { name: "Level 1 spell slots: 3 of 4 left" })).toBeInTheDocument();
-    expect(screen.getByText("3/4")).toBeInTheDocument();
+    // "1st − 3 / 4 +": the count is short, the screen reader label is full.
+    const slotOne = screen.getByRole("group", { name: "Level 1: 3 of 4 spell slots remaining" });
+    expect(slotOne).toHaveTextContent("3 / 4");
     expect(screen.queryByText("Max")).toBeNull();
     expect(screen.queryByRole("button", { name: /Hide level/ })).toBeNull();
 
@@ -1199,7 +1284,7 @@ describe("compact Spells tab", () => {
     expect(screen.queryByRole("group", { name: /Level 2 spell slots/ })).toBeNull();
     // Hidden levels can be brought back while editing.
     await user.click(screen.getByRole("button", { name: "+ Level 2" }));
-    expect(screen.getByRole("group", { name: "Level 2 spell slots: 2 of 2 left" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Level 2: 2 of 2 spell slots remaining" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("button", { name: "+ Level 2" })).toBeNull();
   });
@@ -1232,7 +1317,8 @@ describe("calm spell list", () => {
       "Lv 1",
       "Lv 2",
     ]);
-    // Each name starts with its ♡ (tap to pin it to the top), left out here.
+    // Each name starts with its heart (tap to pin it to the top), a drawing
+    // with no text; older hearts were the ♡ character, left out here.
     expect(rows.map((row) => row.querySelector(".character-sheet__resource-name").textContent.replace(/^[♡♥]/, ""))).toEqual([
       "Druidcraft",
       "absorb Elements",
@@ -1377,9 +1463,9 @@ describe("Primal Awareness free casts on an older sheet", () => {
     await user.click(within(box).getByRole("button", { name: "Update" }));
 
     await user.click(screen.getByRole("tab", { name: "Resources" }));
-    expect(screen.getByRole("group", { name: "Speak with Animals (free cast): 0 of 1 left" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Beast Sense (free cast): 1 of 1 left" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Speak with Plants (free cast): 1 of 1 left" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Speak with Animals (free cast): 0 of 1 use remaining" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Beast Sense (free cast): 1 of 1 use remaining" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Speak with Plants (free cast): 1 of 1 use remaining" })).toBeInTheDocument();
     expect(screen.queryByText("Primal Awareness free casts")).toBeNull();
   });
 });
@@ -1483,7 +1569,8 @@ describe("sort and show on the sheet's lists", () => {
 
     // The default: by level, then A to Z.
     // Each row starts with the level, then the components, then the name.
-    expect(rowNames(list())[0]).toMatch(/^Lv 1V, S, M♡Goodberry/);
+    // (The favourite heart before the name is a drawing, so it adds no text.)
+    expect(rowNames(list())[0]).toMatch(/^Lv 1V, S, MGoodberry/);
     expect(screen.getAllByText("Conc", { selector: "span" })).toHaveLength(2);
     expect(screen.getByText("Ritual", { selector: "span" })).toBeInTheDocument();
 
@@ -1593,7 +1680,7 @@ describe("Elemental Weapon on the sheet", () => {
     await user.click(screen.getByRole("button", { name: "Cast Elemental Weapon (level 3 slot)" }));
 
     // The slot is spent and concentration is on it.
-    expect(screen.getByRole("group", { name: "Level 3 spell slots: 2 of 3 left" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Level 3: 2 of 3 spell slots remaining" })).toBeInTheDocument();
     expect(screen.getByText(/Concentrating/).closest(".concentration__badge")).toHaveTextContent("Elemental Weapon");
     expect(
       screen.getAllByRole("status").some((el) => /Elemental Weapon \(fire\) on The Darling Deceiver/.test(el.textContent)),
@@ -1602,7 +1689,7 @@ describe("Elemental Weapon on the sheet", () => {
     // Actions: +10, the weapon's damage, and a separate 1d4 fire.
     await user.click(screen.getByRole("tab", { name: "Actions" }));
     expect(attackRow()).toHaveTextContent("✨ +10");
-    expect(attackRow()).toHaveTextContent("1d4+5 piercing · 1d4 fire");
+    expect(attackRow()).toHaveTextContent("1d4+5 piercing +1d4 fire");
 
     // Saved with the effect, and with the weapon's own numbers unchanged.
     await vi.waitFor(() => expect(lastSaved().activeEffects).toHaveLength(1), { timeout: 2000 });
@@ -1823,5 +1910,46 @@ describe("the open tab is part of the address", () => {
     const sheet = makeSheet();
     render(<SheetAt url={`/characters/${sheet.id}?tab=not-a-tab`} sheet={sheet} />);
     expect(await screen.findByRole("tab", { name: /Actions/, selected: true })).toBeInTheDocument();
+  });
+});
+
+describe("Companions on the Actions tab", () => {
+  const companionsSaved = () => (saveCharacter.mock.calls.at(-1)?.[0]?.companions ?? []).length;
+
+  it("cancelling Add companion saves nothing; adding saves exactly one card", async () => {
+    const user = userEvent.setup();
+    saveCharacter.mockClear();
+    renderSheet(makeSheet());
+
+    const companions = await screen.findByRole("region", { name: /Companions/ });
+    expect(within(companions).getByText(/can have its own card here/)).toBeInTheDocument();
+
+    await user.click(within(companions).getByRole("button", { name: "+ Add companion" }));
+    await user.click(screen.getByRole("button", { name: /Pet, mount/ }));
+    await user.type(within(screen.getByRole("form", { name: "Add a pet, mount or familiar" })).getByLabelText("Name"), "Victory");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(saveCharacter).not.toHaveBeenCalled();
+    expect(screen.queryByRole("region", { name: "Victory, your companion" })).toBeNull();
+
+    await user.click(within(companions).getByRole("button", { name: "+ Add companion" }));
+    await user.click(screen.getByRole("button", { name: /Pet, mount/ }));
+    const form = screen.getByRole("form", { name: "Add a pet, mount or familiar" });
+    await user.type(within(form).getByLabelText("Name"), "Victory");
+    await user.type(within(form).getByLabelText("Max HP"), "11");
+    await user.click(within(form).getByRole("button", { name: "Add companion" }));
+
+    expect(await screen.findByRole("region", { name: "Victory, your companion" })).toBeInTheDocument();
+    await waitFor(() => expect(companionsSaved()).toBe(1));
+    expect(screen.getByLabelText("Victory's current HP")).toHaveValue(11);
+  });
+
+  it("offers a Jump to companions link by the attacks once there's a companion", async () => {
+    const sheet = makeSheet();
+    sheet.attacks = [{ index: "a1", name: "Javelin", toHit: 5, damage: "1d6+3", damageType: "Piercing", notes: "" }];
+    sheet.companions = [{ id: "c1", name: "Victory", hitPoints: { current: 11, max: 11 }, attacks: [] }];
+    const user = userEvent.setup();
+    renderSheet(sheet);
+    await user.click(await screen.findByRole("button", { name: "Jump to companions" }));
+    expect(screen.getByRole("heading", { name: "Companions" })).toHaveFocus();
   });
 });

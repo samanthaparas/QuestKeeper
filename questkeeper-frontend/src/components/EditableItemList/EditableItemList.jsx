@@ -10,6 +10,7 @@ import { Fragment, useState, useId } from "react";
 import RulesText from "../RulesText/RulesText";
 import "../../pages/CharacterSheetPage/CharacterSheetPage.css";
 import Button from "../Button/Button";
+import ControlIcon from "../ControlIcon/ControlIcon";
 
 function formatNotesLines(notes) {
   return (notes ?? "")
@@ -203,6 +204,9 @@ function EditableItemList({
   footer = null,
   // Small controls shown under an item's name (see renderPrimaryCell).
   primaryExtra = null,
+  // A small decorative picture right before an item's name (a weapon's
+  // icon on the Actions tab), or null for none.
+  primaryIcon = null,
   // What Remove asks before removing (inventory weapons say their attacks
   // stay); the plain "can't be undone" question if not given.
   removeConfirmText = null,
@@ -213,6 +217,17 @@ function EditableItemList({
   // Equipment: the pencil and trash buttons stay hidden (rows stay one calm
   // line on a phone) until "Edit" is tapped beside Add.
   hasEditToggle = false,
+  // The inventory: no pencil and trash on the rows at all. Instead each
+  // row's own content (extraRowContent) gets startEdit() and
+  // requestRemove() and offers Edit and Delete itself (under Manage).
+  // Other lists keep their pencil and trash as before.
+  rowActionsInContent = false,
+  // Called with the item's id when its inline editor closes (Save or
+  // Cancel), so the list can put focus back where the player was.
+  onEditClose = null,
+  // Asks before throwing away typed changes (in the inline editor or the
+  // Add form) when another edit or Add is started.
+  protectUnsavedEdits = false,
   // The toggle's words ("Edit spells"); "Edit" if not given.
   editToggleLabel = "Edit",
   // Something before the name on each row (a spell's level pill).
@@ -220,12 +235,17 @@ function EditableItemList({
   // Sort and Show (filter) choices above the list. The first of each is the
   // default. sortOptions: [{ key, label, compare(a, b), groupOf(item) }]:
   // compare orders the rows (ties go A to Z by name), and groupOf, when
-  // given, puts a small heading over each group ("Long rest"). Without
+  // given, puts a small heading over each group ("Long rest"), with
+  // groupIconOf(item)'s picture before it when given. Without
   // compare the rows stay in the order given. filterOptions: [{ key,
   // label, match(item) }], after a built-in "All"; ones nothing matches
   // aren't offered. viewKey remembers the choices for this list.
   sortOptions = null,
   filterOptions = null,
+  // A small decorative picture for the chosen Show filter, beside the
+  // select (never inside it: native options can't show pictures
+  // everywhere). filterIconFor(key) gets "" for All; null for none.
+  filterIconFor = null,
   viewKey = null,
   // Favourites (spells and inventory): isFavorite(item) and
   // onToggleFavorite(item). When given, each row has a ♡ to favourite it,
@@ -233,7 +253,36 @@ function EditableItemList({
   // and Show gets a "♥ Favourites" choice.
   isFavorite = null,
   onToggleFavorite = null,
+  // Table layout (lists with columns): the name column's and the trailing
+  // buttons column's widths, so a list can share one aligned grid (the
+  // attacks: Weapon, To hit, Damage). The defaults are the older layout.
+  primaryWidth = "minmax(220px, 1fr)",
+  actionsWidth = "140px",
+  // One quiet line under the heading ("Roll to hit first..."), shown only
+  // when there's something on the list.
+  intro = null,
+  // Something just above the rows (the Resources list's quiet column
+  // headings), shown only while there are rows to show.
+  listHeader = null,
+  // The heading's level: 2 for a tab's own list, 3 inside a card (a
+  // companion's attacks sit under its name).
+  headingLevel = 2,
+  // An extra class on the section (the attacks restyle their table).
+  sectionClassName = "",
+  // The words on the notes toggle under a name; the attacks use the
+  // shorter "Details" so it fits beside "How it adds up".
+  detailsLabels = { show: "▸ Show details", hide: "▾ Hide details" },
+  // A compact header (the attacks): something right after the title (a
+  // "Companions ↓" jump), something at the end of the Sort/Show row (a
+  // "How attacks work" disclosure), and what the Edit and Add buttons show
+  // (a pencil with "Edit"; "+ Add weapon"). The Edit button keeps
+  // editToggleLabel ("Edit attacks") as its name for screen readers.
+  headerExtra = null,
+  controlsExtra = null,
+  editToggleContent = null,
+  addButtonContent = null,
 }) {
+  const Heading = `h${headingLevel}`;
   const primaryField = fields[0];
   const textareaField = fields.find((field) => field.type === "textarea");
   // A "custom" field draws its own editor (a weapon's extra damage rows, a
@@ -247,7 +296,9 @@ function EditableItemList({
   const [values, setValues] = useState(() => createEmptyValues(fields));
   const [expandedIds, setExpandedIds] = useState(() => new Set());
   const [isEditMode, setIsEditMode] = useState(false);
-  const showRowButtons = !hasEditToggle || isEditMode;
+  const showRowButtons = (!hasEditToggle || isEditMode) && !rowActionsInContent;
+  // The form's values when it opened, to tell whether anything was typed.
+  const [formStart, setFormStart] = useState(null);
 
   const [view, setView] = useState(() => readListView(viewKey));
   function chooseView(changes) {
@@ -278,20 +329,58 @@ function EditableItemList({
     // Without the Sort's own groups, the rest still gets a heading of its own.
     if (!sort?.groupOf && unpinned.length > 0) groupHeadings.set(getItemId(unpinned[0]), "Everything else");
   }
+  // A small decorative picture before a group's heading, when the Sort
+  // gives one (groupIconOf: the inventory's category icons). Only a
+  // picture: the heading's words and the grouping stay the same.
+  const groupIcons = new Map();
   if (sort?.groupOf) {
     let last = null;
     unpinned.forEach((item) => {
       const group = sort.groupOf(item);
-      if (group !== last) groupHeadings.set(getItemId(item), group);
+      if (group !== last) {
+        groupHeadings.set(getItemId(item), group);
+        if (sort.groupIconOf) groupIcons.set(getItemId(item), sort.groupIconOf(item));
+      }
       last = group;
     });
   }
+  // A heading's words, with its picture before them when it has one.
+  const headingContent = (id) =>
+    groupIcons.get(id) ? (
+      <>
+        {groupIcons.get(id)}
+        <span>{groupHeadings.get(id)}</span>
+      </>
+    ) : (
+      groupHeadings.get(id)
+    );
   const hasControls = items.length > 1 && ((sortOptions?.length ?? 0) > 1 || availableFilters.length > 0);
 
-  function resetForm() {
+  // notify: an inline edit was saved or cancelled (tell onEditClose).
+  function resetForm(options) {
+    const closing = options?.notify === true ? editingId : null;
     setValues(createEmptyValues(fields));
     setEditingId(null);
     setIsAdding(false);
+    setFormStart(null);
+    if (closing && onEditClose) onEditClose(closing);
+  }
+
+  // Before starting another edit or Add: OK to throw away what's typed?
+  // Asks only when something was actually changed (protectUnsavedEdits).
+  function confirmDiscard() {
+    if (!protectUnsavedEdits || (!editingId && !isAdding)) return true;
+    if (formStart && JSON.stringify(values) === JSON.stringify(formStart)) return true;
+    const what = editingId ? `your changes to "${getLabel(items.find((entry) => getItemId(entry) === editingId) ?? {})}"` : "the item you were adding";
+    return window.confirm(`Discard ${what}? They haven't been saved.`);
+  }
+
+  // Edit from a row's own content (rowActionsInContent).
+  function startEdit(item) {
+    if (getItemId(item) === editingId) return true;
+    if (!confirmDiscard()) return false;
+    handleEdit(item);
+    return true;
   }
 
   function handleFieldChange(key, value) {
@@ -319,7 +408,7 @@ function EditableItemList({
       onAdd(values);
     }
 
-    resetForm();
+    resetForm({ notify: true });
   }
 
   function handleEdit(item) {
@@ -330,6 +419,7 @@ function EditableItemList({
       return acc;
     }, {});
     setValues(nextValues);
+    setFormStart(nextValues);
     setEditingId(getItemId(item));
     // Editing happens in the item's own row (see renderForm), so the
     // add form at the top stays closed.
@@ -346,7 +436,9 @@ function EditableItemList({
     const question = removeConfirmText?.(item) ?? `Remove "${getLabel(item)}"? This can't be undone.`;
     if (window.confirm(question)) {
       onRemove(id);
+      return true;
     }
+    return false;
   }
 
   function handleUnlockClick(item) {
@@ -439,7 +531,7 @@ function EditableItemList({
         {/* Editing in place: Save and Cancel sit right under the fields. */}
         {inline && (
           <div className="character-sheet__inline-form-actions">
-            <Button variant="secondary" onClick={resetForm}>
+            <Button variant="secondary" onClick={() => resetForm({ notify: true })}>
               Cancel
             </Button>
             <Button type="submit">Save Changes</Button>
@@ -453,6 +545,19 @@ function EditableItemList({
     const isExpanded = expandedIds.has(id);
 
     const starred = Boolean(isFavorite?.(item));
+    const icon = primaryIcon?.(item) ?? null;
+    const label = isNameClickable?.(item) ? (
+      <button
+        type="button"
+        className="character-sheet__srd-link character-sheet__item-label"
+        aria-haspopup="dialog"
+        onClick={() => onNameClick(item)}
+      >
+        {getLabel(item)}
+      </button>
+    ) : (
+      <span className="character-sheet__item-label">{getLabel(item)}</span>
+    );
     return (
       <span className="character-sheet__resource-name">
         {onToggleFavorite && (
@@ -464,28 +569,29 @@ function EditableItemList({
             title={starred ? "Unpin from the top" : "Pin to the top as a favourite"}
             onClick={() => onToggleFavorite(item)}
           >
-            {starred ? "♥" : "♡"}
+            {/* A drawn heart (the same on every device): an outline, filled
+                in when it's a favourite. */}
+            <ControlIcon name="favorite" filled={starred} />
           </button>
         )}
-        {isNameClickable?.(item) ? (
-          <button
-            type="button"
-            className="character-sheet__srd-link"
-            aria-haspopup="dialog"
-            onClick={() => onNameClick(item)}
-          >
-            {getLabel(item)}
-          </button>
+        {/* The name, with its picture before it when there is one. The two
+            stay on one line and a long name wraps beside the picture. */}
+        {icon ? (
+          <span className="character-sheet__item-title">
+            {icon}
+            {label}
+          </span>
         ) : (
-          getLabel(item)
+          label
         )}
         {notes && (
           <button
             type="button"
             className="character-sheet__details-toggle"
+            aria-expanded={isExpanded}
             onClick={() => toggleExpanded(id)}
           >
-            {isExpanded ? "▾ Hide details" : "▸ Show details"}
+            {isExpanded ? detailsLabels.hide : detailsLabels.show}
           </button>
         )}
         {/* A line of small controls under the name (an attack's
@@ -509,14 +615,17 @@ function EditableItemList({
   // stylesheet can still re-flow the rows on phones.
   const columnStyle = columns
     ? {
-        "--item-columns": `minmax(220px, 1fr) ${columns.map((col) => col.width).join(" ")} 140px`,
+        "--item-columns": `${primaryWidth} ${columns.map((col) => col.width).join(" ")} ${actionsWidth}`,
       }
     : undefined;
 
   return (
-    <section className="character-sheet__section">
+    <section className={`character-sheet__section ${sectionClassName}`.trim()}>
       <div className="character-sheet__section-header-row">
-        <h2 className="character-sheet__section-title">{title}</h2>
+        <span className="character-sheet__section-heading-group">
+          <Heading className="character-sheet__section-title">{title}</Heading>
+          {headerExtra}
+        </span>
         <div className="character-sheet__section-header-actions">
           {isAdding && (
             <Button variant="secondary" onClick={resetForm}>
@@ -527,9 +636,10 @@ function EditableItemList({
             <Button
               variant="secondary"
               aria-pressed={isEditMode}
+              aria-label={!isEditMode && editToggleContent ? editToggleLabel : undefined}
               onClick={() => setIsEditMode((on) => !on)}
             >
-              {isEditMode ? "Done" : editToggleLabel}
+              {isEditMode ? "Done" : (editToggleContent ?? editToggleLabel)}
             </Button>
           )}
           {isAdding ? (
@@ -539,22 +649,26 @@ function EditableItemList({
           ) : (
             <Button
               onClick={() => {
+                if (!confirmDiscard()) return;
                 resetForm();
                 setIsAdding(true);
+                setFormStart(createEmptyValues(fields));
               }}
             >
-              {addButtonLabel}
+              {addButtonContent ?? addButtonLabel}
             </Button>
           )}
         </div>
       </div>
 
+      {intro && items.length > 0 && <p className="character-sheet__list-intro">{intro}</p>}
+
       {/* Adding a new one: the form opens at the top, by the Add button. */}
       {isAdding && renderForm()}
 
-      {hasControls && (
+      {(hasControls || (controlsExtra && items.length > 0)) && (
         <div className="character-sheet__list-controls">
-          {(sortOptions?.length ?? 0) > 1 && (
+          {hasControls && (sortOptions?.length ?? 0) > 1 && (
             <label className="character-sheet__list-control">
               Sort
               <select
@@ -570,9 +684,10 @@ function EditableItemList({
               </select>
             </label>
           )}
-          {availableFilters.length > 0 && (
+          {hasControls && availableFilters.length > 0 && (
             <label className="character-sheet__list-control">
               Show
+              {filterIconFor?.(filter?.key ?? "")}
               <select
                 aria-label={`Show ${title}`}
                 value={filter?.key ?? ""}
@@ -592,17 +707,25 @@ function EditableItemList({
               {shownItems.length} of {items.length}
             </span>
           )}
+          {controlsExtra}
         </div>
       )}
 
       {items.length === 0 ? (
         <p className="character-sheet__empty-prompt">{emptyText}</p>
       ) : columns ? (
-        <div className="character-sheet__attacks-table">
+        // The columns are on the table too, so a list can line every row up
+        // on one shared grid (CSS subgrid; see the attacks' styles).
+        <div className="character-sheet__attacks-table" style={columnStyle}>
           <div className="character-sheet__attacks-header" style={columnStyle}>
             <span>{primaryField.label ?? ""}</span>
             {columns.map((col) => (
-              <span key={col.key}>{col.label}</span>
+              // A column can carry a small hint under its heading ("Roll
+              // after a hit").
+              <span key={col.key}>
+                {col.label}
+                {col.hint && <span className="character-sheet__column-hint">{col.hint}</span>}
+              </span>
             ))}
             <span></span>
           </div>
@@ -616,14 +739,14 @@ function EditableItemList({
             if (id === editingId) {
               return (
                 <Fragment key={id}>
-                  {heading && <p className="character-sheet__list-group">{heading}</p>}
+                  {heading && <p className="character-sheet__list-group">{headingContent(id)}</p>}
                   <div className="character-sheet__inline-edit">{renderForm({ inline: true })}</div>
                 </Fragment>
               );
             }
             return (
               <Fragment key={id}>
-              {heading && <p className="character-sheet__list-group">{heading}</p>}
+              {heading && <p className="character-sheet__list-group">{headingContent(id)}</p>}
               {/* With something open under it (the attack panel), the row and
                   the panel share one box: the row loses its bottom edge and
                   the panel carries on from it. */}
@@ -635,7 +758,7 @@ function EditableItemList({
                 {columns.map((col) => (
                   <span
                     className="character-sheet__attacks-cell"
-                    data-label={col.label}
+                    data-label={col.hint ? `${col.label} · ${col.hint}` : col.label}
                     key={col.key}
                   >
                     {col.format ? col.format(item) : item[col.key]}
@@ -668,6 +791,8 @@ function EditableItemList({
           })}
         </div>
       ) : (
+        <>
+        {listHeader && shownItems.length > 0 && listHeader}
         <ul className="character-sheet__resource-list">
           {shownItems.map((item) => {
             const id = getItemId(item);
@@ -675,7 +800,7 @@ function EditableItemList({
             const heading = groupHeadings.get(id);
             const headingRow = heading && (
               <li className="character-sheet__list-group">
-                {heading}
+                {headingContent(id)}
               </li>
             );
 
@@ -696,7 +821,12 @@ function EditableItemList({
                 {leadingContent && leadingContent(item)}
                 {renderPrimaryCell(item, id, notes)}
 
-                {extraRowContent && extraRowContent(item, { isEditMode })}
+                {extraRowContent &&
+                  extraRowContent(item, {
+                    isEditMode,
+                    startEdit: () => startEdit(item),
+                    requestRemove: () => handleRemoveClick(item, id),
+                  })}
 
                 {/* With an Edit toggle, Lock/Unlock, the pencil and the trash
                     only show while editing, so rows stay calm in play. */}
@@ -743,6 +873,7 @@ function EditableItemList({
             );
           })}
         </ul>
+        </>
       )}
 
       {/* Show picked something nothing on the list is right now. */}

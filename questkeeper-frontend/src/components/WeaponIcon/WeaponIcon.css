@@ -1,0 +1,11 @@
+/* The weapon picture beside a weapon's name. Its colours come from the
+   theme's own tokens, so it changes with light, dark and high contrast:
+   the outline in the darker terracotta, the blade in a pale brass and the
+   handle in a deeper brass, each mixed with the card colour (so in dark
+   mode the fills go darker and the outline brighter, as in the pack). */
+.weapon-icon {
+  flex: 0 0 auto;
+  color: var(--qk-terracotta-hover);
+  --qk-icon-metal: color-mix(in srgb, var(--qk-brass) 35%, var(--qk-surface));
+  --qk-icon-wood: color-mix(in srgb, var(--qk-brass) 60%, var(--qk-surface));
+}

@@ -134,8 +134,26 @@ describe("CharacterSheetSpellsTab: favourite spells", () => {
     expect(favourites.compareDocumentPosition(haste) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(haste.compareDocumentPosition(fireBolt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(haste).toHaveAttribute("aria-pressed", "true");
+    // The heart is a drawing shared with the inventory: filled when pinned,
+    // an outline when not, hidden from screen readers (the button is named).
+    expect(haste.querySelector('svg[data-icon="favorite"]')).toHaveAttribute("data-filled", "true");
+    expect(fireBolt.querySelector('svg[data-icon="favorite"]')).not.toHaveAttribute("data-filled");
+    expect(fireBolt.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
 
     await userEvent.click(fireBolt);
     expect(onFavoriteToggle).toHaveBeenCalledWith(expect.objectContaining({ index: "fire-bolt" }));
+  });
+});
+
+// The inventory moved its Edit and Delete under each item's Manage; the
+// Spells list keeps its own "Edit spells" mode with pencil and trash.
+describe("CharacterSheetSpellsTab: its own Edit mode is unchanged", () => {
+  it("shows pencil and trash only after Edit spells, and has no Manage", async () => {
+    renderTab({ onSpellUpdate: vi.fn(), onSpellRemove: vi.fn(), onSpellAdd: vi.fn() });
+    expect(screen.queryByRole("button", { name: /^Manage / })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Edit Fire Bolt$/ })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Edit spells" }));
+    expect(screen.getByRole("button", { name: /^Edit Fire Bolt$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Remove Fire Bolt$/ })).toBeInTheDocument();
   });
 });

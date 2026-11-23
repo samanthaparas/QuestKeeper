@@ -285,7 +285,7 @@ describe("TablePage", () => {
 
     it("lets a player step away (brb) and come back", async () => {
       renderPage();
-      await userEvent.click(screen.getByRole("button", { name: "Step away (brb)" }));
+      await userEvent.click(screen.getByRole("button", { name: "Step away" }));
       expect(setMyAway).toHaveBeenCalledWith("t1", true);
 
       currentTable.combatants = combatants.map((combatant) =>
@@ -294,7 +294,7 @@ describe("TablePage", () => {
       cleanup();
       renderPage();
       expect(screen.getByText(/You're marked away, so your turns are skipped/)).toBeInTheDocument();
-      await userEvent.click(screen.getByRole("button", { name: "I'm back" }));
+      await userEvent.click(screen.getByRole("button", { name: "Return to play" }));
       expect(setMyAway).toHaveBeenCalledWith("t1", false);
     });
 

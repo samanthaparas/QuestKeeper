@@ -36,19 +36,25 @@ describe("TurnBanner", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows the round, who is up, who is next, and the latest event", () => {
+  it("shows the round and whose turn it is, with the turn order and news under Details", async () => {
     render(<TurnBanner combat={makeCombat()} onApplyDamage={vi.fn()} />);
 
-    expect(screen.getByText("Round 2")).toBeInTheDocument();
-    expect(screen.getByText("Now: Kobold")).toBeInTheDocument();
-    expect(screen.getByText("You're up next, then Thorn")).toBeInTheDocument();
-    expect(screen.getByText(/That hits!/)).toBeInTheDocument();
+    expect(screen.getByText("Round 2")).toBeVisible();
+    expect(screen.getByText("Kobold's turn")).toBeVisible();
+    // Routine context waits under Details.
+    expect(screen.getByText("You're up next, then Thorn")).not.toBeVisible();
+    // The news is still in the live banner (read out), just not shown.
+    expect(screen.getByText(/That hits!/)).toHaveClass("turn-banner__event--quiet");
+
+    await userEvent.click(screen.getByRole("button", { name: /Details/ }));
+    expect(screen.getByText("You're up next, then Thorn")).toBeVisible();
+    expect(screen.getByText(/That hits!/)).not.toHaveClass("turn-banner__event--quiet");
   });
 
   it("tells the player who goes next to get ready, and no one else", () => {
     // makeCombat: Billie (me) is first in the "next" list.
     render(<TurnBanner combat={makeCombat()} onApplyDamage={vi.fn()} />);
-    expect(screen.getByText("Get ready: plan your move.")).toBeInTheDocument();
+    expect(screen.getByText("You're next")).toBeInTheDocument();
   });
 
   it("doesn't say get ready when the player is two turns away, or it's their turn", () => {
@@ -58,11 +64,11 @@ describe("TurnBanner", () => {
         onApplyDamage={vi.fn()}
       />,
     );
-    expect(screen.queryByText("Get ready: plan your move.")).not.toBeInTheDocument();
+    expect(screen.queryByText("You're next")).not.toBeInTheDocument();
     unmount();
 
     render(<TurnBanner combat={makeCombat({ isMyTurn: true, now: { id: "c-me", name: "Billie" } })} onApplyDamage={vi.fn()} />);
-    expect(screen.queryByText("Get ready: plan your move.")).not.toBeInTheDocument();
+    expect(screen.queryByText("You're next")).not.toBeInTheDocument();
   });
 
   it("shows how many attacks the current player has made this turn", () => {
@@ -150,9 +156,11 @@ describe("TurnBanner", () => {
   });
 
   it("celebrates your own turn", () => {
-    render(<TurnBanner combat={makeCombat({ isMyTurn: true })} onApplyDamage={vi.fn()} />);
+    render(
+      <TurnBanner combat={makeCombat({ isMyTurn: true, myCombatant: { id: "c-me", name: "Pippa" } })} onApplyDamage={vi.fn()} />,
+    );
 
-    expect(screen.getByText("It's your turn!")).toBeInTheDocument();
+    expect(screen.getByText("Your turn, Pippa")).toBeInTheDocument();
   });
 
   it("applies damage the DM posted, once", async () => {
@@ -256,20 +264,24 @@ describe("TurnBanner", () => {
     expect(screen.getByText(/That hits!/)).not.toHaveClass("turn-banner__event--damage");
   });
 
-  it("lets the player step away (brb) and come back from the sheet", async () => {
+  it("lets the player step away and return to play from the sheet", async () => {
     setMyAway.mockResolvedValue(undefined);
     const combat = makeCombat({ table: { id: "t1" } });
     const { rerender } = render(<TurnBanner combat={combat} onApplyDamage={vi.fn()} />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Step away (brb)" }));
+    const stepAway = screen.getByRole("button", { name: "Step away" });
+    expect(stepAway).toHaveAccessibleDescription("Step away skips your turns until you return to play.");
+    await userEvent.click(stepAway);
     expect(setMyAway).toHaveBeenCalledWith("t1", true);
     expect(combat.refresh).toHaveBeenCalled();
 
     rerender(
       <TurnBanner combat={makeCombat({ table: { id: "t1" }, myCombatant: { id: "c-me", away: true } })} onApplyDamage={vi.fn()} />,
     );
-    expect(screen.getByText("You're away: your turns are skipped.")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "I'm back" }));
+    // Being away is never folded under Details, and neither is the way back.
+    expect(screen.getByText("You're away: your turns are skipped until you return.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Step away" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Return to play" }));
     expect(setMyAway).toHaveBeenCalledWith("t1", false);
   });
 
@@ -288,3 +300,30 @@ describe("TurnBanner", () => {
   });
 });
 
+
+describe("TurnBanner's compact row", () => {
+  it("keeps End my turn beside a Details toggle that opens the rest", async () => {
+    render(
+      <TurnBanner combat={makeCombat({ isMyTurn: true, endTurn: vi.fn().mockResolvedValue() })} onApplyDamage={vi.fn()} />,
+    );
+    expect(screen.getByRole("button", { name: "End my turn" })).toBeInTheDocument();
+    const details = screen.getByRole("button", { name: /^Details/ });
+    expect(details).toHaveAttribute("aria-expanded", "false");
+    expect(details).toHaveAttribute("aria-controls", "turn-banner-details");
+    await userEvent.click(details);
+    expect(screen.getByRole("button", { name: /^Hide details/ })).toHaveAttribute("aria-expanded", "true");
+    // The news is still in the banner (read out even while folded away).
+    expect(screen.getByText(/Billie attacks Kobold with Dagger/)).toBeInTheDocument();
+  });
+
+  it("still shows damage to apply, whatever Details is set to", () => {
+    render(
+      <TurnBanner
+        combat={makeCombat({ damageRequests: [{ id: "r1", source: "Goblin", amount: 5 }] })}
+        onApplyDamage={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Goblin hits you for 5!");
+    expect(screen.getByRole("button", { name: "Apply 5 damage" })).toBeInTheDocument();
+  });
+});

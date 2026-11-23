@@ -54,6 +54,9 @@ export function useSheetRolls(characterId, characterName) {
   // of the app rolling. `pending` is the roll waiting for them.
   const [realChoice, setRealChoice] = useState(null);
   const [pending, setPending] = useState(null);
+  // Where "switch to app rolls?" was asked, while a roll waits (see
+  // chooseAppRolls).
+  const [discardAskFrom, setDiscardAsk] = useState(null);
   // Don't let a site update refresh the page while a roll waits for dice.
   useHoldRefresh(Boolean(pending));
   // Every roll made on this sheet, newest first, so a quick roll can be looked
@@ -110,7 +113,24 @@ export function useSheetRolls(characterId, characterName) {
     writeStored(`qk-real-dice-${characterId}`, on ? "on" : "off");
     setRealChoice(on);
     setPending(null);
+    setDiscardAsk(null);
   }
+
+  // Switching to app rolls while a roll waits for real dice would throw that
+  // roll away, so it asks first, from whichever place the player switched
+  // (the roll bar: "dock", or an attack panel: "panel"); that place shows
+  // the question. One question at a time, and it goes away by itself if the
+  // waiting roll is finished or cancelled meanwhile.
+  // chooseAppRolls(from): true if it switched now, false if it asked.
+  function chooseAppRolls(from) {
+    if (realDice && pending) {
+      setDiscardAsk(from);
+      return false;
+    }
+    setRealDice(false);
+    return true;
+  }
+  const discardAsk = realDice && pending ? discardAskFrom : null;
 
   function setShare(on) {
     writeStored(`qk-share-rolls-${characterId}`, on ? "on" : "off");
@@ -325,6 +345,11 @@ export function useSheetRolls(characterId, characterName) {
     submitRealDice,
     addExtraDamage,
     cancelRealDice: () => setPending(null),
+    // Asking before a waiting real-dice roll is thrown away (see above).
+    chooseAppRolls,
+    discardAsk,
+    keepPendingRoll: () => setDiscardAsk(null),
+    discardAndSwitch: () => setRealDice(false),
     tableId: table?.id ?? null,
     tableSession: table?.session_number ?? 1,
     // The table's current campaign, so the sheet's journal writes into it.

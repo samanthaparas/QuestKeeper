@@ -1,0 +1,25 @@
+/* The same copper colours as the weapon icons (WeaponIcon.css), from the
+   theme's own tokens, so light, dark and high contrast all follow. */
+.inventory-icon {
+  flex: 0 0 auto;
+  color: var(--qk-terracotta-hover);
+  --qk-icon-metal: color-mix(in srgb, var(--qk-brass) 35%, var(--qk-surface));
+  --qk-icon-wood: color-mix(in srgb, var(--qk-brass) 60%, var(--qk-surface));
+}
+
+/* Beside a category heading: the picture reaches above and below the
+   heading's small line, so the heading is no taller. */
+.character-sheet__list-group:has(> .inventory-icon) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.character-sheet__list-group > .inventory-icon {
+  margin-block: -4px;
+}
+
+/* Beside the Show select: the chosen filter's picture. */
+.character-sheet__list-control > .inventory-icon {
+  margin-inline: 2px -2px;
+}

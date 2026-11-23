@@ -15,7 +15,7 @@ const STEPS = {
     "On your turn, open your sheet's Actions tab, tap Attack next to a weapon, pick a target and roll.",
     "If an enemy hits you, the banner asks you to apply the damage. Tap Apply.",
     "Tap End my turn when you're done.",
-    "Need a minute? Step away (brb) skips your turns until you tap I'm back.",
+    "Need a minute? Step away skips your turns until you tap Return to play.",
   ],
   dm: [
     "Tap Next turn to move the fight along. The Selected panel follows whoever's turn it is.",

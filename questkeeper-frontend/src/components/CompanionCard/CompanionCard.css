@@ -1,8 +1,8 @@
-/* The companion's combat card on the Actions tab. */
+/* The companion's card in the Companions part of the Actions tab. */
 .companion-card {
   display: grid;
   gap: 12px;
-  margin-top: 20px;
+  margin-top: 14px;
   padding: 14px 16px;
   border: 1px solid var(--qk-border);
   border-left: 4px solid var(--qk-moss);
@@ -10,30 +10,92 @@
   background-color: var(--qk-surface);
 }
 
-/* Picture, name and HP/AC/Speed in one row, packed to the left so there's
-   no empty gap between the name and the stats. */
+/* Picture, name, what it is and its status on the left; Edit stats on the
+   right. */
 .companion-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+/* Edit stats stays top right, however long the name. */
+.companion-card__head > .character-sheet__stats-lock {
+  flex: none;
+}
+
+/* The picture stays beside the name; a long name wraps beside it. */
+.companion-card__who {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.companion-card__who > .portrait-upload {
+  flex: none;
+}
+
+.companion-card__identity {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 1px;
+  min-width: 0;
+}
+
+/* Name, then "Summoned" / "Not summoned" beside it (or under it, if the
+   name is long). */
+.companion-card__title-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 20px;
-}
-
-.companion-card__who {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 4px 12px;
+  min-width: 0;
 }
 
 .companion-card__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
   font-family: var(--qk-font-display);
-  font-size: 20px;
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+
+.companion-card__name:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+.companion-card__kind,
+.companion-card__muted {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* "Summoned" / "Not summoned": words in a pill, never colour alone. */
+.companion-card__status {
+  padding: 3px 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.companion-card__status--here {
+  border-color: var(--qk-moss);
+  background-color: var(--qk-moss-soft);
+  color: var(--qk-text);
 }
 
 .companion-card__stats {
   display: flex;
   flex-wrap: wrap;
+  align-items: stretch;
   gap: 8px;
 }
 
@@ -197,12 +259,6 @@
   gap: 8px;
 }
 
-.companion-card__notes-title {
-  margin: 0;
-  font-family: var(--qk-font-display);
-  font-size: 16px;
-}
-
 .companion-card__notes-list {
   display: grid;
   gap: 4px;
@@ -264,78 +320,15 @@
   font-size: 14px;
 }
 
-/* The "+ Add a companion" line on the Actions tab when there isn't one. */
-.companion-card__add {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  margin-top: 20px;
-  color: var(--qk-text-muted);
-  font-size: 14px;
-}
-
 /* A companion that follows a summon spell: the Summon panel (cast it, or
    what's up while it's here), its one attack, and the switch under
    "Edit stats". */
-.companion-card__summon {
-  display: grid;
-  gap: 8px;
-  justify-items: start;
-  padding: 10px 12px;
-  border: 1px dashed var(--qk-border);
-  border-radius: var(--qk-radius-small);
-  background-color: var(--qk-background);
-}
-
-.companion-card__summon-line,
-.companion-card__summon-note {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.companion-card__summon-note {
-  color: var(--qk-text-muted);
-}
-
 .companion-card__summon-notes {
   margin: 0;
   padding-left: 18px;
   color: var(--qk-text-muted);
   font-size: 13px;
   line-height: 1.5;
-}
-
-.companion-card__summon-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-}
-
-.companion-card__summon-choice {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-}
-
-.companion-card__summon-attack {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  font-size: 14px;
-}
-
-.companion-card__summon-attack-name {
-  font-weight: 700;
-}
-
-.companion-card__summon-attack-count {
-  color: var(--qk-text-muted);
-  font-weight: 400;
 }
 
 .companion-card__summon-link {
@@ -417,3 +410,734 @@
   margin: 0;
 }
 
+
+/* A slim HP bar under the HP numbers. */
+.companion-card__hp-bar {
+  display: block;
+  width: 100%;
+  height: 5px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background-color: var(--qk-surface-muted);
+  overflow: hidden;
+}
+
+.companion-card__hp-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--qk-moss);
+}
+
+.companion-card__stat--hp {
+  min-width: 120px;
+}
+
+.companion-card__label .companion-icon {
+  vertical-align: -2px;
+}
+
+/* "Acts right after Pippa": a quiet reminder beside the numbers. */
+.companion-card__turn-note {
+  flex: 1 1 200px;
+  align-self: center;
+  margin: 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--qk-brass);
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* A summon's attack, Fey Step and duration: rows like the weapons'. */
+.companion-card__attack-row,
+.companion-card__step-row,
+.companion-card__duration-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-background);
+}
+
+.companion-card__attack-name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-right: auto;
+  font-size: 17px;
+}
+
+.companion-card__attack-name .companion-icon,
+.companion-card__duration .companion-icon {
+  color: var(--qk-terracotta);
+}
+
+/* Fey Step: the name on top, "Teleport up to 30 ft · Fuming: ..." under
+   it, with "Rules" for the full wording. */
+.companion-card__step-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 12px;
+}
+
+.companion-card__step-row > .companion-card__attack-name {
+  margin-right: 0;
+}
+
+.companion-card__step-text {
+  grid-column: 1;
+  color: var(--qk-text);
+  font-size: 15px;
+}
+
+.companion-card__rules-toggle {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: 32px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  /* The darker copper: the lighter one is under 4.5:1 on this row. */
+  color: var(--qk-terracotta-hover);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.companion-card__rules-toggle:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+.companion-card__step-rules {
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--qk-terracotta);
+  background-color: var(--qk-surface);
+  font-size: 14px;
+}
+
+.companion-card__step-rules[hidden] {
+  display: none;
+}
+
+.companion-card__duration-row {
+  justify-content: space-between;
+  background-color: transparent;
+}
+
+.companion-card__duration {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  color: var(--qk-text);
+}
+
+/* The companion's own attacks list sits in the card without its own box. */
+.companion-card__attacks .character-sheet__attacks-row {
+  background-color: var(--qk-background);
+}
+
+/* Stats & saves, Notes: a quiet button that opens a part of the card. */
+.companion-card__fold {
+  border-top: 1px solid var(--qk-border);
+  padding-top: 8px;
+}
+
+.companion-card__fold-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--qk-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.companion-card__fold-toggle:hover {
+  color: var(--qk-terracotta);
+}
+
+.companion-card__fold-toggle:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+.companion-card__fold-chevron {
+  width: 1em;
+  color: var(--qk-text-muted);
+}
+
+.companion-card__fold-body {
+  display: grid;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+/* Closed: really hidden (the grid above would otherwise show it). */
+.companion-card__fold-body[hidden] {
+  display: none;
+}
+
+/* --- Not summoned: one line and "Prepare summon" ------------------------ */
+.companion-card__away {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.companion-card__away-text {
+  flex: 1 1 260px;
+  margin: 0;
+  color: var(--qk-text-muted);
+}
+
+.companion-card__away .qk-button,
+.add-companion__choice,
+.summon-setup__title {
+  gap: 6px;
+}
+
+.companion-card__away .qk-button {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* --- Summon setup, inside the card -------------------------------------- */
+.summon-setup {
+  /* Laid out by its own width (the middle pane), not the window's. */
+  container-type: inline-size;
+  display: grid;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-background);
+}
+
+.summon-setup__title {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 20px;
+}
+
+.summon-setup__title .companion-icon {
+  color: var(--qk-terracotta);
+}
+
+.summon-setup__title:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+.summon-setup__lead,
+.summon-setup__hint {
+  margin: 0;
+  color: var(--qk-text-muted);
+}
+
+.summon-setup__head {
+  display: grid;
+  gap: 2px;
+}
+
+/* "Changes what happens after Fey Step." beside the Fey mood heading. */
+.summon-setup__legend-hint {
+  color: var(--qk-text-muted);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+/* A wide card: the title and its one line side by side, the cost and
+   duration choices on one line each, and the exact cost beside the
+   buttons. A narrow card (a phone) keeps everything stacked. */
+@container (min-width: 560px) {
+  .summon-setup__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 16px;
+  }
+
+  .summon-setup__options:not(.summon-setup__options--two-line) .summon-setup__option-text {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 10px;
+  }
+
+  .summon-setup__actions .summon-setup__cost,
+  .summon-setup__actions .summon-setup__blocked {
+    flex: 1 1 100%;
+  }
+}
+
+@container (min-width: 720px) {
+  .summon-setup__actions .summon-setup__cost {
+    flex: 1 1 auto;
+    order: -1;
+  }
+}
+
+.summon-setup__group {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.summon-setup__group legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  padding: 0;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.summon-setup__step {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--qk-terracotta);
+  color: var(--qk-on-accent);
+  font-size: 13px;
+}
+
+.summon-setup__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.summon-setup__options--moods {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+/* Duration: one under the other in a narrow card, side by side once the
+   card is wide enough to read both at once. */
+.summon-setup__options--duration {
+  grid-template-columns: 1fr;
+}
+
+@container (min-width: 560px) {
+  .summon-setup__options--duration {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Each choice is a card: the whole card picks it. The real radio stays
+   (with its dot) so the choice reads without colour, and the arrow keys
+   move between choices. */
+.summon-setup__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 7px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  cursor: pointer;
+}
+
+.summon-setup__option input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--qk-terracotta);
+}
+
+.summon-setup__option--checked {
+  border: 2px solid var(--qk-terracotta);
+  padding: 6px 11px;
+  background-color: var(--qk-terracotta-soft);
+}
+
+.summon-setup__option--disabled {
+  border-style: dashed;
+  background-color: transparent;
+  cursor: not-allowed;
+}
+
+.summon-setup__option--disabled .summon-setup__option-title {
+  color: var(--qk-text-muted);
+}
+
+.summon-setup__option:has(input:focus-visible) {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+.summon-setup__option-text {
+  display: grid;
+  gap: 2px;
+}
+
+.summon-setup__option-title {
+  font-weight: 700;
+}
+
+.summon-setup__option-detail {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+/* On the picked card's tinted fill, the muted colour is too faint; use the
+   full text colour there. */
+.summon-setup__option--checked .summon-setup__option-detail {
+  color: var(--qk-text);
+}
+
+.summon-setup__slot-level {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.summon-setup__slot-level select {
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-input-bg);
+  color: var(--qk-text);
+  font: inherit;
+}
+
+/* The chosen mood's full effect, under the three moods. */
+.summon-setup__effect {
+  margin: 2px 0 0;
+  padding: 6px 12px;
+  border-left: 3px solid var(--qk-terracotta);
+  background-color: var(--qk-surface);
+}
+
+.summon-setup__muted {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+/* The preview, any warning, the exact cost and the buttons: one group,
+   set apart by a line above it. */
+.summon-setup__finish {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--qk-border);
+}
+
+.summon-setup__preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-moss-soft);
+  color: var(--qk-text);
+  font-weight: 600;
+}
+
+.summon-setup__preview .companion-icon {
+  flex: none;
+  color: var(--qk-moss);
+}
+
+.summon-setup__warning,
+.summon-setup__blocked {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--qk-radius-control);
+  border: 1px solid var(--qk-warning);
+  color: var(--qk-text);
+}
+
+.summon-setup__cost {
+  margin: 0;
+  font-weight: 700;
+}
+
+.summon-setup__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.summon-setup__actions > p {
+  flex: 1 1 100%;
+}
+
+.summon-setup__actions .qk-button:not(.qk-button--secondary) {
+  flex: 1 1 220px;
+}
+
+/* --- The Companions part of the Actions tab ----------------------------- */
+.companions {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--qk-border);
+}
+
+.companions__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.companions__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.companions__title .companion-icon {
+  color: var(--qk-terracotta);
+}
+
+.companions__title:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+.companions__empty {
+  margin: 12px 0 0;
+  color: var(--qk-text-muted);
+}
+
+/* --- "Who are you adding?" ---------------------------------------------- */
+.add-companion {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.add-companion__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--qk-font-display);
+  font-size: 20px;
+}
+
+.add-companion__title .companion-icon,
+.add-companion__choice .companion-icon {
+  flex: none;
+  color: var(--qk-terracotta);
+}
+
+.add-companion__title:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+.add-companion__choices {
+  display: grid;
+  gap: 8px;
+}
+
+.add-companion__choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-background);
+  color: var(--qk-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.add-companion__choice:hover {
+  border-color: var(--qk-terracotta);
+}
+
+.add-companion__choice:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+.add-companion__choice-text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+}
+
+.add-companion__choice-title {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.add-companion__choice-detail,
+.add-companion__note,
+.add-companion__hint {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.add-companion__note {
+  margin: 0;
+  font-style: italic;
+}
+
+.add-companion__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 12px;
+}
+
+.add-companion__group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.add-companion__group legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-weight: 700;
+}
+
+.add-companion__field,
+.add-companion__fixed {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.add-companion__label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.add-companion__input {
+  min-height: 38px;
+  width: 140px;
+  max-width: 100%;
+  padding: 0 8px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-input-bg);
+  color: var(--qk-text);
+  font: inherit;
+}
+
+textarea.add-companion__input {
+  padding: 8px;
+}
+
+.add-companion__input--wide {
+  width: min(320px, 100%);
+}
+
+.add-companion__input--score {
+  width: 72px;
+}
+
+.add-companion__input:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 1px;
+}
+
+.add-companion__error {
+  color: var(--qk-danger);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.add-companion__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* "Attack name" under Edit stats, for a summon. */
+.companion-card__summon-choice {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The attacks list's Edit and Add buttons stay on one line each. */
+.companion-card .character-sheet__section-header-actions .qk-button {
+  white-space: nowrap;
+}
+
+/* Clear of the sheet's sticky tab bar when focus moves here (see
+   utils/focusInPane.js). */
+.companions__title,
+.companion-card__name,
+.summon-setup__title,
+.add-companion__title {
+  scroll-margin-top: 56px;
+}
+
+/* "Thistle's rolls are shared with ... Your DM decides whether it hits":
+   a quiet line above a companion's attacks at a table. */
+.companion-card__table-note {
+  display: grid;
+  gap: 4px;
+  padding: 4px 10px;
+  border-left: 3px solid var(--qk-border);
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.companion-card__table-note p {
+  margin: 0;
+}
+
+/* "How companion rolls work": inline after the sentence. */
+.companion-card__note-toggle {
+  min-height: 28px;
+  padding: 0;
+  font-size: 14px;
+}
+
+.companion-card__note-more[hidden] {
+  display: none;
+}

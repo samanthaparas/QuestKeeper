@@ -103,6 +103,7 @@ import {
   companionView,
   updateCompanion,
   addCompanion,
+  companionHeadingId,
   removeCompanion,
   saveCompanions,
   getInventoryCategory,
@@ -137,6 +138,7 @@ import { RETRY_DELAYS } from "../../hooks/useSrdEquipmentLookup";
 import { fillMissingComponents, spellFactsFromForm } from "../../utils/spellComponents";
 import {
   isArmorDetails,
+  isShieldDetails,
   magicArmorFor,
   withArmorBonus,
   withAutoArmorClass,
@@ -147,8 +149,12 @@ import {
 import { getEquipment, getEquipmentDetails } from "../../utils/api";
 import { featuresForNewLevel, isRulesItemIndex, loadFeatureEntries, normalizeItemName } from "../../utils/srdDetails";
 import CompanionCard from "../../components/CompanionCard/CompanionCard";
+import AddCompanionForm from "../../components/CompanionCard/AddCompanionForm";
+import { focusInPane } from "../../utils/focusInPane";
+import CompanionIcon from "../../components/CompanionIcon/CompanionIcon";
 import CharacterDetailsDialog from "../../components/CharacterDetailsDialog/CharacterDetailsDialog";
 import PortraitUpload from "../../components/PortraitUpload/PortraitUpload";
+import CalcHint from "../../components/CalcHint/CalcHint";
 import TableHandouts from "../../components/TableHandouts/TableHandouts";
 import TableJournal from "../../components/TableJournal/TableJournal";
 import TurnBanner from "../../components/TurnBanner/TurnBanner";
@@ -244,7 +250,9 @@ function CharacterSheetPage() {
   const [loadedId, setLoadedId] = useState(null);
   const [showSkillBonuses, setShowSkillBonuses] = useState(false);
   // The companion just added this visit, which opens ready to fill in.
-  const [newCompanionId, setNewCompanionId] = useState(null);
+  // "+ Add companion" opens the "Who are you adding?" form; nothing is saved
+  // until its Add button.
+  const [isAddingCompanion, setIsAddingCompanion] = useState(false);
   // "Beginner tips" in Settings: off hides "New to dice?" (and the roll card's
   // "What does this mean?").
   const [beginnerTips] = useState(getBeginnerTips);
@@ -377,6 +385,8 @@ function CharacterSheetPage() {
   // so a reload never counts one twice. (Two tabs of the same sheet open at
   // once would each count it.)
   const [endedConditionsNote, setEndedConditionsNote] = useState("");
+  // The "Save bonus" disclosure in the stats (the bonus to every save).
+  const [showSaveBonus, setShowSaveBonus] = useState(false);
   const fightTableId = tableCombat?.table?.id ?? null;
   const fightTurns = tableCombat
     ? countMyTurnsEnded(
@@ -1260,20 +1270,73 @@ function CharacterSheetPage() {
     persistSheet({ ...sheet, notes: value });
   }
 
-  // "+ Add a companion" on the Actions tab: another card each time. A
-  // companion saved before (even one set aside as text notes) comes back
-  // first, with everything it had.
-  function handleCompanionAdd() {
-    const existing = getCompanions(sheet);
-    if (existing.length === 0 && sheet.companionCreature) {
+  // "+ Add companion" on the Actions tab. A companion saved before (even one
+  // set aside as text notes) comes back first, with everything it had;
+  // otherwise the "Who are you adding?" form opens.
+  function handleCompanionAddStart() {
+    if (getCompanions(sheet).length === 0 && sheet.companionCreature) {
       persistSheet(saveCompanions(sheet, [{ ...sheet.companionCreature, id: sheet.companionCreature.id ?? "companion-1" }]));
       return;
     }
-    const next = addCompanion(sheet);
-    // The brand-new one opens ready to fill in (see CompanionCard's isNew).
-    const added = getCompanions(next).find((creature) => !existing.some((old) => old.id === creature.id));
-    setNewCompanionId(added?.id ?? null);
+    setIsAddingCompanion(true);
+  }
+
+  // Back to the "+ Add companion" button when the form closes.
+  function focusAddCompanion() {
+    window.requestAnimationFrame(() => focusInPane(document.getElementById("add-companion-button")));
+  }
+
+  function handleCompanionAddCancel() {
+    setIsAddingCompanion(false);
+    focusAddCompanion();
+  }
+
+  // The form's Add: the companion is saved now, once. link is
+  // { template, attackName } for a summon, which then follows that spell.
+  function handleCompanionAdd(creature, link = null) {
+    const existing = getCompanions(sheet);
+    let next = addCompanion(sheet, creature);
+    const added = getCompanions(next).find((item) => !existing.some((old) => old.id === item.id));
+    if (added && link) {
+      next = updateCompanion(next, added.id, (view) => applySummonAction(view, "link", link));
+    }
+    // The first companion takes the old companion text as bullet points
+    // (getCompanionNotes); new notes typed in the form go after them.
+    if (added && existing.length === 0 && sheet.companion?.trim() && creature.noteList?.length) {
+      const older = getCompanionNotes({}, sheet.companion);
+      next = {
+        ...updateCompanion(next, added.id, (view) => ({
+          ...view,
+          companionCreature: { ...view.companionCreature, noteList: [...older, ...creature.noteList] },
+        })),
+        companion: "",
+      };
+    }
+    setIsAddingCompanion(false);
     persistSheet(next);
+    // Focus moves to the new card's name, so the player sees where it went.
+    if (added) window.requestAnimationFrame(() => focusInPane(document.getElementById(companionHeadingId(added.id))));
+  }
+
+  // The "Jump to companions" link by the attacks. On a wide screen the
+  // middle pane scrolls on its own, so only it moves (scrolling the whole
+  // window would shift the sheet's frame); elsewhere the page scrolls.
+  function jumpToCompanions() {
+    focusInPane(document.getElementById("companions-heading"), { block: "start" });
+  }
+
+  // "View item" on a resource that's an item's charges: the Inventory tab,
+  // with that item brought into view and its Manage button focused.
+  function viewInventoryItem(item) {
+    setActiveTab("inventory");
+    // Waits a few frames for the Inventory tab to show the item.
+    let tries = 0;
+    const find = () => {
+      const button = document.getElementById(`inventory-manage-${item.index}-button`);
+      if (button) focusInPane(button, { block: "center" });
+      else if ((tries += 1) < 20) window.requestAnimationFrame(find);
+    };
+    window.requestAnimationFrame(find);
   }
 
   // Removes one companion (its card asks first). A summon of its ends.
@@ -2391,6 +2454,8 @@ function CharacterSheetPage() {
                         portraitUrl={sheet.portraitUrl}
                         onUpload={handlePortraitUpload}
                         size="tiny"
+                        // The same Edit menu as the big portrait: the coin opens it.
+                        withMenu
                       />
                     )}
                     <h1 className="character-sheet__title">{sheet.name}</h1>
@@ -2443,25 +2508,37 @@ function CharacterSheetPage() {
                         onChange={(e) => handleMaxHpChange(e.target.value)}
                         min={0}
                       />
+                      {/* Temporary HP, in the same group but its own box. */}
+                      <label className="character-sheet__temp-hp">
+                        <span
+                          className="character-sheet__vital-label"
+                          title="Temporary Hit Points: a buffer that soaks up damage first and does not heal."
+                        >
+                          Temp
+                        </span>
+                        <input
+                          type="number"
+                          className="character-sheet__vital-input"
+                          value={combat.hitPoints.temporary ?? 0}
+                          aria-label="Temporary HP"
+                          onChange={(e) => handleTempHpChange(e.target.value)}
+                          min={0}
+                        />
+                      </label>
                     </span>
+                    {/* A slim bar under the numbers (the numbers say it in words). */}
+                    {combat.hitPoints.max > 0 && (
+                      <span className="character-sheet__hp-bar" aria-hidden="true">
+                        <span
+                          style={{
+                            width: `${Math.round(
+                              Math.max(0, Math.min(1, (combat.hitPoints.current ?? 0) / combat.hitPoints.max)) * 100,
+                            )}%`,
+                          }}
+                        />
+                      </span>
+                    )}
                   </div>
-
-                  <label className="character-sheet__vital">
-                    <span
-                      className="character-sheet__vital-label"
-                      title="Temporary Hit Points: a buffer that soaks up damage first and does not heal."
-                    >
-                      Temp
-                    </span>
-                    <input
-                      type="number"
-                      className="character-sheet__vital-input"
-                      value={combat.hitPoints.temporary ?? 0}
-                      aria-label="Temporary HP"
-                      onChange={(e) => handleTempHpChange(e.target.value)}
-                      min={0}
-                    />
-                  </label>
 
                   {/* AC, plus a small box for a temporary bonus (Haste, Shield of
                       Faith). When the bonus isn't 0 the label shows the total. */}
@@ -2472,12 +2549,10 @@ function CharacterSheetPage() {
                     >
                       AC
                       {sheet.acMode === "auto" ? (
-                        <span
-                          className="character-sheet__ac-mode"
-                          title="Worked out from your equipped armor and Dexterity. Type a number to set it yourself."
-                        >
-                          {" "}auto
-                        </span>
+                        <CalcHint label="How AC is worked out">
+                          Worked out from your equipped armor and Dexterity. Tap Edit stats and type a number to set
+                          it yourself.
+                        </CalcHint>
                       ) : (
                         (sheet.equipment ?? []).some((item) => isArmorDetails(gearDetailsFor(item))) && (
                           <button
@@ -2521,24 +2596,31 @@ function CharacterSheetPage() {
                   </div>
 
                   <label className="character-sheet__vital">
-                    {/* Tap "Init" to roll initiative. */}
-                    <RollButton
-                      label="Initiative"
-                      bonus={combat.initiative}
-                      className="character-sheet__vital-label"
-                    >
-                      Init
-                    </RollButton>
-                    {sheet.initiativeMode === "auto" && (
-                      <span
-                        className="character-sheet__ac-mode"
-                        title={`Your Dexterity modifier${
-                          sheet.combat?.initiativeBonus
-                            ? `, plus a ${formatModifier(sheet.combat.initiativeBonus)} bonus`
-                            : ""
-                        }. Type a number to add a bonus (like Alert's +5).`}
+                    {/* Tap "Init" to roll initiative; the hint sits on the
+                        same line, as on AC, so the number isn't pushed down. */}
+                    <span className="character-sheet__vital-label-row">
+                      <RollButton
+                        label="Initiative"
+                        bonus={combat.initiative}
+                        className="character-sheet__vital-label"
                       >
-                        auto
+                        Init
+                      </RollButton>
+                      {sheet.initiativeMode === "auto" && (
+                        <CalcHint label="How Initiative is worked out">
+                          Your Dexterity modifier
+                          {sheet.combat?.initiativeBonus
+                            ? `, plus a ${formatModifier(sheet.combat.initiativeBonus)} bonus`
+                            : ""}
+                          . Tap Edit stats and type a number to add a bonus (like Alert&apos;s +5).
+                        </CalcHint>
+                      )}
+                    </span>
+                    <span className="character-sheet__vital-value">
+                    {/* The sign, so it reads "+5" like other modifiers. */}
+                    {Number(combat.initiative) >= 0 && (
+                      <span className="character-sheet__vital-sign" aria-hidden="true">
+                        +
                       </span>
                     )}
                     <input
@@ -2549,6 +2631,7 @@ function CharacterSheetPage() {
                       readOnly={statsLocked}
                       onChange={(e) => handleInitiativeChange(e.target.value)}
                     />
+                    </span>
                   </label>
 
                   <div className="character-sheet__vital">
@@ -2615,21 +2698,6 @@ function CharacterSheetPage() {
                   </div>
 
                   <div className="character-sheet__ability-row">
-                  {/* One bonus for every save, like a Paladin's Aura of Protection. */}
-                  <label
-                    className="character-sheet__all-saves"
-                    title="A flat extra added to every saving throw, like a Paladin's Aura of Protection"
-                  >
-                    <span className="character-sheet__vital-label">All saves</span>
-                    <input
-                      type="number"
-                      className="character-sheet__vital-input"
-                      value={sheet.saveBonus ?? 0}
-                      aria-label="Bonus to all saves"
-                      readOnly={statsLocked}
-                      onChange={(e) => handleSaveBonusChange(e.target.value)}
-                    />
-                  </label>
                   <div className="character-sheet__abilities">
                     {ABILITY_SCORES.map((ability) => {
                       const score = sheet.abilityScores[ability];
@@ -2729,6 +2797,41 @@ function CharacterSheetPage() {
                       onRoundsChange={handleConcentrationRounds}
                       onRollCheck={() => handleConcentrationCheck(conSave)}
                     />
+                    {/* One bonus for every save, like a Paladin's Aura of
+                        Protection: folded into a small disclosure, but when
+                        it isn't 0 the button says so ("All saves +2"). */}
+                    <span className="character-sheet__save-bonus">
+                      <button
+                        type="button"
+                        className={`character-sheet__save-bonus-toggle${
+                          (sheet.saveBonus ?? 0) !== 0 ? " character-sheet__save-bonus-toggle--on" : ""
+                        }`}
+                        aria-expanded={showSaveBonus}
+                        aria-controls="save-bonus-box"
+                        onClick={() => setShowSaveBonus((open) => !open)}
+                      >
+                        {(sheet.saveBonus ?? 0) !== 0
+                          ? `All saves ${formatModifier(sheet.saveBonus)}`
+                          : "Save bonus"}
+                        <span aria-hidden="true">{showSaveBonus ? " ▴" : " ▾"}</span>
+                      </button>
+                      <label
+                        id="save-bonus-box"
+                        className="character-sheet__all-saves"
+                        hidden={!showSaveBonus}
+                        title="A flat extra added to every saving throw, like a Paladin's Aura of Protection"
+                      >
+                        <span className="character-sheet__vital-label">All saves</span>
+                        <input
+                          type="number"
+                          className="character-sheet__vital-input"
+                          value={sheet.saveBonus ?? 0}
+                          aria-label="Bonus to all saves"
+                          readOnly={statsLocked}
+                          onChange={(e) => handleSaveBonusChange(e.target.value)}
+                        />
+                      </label>
+                    </span>
                     {/* Unlock to change AC, scores and the rest on purpose. */}
                     <button
                       type="button"
@@ -3051,58 +3154,74 @@ function CharacterSheetPage() {
                       )}
                       proficiencyBonus={proficiencyBonus}
                       fightingStyles={getFightingStyles(sheet.features)}
+                      onJumpToCompanions={getCompanions(sheet).length > 0 ? jumpToCompanions : null}
+                      spellNames={[
+                        ...(sheet.spellcasting?.cantripsKnown ?? []),
+                        ...(sheet.spellcasting?.spellsKnown ?? []),
+                      ]
+                        .map((spell) => spell?.name)
+                        .filter(Boolean)}
                     />
                   )}
 
-                  {/* The companion's whole card (stats, attacks, notes) lives
-                      here; with no companion, a line offers to add one. */}
-                  {activeTab === "actions" &&
-                    (
-                      <>
-                        {/* One card per companion (a mount, a familiar, a summon). */}
-                        {getCompanions(sheet).map((creature, index) => (
-                          <CompanionCard
-                            key={creature.id}
-                            companion={creature}
-                            notes={getCompanionNotes(creature, index === 0 ? sheet.companion : "")}
-                            userId={user.id}
-                            characterId={sheet.id}
-                            onPortraitUpload={(url) => handleCompanionPortraitUpload(creature.id, url)}
-                            onFieldChange={(field, value) => handleCompanionCreatureChange(creature.id, field, value)}
-                            onHpChange={(field, value) => handleCompanionCreatureHpChange(creature.id, field, value)}
-                            onAbilityChange={(ability, value) => handleCompanionAbilityChange(creature.id, ability, value)}
-                            onSaveChange={(ability, value) => handleCompanionSaveChange(creature.id, ability, value)}
-                            onNotesChange={(noteList) => handleCompanionNotesChange(creature.id, noteList)}
-                            onAttackAdd={(values) => handleCompanionAttackAdd(creature.id, values)}
-                            onAttackUpdate={(attackId, values) => handleCompanionAttackUpdate(creature.id, attackId, values)}
-                            onAttackRemove={(attackId) => handleCompanionAttackRemove(creature.id, attackId)}
-                            onRemove={() => handleCompanionRemove(creature.id)}
-                            isNew={creature.id === newCompanionId}
-                            // A companion that follows a summon spell (Fable and
-                            // Summon Fey); null for an ordinary one.
-                            summon={getSummonInfo(
-                              companionView(sheet, creature),
-                              getSpellNumbers(sheet)?.spellAttack ?? proficiencyBonus,
-                            )}
-                            onSummon={(action, payload) =>
-                              persistSheet(
-                                updateCompanion(sheet, creature.id, (view) => applySummonAction(view, action, payload)),
-                              )
-                            }
-                          />
-                        ))}
-                        <p className="companion-card__add">
-                          <Button variant="secondary" onClick={handleCompanionAdd}>
-                            {getCompanions(sheet).length > 0 ? "+ Add another companion" : "+ Add a companion"}
+                  {/* Companions: its own part of the Actions tab, one card per
+                      companion (a mount, a familiar, a summon), with
+                      "+ Add companion" by its heading. */}
+                  {activeTab === "actions" && (
+                    <section className="companions" aria-labelledby="companions-heading">
+                      <div className="companions__header">
+                        <h2 className="character-sheet__section-title companions__title" id="companions-heading" tabIndex={-1}>
+                          <CompanionIcon name="companion-paw" size={22} /> Companions
+                        </h2>
+                        {!isAddingCompanion && (
+                          <Button variant="secondary" id="add-companion-button" onClick={handleCompanionAddStart}>
+                            + Add companion
                           </Button>
-                          <span>
-                            {getCompanions(sheet).length === 0 && sheet.companion?.trim()
-                              ? "Your companion notes will come along as bullet points."
-                              : "A mount, familiar, animal friend or summon, with its own HP, stats and attacks."}
-                          </span>
+                        )}
+                      </div>
+                      {getCompanions(sheet).length === 0 && !isAddingCompanion && (
+                        <p className="companions__empty">
+                          {sheet.companion?.trim()
+                            ? "Your companion notes will come along as bullet points when you add one."
+                            : "A mount, familiar, animal friend or summoned creature can have its own card here, with its HP, attacks and notes."}
                         </p>
-                      </>
-                    )}
+                      )}
+                      {isAddingCompanion && (
+                        <AddCompanionForm onAdd={handleCompanionAdd} onCancel={handleCompanionAddCancel} />
+                      )}
+                      {getCompanions(sheet).map((creature, index) => (
+                        <CompanionCard
+                          key={creature.id}
+                          companion={creature}
+                          notes={getCompanionNotes(creature, index === 0 ? sheet.companion : "")}
+                          userId={user.id}
+                          characterId={sheet.id}
+                          ownerName={sheet.name}
+                          onPortraitUpload={(url) => handleCompanionPortraitUpload(creature.id, url)}
+                          onFieldChange={(field, value) => handleCompanionCreatureChange(creature.id, field, value)}
+                          onHpChange={(field, value) => handleCompanionCreatureHpChange(creature.id, field, value)}
+                          onAbilityChange={(ability, value) => handleCompanionAbilityChange(creature.id, ability, value)}
+                          onSaveChange={(ability, value) => handleCompanionSaveChange(creature.id, ability, value)}
+                          onNotesChange={(noteList) => handleCompanionNotesChange(creature.id, noteList)}
+                          onAttackAdd={(values) => handleCompanionAttackAdd(creature.id, values)}
+                          onAttackUpdate={(attackId, values) => handleCompanionAttackUpdate(creature.id, attackId, values)}
+                          onAttackRemove={(attackId) => handleCompanionAttackRemove(creature.id, attackId)}
+                          onRemove={() => handleCompanionRemove(creature.id)}
+                          // A companion that follows a summon spell (Fable and
+                          // Summon Fey); null for an ordinary one.
+                          summon={getSummonInfo(
+                            companionView(sheet, creature),
+                            getSpellNumbers(sheet)?.spellAttack ?? proficiencyBonus,
+                          )}
+                          onSummon={(action, payload) =>
+                            persistSheet(
+                              updateCompanion(sheet, creature.id, (view) => applySummonAction(view, action, payload)),
+                            )
+                          }
+                        />
+                      ))}
+                    </section>
+                  )}
 
                   {activeTab === "spells" && hasSpellcasting && (
                     <CharacterSheetSpellsTab
@@ -3148,6 +3267,7 @@ function CharacterSheetPage() {
                           ? ((sheet.equipment ?? []).find((item) => item.index === resource.itemIndex) ?? null)
                           : null
                       }
+                      onViewItem={viewInventoryItem}
                     />
                   )}
 
@@ -3173,6 +3293,7 @@ function CharacterSheetPage() {
                       }}
                       onCancelGift={async (gift) => addFromGift(await cancelGift(gift.id))}
                       isArmor={(item) => isArmorDetails(gearDetailsFor(item))}
+                      isShield={(item) => isShieldDetails(gearDetailsFor(item))}
                       categoryOf={(item) => getInventoryCategory(item, gearDetailsFor(item))}
                       onEquipToggle={handleEquipToggle}
                       isWeapon={(item) => isWeaponItem(item, gearDetailsFor(item))}
@@ -3382,6 +3503,8 @@ function CharacterSheetPage() {
                     portraitUrl={sheet.portraitUrl}
                     onUpload={handlePortraitUpload}
                     size="large"
+                    // An Edit menu on the picture: view, reframe or replace it.
+                    withMenu
                   />
                   {quickControls}
                   {tableLink}

@@ -1,0 +1,179 @@
+/* − 7 / 10 +: outlined buttons in the theme's copper, the count in the
+   text colour with digits of one width, and nothing filled in. */
+.use-counter {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+}
+
+.use-counter__title {
+  margin-right: 2px;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.use-counter__button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--qk-text-muted) 75%, var(--qk-surface));
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-terracotta-hover);
+  cursor: pointer;
+}
+
+.use-counter__button:hover:not(:disabled) {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-surface-muted);
+}
+
+.use-counter__button:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.use-counter__button:disabled {
+  border-color: var(--qk-border);
+  color: var(--qk-text-muted);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* The same width for any number up to the most (7 / 10 and 10 / 10). */
+.use-counter__count {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  min-width: calc(var(--use-counter-digits, 1) * 2ch + 2.6ch);
+  color: var(--qk-text);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.use-counter__of {
+  color: var(--qk-text-muted);
+  font-weight: 600;
+  white-space: pre;
+}
+
+.use-counter__input {
+  width: calc(var(--use-counter-digits, 1) * 1ch + 28px);
+  min-height: 32px;
+  padding: 0 4px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-small);
+  background-color: var(--qk-input-bg);
+  color: var(--qk-text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.use-counter__depleted {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* Read out, not shown. */
+.use-counter__announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Spell slot chips: a little tighter, still comfortable to tap. */
+.use-counter--compact {
+  gap: 4px;
+}
+
+.use-counter--compact .use-counter__button {
+  width: 32px;
+  height: 32px;
+}
+
+.use-counter--compact .use-counter__count {
+  font-size: 14px;
+}
+
+/* Shared sizes for trackers that line up in a list (Resources, Inventory):
+   one label width for "Uses" and "Charges", one count width that fits a
+   big pool's typed box ("100 / 100", Lay on Hands at level 20) as well as
+   "7 / 10", and the whole
+   tracker's width from those, so every row's −, count and + sit in the
+   same place whatever the numbers, the name or the recovery text. */
+.use-tracker-layout {
+  /* rem, so the list's column and the tracker inside it agree exactly. */
+  --use-counter-title-width: 3.75rem;
+  --use-counter-count-width: 6rem;
+  --use-counter-gap: 6px;
+  --use-tracker-width: calc(
+    var(--use-counter-title-width) + var(--use-counter-count-width) + 72px + 3 * var(--use-counter-gap)
+  );
+}
+
+.use-counter--aligned {
+  gap: var(--use-counter-gap, 6px);
+  font-size: 14px;
+}
+
+.use-counter--aligned .use-counter__title {
+  width: var(--use-counter-title-width, auto);
+  margin-right: 0;
+}
+
+.use-counter--aligned .use-counter__count {
+  width: var(--use-counter-count-width, auto);
+  min-width: 0;
+}
+
+/* Quiet supporting lines under a tracker or in the Recovery column:
+   recovery, where the charges come from, View item and "Depleted". */
+.use-tracker-notes {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  color: var(--qk-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.use-tracker-notes__depleted {
+  color: var(--qk-text);
+  font-style: italic;
+}
+
+.use-tracker-notes__link {
+  justify-self: start;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qk-terracotta-hover);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.use-tracker-notes__link:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}

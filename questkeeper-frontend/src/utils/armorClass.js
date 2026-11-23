@@ -15,6 +15,11 @@ export function isArmorDetails(details) {
   return ARMOR_CATEGORIES.includes(details?.armor_category);
 }
 
+// A shield (the inventory says "Equip" for it, and "Wear" for armor).
+export function isShieldDetails(details) {
+  return details?.armor_category === "Shield";
+}
+
 // Magic armor isn't in the SRD's plain equipment list, so it has no AC of its
 // own there. Each one is really a normal armor underneath ("Armor (plate)"
 // in its description), sometimes with a bonus. These are the SRD's magic

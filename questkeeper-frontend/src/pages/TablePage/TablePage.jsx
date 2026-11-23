@@ -2193,7 +2193,7 @@ function TablePage() {
                 <span>You&apos;re marked away, so your turns are skipped. Tap I&apos;m back when you return.</span>
               )}
               <Button variant="secondary" onClick={() => run(() => setMyAway(table.id, !myCombatant.away))}>
-                {myCombatant.away ? "I'm back" : "Step away (brb)"}
+                {myCombatant.away ? "Return to play" : "Step away"}
               </Button>
             </div>
           )}

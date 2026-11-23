@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import UsePips, { MAX_PIPS } from "../UsePips/UsePips";
+import UseCounter from "../UseCounter/UseCounter";
 import RollButton from "../RollDock/RollButton";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
@@ -322,28 +322,20 @@ function CharacterSheetSpellsTab({
                   key={slot.level}
                 >
                   <span className="character-sheet__spell-slot-level">{ordinal(slot.level)}</span>
-                  {/* Tap a pip to spend a slot or get one back. */}
-                  {slot.max > 0 && slot.max <= MAX_PIPS ? (
-                    <UsePips
+                  {/* − spends a slot, + gives one back (the same tracker as
+                      resources and charges). More than 12 keeps its typed box. */}
+                  {slot.max > 0 ? (
+                    <UseCounter
                       compact
-                      label={`Level ${slot.level} spell slots`}
+                      name={`Level ${slot.level}`}
+                      unit="spell slot"
                       current={slot.current}
                       max={slot.max}
+                      editable={slot.max > 12}
+                      spendLabel={`Spend one level ${slot.level} spell slot`}
+                      restoreLabel={`Restore one level ${slot.level} spell slot`}
                       onChange={(value) => onSpellSlotChange(slot.level, "current", value)}
                     />
-                  ) : slot.max > 0 ? (
-                    <span className="character-sheet__spell-slot-count">
-                      <input
-                        type="number"
-                        className="character-sheet__hp-input character-sheet__hp-input--tiny"
-                        aria-label={`Level ${slot.level} slots left`}
-                        value={slot.current}
-                        onChange={(e) => onSpellSlotChange(slot.level, "current", e.target.value)}
-                        min={0}
-                        max={slot.max}
-                      />
-                      /{slot.max}
-                    </span>
                   ) : (
                     <span className="character-sheet__spell-slot-none">none</span>
                   )}
