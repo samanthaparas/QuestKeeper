@@ -111,7 +111,11 @@ jobs:
       - name: Set up the Supabase tool
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # A fixed version (the one used on the Mac too). "latest" made the
+          # job ask GitHub which release is newest first, and that question
+          # sometimes hit GitHub's rate limit and failed the job before any
+          # test ran. Raise this on purpose when updating the Supabase CLI.
+          version: 3.2.0
 
       - name: Start a local Supabase
         run: supabase --workdir e2e start -x studio,imgproxy,edge-runtime,logflare,vector,mailpit,postgres-meta,supavisor
