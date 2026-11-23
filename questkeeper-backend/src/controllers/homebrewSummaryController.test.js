@@ -18,6 +18,14 @@ vi.mock("@anthropic-ai/sdk", () => {
   return { default: Anthropic };
 });
 
+// Who may use the AI is checked in aiAccess (tested on its own); here every
+// request is let through, counted against its address, unless a test says no.
+const access = vi.hoisted(() => ({ check: vi.fn() }));
+vi.mock("../utils/aiAccess.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  aiAccess: access,
+}));
+
 const { homebrewSummary, resetHomebrewSummary } = await import("./homebrewSummaryController.js");
 
 const TEXT = "Soft Step. Moss muffles your footsteps, so you have advantage on stealth checks in forests.";
@@ -42,6 +50,7 @@ async function summarize(body, ip = "1.2.3.4") {
 }
 
 beforeEach(() => {
+  access.check.mockReset().mockImplementation(async (req) => ({ ok: true, key: req.ip }));
   resetHomebrewSummary();
   create.mockReset();
   vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
@@ -91,6 +100,15 @@ describe("POST /api/homebrew-summary", () => {
     expect((await summarize({ category: "spell", text: TEXT })).statusCode).toBe(400);
     expect((await summarize({ category: "race", text: "hi" })).statusCode).toBe(400);
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it("needs a signed-in player", async () => {
+    access.check.mockResolvedValue({ ok: false, status: 401, message: "Sign in to use this." });
+    const res = fakeResponse();
+    await homebrewSummary({ body: { category: "feat", text: "x".repeat(40) }, ip: "1.2.3.4", headers: {} }, res);
+    expect(res.statusCode).toBe(401);
+    expect(create).not.toHaveBeenCalled();
+    expect(access.check).toHaveBeenCalledWith(expect.anything(), { requireLogin: true });
   });
 
   it("stops one visitor from asking too often", async () => {

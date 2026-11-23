@@ -6,6 +6,7 @@
 // isn't set up, and everything else keeps working.
 
 import Anthropic from "@anthropic-ai/sdk";
+import { aiAccess, fallbackOptions, modelFor } from "../utils/aiAccess.js";
 import {
   RESULT_SCHEMA,
   SEARCH_INSTRUCTIONS,
@@ -16,7 +17,6 @@ import {
   pickResults,
 } from "../utils/aiSearch.js";
 
-const MODEL = "claude-opus-5-5";
 const CATALOG_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 let client = null;
@@ -50,21 +50,24 @@ export async function aiSearch(req, res) {
   const anthropic = getClient();
   if (!anthropic) return fail(res, 503, "AI search isn't set up yet.");
 
-  if (!allowSearch(req.ip)) {
+  const access = await aiAccess.check(req, { requireLogin: false });
+  if (!access.ok) return fail(res, access.status, access.message);
+
+  if (!allowSearch(access.key)) {
     return fail(res, 429, "That's a lot of searches. Try again in a few minutes.");
   }
 
+  const model = modelFor("search");
   try {
     const catalog = await getCatalog();
     if (catalog.length === 0) return fail(res, 503, "The rules lists couldn't be loaded. Try again soon.");
 
     const response = await anthropic.beta.messages.create({
-      model: MODEL,
+      model,
       max_tokens: 4000,
-      // If the safety check ever declines a search, Anthropic retries it on
-      // its recommended fallback model instead of failing.
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
+      // If the safety check declines a request, Anthropic retries it on a
+      // safer model (only for models that support that).
+      ...fallbackOptions(model),
       // A quick pick from a list: low effort keeps it fast and cheap.
       output_config: {
         effort: "low",

@@ -46,6 +46,20 @@ function requestJson(path, errorMessage) {
     });
 }
 
+// The sign-in token for the AI features: the server only lets signed-in
+// players use recaps and summaries, and gives AI search a bigger allowance.
+// Signed out (or if the sign-in system can't be reached) it sends nothing.
+async function aiAuthHeader() {
+  try {
+    const { supabase } = await import("./supabaseClient");
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 // Search by meaning: the backend asks Claude which spells, items, classes,
 // races and backgrounds match what the player typed. Always resolves:
 // { results: [{ id, name, category, why }], message? }, with a message the
@@ -54,7 +68,7 @@ export async function searchByMeaning(query) {
   try {
     const response = await fetch(`${API_BASE_URL}/ai-search`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await aiAuthHeader()) },
       body: JSON.stringify({ query }),
     });
     const body = await response.json().catch(() => ({}));
@@ -74,7 +88,7 @@ export async function summarizeForGroup({ category, name, text }) {
   try {
     const response = await fetch(`${API_BASE_URL}/homebrew-summary`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await aiAuthHeader()) },
       body: JSON.stringify({ category, name, text }),
     });
     const body = await response.json().catch(() => ({}));
@@ -99,7 +113,7 @@ export async function writeRecapFromNotes({ sessionNumber, entries }) {
   try {
     const response = await fetch(`${API_BASE_URL}/recap`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await aiAuthHeader()) },
       body: JSON.stringify({ sessionNumber, entries }),
     });
     const body = await response.json().catch(() => ({}));

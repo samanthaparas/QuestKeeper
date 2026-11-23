@@ -7,10 +7,10 @@
 // only used for this one request: they are never stored or logged.
 
 import Anthropic from "@anthropic-ai/sdk";
+import { aiAccess, fallbackOptions, modelFor } from "../utils/aiAccess.js";
 import { createRateLimiter } from "../utils/aiSearch.js";
 import { RECAP_INSTRUCTIONS, RECAP_SCHEMA, cleanEntries, cleanSession, pickRecap, recapPrompt } from "../utils/recap.js";
 
-const MODEL = "claude-opus-5-5";
 
 let client = null;
 // Recaps cost more than searches, so the limit is lower.
@@ -35,18 +35,21 @@ export async function writeRecap(req, res) {
   const anthropic = getClient();
   if (!anthropic) return fail(res, 503, "Recaps aren't set up yet.");
 
-  if (!allowRecap(req.ip)) {
+  const access = await aiAccess.check(req, { requireLogin: true });
+  if (!access.ok) return fail(res, access.status, access.message);
+
+  if (!allowRecap(access.key)) {
     return fail(res, 429, "That's a lot of recaps. Try again in a few minutes.");
   }
 
+  const model = modelFor("recap");
   try {
     const response = await anthropic.beta.messages.create({
-      model: MODEL,
+      model,
       max_tokens: 2000,
-      // If the safety check ever declines a request, Anthropic retries it on
-      // its recommended fallback model instead of failing.
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
+      // If the safety check declines a request, Anthropic retries it on a
+      // safer model (only for models that support that).
+      ...fallbackOptions(model),
       output_config: {
         effort: "low",
         format: { type: "json_schema", schema: RECAP_SCHEMA },

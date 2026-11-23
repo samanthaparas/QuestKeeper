@@ -24,6 +24,14 @@ vi.mock("../utils/dnd5eApiClient.js", () => ({
   ),
 }));
 
+// Who may use the AI is checked in aiAccess (tested on its own); here every
+// request is let through, counted against its address, unless a test says no.
+const access = vi.hoisted(() => ({ check: vi.fn() }));
+vi.mock("../utils/aiAccess.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  aiAccess: access,
+}));
+
 const { aiSearch, resetAiSearch } = await import("./aiSearchController.js");
 
 function fakeResponse() {
@@ -45,7 +53,19 @@ async function search(query, ip = "1.2.3.4") {
   return res;
 }
 
+describe("who may use AI search", () => {
+  it("lets visitors in (a small daily allowance is checked in aiAccess), and passes on the 'sign in' message when it runs out", async () => {
+    access.check.mockResolvedValue({ ok: false, status: 429, message: "Sign in to keep using AI search. Visitors get a few a day." });
+    const res = await search("heal my friend");
+    expect(res.statusCode).toBe(429);
+    expect(res.body.message).toMatch(/Sign in/);
+    expect(access.check).toHaveBeenCalledWith(expect.anything(), { requireLogin: false });
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
 beforeEach(() => {
+  access.check.mockReset().mockImplementation(async (req) => ({ ok: true, key: req.ip }));
   resetAiSearch();
   create.mockReset();
   vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
