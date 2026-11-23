@@ -398,3 +398,33 @@ describe("weapon pictures", () => {
     expect(within(row("Wisteria's Kiss")).getByText("Roll")).toBeInTheDocument();
   });
 });
+
+// The short line under a weapon's name says what it is, and never "+0".
+describe("the weapon's description line", () => {
+  const metaOf = (name) =>
+    screen
+      .getByText((text, element) => element.classList.contains("character-sheet__item-label") && text.startsWith(name))
+      .closest(".character-sheet__attacks-row")
+      .querySelector(".character-sheet__weapon-meta");
+  const attack = (index, name, extra = {}) => ({ index, name, toHit: 5, damage: "1d8+3", damageType: "Slashing", ...extra });
+
+  it("says magic, a bonus or the weapon type, and nothing for an ordinary weapon", () => {
+    renderTab({
+      attacks: [
+        attack("a1", "Flame Tongue", { isMagic: true }),
+        attack("a2", "Sunbrand", { baseWeapon: "Greatsword", isMagic: true }),
+        attack("a3", "Wisteria's Kiss", { baseWeapon: "Longbow", magicBonus: 2 }),
+        attack("a4", "Moon Blade", { magicBonus: 1 }),
+        attack("a5", "Grandad's Axe", { baseWeapon: "Battleaxe" }),
+        attack("a6", "Longsword"),
+      ],
+    });
+    expect(metaOf("Flame Tongue")).toHaveTextContent(/^magic weapon$/);
+    expect(metaOf("Sunbrand")).toHaveTextContent(/^magic greatsword$/);
+    expect(metaOf("Wisteria's Kiss")).toHaveTextContent(/^\+2 longbow$/);
+    expect(metaOf("Moon Blade")).toHaveTextContent(/^\+1 magic weapon$/);
+    expect(metaOf("Grandad's Axe")).toHaveTextContent(/^battleaxe$/);
+    expect(metaOf("Longsword")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/\+0/);
+  });
+});

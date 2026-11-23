@@ -263,13 +263,17 @@ function SharpshooterChip({ attack, on, onToggle }) {
 }
 
 // A weapon's short description under its name: "+2 longbow" for a renamed
-// magic weapon, "+1 magic weapon" for a plain one; nothing otherwise.
+// magic weapon, "+1 magic weapon" for a plain one, and just "magic" for one
+// that's magic with no bonus (a Flame Tongue: "magic greatsword", never
+// "+0"); nothing for an ordinary weapon under its own name.
 function weaponMeta(attack) {
-  const magic = magicChoiceFor(attack);
+  const magic = magicChoiceFor(attack); // "", "0" (magic, no bonus) or "1"-"3"
+  const prefix = magic === "" ? "" : magic === "0" ? "magic " : `+${magic} `;
   const base = String(attack.baseWeapon ?? "").trim();
   const showBase = base && base.toLowerCase() !== String(attack.name ?? "").trim().toLowerCase();
-  if (showBase) return `${magic ? `+${magic} ` : ""}${base.toLowerCase()}`;
-  return magic ? `+${magic} magic weapon` : "";
+  if (showBase) return `${prefix}${base.toLowerCase()}`;
+  if (magic === "") return "";
+  return magic === "0" ? "magic weapon" : `+${magic} magic weapon`;
 }
 
 // Sharpshooter for one attack: off unless switched on, and never saved on
