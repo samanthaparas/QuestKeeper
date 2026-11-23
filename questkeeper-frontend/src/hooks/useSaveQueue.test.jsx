@@ -144,4 +144,67 @@ describe("useSaveQueue", () => {
     window.dispatchEvent(asking);
     expect(asking.defaultPrevented).toBe(true);
   });
+  it("when another device saved first, hands the newest edit to the page and stops, without retrying or overwriting", async () => {
+    const conflict = Object.assign(new Error("This character was changed on another device."), { code: "version_conflict" });
+    const save = vi.fn().mockRejectedValue(conflict);
+    const onConflict = vi.fn().mockResolvedValue(true);
+    const onSaved = vi.fn();
+    const { result } = renderHook(() =>
+      useSaveQueue({ characterId: "c1", save, onSaved, onConflict, baseUpdatedAt: () => "base" }),
+    );
+
+    act(() => result.current.queueSave({ id: "c1", hp: 5 }));
+    await tick(700);
+
+    expect(onConflict).toHaveBeenCalledWith({ id: "c1", hp: 5 });
+    expect(result.current.status).toBe("saved");
+    expect(result.current.isIdle()).toBe(true);
+    // No retry loop: a refused save would only be refused again.
+    await tick(120000);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(onSaved).not.toHaveBeenCalled();
+  });
+
+  it("holds the latest edit, not the first, when typing continued during the conflict", async () => {
+    const conflict = Object.assign(new Error("changed"), { code: "version_conflict" });
+    let release;
+    const save = vi.fn(() => new Promise((_, reject) => { release = () => reject(conflict); }));
+    const onConflict = vi.fn().mockResolvedValue(true);
+    const { result } = renderHook(() =>
+      useSaveQueue({ characterId: "c1", save, onSaved: vi.fn(), onConflict, baseUpdatedAt: () => "base" }),
+    );
+
+    act(() => result.current.queueSave({ id: "c1", hp: 5 }));
+    await tick(700);
+    act(() => result.current.queueSave({ id: "c1", hp: 4 }));
+    await act(async () => { release(); });
+
+    expect(onConflict).toHaveBeenCalledWith({ id: "c1", hp: 4 });
+    expect(result.current.isIdle()).toBe(true);
+  });
+
+  it("treats a conflict the page can't take charge of like a failed save, and retries", async () => {
+    const conflict = Object.assign(new Error("changed"), { code: "version_conflict" });
+    const save = vi.fn().mockRejectedValueOnce(conflict).mockResolvedValue({ id: "c1", updatedAt: "t1" });
+    const onConflict = vi.fn().mockResolvedValue(false);
+    const { result } = renderHook(() =>
+      useSaveQueue({ characterId: "c1", save, onSaved: vi.fn(), onConflict, baseUpdatedAt: () => "base" }),
+    );
+
+    act(() => result.current.queueSave({ id: "c1", hp: 5 }));
+    await tick(700);
+    expect(result.current.status).toBe("waiting");
+    await tick(5000);
+    expect(result.current.status).toBe("saved");
+  });
+
+  it("says when it is idle: nothing waiting and nothing saving", async () => {
+    const save = vi.fn().mockResolvedValue({ id: "c1", updatedAt: "t1" });
+    const { result } = setup(save);
+    expect(result.current.isIdle()).toBe(true);
+    act(() => result.current.queueSave({ id: "c1", hp: 5 }));
+    expect(result.current.isIdle()).toBe(false);
+    await tick(700);
+    expect(result.current.isIdle()).toBe(true);
+  });
 });

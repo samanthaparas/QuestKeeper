@@ -7,14 +7,77 @@ const upsert = vi.fn(() => ({ select: () => ({ single }) }));
 const eq = vi.fn();
 const update = vi.fn(() => ({ eq }));
 const deletedRows = vi.fn();
+// saveCharacter's version check: update(...).eq(id).eq(updated_at).select().maybeSingle()
+const matched = vi.fn();
+// ...and the look-up after a miss: select(...).eq(id).maybeSingle()
+const stillThere = vi.fn();
 const remove = vi.fn(() => ({ eq: () => ({ select: deletedRows }) }));
 
 vi.mock("./supabaseClient", () => ({
   supabase: {
     auth: { getSession: vi.fn(), getUser: vi.fn() },
-    from: vi.fn(() => ({ upsert, update, delete: remove })),
+    from: vi.fn(() => ({
+      upsert,
+      update,
+      delete: remove,
+      select: () => ({ eq: () => ({ maybeSingle: stillThere }) }),
+    })),
   },
 }));
+
+describe("saveCharacter: only saving over the version you started from", () => {
+  const session = { data: { session: { user: { id: "u1" } } } };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    supabase.auth.getSession.mockResolvedValue(session);
+    // update(...).eq("id").eq("updated_at").select().maybeSingle()
+    eq.mockImplementation(() => ({ eq: () => ({ select: () => ({ maybeSingle: matched }) }) }));
+    single.mockResolvedValue({ data: { id: "c1", data: { name: "Fresh" }, updated_at: "t-new" }, error: null });
+  });
+
+  it("changes the row only if it is still at the version this edit started from", async () => {
+    matched.mockResolvedValue({ data: { id: "c1", data: { name: "Dangit" }, updated_at: "t2" }, error: null });
+
+    const saved = await saveCharacter({ id: "c1", name: "Dangit" }, { baseUpdatedAt: "t1" });
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: { name: "Dangit" } }));
+    expect(saved.updatedAt).toBe("t2");
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("refuses, with a version_conflict, when another device saved first", async () => {
+    matched.mockResolvedValue({ data: null, error: null });
+    stillThere.mockResolvedValue({ data: { id: "c1", updated_at: "t-other" }, error: null });
+
+    await expect(saveCharacter({ id: "c1", name: "Stale" }, { baseUpdatedAt: "t1" })).rejects.toMatchObject({
+      code: "version_conflict",
+    });
+    // Nothing was written over the newer version.
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("saves the character again if it was deleted elsewhere, rather than losing the edits", async () => {
+    matched.mockResolvedValue({ data: null, error: null });
+    stillThere.mockResolvedValue({ data: null, error: null });
+
+    const saved = await saveCharacter({ id: "c1", name: "Kept" }, { baseUpdatedAt: "t1" });
+
+    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ id: "c1", user_id: "u1" }));
+    expect(saved.updatedAt).toBe("t-new");
+  });
+
+  it("passes on a real database error instead of calling it a conflict", async () => {
+    matched.mockResolvedValue({ data: null, error: { code: "42501", message: "no" } });
+    await expect(saveCharacter({ id: "c1" }, { baseUpdatedAt: "t1" })).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("creates a brand-new character (no earlier version) without any check", async () => {
+    await saveCharacter({ id: "c1", name: "New" });
+    expect(update).not.toHaveBeenCalled();
+    expect(upsert).toHaveBeenCalled();
+  });
+});
 
 describe("saveCharacter", () => {
   beforeEach(() => {

@@ -57,7 +57,13 @@ export async function getCharacter(id) {
   return data ? rowToSheet(data) : null;
 }
 
-export async function saveCharacter(sheet) {
+// baseUpdatedAt: the "last updated" time of the version this edit started from
+// (what the server told us last). When it's given, the save only goes ahead if
+// the character is still at that version: if another device or tab saved in
+// the meantime, nothing is overwritten and the error has code
+// "version_conflict", so the sheet can ask which version to keep. Without it
+// (a brand-new character) the sheet is simply created.
+export async function saveCharacter(sheet, { baseUpdatedAt = null } = {}) {
   // listPosition lives in its own column (see saveCharacterOrder), so it's
   // kept out of the sheet's saved data.
   // ownerId comes from the row's own column, so it isn't saved inside the data.
@@ -77,6 +83,34 @@ export async function saveCharacter(sheet) {
     throw Object.assign(new Error("Only the player who owns this character can change it."), {
       code: "not_owner",
     });
+  }
+
+  if (baseUpdatedAt) {
+    // One database step: change the row only if it is still the version we
+    // started from. Zero rows back means it isn't (or it's gone).
+    const { data: updated, error: updateError } = await supabase
+      .from("characters")
+      .update({ data: rest, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("updated_at", baseUpdatedAt)
+      .select()
+      .maybeSingle();
+    if (updateError) throw updateError;
+    if (updated) return rowToSheet(updated);
+
+    const { data: current, error: lookupError } = await supabase
+      .from("characters")
+      .select("id, updated_at")
+      .eq("id", id)
+      .maybeSingle();
+    if (lookupError) throw lookupError;
+    if (current) {
+      throw Object.assign(new Error("This character was changed on another device."), {
+        code: "version_conflict",
+      });
+    }
+    // The character is gone (deleted elsewhere): fall through and save it
+    // again, as before, rather than silently losing these edits.
   }
 
   const { data, error } = await supabase

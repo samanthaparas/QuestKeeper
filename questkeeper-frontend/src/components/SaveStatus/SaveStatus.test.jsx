@@ -54,4 +54,8 @@ describe("SaveStatus", () => {
     expect(onKeepMine).toHaveBeenCalled();
     expect(onUseSaved).toHaveBeenCalled();
   });
+  it("says so, calmly, when the sheet was brought up to date from another device", () => {
+    render(<SaveStatus status="saved" refreshed />);
+    expect(screen.getByRole("status")).toHaveTextContent("Updated with changes you made on another device.");
+  });
 });

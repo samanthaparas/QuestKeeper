@@ -15,7 +15,7 @@ import Concentration from "../../components/Concentration/Concentration";
 import { conditionWord, turnsElapsed, rollNotesFor, tickConditionRounds } from "../../utils/conditions";
 import { countMyTurnsEnded } from "../../utils/initiative";
 import { applyDamageToHitPoints } from "../../utils/attacks";
-import { saveCharacter } from "../../utils/characterStore";
+import { getCharacter, saveCharacter } from "../../utils/characterStore";
 import { loadSheet } from "../../utils/loadSheet";
 import { clearSheetCache, writeSheetCache } from "../../utils/sheetCache";
 import { useSaveQueue } from "../../hooks/useSaveQueue";
@@ -573,12 +573,29 @@ function CharacterSheetPage() {
   const serverUpdatedAt = useRef(null);
   // notOwner: someone else's character (a DM opening a player's sheet), shown
   // as a short note instead of an editable sheet.
-  const [loadNote, setLoadNote] = useState({ offline: false, recovered: false, conflict: null, failed: false, notOwner: false });
+  const [loadNote, setLoadNote] = useState({ offline: false, recovered: false, conflict: null, failed: false, notOwner: false, refreshed: false });
   const [loadAttempt, setLoadAttempt] = useState(0);
+  // Another device (or tab) saved this character first. Show its newer version
+  // and ask which to keep; the edits made here are held (see keepMyChanges).
+  async function handleSaveConflict(mine) {
+    try {
+      const newer = await getCharacter(id);
+      if (!newer) return false;
+      serverUpdatedAt.current = newer.updatedAt;
+      setSheet(newer);
+      setLoadNote((note) => ({ ...note, conflict: mine, refreshed: false }));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   const queue = useSaveQueue({
     characterId: id,
-    save: saveCharacter,
+    // A save only goes through if nobody saved a newer version meanwhile.
+    save: (toSave) => saveCharacter(toSave, { baseUpdatedAt: serverUpdatedAt.current }),
     baseUpdatedAt: () => serverUpdatedAt.current,
+    onConflict: handleSaveConflict,
     onSaved: (saved) => {
       if (saved?.updatedAt) serverUpdatedAt.current = saved.updatedAt;
       setLoadNote((note) => (note.offline || note.recovered ? { ...note, offline: false } : note));
@@ -589,6 +606,40 @@ function CharacterSheetPage() {
   });
 
   const isLoading = loadedId !== id;
+
+  // Coming back to this tab (or window): if the character was changed on
+  // another device meanwhile and nothing here is waiting to save, bring this
+  // sheet up to date first, so a stale screen never saves over newer work.
+  const { isIdle } = queue;
+  useEffect(() => {
+    if (loadedId !== id || loadNote.notOwner || loadNote.conflict) return undefined;
+    let isCancelled = false;
+    async function refreshIfStale() {
+      if (document.visibilityState !== "visible" || !isIdle()) return;
+      const newer = await getCharacter(id).catch(() => null);
+      if (isCancelled || !newer || newer.updatedAt === serverUpdatedAt.current) return;
+      // Something was typed while we were asking: leave it alone.
+      if (!isIdle()) return;
+      serverUpdatedAt.current = newer.updatedAt;
+      writeSheetCache(id, { sheet: newer, synced: true, baseUpdatedAt: newer.updatedAt });
+      setSheet(newer);
+      setLoadNote((note) => ({ ...note, refreshed: true }));
+    }
+    document.addEventListener("visibilitychange", refreshIfStale);
+    window.addEventListener("focus", refreshIfStale);
+    return () => {
+      isCancelled = true;
+      document.removeEventListener("visibilitychange", refreshIfStale);
+      window.removeEventListener("focus", refreshIfStale);
+    };
+  }, [id, loadedId, loadNote.notOwner, loadNote.conflict, isIdle]);
+
+  // The "updated with changes from another device" line goes away by itself.
+  useEffect(() => {
+    if (!loadNote.refreshed) return undefined;
+    const timer = setTimeout(() => setLoadNote((note) => ({ ...note, refreshed: false })), 8000);
+    return () => clearTimeout(timer);
+  }, [loadNote.refreshed]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -2336,6 +2387,7 @@ function CharacterSheetPage() {
           isOfflineCopy={loadNote.offline}
           recovered={loadNote.recovered}
           conflict={Boolean(loadNote.conflict)}
+          refreshed={loadNote.refreshed}
           onRetry={queue.retryNow}
           onReload={() => setLoadAttempt((count) => count + 1)}
           onKeepMine={keepMyChanges}
