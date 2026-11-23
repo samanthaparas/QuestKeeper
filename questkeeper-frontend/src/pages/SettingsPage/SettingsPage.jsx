@@ -21,6 +21,7 @@ import {
   setTextSize as saveTextSize,
 } from "../../utils/displayPreference";
 import PageBanner from "../../components/PageBanner/PageBanner";
+import YourDataCard from "../../components/YourDataCard/YourDataCard";
 import "./SettingsPage.css";
 
 const MIN_PASSWORD = 6; // Supabase's own minimum
@@ -373,6 +374,8 @@ function SettingsPage() {
           <SaveMessage state={passwordState} />
         </div>
       </form>
+
+      <YourDataCard />
     </main>
   );
 }

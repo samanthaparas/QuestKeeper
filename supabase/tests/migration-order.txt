@@ -42,3 +42,4 @@
 20261116_player_brb.sql
 20261122_campaign_start_session.sql
 20261122_item_gifts.sql
+20261123_delete_my_account.sql

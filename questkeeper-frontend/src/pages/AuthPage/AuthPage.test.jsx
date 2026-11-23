@@ -169,6 +169,13 @@ describe("AuthPage", () => {
     expect(await screen.findByTestId("landed")).toHaveTextContent("/characters");
   });
 
+  it("points to the privacy page when signing up", async () => {
+    renderAt("/login");
+    expect(screen.queryByRole("link", { name: "privacy page" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Need an account/ }));
+    expect(screen.getByRole("link", { name: "privacy page" })).toHaveAttribute("href", "/privacy");
+  });
+
   it("says why an account is needed, even with nowhere in particular to go", () => {
     renderAt("/login");
     expect(screen.getByRole("heading", { name: "Why sign in?" })).toBeInTheDocument();
