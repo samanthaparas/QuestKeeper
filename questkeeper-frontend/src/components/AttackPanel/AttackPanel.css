@@ -237,3 +237,33 @@
 .character-sheet__row-panel--joined .attack-panel__bonus {
   margin-left: 0;
 }
+
+/* "Use physical dice instead" / "Let the app roll instead": the other way to
+   roll this step, as a quiet text link under the main one. */
+.attack-panel__method {
+  margin: 0;
+}
+
+.attack-panel__method-link {
+  min-height: 32px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--qk-terracotta-hover);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.attack-panel__method-link:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.attack-panel__method-link:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}

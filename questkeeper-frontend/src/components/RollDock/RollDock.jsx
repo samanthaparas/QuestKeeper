@@ -1,7 +1,10 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { checkExtraDamage, describeDiceNeeded, diceNeeded, readExtra, rememberExtra } from "../../utils/attacks";
 import ExtraDamagePicker from "../ExtraDamagePicker/ExtraDamagePicker";
 import { useRoller } from "./rollContext";
+import { useStickyHeight } from "../../hooks/useStickyHeight";
+import DiscardPendingConfirm from "./DiscardPendingConfirm";
+import { focusPendingRoll } from "../../utils/focusInPane";
 import { explainRoll } from "../../utils/rollMeaning";
 import { getBeginnerTips } from "../../utils/beginnerTips";
 import "./RollDock.css";
@@ -38,13 +41,35 @@ function RollDock() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rollId, isReading]);
 
+  // Its height, for the page's scroll padding (see useStickyHeight).
+  const dockRef = useRef(null);
+  const appRollsRef = useRef(null);
+  useStickyHeight(dockRef, "--qk-sticky-bottom", Boolean(roller));
+
   if (!roller) return null;
   const { lastRoll, mode, setMode, tableName, share, setShare, conditionNotes = [] } = roller;
   const { realDice, setRealDice, pending } = roller;
 
   return (
-    <div className="roll-dock">
+    <div className="roll-dock" ref={dockRef}>
       {pending && <RealDiceEntry key={`${pending.label}-${pending.type}`} roller={roller} />}
+      {/* "App rolls" tapped while a roll waits for real dice: asked here first
+          (the same question an attack panel asks; see chooseAppRolls). */}
+      {roller.discardAsk === "dock" && pending && (
+        <DiscardPendingConfirm
+          id="roll-dock-discard"
+          className="roll-dock__discard"
+          pendingLabel={pending.label}
+          onKeep={() => {
+            roller.keepPendingRoll();
+            focusPendingRoll();
+          }}
+          onDiscard={() => {
+            roller.discardAndSwitch();
+            window.requestAnimationFrame(() => appRollsRef.current?.focus());
+          }}
+        />
+      )}
       {lastRoll && (
         <RollResult
           key={lastRoll.id}
@@ -64,12 +89,14 @@ function RollDock() {
         {setRealDice && (
           <div className="roll-dock__modes" role="radiogroup" aria-label="Who rolls the dice">
             <button
+              ref={appRollsRef}
               type="button"
               role="radio"
               aria-checked={!realDice}
               className="roll-dock__mode"
               title="The app rolls for you"
-              onClick={() => setRealDice(false)}
+              // Asks first if a roll is waiting for real dice.
+              onClick={() => (roller.chooseAppRolls ? roller.chooseAppRolls("dock") : setRealDice(false))}
             >
               App rolls
             </button>

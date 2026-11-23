@@ -1,12 +1,12 @@
 import { Fragment, useEffect, useState } from "react";
-import { parseDamage } from "../../utils/attacks";
-import RollButton from "../RollDock/RollButton";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import SrdDetailDialog from "../SrdDetailDialog/SrdDetailDialog";
 import { EffectStrip } from "../CastEffectPanel/CastEffectPanel";
 import { useSrdDetailView } from "../../hooks/useSrdDetailView";
 import { useSrdEquipmentLookup } from "../../hooks/useSrdEquipmentLookup";
 import Button from "../Button/Button";
+import WeaponIcon from "../WeaponIcon/WeaponIcon";
+import { DamageChip, ToHitButton } from "../RollDock/AttackRollButtons";
 import { getWeapons, getWeaponDetails } from "../../utils/api";
 import {
   buildStartingAttacks,
@@ -20,6 +20,7 @@ import {
   splitMagicWeaponName,
 } from "../../utils/characterSheet";
 import { SHARPSHOOTER, describeDamageParts } from "../../utils/combatEffects";
+import { weaponIconForAttack } from "../../utils/weaponIcons";
 
 // The damage types offered for a weapon's extra damage (any other can be typed).
 const DAMAGE_TYPES = [
@@ -235,21 +236,40 @@ function AttackBreakdown({ attack, live, breakdown, item, onClose, onUnlink }) {
   );
 }
 
-// Sharpshooter in the weapon's row: a small button that's outlined when off
-// and filled when on. It changes only this attack's numbers.
+// "−5 hit / +10 damage", with a real minus sign.
+const SHARPSHOOTER_TRADE = `${String(SHARPSHOOTER.toHit).replace("-", "−")} hit / +${SHARPSHOOTER.damage} damage`;
+
+// Sharpshooter in the weapon's row: a small switch that says Off or On in
+// words (outlined when off, filled when on), with what it costs and gives
+// beside it. It changes only this attack's numbers.
 function SharpshooterChip({ attack, on, onToggle }) {
   return (
-    <button
-      type="button"
-      className={`character-sheet__chip${on ? " character-sheet__chip--on" : ""}`}
-      aria-pressed={on}
-      aria-label={`Sharpshooter for ${attack.name}: ${on ? "on, -5 to hit and +10 damage" : "off"}`}
-      title={SHARPSHOOTER.summary}
-      onClick={onToggle}
-    >
-      {on ? "● Sharpshooter −5 / +10" : "○ Sharpshooter"}
-    </button>
+    <span className="character-sheet__sharpshooter-line">
+      <button
+        type="button"
+        className={`character-sheet__chip${on ? " character-sheet__chip--on" : ""}`}
+        aria-pressed={on}
+        aria-label={`Sharpshooter for ${attack.name}: ${on ? "on, -5 to hit and +10 damage" : "off"}`}
+        title={SHARPSHOOTER.summary}
+        onClick={onToggle}
+      >
+        Sharpshooter <span className="character-sheet__chip-state">{on ? "On" : "Off"}</span>
+      </button>
+      <span className="character-sheet__sharpshooter-trade" aria-hidden="true">
+        {SHARPSHOOTER_TRADE}
+      </span>
+    </span>
   );
+}
+
+// A weapon's short description under its name: "+2 longbow" for a renamed
+// magic weapon, "+1 magic weapon" for a plain one; nothing otherwise.
+function weaponMeta(attack) {
+  const magic = magicChoiceFor(attack);
+  const base = String(attack.baseWeapon ?? "").trim();
+  const showBase = base && base.toLowerCase() !== String(attack.name ?? "").trim().toLowerCase();
+  if (showBase) return `${magic ? `+${magic} ` : ""}${base.toLowerCase()}`;
+  return magic ? `+${magic} magic weapon` : "";
 }
 
 // Sharpshooter for one attack: off unless switched on, and never saved on
@@ -260,6 +280,29 @@ export function SharpshooterToggle({ on, onToggle, disabled = false }) {
       <input type="checkbox" checked={on} disabled={disabled} onChange={onToggle} />
       Sharpshooter ({SHARPSHOOTER.toHit} to hit, +{SHARPSHOOTER.damage} damage)
     </label>
+  );
+}
+
+// "How attacks work": the steps, once, behind a small disclosure on the
+// Sort/Show row (instead of a line above every list).
+function HowAttacksWork() {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="character-sheet__how-attacks">
+      <button
+        type="button"
+        className="character-sheet__jump-link"
+        aria-expanded={open}
+        aria-controls="how-attacks-work"
+        onClick={() => setOpen((value) => !value)}
+      >
+        How attacks work <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+      </button>
+      <span id="how-attacks-work" className="character-sheet__how-attacks-text" hidden={!open}>
+        Roll to hit first: tap a weapon&apos;s to-hit button. Roll damage after a hit: tap each damage button (each
+        type rolls on its own). At a table, on your turn, use Attack: pick a target and the table checks the hit.
+      </span>
+    </span>
   );
 }
 
@@ -317,6 +360,12 @@ function CharacterSheetActionsTab({
   // Features that add damage on a hit (Dreadful Strikes). Here, away from a
   // table's attack panel, they're a roll the player adds themselves.
   onHitFeatures = [],
+  // A small "Jump to companions" link by the instructions, when there are
+  // companions further down (null hides it).
+  onJumpToCompanions = null,
+  // The names of the sheet's spells, so a spell typed in as an attack
+  // ("Fire Bolt") doesn't get a weapon picture.
+  spellNames = [],
   attacks,
   onAttackAdd,
   onAttackUpdate,
@@ -447,7 +496,7 @@ function CharacterSheetActionsTab({
       })
       .catch(() => {
         setInventoryError(
-          `Couldn't look up ${weapon.name} right now. Tap Add Weapon to type it in instead.`,
+          `Couldn't look up ${weapon.name} right now. Tap + Add weapon to type it in instead.`,
         );
       })
       .finally(() => setAddingWeapon(null));
@@ -458,22 +507,22 @@ function CharacterSheetActionsTab({
     ...putAway.flatMap((entry) => entry.attacks),
   ]);
 
-  // On-hit features as one small line under the attacks: at a table the
+  // On-hit features as a slim strip under the attacks: at a table the
   // attack panel offers them after a hit and keeps track; here the player
-  // rolls and keeps track themselves.
+  // rolls and keeps track themselves. Never added to every attack.
   const onHitLine =
     onHitFeatures.length > 0 && (attacks?.length ?? 0) > 0 ? (
-        <p className="character-sheet__on-hit-line">
-          {onHitFeatures.map((feature) => (
-            <span key={feature.key}>
-              {feature.name}{" "}
-              <RollButton label={`${feature.name} (${feature.type})`} damage={feature.dice}>
-                +{feature.dice}
-              </RollButton>{" "}
-              {feature.type} on a hit <span className="character-sheet__damage-type">({feature.note.replace(/\.$/, "").toLowerCase()})</span>
+      <div className="character-sheet__on-hit-strips">
+        {onHitFeatures.map((feature) => (
+          <p className="character-sheet__on-hit-line" key={feature.key}>
+            <strong className="character-sheet__on-hit-name">{feature.name}</strong>
+            <DamageChip label={`${feature.name} (${feature.type})`} dice={feature.dice} type={feature.type} plus />
+            <span className="character-sheet__on-hit-note">
+              On a hit, if you choose. {feature.note}
             </span>
-          ))}
-        </p>
+          </p>
+        ))}
+      </div>
     ) : null;
 
   // Weapons put away: their attacks are kept, just hidden until equipped.
@@ -607,34 +656,36 @@ function CharacterSheetActionsTab({
           },
         ]}
         columns={[
-          // Tap the to-hit to roll the attack, or the damage to roll it.
+          // Tap the to-hit to roll the attack, or a damage chip to roll that
+          // damage. One shared grid (see primaryWidth below) keeps the
+          // headings and every row's numbers lined up.
           {
             key: "toHit",
-            label: "To Hit",
-            width: "70px",
+            label: "To hit",
+            width: "minmax(112px, 16fr)",
             format: (item) => {
               const live = liveAttack(item);
               // A new attack whose weapon details are still loading.
               if (item.numbersPending) return <span className="character-sheet__extra-damage--optional">…</span>;
               return (
-                <RollButton
+                <ToHitButton
                   label={`${item.name} attack`}
                   bonus={live.toHit}
                   attack={{ name: item.name, damage: rollableDamage(live) }}
-                >
-                  {live.isEnchanted ? "✨ " : ""}
-                  {formatModifier(live.toHit)}
-                </RollButton>
+                  enchanted={live.isEnchanted}
+                />
               );
             },
           },
           {
             key: "damage",
             label: "Damage",
-            width: "minmax(170px, 1.3fr)",
-            // Each damage part with its own type ("1d8+7 piercing · 1d4
+            // Says the chips are rolls too, and when to use them.
+            hint: "Roll after a hit",
+            width: "minmax(0, 40fr)",
+            // Each damage part with its own type ("1d8+7 piercing", "+1d4
             // psychic"), each its own roll, so types never merge. Extra
-            // damage that only applies sometimes is shown lighter, with when.
+            // damage that only applies sometimes is a dashed chip, with when.
             format: (item) => {
               if (item.numbersPending) return <span className="character-sheet__extra-damage--optional">Working out…</span>;
               const live = liveAttack(item);
@@ -642,41 +693,73 @@ function CharacterSheetActionsTab({
                 <span className="character-sheet__damage-parts">
                   {live.damageParts
                     .filter((part) => part.dice)
-                    .map((part, i, shown) => (
-                      // The space after each part is outside it, so the
-                      // line can break there and nowhere inside a part.
+                    .map((part, i) => (
+                      // A space after each chip, so copied or read-out text
+                      // doesn't run together (the flex row ignores it).
                       <Fragment key={`${part.source}-${i}`}>
-                      <span className="character-sheet__damage-part">
-                        {parseDamage(part.dice) ? (
-                          <RollButton
-                            label={`${item.name}: ${i === 0 ? "damage" : part.source} (${part.type || "no type"})`}
-                            damage={part.dice}
-                          >
-                            {part.dice}
-                          </RollButton>
-                        ) : (
-                          part.dice
-                        )}
-                        {part.type && <span className="character-sheet__damage-type"> {part.type}</span>}
-                        {/* The dot ends a line rather than starting the next. */}
-                        {i < shown.length - 1 && <span className="character-sheet__damage-sep">{" ·"}</span>}
-                      </span>{" "}
+                        <DamageChip
+                          // "Moonpetal Bow damage, piercing" / "Moonpetal Bow
+                          // extra damage, psychic": the weapon, then the type
+                          // (the dice are added by the button).
+                          label={`${item.name} ${i === 0 ? "damage" : part.source && part.source !== item.name ? `${part.source} damage` : "extra damage"}, ${part.type || "no type"}`}
+                          dice={part.dice}
+                          type={part.type}
+                          plus={i > 0}
+                        />{" "}
                       </Fragment>
                     ))}
                   {live.optionalParts.map((part) => (
-                    <span className="character-sheet__damage-part character-sheet__extra-damage--optional" key={part.key}>
-                      <RollButton label={`${item.name}: ${part.source} (${part.type}, ${part.condition})`} damage={part.dice}>
-                        +{part.dice}
-                      </RollButton>{" "}
-                      {part.type} {part.condition}
-                    </span>
+                    <DamageChip
+                      key={part.key}
+                      label={`${item.name} ${part.source && part.source !== item.name ? `${part.source} ` : "extra "}damage, ${part.type} ${part.condition}`}
+                      dice={part.dice}
+                      type={part.type}
+                      note={part.condition}
+                      plus
+                      optional
+                    />
                   ))}
                 </span>
               );
             },
           },
         ]}
-        emptyText="Weapons and other attacks go here. Tap Add Weapon and start typing a weapon's name: its damage fills in for you. Attack spells like Fire Bolt live on the Spells tab."
+        primaryWidth="minmax(0, 44fr)"
+        actionsWidth="auto"
+        sectionClassName="character-sheet__section--attacks"
+        detailsLabels={{ show: "Details", hide: "Hide details" }}
+        // A compact two-row header: "Attacks  Companions ↓ ... Edit  + Add
+        // weapon", then "Sort  Show ... How attacks work".
+        headerExtra={
+          onJumpToCompanions && (
+            <button
+              type="button"
+              className="character-sheet__jump-chip"
+              aria-label="Jump to companions"
+              onClick={onJumpToCompanions}
+            >
+              Companions <span aria-hidden="true">↓</span>
+            </button>
+          )
+        }
+        controlsExtra={<HowAttacksWork />}
+        editToggleContent={
+          <>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+              <path
+                d="M4 20h4L19 9l-4-4L4 16v4ZM14 6l4 4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>{" "}
+            Edit
+          </>
+        }
+        addButtonContent="+ Add weapon"
+        emptyText="Weapons and other attacks go here. Tap + Add weapon and start typing a weapon's name: its damage fills in for you. Attack spells like Fire Bolt live on the Spells tab."
         footer={
           onHitLine || putAwayLine || inventoryFooter ? (
             <>
@@ -742,9 +825,11 @@ function CharacterSheetActionsTab({
           const sharpshooter = sharpshooterFor(attack);
           const panelOpen = Boolean(attackPanelFor && attackPanelFor(attack));
           const hasBreakdown = Boolean(usefulBreakdown(attack));
-          if (!(sharpshooter && !panelOpen) && !hasBreakdown) return null;
+          const meta = weaponMeta(attack);
+          if (!(sharpshooter && !panelOpen) && !hasBreakdown && !meta) return null;
           return (
             <span className="character-sheet__attack-controls">
+              {meta && <span className="character-sheet__weapon-meta">{meta} </span>}
               {sharpshooter && !panelOpen && (
                 <SharpshooterChip attack={attack} on={sharpshooter.on} onToggle={() => onSharpshooterToggle(attack)} />
               )}
@@ -774,6 +859,12 @@ function CharacterSheetActionsTab({
         formatPrimaryLabel={(attack) =>
           `${attack.name}${liveAttack(attack).isMagicWeapon ? " ✨" : ""}${linkedItemFor(attack) ? " 🎒" : ""}`
         }
+        // A small picture of the weapon before its name (a longbow for
+        // "Wisteria's Kiss"), from its weapon type; decoration only.
+        primaryIcon={(attack) => {
+          const iconId = weaponIconForAttack(attack, { item: linkedItemFor(attack), spellNames });
+          return iconId ? <WeaponIcon iconId={iconId} /> : null;
+        }}
         isNameClickable={(attack) =>
           equipmentLookup.findMatches(attack.name).length > 0
         }

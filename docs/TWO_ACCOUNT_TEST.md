@@ -243,12 +243,12 @@ Added 2026-11-16 (#271, #272). Needs `20261116_player_brb.sql` and `20261116_mon
   *Expect:* On the DM's screen: **Concentration check: … Constitution save, DC 10** (or half the damage if more), and **🧠 Concentration save** on its list line.
 - [ ] **11.10 · DM:** Tap **Roll CON save**.\
   *Expect:* A line like **CON save: 12 + 0 = 12 against DC 10. Hold Person holds.** A pass clears the reminder; a fail ends the spell. **Kept it** and **Lost it** do the same by hand.
-- [ ] **11.11 · Player:** On your sheet's turn banner, during your turn, tap **Step away (brb)**.\
-  *Expect:* The turn passes on. The banner says **You're away: your turns are skipped.** with **I'm back**. The log says **… stepped away (brb).** The DM sees an **Away** tag.
+- [ ] **11.11 · Player:** On your sheet's turn banner, during your turn, tap **Step away**.\
+  *Expect:* The turn passes on. The banner says **You're away: your turns are skipped until you return.** with **Return to play**. The log says **… stepped away (brb).** The DM sees an **Away** tag.
 - [ ] **11.12 · DM:** Tap **Next turn** around the order.\
   *Expect:* The away player is skipped.
 - [ ] **11.13 · Player:** Open your game page.\
-  *Expect:* **You're marked away, so your turns are skipped.** with **I'm back**. Tapping it logs **… is back.** and your turns come round again.
+  *Expect:* **You're marked away, so your turns are skipped.** with **Return to play**. Tapping it logs **… is back.** and your turns come round again.
 - [ ] **11.14 · Player:** Watch your sheet's turn banner when a goblin goes down.\
   *Expect:* **Goblin 1 is down!** is green. A player or ally going down stays red.
 - [ ] **11.15 · DM:** Defeat the last enemy (or tap **End combat**).\

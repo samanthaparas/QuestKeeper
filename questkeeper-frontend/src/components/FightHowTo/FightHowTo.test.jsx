@@ -11,7 +11,7 @@ describe("How a fight works", () => {
     render(<FightHowTo side="player" />);
     expect(screen.getByText("New here?")).toBeInTheDocument();
     expect(screen.getByText(/tap Attack next to a weapon/)).toBeVisible();
-    expect(screen.getByText(/Step away \(brb\)/)).toBeVisible();
+    expect(screen.getByText(/Step away skips your turns until you tap Return to play/)).toBeVisible();
   });
 
   it("folds away for good after Got it, and stays one tap away", async () => {

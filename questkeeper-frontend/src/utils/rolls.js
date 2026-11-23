@@ -99,3 +99,16 @@ export function rollDamageFor({ label, damage, crit = false }) {
 export function rollButtonLabel(label, bonus) {
   return `Roll ${label}, ${formatModifier(bonus)}`;
 }
+
+// An attack's to-hit roll in words, for the attack panel: "Rolled 15 + 13
+// = 28." or, with two dice, "With advantage: rolled 14 and 7, kept 14.
+// 14 + 13 = 27."
+export function describeAttackRoll(roll, bonus, sharpshooterOn = false) {
+  const sign = bonus >= 0 ? "+" : "-";
+  const sum = `${roll.natural} ${sign} ${Math.abs(bonus)} = ${roll.natural + bonus}`;
+  const dice =
+    roll.mode && roll.mode !== "normal" && roll.rolls?.length === 2
+      ? `With ${roll.mode}: rolled ${roll.rolls[0]} and ${roll.rolls[1]}, kept ${roll.natural}. ${sum}`
+      : `Rolled ${sum}`;
+  return `${dice}${sharpshooterOn ? " (with Sharpshooter)" : ""}.`;
+}

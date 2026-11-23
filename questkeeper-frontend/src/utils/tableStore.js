@@ -316,7 +316,7 @@ export async function keepMonsterConcentration(combatantId, damageTaken) {
   );
 }
 
-// A player: "Step away (brb)" or "I'm back" for yourself. Away players' turns
+// A player: "Step away" or "Return to play" for yourself. Away players' turns
 // are skipped; stepping away on your own turn ends it first (see
 // 20261116_player_brb.sql).
 export async function setMyAway(tableId, away) {

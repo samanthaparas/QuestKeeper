@@ -592,3 +592,112 @@
   margin: 4px 0 0;
   line-height: 1.45;
 }
+
+/* --- Attack rows: the to-hit pill and damage chips (AttackRollButtons) ---
+   Shared by the character's weapons and companions' attacks. They're real
+   buttons with a clear outline (not dotted-underlined numbers), at least
+   40px tall, so they read as "tap me" for a new player and stay quick to
+   scan for an experienced one. */
+.qk-roll-pill,
+.qk-damage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font: inherit;
+  line-height: 1.15;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.qk-roll-pill {
+  border: 1.5px solid var(--qk-terracotta);
+  background-color: var(--qk-surface);
+  color: var(--qk-terracotta-hover);
+}
+
+.qk-roll-pill__icon {
+  flex: none;
+  opacity: 0.85;
+}
+
+.qk-roll-pill__number {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.qk-roll-pill__verb {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* The outline is darker than the usual border, so it reads as a button
+   (at least 3:1 against the card in both themes). */
+.qk-damage-chip {
+  border: 1px solid color-mix(in srgb, var(--qk-text-muted) 75%, var(--qk-border));
+  background-color: var(--qk-background);
+  color: var(--qk-text);
+  gap: 5px;
+}
+
+.qk-damage-chip__dice {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.qk-damage-chip__type,
+.qk-damage-chip__note {
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+/* Damage that only counts sometimes ("+2d6 radiant vs undead"). */
+.qk-damage-chip--optional {
+  border-style: dashed;
+  background-color: transparent;
+}
+
+button.qk-roll-pill:hover {
+  background-color: var(--qk-terracotta-soft);
+  color: var(--qk-terracotta-hover);
+}
+
+button.qk-damage-chip:hover {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+}
+
+/* A warm ring in the text colour, clear of the outline. */
+.qk-roll-pill:focus-visible,
+.qk-damage-chip:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+/* "Your Stealth roll is still waiting for your dice": asked before switching
+   to app rolls would throw that roll away (the roll bar and attack panels
+   share it: DiscardPendingConfirm). */
+.discard-pending {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--qk-warning);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+}
+
+.discard-pending p {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+/* In the roll bar, the question sits in a card like the roll's own prompt. */
+.roll-dock__discard {
+  max-width: min(420px, calc(100vw - 32px));
+  box-shadow: 0 4px 16px var(--qk-shadow);
+}

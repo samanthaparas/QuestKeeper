@@ -1731,6 +1731,22 @@ export function describeReset(resource) {
   return "Long Rest";
 }
 
+// Where a resource's uses come back from, in quiet words for its tracker,
+// from its own settings (never guessed from its name): "Recovers on a long
+// rest", "Recovers at dawn · +1d6+4". short: the Resources list's own
+// Recovery column, where the heading says the rest ("Long rest", "Dawn ·
+// +1d6+4"). (describeReset above is the form used elsewhere.)
+export function describeRecovery(resource, { short = false } = {}) {
+  const regain = resource?.resetOn === "dawn" ? cleanRegain(resource.regain) : "";
+  if (resource?.resetOn === "short") return short ? "Short rest" : "Recovers on a short rest";
+  if (resource?.resetOn === "dawn") {
+    if (short) return `Dawn · ${regain ? `+${regain}` : "all"}`;
+    return regain ? `Recovers at dawn · +${regain}` : "Recovers fully at dawn";
+  }
+  if (resource?.resetOn === "manual") return "No automatic recovery";
+  return short ? "Long rest" : "Recovers on a long rest";
+}
+
 // A new dawn: every resource that refills at dawn regains its charges
 // (never past its maximum), and nothing else changes. The player marks
 // dawn on purpose, so it's never guessed from a rest or the clock. The day
@@ -1823,10 +1839,13 @@ export function updateCompanion(sheet, id, change) {
   return saveCompanions(changed, list);
 }
 
-// "+ Add a companion": another card, empty. The first one on an older sheet
-// keeps everything it had.
-export function addCompanion(sheet) {
-  return saveCompanions(sheet, [...getCompanions(sheet), createCompanionCreature()]);
+// "+ Add companion": another card. `creature` is the one set up in the
+// "Who are you adding?" form (see AddCompanionForm); without it, an empty
+// one. Nothing is saved until the player taps Add, so a cancelled setup
+// never leaves a blank card behind.
+export function addCompanion(sheet, creature = null) {
+  const added = creature ? { ...createCompanionCreature(), ...creature } : createCompanionCreature();
+  return saveCompanions(sheet, [...getCompanions(sheet), added]);
 }
 
 // Removes one companion (asked first, on its card). A summon of its that
@@ -1836,6 +1855,58 @@ export function removeCompanion(sheet, id) {
   if (!creature) return sheet;
   const ended = getSummonTemplate(creature) ? updateCompanion(sheet, id, endSummon) : sheet;
   return saveCompanions(ended, getCompanions(ended).filter((item) => item.id !== id));
+}
+
+// The id of a companion card's name heading (focused after it's added).
+export const companionHeadingId = (id) => `companion-${String(id ?? "one").replace(/[^a-zA-Z0-9_-]/g, "")}-name`;
+
+// 1 -> "1st", 3 -> "3rd": spell slot levels ("Uses one 3rd-level slot").
+export function ordinalLevel(level) {
+  const n = Number(level);
+  const suffix = n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
+  return `${n}${suffix}`;
+}
+
+// The "Add a pet, mount or familiar" form's boxes (AddCompanionForm) as a
+// companion to save. Blank boxes get the usual starting values (AC 10,
+// speed 30, scores of 10); notes become bullet points.
+// A number typed in a box, or the fallback when it's blank or not a number.
+const numberOr = (text, fallback) => {
+  const value = Number(String(text).trim());
+  return String(text).trim() !== "" && Number.isFinite(value) ? value : fallback;
+};
+
+export function companionFromDraft(draft) {
+  const maxHp = Math.max(0, Math.round(numberOr(draft.maxHp, 0)));
+  const abilityScores = Object.fromEntries(
+    ABILITY_SCORES.map((ability) => [ability, Math.max(1, Math.min(30, numberOr(draft.scores[ability] ?? "", 10)))]),
+  );
+  const attack = draft.attackName.trim()
+    ? [
+        {
+          id: crypto.randomUUID(),
+          name: draft.attackName.trim(),
+          toHit: numberOr(draft.attackToHit, 0),
+          damage: draft.attackDamage.trim(),
+          damageType: draft.attackType.trim(),
+          notes: "",
+        },
+      ]
+    : [];
+  const noteList = draft.notes
+    .split("\n")
+    .map((line) => line.replace(/^\s*[-*•]\s*/, "").trim())
+    .filter(Boolean)
+    .map((text) => ({ id: crypto.randomUUID(), text }));
+  return {
+    name: draft.name.trim(),
+    hitPoints: { current: maxHp, max: maxHp },
+    armorClass: numberOr(draft.armorClass, 10),
+    speed: numberOr(draft.speed, 30),
+    abilityScores,
+    attacks: attack,
+    ...(noteList.length > 0 ? { notes: "", noteList } : {}),
+  };
 }
 
 export function createCompanionCreature() {
@@ -1921,21 +1992,41 @@ export const SUMMON_TEMPLATES = {
     // concentration, and then it lasts 1 minute (10 rounds).
     noConcentrationFeature: "Fey Reinforcements",
     shortRounds: 10,
+    // Its bonus-action teleport; the mood's effect happens after it.
+    // What the setup calls the mood choice.
+    moodLabel: "Fey mood",
+    // Its bonus-action teleport; the mood's effect happens after it.
+    // destination: where it may land (said in full in the rules line).
+    step: { name: "Fey Step", action: "Bonus action", distance: 30, destination: "an unoccupied space it can see" },
+    // Each mood, in our own words:
+    //   effect: a few words for the active card's Fey Step line
+    //   short:  the choice card's line before casting
+    //   note:   the full summary, with its conditions
     moods: [
-      { key: "fuming", name: "Fuming", note: "After Fey Step: advantage on its next attack roll this turn." },
+      {
+        key: "fuming",
+        name: "Fuming",
+        effect: "advantage on its next attack this turn",
+        short: "After Fey Step: advantage on its next attack this turn.",
+        note: "After Fey Step: it has advantage on the next attack roll it makes before the end of this turn.",
+      },
       {
         key: "mirthful",
         name: "Mirthful",
-        note: "After Fey Step: one creature within 10 ft makes a Wisdom save against your spell save DC or is charmed by you and the spirit for 1 minute (ends if it takes damage).",
+        effect: "may try to charm a creature within 10 ft",
+        short: "After Fey Step: may try to charm a creature within 10 ft.",
+        note: "After Fey Step: it can pick one creature it can see within 10 ft, which makes a Wisdom save against your spell save DC. On a failure, it's charmed by you and the spirit for 1 minute, or until it takes any damage.",
       },
       {
         key: "tricksy",
         name: "Tricksy",
-        note: "After Fey Step: magical darkness fills a 10-foot cube within 5 ft of it until the end of its next turn.",
+        effect: "may fill a 10-ft cube nearby with darkness",
+        short: "After Fey Step: may fill a 10-ft cube nearby with darkness.",
+        note: "After Fey Step: it can fill a 10-foot cube within 5 ft of it with magical darkness, which lasts until the end of its next turn.",
       },
     ],
     notes: [
-      "Fey Step (bonus action): teleports up to 30 ft to a space it can see, then its mood's effect happens.",
+      "Fey Step (bonus action): teleports up to 30 ft to an unoccupied space it can see, then its mood's effect happens.",
       "Takes its turn right after yours and follows your spoken commands; with none, it takes the Dodge action.",
       "Can't be charmed. Darkvision 60 ft. Speaks Sylvan and understands your languages.",
       "Disappears at 0 HP or when the spell ends.",
@@ -2018,7 +2109,14 @@ export function getSummonInfo(sheet, spellAttack = 0) {
     stats: getSummonStats(template, state.slotLevel, spellAttack),
     attackName: state.attackName || template.attackName,
     slots: slots.map((slot) => ({ level: slot.level, current: slot.current, max: slot.max })),
-    freeCast: freeCast ? { id: freeCast.id, current: freeCast.current } : null,
+    freeCast: freeCast
+      ? {
+          id: freeCast.id,
+          current: Number(freeCast.current) || 0,
+          max: Number(freeCast.max) || 1,
+          resetOn: freeCast.resetOn ?? "long",
+        }
+      : null,
     canSkipConcentration: (sheet.features ?? []).some((feature) =>
       sameName(feature.name, template.noConcentrationFeature ?? ""),
     ),

@@ -130,7 +130,7 @@
   cursor: pointer;
 }
 
-/* The player's "Step away (brb)" / "I'm back" line. */
+/* The player's "Step away" / "Return to play" line. */
 .table-page__brb {
   display: flex;
   flex-wrap: wrap;

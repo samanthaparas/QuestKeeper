@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import AttackPanel from "./AttackPanel";
 import { attackRoll, cancelAttack, dealDamage } from "../../utils/tableStore";
 import { installFakeStorage } from "../../test/fakeStorage";
+import { RollContext } from "../RollDock/rollContext";
 
 vi.mock("../../utils/supabaseClient", () => ({ supabase: {} }));
 
@@ -126,6 +127,8 @@ describe("AttackPanel", () => {
   it("accepts a physical d20 roll and rejects numbers outside 1-20", async () => {
     attackRoll.mockResolvedValue("miss");
     render(<AttackPanel attack={dagger} combat={makeCombat()} onClose={vi.fn()} />);
+    // App rolls come first here; the physical way is one link away.
+    await userEvent.click(screen.getByRole("button", { name: "Use physical dice instead" }));
 
     await userEvent.type(screen.getByLabelText("Your physical d20 roll"), "25");
     await userEvent.click(screen.getByRole("button", { name: "Use my roll" }));
@@ -211,6 +214,8 @@ describe("AttackPanel", () => {
         onClose={vi.fn()}
       />,
     );
+    // App rolls come first here; the physical way is one link away.
+    await userEvent.click(screen.getByRole("button", { name: "Use physical dice instead" }));
 
     await userEvent.type(
       screen.getByLabelText(/Rolled real dice\? Type the number on each die/),
@@ -231,6 +236,8 @@ describe("AttackPanel", () => {
         onClose={vi.fn()}
       />,
     );
+    // App rolls come first here; the physical way is one link away.
+    await userEvent.click(screen.getByRole("button", { name: "Use physical dice instead" }));
     const box = screen.getByLabelText(/Rolled real dice\? Type the number on each die/);
 
     await userEvent.type(box, "4, 2");
@@ -251,6 +258,8 @@ describe("AttackPanel", () => {
         onClose={vi.fn()}
       />,
     );
+    // App rolls come first here; the physical way is one link away.
+    await userEvent.click(screen.getByRole("button", { name: "Use physical dice instead" }));
 
     await userEvent.click(screen.getByLabelText(/Add extra damage/));
     await userEvent.type(screen.getByLabelText("Extra damage dice"), "2d8");
@@ -517,5 +526,210 @@ describe("AttackPanel", () => {
       expect(await screen.findByRole("alert")).toHaveTextContent("It is not your turn");
       expect(onClose).not.toHaveBeenCalled();
     });
+  });
+});
+
+// The roll bar's "App rolls / I roll real dice" choice decides which way
+// comes first. The panel reads and changes that one setting.
+describe("AttackPanel follows the roll bar's dice choice", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dealDamage.mockResolvedValue(undefined);
+  });
+
+  function renderWith(realDice, meOverrides = {}, attack = dagger) {
+    const roller = { realDice, setRealDice: vi.fn() };
+    const view = render(
+      <RollContext.Provider value={roller}>
+        <AttackPanel attack={attack} combat={makeCombat(meOverrides)} onClose={vi.fn()} />
+      </RollContext.Provider>,
+    );
+    const setMode = (on) => {
+      roller.realDice = on;
+      view.rerender(
+        <RollContext.Provider value={{ ...roller }}>
+          <AttackPanel attack={attack} combat={makeCombat(meOverrides)} onClose={vi.fn()} />
+        </RollContext.Provider>,
+      );
+    };
+    return { roller, setMode };
+  }
+
+  it("App rolls: the app's roll comes first, with physical dice one link away", () => {
+    renderWith(false);
+    expect(screen.getByRole("button", { name: /Roll d20 \(\+5\)/ })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Your physical d20 roll")).toBeNull();
+    expect(screen.getByRole("button", { name: "Use physical dice instead" })).toBeInTheDocument();
+  });
+
+  it("Real dice: the d20 box comes first, and the link changes the roll bar's setting without rolling", async () => {
+    const { roller } = renderWith(true);
+    expect(screen.getByLabelText("Your physical d20 roll")).toBeInTheDocument();
+    expect(screen.getByText("Enter just the number on your d20. We add your +5.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Roll d20/ })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Let the app roll instead" }));
+    expect(roller.setRealDice).toHaveBeenCalledWith(false);
+    expect(attackRoll).not.toHaveBeenCalled();
+  });
+
+  it("keeps a typed d20 when switching away and back, and moves focus to the shown control", async () => {
+    const { setMode } = renderWith(true);
+    await userEvent.type(screen.getByLabelText("Your physical d20 roll"), "12");
+    setMode(false);
+    expect(screen.queryByLabelText("Your physical d20 roll")).toBeNull();
+    setMode(true);
+    expect(screen.getByLabelText("Your physical d20 roll")).toHaveValue(12);
+    expect(attackRoll).not.toHaveBeenCalled();
+  });
+
+  it("moves focus to the other way's main control after the link", async () => {
+    render(<AttackPanel attack={dagger} combat={makeCombat()} onClose={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Use physical dice instead" }));
+    expect(screen.getByLabelText("Your physical d20 roll")).toHaveFocus();
+    await userEvent.click(screen.getByRole("button", { name: "Let the app roll instead" }));
+    expect(screen.getByRole("button", { name: /Roll d20/ })).toHaveFocus();
+  });
+
+  it("after a hit, switching how damage is entered keeps the hit and the target, and deals once", async () => {
+    const { setMode } = renderWith(false, { attack_state: "hit", attack_target: "c-kobold" }, { ...dagger, damage: "1d6+3" });
+    expect(screen.getByRole("button", { name: "Roll damage" })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Type the number on each die/)).toBeNull();
+
+    setMode(true);
+    expect(screen.queryByRole("button", { name: "Roll damage" })).toBeNull();
+    await userEvent.type(screen.getByLabelText(/Type the number on each die/), "4");
+    setMode(false);
+    setMode(true);
+    // Still the same hit on the same creature; the typed number is kept.
+    expect(screen.getByText("Target: Kobold (locked for this attack).")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Type the number on each die/)).toHaveValue("4");
+    expect(cancelAttack).not.toHaveBeenCalled();
+    expect(dealDamage).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Use my dice" }));
+    await userEvent.click(screen.getByRole("button", { name: "Deal 7 damage" }));
+    expect(dealDamage).toHaveBeenCalledTimes(1);
+    expect(dealDamage).toHaveBeenCalledWith("t1", 7, [{ amount: 7, type: "piercing", source: "Dagger" }]);
+  });
+
+  it("ties a bad typed roll's message to its box", async () => {
+    renderWith(true);
+    await userEvent.type(screen.getByLabelText("Your physical d20 roll"), "25");
+    await userEvent.click(screen.getByRole("button", { name: "Use my roll" }));
+    const box = screen.getByLabelText("Your physical d20 roll");
+    expect(box).toHaveAttribute("aria-invalid", "true");
+    expect(box).toHaveAccessibleDescription(/1 to 20/);
+  });
+});
+
+// The roll bar's "Next d20" (Normal / Advantage / Disadvantage) applies to the
+// attack panel's to-hit roll, and is used up only once the attack is sent.
+describe("AttackPanel and the roll bar's Next d20", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    attackRoll.mockResolvedValue("hit");
+    dealDamage.mockResolvedValue(undefined);
+  });
+
+  // Math.random values for d20 faces (face = floor(r * 20) + 1).
+  const faces = (...values) => {
+    const spy = vi.spyOn(Math, "random");
+    values.forEach((face) => spy.mockReturnValueOnce((face - 1) / 20 + 0.001));
+    return spy;
+  };
+
+  function renderMode(mode, { realDice = false, pending = null, me = {} } = {}) {
+    const roller = { mode, setMode: vi.fn(), realDice, setRealDice: vi.fn(), pending, cancelRealDice: vi.fn() };
+    render(
+      <RollContext.Provider value={roller}>
+        <AttackPanel attack={dagger} combat={makeCombat(me)} onClose={vi.fn()} />
+      </RollContext.Provider>,
+    );
+    return roller;
+  }
+
+  it("Normal: one d20, the bonus added once", async () => {
+    faces(12);
+    const roller = renderMode("normal");
+    await userEvent.click(screen.getByRole("button", { name: "Roll d20 (+5)" }));
+    expect(attackRoll).toHaveBeenCalledTimes(1);
+    expect(attackRoll).toHaveBeenCalledWith(expect.objectContaining({ natural: 12, bonus: 5 }));
+    expect(await screen.findByText(/Rolled 12 \+ 5 = 17\./)).toBeInTheDocument();
+    expect(roller.setMode).not.toHaveBeenCalled();
+  });
+
+  it("Advantage: two d20s shown, the higher kept, then the roll bar goes back to Normal", async () => {
+    faces(7, 14);
+    const roller = renderMode("advantage");
+    await userEvent.click(screen.getByRole("button", { name: "Roll with advantage (+5)" }));
+    expect(attackRoll).toHaveBeenCalledWith(expect.objectContaining({ natural: 14, bonus: 5 }));
+    expect(await screen.findByText(/With advantage: rolled 7 and 14, kept 14\. 14 \+ 5 = 19\./)).toBeInTheDocument();
+    expect(roller.setMode).toHaveBeenCalledWith("normal");
+  });
+
+  it("Disadvantage: the lower is kept, so a natural 1 is sent as the kept die", async () => {
+    faces(1, 20);
+    renderMode("disadvantage");
+    await userEvent.click(screen.getByRole("button", { name: "Roll with disadvantage (+5)" }));
+    expect(attackRoll).toHaveBeenCalledWith(expect.objectContaining({ natural: 1 }));
+    expect(await screen.findByText(/rolled 1 and 20, kept 1/)).toBeInTheDocument();
+  });
+
+  it("Advantage keeps a natural 20 from either die", async () => {
+    faces(3, 20);
+    renderMode("advantage");
+    await userEvent.click(screen.getByRole("button", { name: /Roll with advantage/ }));
+    expect(attackRoll).toHaveBeenCalledWith(expect.objectContaining({ natural: 20 }));
+  });
+
+  it("isn't used up when the attack doesn't reach the table", async () => {
+    faces(9, 4);
+    attackRoll.mockRejectedValueOnce(new Error("Not your turn"));
+    const roller = renderMode("advantage");
+    await userEvent.click(screen.getByRole("button", { name: /Roll with advantage/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Not your turn");
+    expect(roller.setMode).not.toHaveBeenCalled();
+  });
+
+  it("real dice with advantage: asks for both d20s, rejects a bad one without using the mode, keeps the higher", async () => {
+    const roller = renderMode("advantage", { realDice: true });
+    expect(
+      screen.getByText("With advantage, roll two d20s and enter both. We keep the higher one and add your +5."),
+    ).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Your first d20 roll"), "4");
+    await userEvent.type(screen.getByLabelText("Your second d20 roll"), "25");
+    await userEvent.click(screen.getByRole("button", { name: "Use my rolls" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter both d20 numbers, each from 1 to 20.");
+    expect(screen.getByLabelText("Your second d20 roll")).toHaveAccessibleDescription(/each from 1 to 20/);
+    expect(attackRoll).not.toHaveBeenCalled();
+    expect(roller.setMode).not.toHaveBeenCalled();
+
+    await userEvent.clear(screen.getByLabelText("Your second d20 roll"));
+    await userEvent.type(screen.getByLabelText("Your second d20 roll"), "18");
+    await userEvent.click(screen.getByRole("button", { name: "Use my rolls" }));
+    expect(attackRoll).toHaveBeenCalledTimes(1);
+    expect(attackRoll).toHaveBeenCalledWith(expect.objectContaining({ natural: 18, bonus: 5 }));
+    expect(await screen.findByText(/With advantage: rolled 4 and 18, kept 18/)).toBeInTheDocument();
+    expect(roller.setMode).toHaveBeenCalledWith("normal");
+  });
+
+  it("real dice with disadvantage says the lower one is kept", () => {
+    renderMode("disadvantage", { realDice: true });
+    expect(screen.getByText(/We keep the lower one and add your \+5/)).toBeInTheDocument();
+  });
+
+  it("switching how dice are rolled, or rolling damage, doesn't use up Advantage", async () => {
+    const roller = renderMode("advantage", { me: { attack_state: "hit", attack_target: "c-kobold" } });
+    await userEvent.click(screen.getByRole("button", { name: "Use physical dice instead" }));
+    await userEvent.click(screen.getByRole("button", { name: "Roll damage" }));
+    expect(roller.setMode).not.toHaveBeenCalled();
+    expect(attackRoll).not.toHaveBeenCalled();
+  });
+
+  it("switches without asking when nothing is waiting", async () => {
+    const roller = renderMode("normal", { realDice: true });
+    await userEvent.click(screen.getByRole("button", { name: "Let the app roll instead" }));
+    expect(roller.setRealDice).toHaveBeenCalledWith(false);
+    expect(screen.queryByText(/still waiting/)).toBeNull();
   });
 });

@@ -1,5 +1,9 @@
-import { useState } from "react";
-import { rollDie, formatModifier } from "../../utils/characterSheet";
+import { useEffect, useRef, useState } from "react";
+import { useRoller } from "../RollDock/rollContext";
+import DiscardPendingConfirm from "../RollDock/DiscardPendingConfirm";
+import { focusPendingRoll } from "../../utils/focusInPane";
+import { formatModifier } from "../../utils/characterSheet";
+import { ROLL_MODES, checkFromDice, describeAttackRoll, rollCheck } from "../../utils/rolls";
 import {
   parseDamage,
   parseDiceNumbers,
@@ -39,19 +43,99 @@ const RESULT_TEXT = {
 // always go together. Extra damage with a condition ("vs undead") gets a
 // tick box at the damage step.
 //
+// The to-hit roll uses the roll bar's "Next d20" (Normal, Advantage,
+// Disadvantage), like every other d20 on the sheet: two dice with advantage
+// or disadvantage, the higher or lower kept, the bonus added once, and a
+// natural 1 or 20 read from the kept die. It's used up (back to Normal) only
+// once the attack has been sent to the table, never by opening the panel,
+// a bad number, switching how dice are rolled, or rolling damage.
+//
+// How each step is rolled follows the roll bar's "App rolls / I roll real
+// dice" choice (the sheet's roller), so there's one setting, not two. The
+// chosen way comes first; the other is one small link away ("Use physical
+// dice instead" / "Let the app roll instead"), which changes the roll bar's
+// setting too. Switching never rolls, deals damage or touches the attack
+// at the table, and numbers already typed are kept.
+//
 // onHitFeatures: features that can add damage to this hit (Dreadful
 // Strikes), each with its eligibility for this target this turn
 // (onHitEligibility). They're offered after a hit, off unless ticked, and
 // onOnHitDealt(features) is called only once their damage is dealt, so a
 // miss or leaving it unticked uses nothing.
+// The small link to the other way of rolling this step. It changes the roll
+// bar's setting too, so the two always agree.
+function MethodSwitch({ realDice, onSwitch, disabled, pendingLabel = "", confirming = false, onKeep, onDiscard }) {
+  if (confirming) {
+    return (
+      <DiscardPendingConfirm
+        id="attack-panel-discard"
+        pendingLabel={pendingLabel}
+        onKeep={onKeep}
+        onDiscard={onDiscard}
+      />
+    );
+  }
+  return (
+    <p className="attack-panel__method">
+      <button type="button" className="attack-panel__method-link" disabled={disabled} onClick={onSwitch}>
+        {realDice ? "Let the app roll instead" : "Use physical dice instead"}
+      </button>
+    </p>
+  );
+}
+
 function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatures = [], onOnHitDealt = () => {} }) {
   const me = combat.myCombatant;
   const targets = combat.combatants.filter(
     (combatant) => combatant.kind === "monster" && combatant.status !== "down",
   );
 
+  // The roll bar's choice. Outside a sheet (no roll bar) the panel keeps
+  // its own, starting with app rolls.
+  const roller = useRoller();
+  const [ownRealDice, setOwnRealDice] = useState(false);
+  const realDice = roller ? Boolean(roller.realDice) : ownRealDice;
+  const d20Mode = ROLL_MODES.includes(roller?.mode) ? roller.mode : "normal";
+  const twoDice = d20Mode !== "normal";
+  // After "...instead", focus moves to the step's main control in the other
+  // way (the link the player pressed is gone).
+  const focusAfterSwitch = useRef(false);
+  const primaryRef = useRef(null);
+  // Switching to app rolls goes through the roller's chooseAppRolls, the
+  // same as the roll bar's own button: if a roll is waiting for real dice
+  // (a Stealth check), it asks first, here.
+  function switchMethod() {
+    focusAfterSwitch.current = true;
+    if (!roller?.setRealDice) {
+      setOwnRealDice(!realDice);
+      return;
+    }
+    if (realDice && roller.chooseAppRolls) {
+      if (!roller.chooseAppRolls("panel")) focusAfterSwitch.current = false;
+      return;
+    }
+    roller.setRealDice(!realDice);
+  }
+  const confirmingDiscard = roller?.discardAsk === "panel";
+  function discardAndSwitch() {
+    focusAfterSwitch.current = true;
+    roller.discardAndSwitch();
+  }
+  // "Keep entering roll": nothing changes; back to the roll bar's box.
+  function keepPending() {
+    roller.keepPendingRoll();
+    focusPendingRoll();
+  }
+  useEffect(() => {
+    if (!focusAfterSwitch.current) return;
+    focusAfterSwitch.current = false;
+    primaryRef.current?.focus();
+  }, [realDice]);
+
   const [targetId, setTargetId] = useState(targets[0]?.id ?? "");
   const [physicalRoll, setPhysicalRoll] = useState("");
+  // The second real d20, with advantage or disadvantage.
+  const [physicalRoll2, setPhysicalRoll2] = useState("");
   const [lastRoll, setLastRoll] = useState(null);
   const [damageRolled, setDamageRolled] = useState(null);
   const [physicalDamage, setPhysicalDamage] = useState("");
@@ -140,41 +224,49 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatur
     }
   }
 
-  async function submitAttack(natural) {
+  // roll: the finished d20 check (rollCheck or checkFromDice), with both
+  // dice when there were two. Its mode and dice stay with the result shown
+  // here, even after the roll bar goes back to Normal.
+  async function submitAttack(roll) {
     await run(async () => {
       const outcome = await attackRoll({
         tableId: combat.table.id,
         targetId: effectiveTargetId,
         attackName: attack.name,
-        natural,
+        natural: roll.natural,
         bonus,
       });
-      setLastRoll({
-        summary: `Rolled ${natural} ${bonus >= 0 ? "+" : "-"} ${Math.abs(bonus)} = ${natural + bonus}${
-          sharpshooter?.on ? " (with Sharpshooter)" : ""
-        }.`,
-        outcome,
-      });
+      setLastRoll({ summary: describeAttackRoll(roll, bonus, sharpshooter?.on), outcome });
+      // The table has it: Advantage or Disadvantage is used up, as for any
+      // other d20 on the sheet.
+      if (roll.mode !== "normal") roller?.setMode?.("normal");
       // Each attack chooses Sharpshooter afresh: after a miss the next
       // attack (Extra Attack) starts with it off.
       if (outcome === "miss" && sharpshooter?.on) sharpshooter.onChange(false);
       setPhysicalRoll("");
+      setPhysicalRoll2("");
       combat.refresh();
     });
   }
 
   function rollToHit() {
-    submitAttack(rollDie(20));
+    submitAttack(rollCheck({ label: attack.name, bonus, mode: d20Mode }));
   }
 
   function submitPhysicalRoll(event) {
     event.preventDefault();
-    const natural = Number(physicalRoll);
-    if (!Number.isInteger(natural) || natural < 1 || natural > 20) {
-      setError("Enter the number on your d20, from 1 to 20.");
+    const typed = twoDice ? [physicalRoll, physicalRoll2] : [physicalRoll];
+    const dice = typed.map((value) => Number(value));
+    if (dice.some((die) => !Number.isInteger(die) || die < 1 || die > 20)) {
+      setError(twoDice ? "Enter both d20 numbers, each from 1 to 20." : "Enter the number on your d20, from 1 to 20.");
       return;
     }
-    submitAttack(natural);
+    const roll = checkFromDice({ label: attack.name, bonus, mode: d20Mode, dice });
+    if (roll.error) {
+      setError(roll.error);
+      return;
+    }
+    submitAttack(roll);
   }
 
   // parts: what each damage type dealt, when the app worked it out (not for
@@ -300,7 +392,7 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatur
         ) : null)}
 
       {error && (
-        <p className="attack-panel__error" role="alert">
+        <p className="attack-panel__error" id="attack-panel-error" role="alert">
           {error}
         </p>
       )}
@@ -330,27 +422,67 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatur
                     </option>
                   ))}
                 </select>
-                <Button disabled={isBusy} onClick={rollToHit}>
-                  Roll d20 ({formatModifier(bonus)})
-                </Button>
-                <span className="attack-panel__or">or</span>
-                <form className="attack-panel__row" onSubmit={submitPhysicalRoll}>
-                  <input
-                    className="attack-panel__number"
-                    type="number"
-                    aria-label="Your physical d20 roll"
-                    placeholder="d20"
-                    value={physicalRoll}
-                    onChange={(event) => setPhysicalRoll(event.target.value)}
-                  />
-                  <Button type="submit" variant="secondary" disabled={isBusy || !physicalRoll}>
-                    Use my roll
+                {realDice ? (
+                  <form className="attack-panel__row" onSubmit={submitPhysicalRoll}>
+                    <input
+                      ref={primaryRef}
+                      className="attack-panel__number"
+                      type="number"
+                      aria-label={twoDice ? "Your first d20 roll" : "Your physical d20 roll"}
+                      // The note, and any problem with the number typed.
+                      aria-describedby={error ? "attack-panel-d20-note attack-panel-error" : "attack-panel-d20-note"}
+                      aria-invalid={error ? true : undefined}
+                      placeholder={twoDice ? "1st d20" : "d20"}
+                      value={physicalRoll}
+                      onChange={(event) => setPhysicalRoll(event.target.value)}
+                    />
+                    {twoDice && (
+                      <input
+                        className="attack-panel__number"
+                        type="number"
+                        aria-label="Your second d20 roll"
+                        aria-describedby={error ? "attack-panel-d20-note attack-panel-error" : "attack-panel-d20-note"}
+                        aria-invalid={error ? true : undefined}
+                        placeholder="2nd d20"
+                        value={physicalRoll2}
+                        onChange={(event) => setPhysicalRoll2(event.target.value)}
+                      />
+                    )}
+                    <Button type="submit" disabled={isBusy || !physicalRoll || (twoDice && !physicalRoll2)}>
+                      {twoDice ? "Use my rolls" : "Use my roll"}
+                    </Button>
+                  </form>
+                ) : (
+                  <Button ref={primaryRef} disabled={isBusy} onClick={rollToHit}>
+                    {twoDice ? `Roll with ${d20Mode}` : "Roll d20"} ({formatModifier(bonus)})
                   </Button>
-                </form>
+                )}
               </div>
-              <p className="attack-panel__note">
-                For a physical roll, enter just the d20. We add your {formatModifier(bonus)}.
-              </p>
+              {realDice ? (
+                <p className="attack-panel__note" id="attack-panel-d20-note">
+                  {twoDice
+                    ? `With ${d20Mode}, roll two d20s and enter both. We keep the ${
+                        d20Mode === "advantage" ? "higher" : "lower"
+                      } one and add your ${formatModifier(bonus)}.`
+                    : `Enter just the number on your d20. We add your ${formatModifier(bonus)}.`}
+                </p>
+              ) : (
+                twoDice && (
+                  <p className="attack-panel__note">
+                    Rolls two d20s and keeps the {d20Mode === "advantage" ? "higher" : "lower"} (the roll bar&apos;s Next
+                    d20).
+                  </p>
+                )
+              )}
+              <MethodSwitch
+                realDice={realDice}
+                onSwitch={switchMethod}
+                disabled={isBusy}
+                confirming={confirmingDiscard}
+                pendingLabel={roller?.pending?.label}
+                onKeep={keepPending}
+                onDiscard={discardAndSwitch}
+              />
             </>
           )}
         </>
@@ -485,31 +617,20 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatur
             </div>
           )}
 
-          <div className="attack-panel__row">
-            {canRollDamage && (
-              <Button disabled={isBusy} onClick={rollDamageDice}>
+          {/* The chosen way to get the damage: the app's roll, or the
+              numbers on real dice (the app adds them up). Special damage the
+              app can't read is always typed as a total. */}
+          {canRollDamage && !realDice && (
+            <div className="attack-panel__row">
+              <Button ref={primaryRef} disabled={isBusy} onClick={rollDamageDice}>
                 Roll damage
               </Button>
-            )}
-            {damageRolled && (
-              <>
-                <span className="attack-panel__rolled">{damageRolled.text}</span>
-                {damageRolled.extra && (
-                  <span className="attack-panel__added" role="status">
-                    ✓ {damageRolled.extra.label} added: +{damageRolled.extra.total}. Total damage:{" "}
-                    {damageRolled.total}.
-                  </span>
-                )}
-                <Button disabled={isBusy} onClick={() => submitDamage(damageRolled.total, damageRolled.parts)}>
-                  Deal {damageRolled.total} damage
-                </Button>
-              </>
-            )}
-          </div>
+            </div>
+          )}
 
-          {canRollDamage ? (
-            // Rolled real dice: type each die's number; the app adds them and
-            // your bonus.
+          {canRollDamage && realDice && (
+            // Real dice: type each die's number; the app adds them and your
+            // bonus.
             <form className="attack-panel__dice" onSubmit={submitPhysicalDice}>
               <label className="attack-panel__dice-label" htmlFor="attack-panel-dice">
                 Rolled real dice? Type the number on each die ({diceCount}{" "}
@@ -520,7 +641,10 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatur
               </label>
               <div className="attack-panel__row">
                 <input
+                  ref={primaryRef}
                   id="attack-panel-dice"
+                  aria-describedby={error ? "attack-panel-error" : undefined}
+                  aria-invalid={error ? true : undefined}
                   className="attack-panel__dice-input"
                   type="text"
                   inputMode="numeric"
@@ -529,11 +653,39 @@ function AttackPanel({ attack, combat, onClose, sharpshooter = null, onHitFeatur
                   value={physicalDice}
                   onChange={(event) => setPhysicalDice(event.target.value)}
                 />
-                <Button type="submit" variant="secondary" disabled={isBusy || physicalDice.trim() === ""}>
+                <Button type="submit" disabled={isBusy || physicalDice.trim() === ""}>
                   Use my dice
                 </Button>
               </div>
             </form>
+          )}
+
+          {/* The damage worked out (either way), and the one button that deals it. */}
+          {damageRolled && (
+            <div className="attack-panel__row">
+              <span className="attack-panel__rolled">{damageRolled.text}</span>
+              {damageRolled.extra && (
+                <span className="attack-panel__added" role="status">
+                  ✓ {damageRolled.extra.label} added: +{damageRolled.extra.total}. Total damage:{" "}
+                  {damageRolled.total}.
+                </span>
+              )}
+              <Button disabled={isBusy} onClick={() => submitDamage(damageRolled.total, damageRolled.parts)}>
+                Deal {damageRolled.total} damage
+              </Button>
+            </div>
+          )}
+
+          {canRollDamage ? (
+            <MethodSwitch
+              realDice={realDice}
+              onSwitch={switchMethod}
+              disabled={isBusy}
+              confirming={confirmingDiscard}
+              pendingLabel={roller?.pending?.label}
+              onKeep={keepPending}
+              onDiscard={discardAndSwitch}
+            />
           ) : (
             <form className="attack-panel__row" onSubmit={submitPhysicalDamage}>
               <input

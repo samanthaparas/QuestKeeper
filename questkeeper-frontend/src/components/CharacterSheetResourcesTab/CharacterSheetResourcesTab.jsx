@@ -1,7 +1,7 @@
-import UsePips, { MAX_PIPS } from "../UsePips/UsePips";
+import UseCounter from "../UseCounter/UseCounter";
 import EditableItemList from "../EditableItemList/EditableItemList";
 import Button from "../Button/Button";
-import { RESET_OPTIONS, RESOURCE_MAX_SOURCES, describeMaxFrom, describeReset } from "../../utils/characterSheet";
+import { RESET_OPTIONS, RESOURCE_MAX_SOURCES, describeMaxFrom, describeRecovery } from "../../utils/characterSheet";
 
 // The regain box, shown only for "Daily at dawn": a number, dice like
 // 1d3 or 1d6+4, or blank for all of them.
@@ -66,6 +66,8 @@ function CharacterSheetResourcesTab({
   dawnNote = null,
   // The inventory item a resource holds the charges of (or null).
   itemFor = () => null,
+  // Opens that item on the Inventory tab ("View item").
+  onViewItem = null,
 }) {
   const hasDawn = (resources ?? []).some((resource) => resource.resetOn === "dawn");
   const dawnBar = hasDawn ? (
@@ -90,6 +92,18 @@ function CharacterSheetResourcesTab({
   return (
     <EditableItemList
       title="Resources"
+      // Three lined-up columns on a wide sheet: Resource | Remaining |
+      // Recovery (see CharacterSheetPage.css); stacked when it's narrow.
+      sectionClassName="resources-section use-tracker-layout"
+      // Quiet column headings over the rows (wide sheets only). Hidden from
+      // screen readers: each tracker and recovery line says it in full.
+      listHeader={
+        <div className="resources-columns" aria-hidden="true">
+          <span>Resource</span>
+          <span>Remaining</span>
+          <span>Recovery</span>
+        </div>
+      }
       items={resources}
       getItemId={(item) => item.id}
       fields={[
@@ -139,7 +153,7 @@ function CharacterSheetResourcesTab({
           placeholder: "Notes (optional) - one line per bullet point",
         },
       ]}
-      emptyText="Track anything with limited uses, like Channel Divinity, Lay on Hands, Second Wind or a wand's charges. Tap Add Resource, give it a name and how many uses you get, then tap a pip each time you use one. It refills on the rest you pick, at dawn, or only when you change it."
+      emptyText="Track anything with limited uses, like Channel Divinity, Lay on Hands, Second Wind or a wand's charges. Tap Add Resource, give it a name and how many uses you get, then tap − each time you use one. It refills on the rest you pick, at dawn, or only when you change it."
       footer={dawnBar}
       addButtonLabel="Add Resource"
       onAdd={onResourceAdd}
@@ -153,46 +167,47 @@ function CharacterSheetResourcesTab({
       filterOptions={RESOURCE_FILTERS}
       extraRowContent={(resource) => (
         <>
-          {/* A few uses (Channel Divinity): pips to tap. A big pool (Lay on
-              Hands): a number box. */}
-          {resource.max <= MAX_PIPS ? (
-            <UsePips
-              label={resource.name}
+          {/* Remaining: − spends one, + gives one back. A big pool (Lay
+              on Hands, more than 12) keeps its typed box as the count. The
+              same width in every row, so the columns line up. */}
+          <span className="resources-tracker">
+            <UseCounter
+              name={resource.name}
+              // An item's charges say "Charges", as on its Inventory row.
+              unit={itemFor(resource) ? "charge" : "use"}
+              title={itemFor(resource) ? "Charges" : "Uses"}
               current={resource.current}
               max={resource.max}
+              editable={resource.max > 12}
+              aligned
+              showDepleted={false}
               onChange={(value) => onResourceCurrentChange(resource.id, value)}
             />
-          ) : (
-            <span className="character-sheet__resource-count">
-              <input
-                type="number"
-                className="character-sheet__resource-input"
-                aria-label={`${resource.name} left`}
-                value={resource.current}
-                onChange={(e) =>
-                  onResourceCurrentChange(resource.id, e.target.value)
-                }
-                min={0}
-                max={resource.max}
-              />
-              {" / "}
-              {resource.max}
-            </span>
-          )}
-          <span className="character-sheet__resource-reset">
-            {describeReset(resource)}
+          </span>
+          {/* Recovery, then anything else about it, in its own column:
+              where its max comes from, the item it belongs to, Depleted. */}
+          <span className="resources-recovery use-tracker-notes">
+            <span>{describeRecovery(resource, { short: true })}</span>
             {resource.maxFrom && (
               <span title="The most uses follows this, and changes on its own with level and scores">
-                {" "}
-                · max follows {describeMaxFrom(resource.maxFrom)}
+                Max follows {describeMaxFrom(resource.maxFrom)}
               </span>
             )}
-            {/* Charges of an inventory item: the same numbers show there. */}
-            {itemFor(resource) && (
-              <span className="character-sheet__resource-item" title={`The charges of ${itemFor(resource).name} in your inventory`}>
-                {" "}
-                · 🎒 {itemFor(resource).name}
-              </span>
+            {itemFor(resource) && itemFor(resource).name !== resource.name && (
+              <span>From {itemFor(resource).name}</span>
+            )}
+            {itemFor(resource) && onViewItem && (
+              <button
+                type="button"
+                className="use-tracker-notes__link"
+                aria-label={`View ${itemFor(resource).name} in inventory`}
+                onClick={() => onViewItem(itemFor(resource))}
+              >
+                View item
+              </button>
+            )}
+            {Number(resource.max) > 0 && Number(resource.current) <= 0 && (
+              <span className="use-tracker-notes__depleted">Depleted</span>
             )}
           </span>
         </>

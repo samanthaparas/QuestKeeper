@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useStickyHeight } from "../../hooks/useStickyHeight";
 import { resolveDamageRequest, setMyAway } from "../../utils/tableStore";
 import { describeUpcoming } from "../../utils/initiative";
 import { eventTone } from "../../utils/tableGuidance";
@@ -11,9 +12,20 @@ export const APPLIED_NOTE_MS = 15000;
 
 // Sits at the top of a player's character sheet while their table is in combat.
 // `combat` comes from useTableTurn; `onApplyDamage` lowers this character's HP.
+//
+// One quiet row at every size: the round and whose turn it is, "You're
+// next" when it's true, End my turn on your turn, Step away, and Details.
+// The table name, the turn order, the attack count and the latest news open
+// under Details (the news is still read out while it's closed). Anything
+// that needs you stays in view: being away (with Return to play) and damage
+// to apply.
 function TurnBanner({ combat, onApplyDamage }) {
   const [error, setError] = useState("");
   const [appliedNote, setAppliedNote] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
+  // Its height, for the page's scroll padding (see useStickyHeight).
+  const wrapRef = useRef(null);
+  useStickyHeight(wrapRef, "--qk-sticky-top", Boolean(combat));
 
   // The "Applied …" line is just a confirmation: it goes away by itself after
   // 15 seconds so it doesn't keep taking up space on the sheet.
@@ -43,7 +55,7 @@ function TurnBanner({ combat, onApplyDamage }) {
     }
   }
 
-  // "Step away (brb)" / "I'm back": away players' turns are skipped.
+  // "Step away" / "Return to play": away players' turns are skipped.
   async function handleAway(away) {
     setError("");
     try {
@@ -68,60 +80,118 @@ function TurnBanner({ combat, onApplyDamage }) {
     }
   }
 
+  // "Your turn, Pippa" / "Ash's turn".
+  const turnText = isMyTurn
+    ? `Your turn${combat.myCombatant?.name ? `, ${combat.myCombatant.name}` : ""}`
+    : now
+      ? `${now.name}'s turn`
+      : "Combat has started";
+
   return (
-    <div className="turn-banner-wrap">
+    <div className="turn-banner-wrap" ref={wrapRef}>
       <div
-        className={`turn-banner${isMyTurn ? " turn-banner--mine" : ""}${isNextUp ? " turn-banner--soon" : ""}`}
+        id="turn-banner"
+        className={`turn-banner${isMyTurn ? " turn-banner--mine" : ""}${isNextUp ? " turn-banner--soon" : ""}${
+          showDetails ? " turn-banner--details-open" : ""
+        }`}
         role="status"
         aria-live="polite"
       >
-        {combat.tableName && (
-          <span className="turn-banner__table">
-            Playing at <strong>{combat.tableName}</strong>
+        {/* The one row that's always there: where the fight is, whether
+            you're up next, and what you can do. */}
+        <div className="turn-banner__main">
+          <span className="turn-banner__where">
+            <span className="turn-banner__round">Round {combat.round}</span>
+            <span className="turn-banner__dot" aria-hidden="true">
+              ·
+            </span>
+            <span className="turn-banner__now">{turnText}</span>
           </span>
-        )}
-        {combat.activeTables?.length > 1 && (
-          <label className="turn-banner__switch">
-            <span className="turn-banner__switch-label">Switch table</span>
-            <select
-              value={combat.table.id}
-              onChange={(event) => combat.switchTable(event.target.value)}
+          {isNextUp && <span className="turn-banner__ready">You&apos;re next</span>}
+          <TurnHeadsUp isMyTurn={isMyTurn} isNext={isNextUp} />
+          <span className="turn-banner__actions">
+            {isMyTurn && combat.endTurn && (
+              <Button variant="secondary" className="turn-banner__end" onClick={handleEndTurn}>
+                End my turn
+              </Button>
+            )}
+            {combat.myCombatant && !isAway && (
+              <Button
+                variant="secondary"
+                className="turn-banner__end"
+                aria-describedby="turn-banner-away-help"
+                onClick={() => handleAway(true)}
+              >
+                Step away
+              </Button>
+            )}
+            <button
+              type="button"
+              className="turn-banner__details-toggle"
+              aria-expanded={showDetails}
+              aria-controls="turn-banner-details"
+              onClick={() => setShowDetails((open) => !open)}
             >
-              {combat.activeTables.map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {entry.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <span className="turn-banner__round">Round {combat.round}</span>
-        <span className="turn-banner__now">
-          {isMyTurn ? "It's your turn!" : now ? `Now: ${now.name}` : "Combat has started"}
-        </span>
-        {now && now.kind === "player" && now.attacks_this_turn > 0 && (
-          <span className="turn-banner__attacks">
-            {isMyTurn ? "You have" : `${now.name} has`} attacked {now.attacks_this_turn}{" "}
-            {now.attacks_this_turn === 1 ? "time" : "times"} this turn
+              {showDetails ? "Hide details" : "Details"}
+              <span aria-hidden="true">{showDetails ? " ▴" : " ▾"}</span>
+            </button>
           </span>
+        </div>
+
+        {/* Away: always in view, with the way back. */}
+        {isAway && (
+          <div className="turn-banner__away-row">
+            <span className="turn-banner__away">You&apos;re away: your turns are skipped until you return.</span>
+            {combat.myCombatant && (
+              <Button variant="secondary" className="turn-banner__end" onClick={() => handleAway(false)}>
+                Return to play
+              </Button>
+            )}
+          </div>
         )}
-        {upcomingText && <span className="turn-banner__next">{upcomingText}</span>}
-        {isNextUp && <span className="turn-banner__ready">Get ready: plan your move.</span>}
-        <TurnHeadsUp isMyTurn={isMyTurn} isNext={isNextUp} />
-        {isMyTurn && combat.endTurn && (
-          <Button variant="secondary" className="turn-banner__end" onClick={handleEndTurn}>
-            End my turn
-          </Button>
-        )}
-        {isAway && <span className="turn-banner__away">You&apos;re away: your turns are skipped.</span>}
-        {combat.myCombatant && (
-          <Button variant="secondary" className="turn-banner__end" onClick={() => handleAway(!isAway)}>
-            {isAway ? "I'm back" : "Step away (brb)"}
-          </Button>
-        )}
-        {/* The latest news: red for damage, green for healing or a fallen enemy. */}
+
+        {/* Details: the table, the turn order, the attack count and the news. */}
+        <div className="turn-banner__details" id="turn-banner-details" hidden={!showDetails}>
+          {combat.tableName && (
+            <span className="turn-banner__table">
+              Playing at <strong>{combat.tableName}</strong>
+            </span>
+          )}
+          {combat.activeTables?.length > 1 && (
+            <label className="turn-banner__switch">
+              <span className="turn-banner__switch-label">Switch table</span>
+              <select value={combat.table.id} onChange={(event) => combat.switchTable(event.target.value)}>
+                {combat.activeTables.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {upcomingText && <span className="turn-banner__next">{upcomingText}</span>}
+          {now && now.kind === "player" && now.attacks_this_turn > 0 && (
+            <span className="turn-banner__attacks">
+              {isMyTurn ? "You have" : `${now.name} has`} attacked {now.attacks_this_turn}{" "}
+              {now.attacks_this_turn === 1 ? "time" : "times"} this turn
+            </span>
+          )}
+          {combat.myCombatant && (
+            <span className="turn-banner__help" id="turn-banner-away-help">
+              Step away skips your turns until you return to play.
+            </span>
+          )}
+        </div>
+
+        {/* The latest news: red for damage, green for healing or a fallen
+            enemy. Shown with Details; while Details is closed it's hidden
+            from view but still read out, so it's never silent. */}
         {latestEvent && (
-          <span className={`turn-banner__event${tone ? ` turn-banner__event--${tone}` : ""}`}>
+          <span
+            className={`turn-banner__event${tone ? ` turn-banner__event--${tone}` : ""}${
+              showDetails ? "" : " turn-banner__event--quiet"
+            }`}
+          >
             {latestEvent.message}
           </span>
         )}

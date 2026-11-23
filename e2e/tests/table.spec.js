@@ -119,7 +119,9 @@ test("a player gives arrows to another player through the gift box", async ({ br
   const sheet = player.page;
   await sheet.reload();
   await sheet.getByRole("tab", { name: "Inventory" }).click();
-  await sheet.getByRole("button", { name: "Give…" }).first().click();
+  // Give… is in the item's Manage panel.
+  await sheet.getByRole("button", { name: "Manage Arrows" }).click();
+  await sheet.getByRole("button", { name: "Give Arrows…" }).click();
   await sheet.getByLabel("Who to give Arrows to").selectOption({ label: "Wren" });
   await sheet.getByLabel("How many Arrows to give").fill("5");
   await sheet.getByRole("button", { name: "Give", exact: true }).click();

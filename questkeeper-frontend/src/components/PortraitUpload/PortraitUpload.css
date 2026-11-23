@@ -140,3 +140,120 @@
 .portrait-upload--tiny .portrait-upload__overlay {
   font-size: 10px;
 }
+
+/* --- The sheet's big portrait: an Edit button on the picture, and its menu */
+.portrait-upload--with-menu {
+  position: relative;
+}
+
+.portrait-upload__frame--static {
+  cursor: default;
+}
+
+.portrait-upload__menu-button {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px var(--qk-shadow);
+  cursor: pointer;
+}
+
+.portrait-upload__menu-button:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+/* Under the picture's right edge, or above it when there's no room below. */
+/* As wide as the picture, so it never spills out of the side panel. */
+.portrait-upload__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 30;
+  display: grid;
+  width: min(100%, 220px);
+  margin-inline: auto;
+  padding: 6px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  box-shadow: 0 8px 24px var(--qk-shadow);
+}
+
+.portrait-upload__menu--above {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.portrait-upload__menu [role="menuitem"] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.portrait-upload__menu [role="menuitem"]:hover,
+.portrait-upload__menu [role="menuitem"]:focus-visible {
+  background-color: var(--qk-terracotta-soft);
+  outline: none;
+}
+
+.portrait-upload__menu [role="menuitem"]:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--qk-text);
+}
+
+/* The tiny coin on phones: the coin opens the same menu. A small pencil on
+   its edge says it can be changed; the coin stays its usual size. */
+.portrait-upload__coin-button {
+  overflow: visible;
+}
+
+.portrait-upload__coin-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--qk-border);
+  border-radius: 50%;
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  box-shadow: 0 1px 3px var(--qk-shadow);
+}
+
+.portrait-upload__overlay--busy {
+  border-radius: 50%;
+  opacity: 1;
+}
+
+/* Under the coin, starting at its left edge, wide enough for its words. */
+.portrait-upload__menu--coin {
+  right: auto;
+  width: 220px;
+  margin-inline: 0;
+}

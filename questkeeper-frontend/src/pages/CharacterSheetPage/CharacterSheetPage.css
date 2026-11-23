@@ -707,20 +707,49 @@
   outline-offset: 3px;
 }
 
-/* "Dreadful Strikes +1d6 psychic on a hit (each creature once per turn)",
-   above the attacks list. */
+/* "Dreadful Strikes  +1d6 psychic | On a hit, if you choose...": a slim
+   strip under the attacks, apart from every weapon (it's never added to
+   them by itself). */
+.character-sheet__on-hit-strips {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
 .character-sheet__on-hit-line {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 16px;
-  margin: 0 0 8px;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--qk-border);
+  border-left: 4px solid var(--qk-moss);
+  border-radius: 0 var(--qk-radius-control) var(--qk-radius-control) 0;
+  background-color: var(--qk-surface);
   color: var(--qk-text);
-  font-size: 14px;
 }
 
-/* Damage parts side by side, each with its type; they wrap as a whole. */
+.character-sheet__on-hit-name {
+  font-family: var(--qk-font-display);
+  font-size: 17px;
+}
+
+.character-sheet__on-hit-note {
+  padding-left: 14px;
+  border-left: 1px solid var(--qk-border);
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* Damage parts side by side, each its own chip; they wrap as whole chips. */
 .character-sheet__damage-parts {
-  display: inline;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .character-sheet__damage-part {
@@ -1259,6 +1288,290 @@
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+}
+
+/* --- The attacks table (weapons, and companions' attacks) ---------------
+   Weapon | To hit | Damage on one shared grid: the rows use the table's
+   columns (subgrid), so every heading and number lines up even when a row
+   has Attack or Edit buttons and the heading row doesn't. The section is a
+   container, so the layout follows the middle pane's real width, not the
+   window's. */
+.character-sheet__section--attacks {
+  container-type: inline-size;
+}
+
+.character-sheet__section--attacks .character-sheet__attacks-table {
+  grid-template-columns: var(--item-columns);
+  column-gap: 14px;
+}
+
+.character-sheet__section--attacks .character-sheet__attacks-table > * {
+  grid-column: 1 / -1;
+}
+
+.character-sheet__section--attacks .character-sheet__attacks-header,
+.character-sheet__section--attacks .character-sheet__attacks-row {
+  grid-template-columns: subgrid;
+  column-gap: 14px;
+  padding: 12px 14px;
+}
+
+.character-sheet__section--attacks .character-sheet__attacks-header {
+  padding-top: 4px;
+  padding-bottom: 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.character-sheet__section--attacks .character-sheet__attacks-header,
+.character-sheet__section--attacks .character-sheet__attacks-row {
+  align-items: start;
+}
+
+/* The weapon's cell, in three short lines:
+     Moonpetal Bow ✨
+     +2 longbow   Details   How it adds up
+     [Sharpshooter OFF]  −5 hit / +10 damage
+   The small controls take part in one wrapping row (display: contents on
+   their wrapper) and are put in that order; the name and Sharpshooter each
+   take a whole line. */
+.character-sheet__section--attacks .character-sheet__resource-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  min-width: 0;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.character-sheet__section--attacks .character-sheet__item-label {
+  flex-basis: 100%;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+/* A weapon's picture and name on one line: the picture stays put and a
+   long name wraps beside it, inside the name's own column. The picture
+   reaches 2px above and below the name's line, so the row is no taller. */
+.character-sheet__section--attacks .character-sheet__item-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+.character-sheet__section--attacks .character-sheet__item-title .character-sheet__item-label {
+  flex: 1 1 0;
+}
+
+.character-sheet__section--attacks .character-sheet__item-title .weapon-icon {
+  margin-block: -2px;
+}
+
+/* A name that opens the weapon's rules is a button; keep it reading as a
+   left-aligned name. */
+.character-sheet__section--attacks .character-sheet__srd-link.character-sheet__item-label {
+  justify-self: start;
+  text-align: left;
+}
+
+.character-sheet__section--attacks .character-sheet__attack-controls {
+  display: contents;
+}
+
+.character-sheet__section--attacks .character-sheet__weapon-meta {
+  flex-basis: auto;
+  order: 1;
+}
+
+.character-sheet__section--attacks .character-sheet__details-toggle {
+  order: 2;
+  min-height: 32px;
+  margin-left: 0;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.character-sheet__section--attacks .character-sheet__breakdown-toggle {
+  order: 3;
+}
+
+.character-sheet__section--attacks .character-sheet__sharpshooter-line {
+  flex-basis: 100%;
+  order: 4;
+  margin-top: 2px;
+}
+
+.character-sheet__section--attacks .character-sheet__attacks-notes-list {
+  flex-basis: 100%;
+  order: 5;
+}
+
+/* "Roll after a hit" under the Damage heading. */
+.character-sheet__column-hint {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.character-sheet__section--attacks .character-sheet__attacks-actions:empty {
+  display: none;
+}
+
+/* "Roll to hit first. Roll damage after a hit." once, above the list. */
+.character-sheet__list-intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  margin: -4px 0 12px;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-style: italic;
+}
+
+.character-sheet__jump-link {
+  margin-left: auto;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: var(--qk-terracotta);
+  font: inherit;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.character-sheet__jump-link:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+/* "+2 longbow" under the weapon's name. */
+.character-sheet__weapon-meta {
+  flex-basis: 100%;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* Sharpshooter [Off]  −5 hit / +10 damage */
+.character-sheet__sharpshooter-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.character-sheet__chip-state {
+  margin-left: 2px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.character-sheet__sharpshooter-trade {
+  color: var(--qk-text-muted);
+  font-size: 13px;
+}
+
+/* A narrow middle pane (a phone, or a laptop with both side panels): each
+   weapon's name on top, then To hit and Damage under it, each with its
+   own small label. Damage chips wrap; nothing scrolls sideways. */
+@container (max-width: 600px) {
+  .character-sheet__section--attacks .character-sheet__attacks-header {
+    display: none;
+  }
+
+  .character-sheet__section--attacks .character-sheet__attacks-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 10px 14px;
+  }
+
+  .character-sheet__section--attacks .character-sheet__attacks-row > .character-sheet__resource-name,
+  .character-sheet__section--attacks .character-sheet__attacks-row > .character-sheet__attacks-actions {
+    grid-column: 1 / -1;
+  }
+
+  .character-sheet__section--attacks .character-sheet__attacks-row > .character-sheet__attacks-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .character-sheet__section--attacks .character-sheet__attacks-cell,
+  .character-sheet__section--attacks .character-sheet__attacks-cell[data-label="Damage"] {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    grid-column: auto;
+    min-width: 0;
+  }
+
+  .character-sheet__section--attacks .character-sheet__attacks-cell::before {
+    content: attr(data-label);
+    color: var(--qk-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+}
+
+/* The same on a narrow window, where the older phone layout above would
+   otherwise take over the rows. */
+@media screen and (max-width: 700px) {
+  .character-sheet__section--attacks .character-sheet__attacks-header {
+    display: none;
+  }
+
+  .character-sheet__section--attacks .character-sheet__attacks-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 10px 14px;
+  }
+
+  .character-sheet__section--attacks .character-sheet__attacks-row > .character-sheet__resource-name,
+  .character-sheet__section--attacks .character-sheet__attacks-row > .character-sheet__attacks-actions {
+    grid-column: 1 / -1;
+  }
+
+  .character-sheet__section--attacks .character-sheet__attacks-row > .character-sheet__attacks-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .character-sheet__section--attacks .character-sheet__attacks-cell,
+  .character-sheet__section--attacks .character-sheet__attacks-cell[data-label="Damage"] {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    grid-column: auto;
+    min-width: 0;
+  }
+
+  .character-sheet__section--attacks .character-sheet__attacks-cell::before {
+    content: attr(data-label);
+    color: var(--qk-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
 }
 
 .character-sheet__attacks-notes-list {
@@ -2284,6 +2597,23 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   }
 }
 
+/* And when the keyboard moves to a control low on the screen, the browser
+   scrolls it clear of the roll bar too (the page on a phone, the sheet's own
+   scrolling areas on a wider screen). */
+/* The turn banner's and the roll bar's measured heights (useStickyHeight),
+   so nothing reached with the keyboard lands under either. */
+html:has(.character-sheet) {
+  scroll-padding-top: calc(var(--qk-sticky-top, 0px) + 12px);
+  scroll-padding-bottom: calc(var(--qk-sticky-bottom, 0px) + 12px);
+}
+
+/* Inside the sheet's own scrolling areas (wider screens), the roll bar
+   floats over the bottom edge. */
+.character-sheet__main,
+.character-sheet__body {
+  scroll-padding-bottom: calc(var(--qk-sticky-bottom, 72px) + 32px);
+}
+
 /* A save is one pill: the proficiency dot tucked inside on the left, then
    "Save +3", which rolls. Kept as narrow as the old badge so the ability
    cards don't spill out of their boxes. */
@@ -2626,45 +2956,225 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   }
 }
 
-/* Inventory: round "P" (proficient) and ★ (attuned) toggles, the same size
-   as the pencil and trash buttons. Filled when on. */
-.character-sheet__icon-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--qk-border);
-  border-radius: 50%;
-  background-color: var(--qk-surface);
+/* Inventory: each row stays calm — the heart, the name, a quiet line of
+   what's on ("Equipped · Proficient") and one Manage button. Manage opens
+   the item's controls (Wear/Equip, Proficient, Attune) in a panel under it. */
+.inventory-state-summary {
+  display: block;
   color: var(--qk-text-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.inventory-manage {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  min-height: 36px;
+  margin-left: auto;
+  padding: 0 10px 0 12px;
+  border: 1px solid color-mix(in srgb, var(--qk-text-muted) 75%, var(--qk-surface));
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
   font: inherit;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.character-sheet__icon-toggle--star {
-  font-size: 18px;
+.inventory-manage:hover,
+.inventory-manage--open {
+  background-color: var(--qk-surface-muted);
 }
 
-.character-sheet__icon-toggle:hover {
-  border-color: var(--qk-terracotta);
-  color: var(--qk-terracotta);
-}
-
-.character-sheet__icon-toggle--on,
-.character-sheet__icon-toggle--on:hover {
-  border-color: var(--qk-terracotta);
-  background-color: var(--qk-terracotta);
-  color: var(--qk-surface);
-}
-
-.character-sheet__icon-toggle:focus-visible {
+.inventory-manage:focus-visible {
   outline: 2px solid var(--qk-focus);
   outline-offset: 2px;
 }
+
+/* The open panel: its own line under the item. The controls first, then
+   the item's actions (Edit item, Split stack, Give…, Delete item) on a
+   quieter line, then the one task being done (a split or a gift). */
+.inventory-manage-panel {
+  display: grid;
+  flex-basis: 100%;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--qk-border);
+}
+
+.inventory-manage-panel__controls,
+.inventory-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Item actions: words with a small picture, no fill, so they stay quieter
+   than the controls and never compete with Add Item. */
+.inventory-actions {
+  gap: 4px 6px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--qk-border);
+}
+
+.inventory-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 10px 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--qk-radius-control);
+  background: none;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.inventory-action .control-icon {
+  color: var(--qk-terracotta-hover);
+}
+
+.inventory-action:hover,
+.inventory-action[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--qk-text-muted) 75%, var(--qk-surface));
+  background-color: var(--qk-surface-muted);
+}
+
+.inventory-action:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+/* Delete: last, set apart, in the theme's danger colour as words only. */
+.inventory-action--danger {
+  margin-left: auto;
+  color: var(--qk-danger);
+}
+
+.inventory-action--danger .control-icon {
+  color: var(--qk-danger);
+}
+
+/* The one task (a split or a gift) under the actions. */
+.inventory-task {
+  margin: 0;
+}
+
+.inventory-manage-panel[hidden] {
+  display: none;
+}
+
+.inventory-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 10px 0 7px;
+  /* A clear outline (at least 3:1 against the card), so an "off" control
+     still reads as a button. */
+  border: 1px solid color-mix(in srgb, var(--qk-text-muted) 75%, var(--qk-surface));
+  border-radius: 999px;
+  background-color: transparent;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.inventory-toggle .control-icon {
+  color: var(--qk-terracotta-hover);
+}
+
+.inventory-toggle:hover {
+  border-color: var(--qk-terracotta);
+}
+
+/* On: a soft tint, a terracotta edge, the "on" word and a check mark. */
+.inventory-toggle--on,
+.inventory-toggle--on:hover {
+  border-color: var(--qk-terracotta);
+  background-color: var(--qk-terracotta-soft);
+  font-weight: 600;
+}
+
+.inventory-toggle:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.inventory-toggle__check {
+  flex: 0 0 auto;
+  margin-left: 1px;
+  color: var(--qk-terracotta-hover);
+}
+
+/* The heart keeps its size and place; in the inventory its tap area
+   reaches a little further (40px) without making the row taller. */
+.inventory-section .character-sheet__favorite {
+  position: relative;
+}
+
+.inventory-section .character-sheet__favorite::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
+
+/* "What do these controls do?" by Sort and Show, closed until opened. */
+.inventory-help {
+  display: contents;
+}
+
+.inventory-help__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.inventory-help__toggle .control-icon {
+  color: var(--qk-terracotta-hover);
+}
+
+.inventory-help__text {
+  display: grid;
+  flex-basis: 100%;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.inventory-help__text[hidden] {
+  display: none;
+}
+
+.inventory-help__text > span {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.inventory-help__text .control-icon {
+  margin-top: 1px;
+  color: var(--qk-terracotta-hover);
+}
+
 
 /* Features tab: features that belong to a different subclass. */
 .character-sheet__stray-features {
@@ -3524,4 +4034,325 @@ button.character-sheet__ability-save-badge:not(.character-sheet__ability-save-ba
   color: var(--qk-on-accent);
   font-size: 10px;
   font-weight: 700;
+}
+
+/* --- Compact stats (HP group, Initiative sign, Save bonus) ---------------- */
+
+/* HP and Temp in one group: "76 / 101 | Temp 0", a slim bar underneath. */
+.character-sheet__vital--hp .character-sheet__vital-value {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.character-sheet__temp-hp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  padding-left: 8px;
+  border-left: 1px solid var(--qk-terracotta);
+}
+
+.character-sheet__hp-bar {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--qk-terracotta) 18%, transparent);
+  overflow: hidden;
+}
+
+.character-sheet__hp-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--qk-terracotta);
+}
+
+/* "+" before a positive Initiative. */
+.character-sheet__vital-sign {
+  font-weight: 700;
+}
+
+/* Save bonus: a quiet disclosure beside the conditions. */
+.character-sheet__save-bonus {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.character-sheet__save-bonus-toggle {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background-color: transparent;
+  color: var(--qk-text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* A bonus that isn't 0 stands out a little, so it's never forgotten. */
+.character-sheet__save-bonus-toggle--on {
+  border-color: var(--qk-terracotta);
+  color: var(--qk-text);
+  font-weight: 700;
+}
+
+.character-sheet__save-bonus-toggle:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+.character-sheet__save-bonus .character-sheet__all-saves {
+  flex-direction: row;
+  gap: 6px;
+  padding: 2px 8px;
+}
+
+.character-sheet__save-bonus .character-sheet__all-saves[hidden] {
+  display: none;
+}
+
+/* --- The attacks' compact two-row header ----------------------------------
+   Row 1: "Attacks  Companions ↓" ... "Edit  + Add weapon".
+   Row 2: "Sort  Show" ... "How attacks work". Then the table. */
+.character-sheet__section-heading-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  min-width: 0;
+}
+
+.character-sheet__section--attacks > .character-sheet__section-header-row {
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.character-sheet__section--attacks .character-sheet__section-header-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.character-sheet__section--attacks .character-sheet__section-header-actions .qk-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 38px;
+  padding-block: 0;
+}
+
+/* "Companions ↓": a small outlined jump. */
+.character-sheet__jump-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--qk-border);
+  border-radius: 999px;
+  background: none;
+  color: var(--qk-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.character-sheet__jump-chip:hover {
+  border-color: var(--qk-terracotta);
+}
+
+.character-sheet__jump-chip:focus-visible {
+  outline: 2px solid var(--qk-text);
+  outline-offset: 2px;
+}
+
+.character-sheet__section--attacks .character-sheet__list-controls {
+  margin-bottom: 6px;
+}
+
+/* "How attacks work" sits at the right end of the Sort/Show row; its text
+   opens on a line of its own under the row. */
+.character-sheet__how-attacks {
+  display: contents;
+}
+
+.character-sheet__how-attacks > .character-sheet__jump-link {
+  margin-left: auto;
+}
+
+.character-sheet__how-attacks-text {
+  flex-basis: 100%;
+  padding: 6px 10px;
+  border-left: 3px solid var(--qk-terracotta);
+  background-color: var(--qk-surface);
+  color: var(--qk-text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.character-sheet__how-attacks-text[hidden] {
+  display: none;
+}
+
+/* Keep the sign right against the number ("+5", not "+  5"). */
+.character-sheet__vital-sign + .character-sheet__vital-input {
+  margin-left: -4px;
+}
+
+/* Readable at 4.5:1 or better in both themes: the darker copper for these
+   text links, and full text colour for the small labels in the HP group
+   (its tinted fill made the copper labels too faint). */
+.character-sheet__jump-link {
+  color: var(--qk-terracotta-hover);
+}
+
+.character-sheet__vital--hp .character-sheet__vital-label {
+  color: var(--qk-text);
+}
+
+/* "Init" and its calculation hint on one line. */
+.character-sheet__vital-label-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+/* Phones: Delete wraps with the other actions instead of pushing right. */
+@media (max-width: 600px) {
+  .inventory-action--danger {
+    margin-left: 0;
+  }
+}
+
+/* ---------- Resources and Inventory: trackers in lined-up columns ----------
+   The column sizes come from the shared tokens in UseCounter.css
+   (--use-tracker-width), and every row uses the same template, so −, the
+   count, + and the recovery text sit in the same place in every row. The
+   switch to columns is by the sheet's own content width (a container
+   query), not the window's, since the side panels take room too. Narrow:
+   each card stacks name, tracker, then recovery, all from the same left
+   edge. */
+.resources-section {
+  container: resources / inline-size;
+  --resources-recovery-width: 11.5rem;
+  --resources-columns: minmax(0, 1fr) var(--use-tracker-width) var(--resources-recovery-width);
+}
+
+.resources-columns {
+  display: none;
+}
+
+.resources-section .character-sheet__resource-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 8px 16px;
+}
+
+.resources-section .resources-tracker,
+.resources-section .resources-recovery {
+  justify-self: start;
+}
+
+/* Edit mode's pencil and trash: their own line, so the columns stay put. */
+.resources-section .character-sheet__resource-row > .character-sheet__attacks-actions {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+
+@container resources (min-width: 40rem) {
+  /* Quiet headings over the three columns. */
+  .resources-columns {
+    display: grid;
+    grid-template-columns: var(--resources-columns);
+    column-gap: 16px;
+    padding: 0 15px 6px;
+    color: var(--qk-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .resources-section .character-sheet__resource-row {
+    grid-template-columns: var(--resources-columns);
+    align-items: center;
+  }
+
+  .resources-section .character-sheet__resource-name {
+    grid-column: 1;
+  }
+
+  .resources-section .resources-tracker {
+    grid-column: 2;
+  }
+
+  .resources-section .resources-recovery {
+    grid-column: 3;
+  }
+}
+
+/* Inventory: Item | Charges | Manage on a wide sheet; on a narrow one the
+   name and Manage share the top line and the charges sit under them. The
+   Manage panel always spans the whole card. */
+.inventory-section {
+  container: inventory / inline-size;
+}
+
+.inventory-section .character-sheet__resource-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: start;
+  gap: 8px 16px;
+}
+
+.inventory-section .character-sheet__resource-row > .character-sheet__resource-name {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.inventory-section .character-sheet__resource-row > .inventory-manage {
+  grid-column: 2;
+  grid-row: 1;
+  margin-left: 0;
+}
+
+.inventory-section .character-sheet__resource-row > .inventory-charges {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.inventory-section .character-sheet__resource-row > .inventory-manage-panel {
+  grid-column: 1 / -1;
+}
+
+/* The tracker, with its recovery note right under it. */
+.inventory-charges {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  min-width: 0;
+}
+
+@container inventory (min-width: 40rem) {
+  .inventory-section .character-sheet__resource-row {
+    grid-template-columns: minmax(0, 1fr) var(--use-tracker-width) max-content;
+  }
+
+  .inventory-section .character-sheet__resource-row > .inventory-charges {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .inventory-section .character-sheet__resource-row > .inventory-manage {
+    grid-column: 3;
+  }
 }
