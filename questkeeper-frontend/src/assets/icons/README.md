@@ -5,7 +5,7 @@ Wayfarer visual direction.
 
 All icons are:
 
-- 512 by 512 pixel PNG files
+- 256 by 256 pixel WebP files (shrunk from the 512-pixel PNG originals, which are kept in `design/source/icon-originals`, outside git)
 - transparent
 - padded consistently for cards and reference results
 - designed to remain recognizable between 48 and 96 pixels
@@ -90,6 +90,9 @@ For example, `Half-Elf` becomes `half-elf` and `Guild Artisan` becomes
 - Dark brown: `#34261F`
 - Parchment: `#FFF7E8`
 
-Keep the original 512-pixel files as the source assets. Generate optimized
-WebP or AVIF copies during the production build if additional compression is
-needed.
+The 512-pixel PNG originals are the source assets (kept outside git, in
+`design/source/icon-originals`). The app uses 256-pixel WebP copies of them,
+which are about 16 times smaller: the Backgrounds page went from 13.7 MB of
+pictures to under 1 MB. To redo them after changing an original, resize it to
+256 pixels and save it as WebP (quality about 82, transparent background kept)
+into the same folder here, with the same name and a `.webp` ending.

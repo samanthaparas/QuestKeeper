@@ -490,3 +490,12 @@ html[data-text-size="larger"] body {
   --qk-border: #9b836d;
   --qk-terracotta: #f0a284;
 }
+
+/* Shown for a moment while a page's code downloads (see RouteLoading in App.jsx). */
+.route-loading {
+  max-width: var(--qk-reading-width);
+  margin: 0 auto;
+  padding: 64px 32px;
+  color: var(--qk-text-muted);
+  text-align: center;
+}

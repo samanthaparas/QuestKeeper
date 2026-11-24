@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Header from "./components/Header/Header";
 import Home from "./pages/Home/Home";
@@ -13,27 +13,31 @@ import SpellsPage from "./pages/SpellsPage";
 import BackgroundsPage from "./pages/BackgroundsPage";
 import FeatsPage from "./pages/FeatsPage";
 import MagicItemsPage from "./pages/MagicItemsPage/MagicItemsPage";
-import CharacterCreationPage from "./pages/CharacterCreationPage/CharacterCreationPage";
-import CharactersPage from "./pages/CharactersPage/CharactersPage";
-import CharacterSheetPage from "./pages/CharacterSheetPage/CharacterSheetPage";
-import TablesPage from "./pages/TablesPage/TablesPage";
-import TablePage from "./pages/TablePage/TablePage";
-import LibraryPage from "./pages/LibraryPage/LibraryPage";
-import HomebrewPage from "./pages/HomebrewPage/HomebrewPage";
-import HomebrewInvitePage from "./pages/HomebrewInvitePage/HomebrewInvitePage";
-import Guide from "./pages/Guide/Guide";
-import QuizPage from "./pages/QuizPage/QuizPage";
 import BackLink from "./components/BackLink/BackLink";
 import ScrollManager from "./components/ScrollManager/ScrollManager";
 import AuthPage from "./pages/AuthPage/AuthPage";
-import SettingsPage from "./pages/SettingsPage/SettingsPage";
 import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
-import SampleCharacterPage from "./pages/Samples/SampleCharacterPage";
-import SampleTablePage from "./pages/Samples/SampleTablePage";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import { getPageTitle } from "./utils/pageTitle";
 import { CURRENT_BUILD, fetchDeployedBuild, isNewerBuild } from "./utils/api";
 import { refreshIfSafe } from "./utils/autoRefresh";
+
+// The big, signed-in and rarely-first-visited pages load only when someone
+// opens them, so the first visit to the site downloads much less (the sheet
+// and the DM's table tools are most of the code).
+const CharacterCreationPage = lazy(() => import("./pages/CharacterCreationPage/CharacterCreationPage"));
+const CharactersPage = lazy(() => import("./pages/CharactersPage/CharactersPage"));
+const CharacterSheetPage = lazy(() => import("./pages/CharacterSheetPage/CharacterSheetPage"));
+const TablesPage = lazy(() => import("./pages/TablesPage/TablesPage"));
+const TablePage = lazy(() => import("./pages/TablePage/TablePage"));
+const LibraryPage = lazy(() => import("./pages/LibraryPage/LibraryPage"));
+const HomebrewPage = lazy(() => import("./pages/HomebrewPage/HomebrewPage"));
+const HomebrewInvitePage = lazy(() => import("./pages/HomebrewInvitePage/HomebrewInvitePage"));
+const Guide = lazy(() => import("./pages/Guide/Guide"));
+const QuizPage = lazy(() => import("./pages/QuizPage/QuizPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage/SettingsPage"));
+const SampleCharacterPage = lazy(() => import("./pages/Samples/SampleCharacterPage"));
+const SampleTablePage = lazy(() => import("./pages/Samples/SampleTablePage"));
 
 // Keeps the browser tab's title in step with the page.
 function PageTitle() {
@@ -162,6 +166,15 @@ function UpdateBanner() {
   );
 }
 
+// What shows for a moment while a page's code is on its way.
+function RouteLoading() {
+  return (
+    <main className="route-loading" role="status" aria-live="polite">
+      <p>Loading…</p>
+    </main>
+  );
+}
+
 function App() {
   return (
     <>
@@ -174,6 +187,7 @@ function App() {
       {/* "← Back to your quiz results" and the like, when a link set one. */}
       <BackLink />
 
+      <Suspense fallback={<RouteLoading />}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/search" element={<SearchPage />} />
@@ -295,6 +309,7 @@ function App() {
         <Route path="/sample/table" element={<SampleTablePage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      </Suspense>
     </>
   );
 }

@@ -1,28 +1,28 @@
-const magicItemIcons = import.meta.glob("../assets/icons/magic-items/*.png", {
+const magicItemIcons = import.meta.glob("../assets/icons/magic-items/*.webp", {
   eager: true,
   import: "default",
 });
-const raceIcons = import.meta.glob("../assets/icons/races/*.png", {
+const raceIcons = import.meta.glob("../assets/icons/races/*.webp", {
   eager: true,
   import: "default",
 });
-const classIcons = import.meta.glob("../assets/icons/classes/*.png", {
+const classIcons = import.meta.glob("../assets/icons/classes/*.webp", {
   eager: true,
   import: "default",
 });
-const backgroundIcons = import.meta.glob("../assets/icons/backgrounds/*.png", {
+const backgroundIcons = import.meta.glob("../assets/icons/backgrounds/*.webp", {
   eager: true,
   import: "default",
 });
 const spellSchoolIcons = import.meta.glob(
-  "../assets/icons/spell-schools/*.png",
+  "../assets/icons/spell-schools/*.webp",
   { eager: true, import: "default" },
 );
 const spellEffectIcons = import.meta.glob(
-  "../assets/icons/spell-effects/*.png",
+  "../assets/icons/spell-effects/*.webp",
   { eager: true, import: "default" },
 );
-const uiIcons = import.meta.glob("../assets/icons/ui/*.png", {
+const uiIcons = import.meta.glob("../assets/icons/ui/*.webp", {
   eager: true,
   import: "default",
 });
@@ -46,8 +46,8 @@ export function getRaceIcon(raceId) {
   // Published-book and Tome of Heroes entries share the canonical race art.
   const canonicalId = id.replace(/^(book|toh)-/, "");
   return (
-    raceIcons[`../assets/icons/races/${id}.png`] ??
-    raceIcons[`../assets/icons/races/${canonicalId}.png`]
+    raceIcons[`../assets/icons/races/${id}.webp`] ??
+    raceIcons[`../assets/icons/races/${canonicalId}.webp`]
   );
 }
 
@@ -55,8 +55,8 @@ export function getClassIcon(classId) {
   const id = normalizeId(classId);
   const canonicalId = id.replace(/^book-/, "");
   return (
-    classIcons[`../assets/icons/classes/${id}.png`] ??
-    classIcons[`../assets/icons/classes/${canonicalId}.png`]
+    classIcons[`../assets/icons/classes/${id}.webp`] ??
+    classIcons[`../assets/icons/classes/${canonicalId}.webp`]
   );
 }
 
@@ -65,20 +65,20 @@ export function getBackgroundIcon(backgroundId) {
   // Source-specific entries share the canonical background artwork.
   const canonicalId = id.replace(/^(book|toh|tdcs|open5e)-/, "");
   return (
-    backgroundIcons[`../assets/icons/backgrounds/${id}.png`] ??
-    backgroundIcons[`../assets/icons/backgrounds/${canonicalId}.png`]
+    backgroundIcons[`../assets/icons/backgrounds/${id}.webp`] ??
+    backgroundIcons[`../assets/icons/backgrounds/${canonicalId}.webp`]
   );
 }
 
 export function getSpellSchoolIcon(schoolId) {
   return spellSchoolIcons[
-    `../assets/icons/spell-schools/${normalizeId(schoolId)}.png`
+    `../assets/icons/spell-schools/${normalizeId(schoolId)}.webp`
   ];
 }
 
 export function getSpellEffectIcon(effectId) {
   return spellEffectIcons[
-    `../assets/icons/spell-effects/${normalizeId(effectId)}.png`
+    `../assets/icons/spell-effects/${normalizeId(effectId)}.webp`
   ];
 }
 
@@ -115,12 +115,12 @@ export function getDmSupportIcon(name) {
 }
 
 export function getUiIcon(iconId) {
-  return uiIcons[`../assets/icons/ui/${normalizeId(iconId)}.png`];
+  return uiIcons[`../assets/icons/ui/${normalizeId(iconId)}.webp`];
 }
 
 export function getMagicItemIcon(type) {
   return (
-    magicItemIcons[`../assets/icons/magic-items/${normalizeId(type)}.png`] ??
-    magicItemIcons["../assets/icons/magic-items/wondrous-item.png"]
+    magicItemIcons[`../assets/icons/magic-items/${normalizeId(type)}.webp`] ??
+    magicItemIcons["../assets/icons/magic-items/wondrous-item.webp"]
   );
 }
