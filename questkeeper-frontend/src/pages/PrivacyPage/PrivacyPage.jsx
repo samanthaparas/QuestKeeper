@@ -109,10 +109,6 @@ function PrivacyPage() {
             </li>
           )}
           <li>
-            <strong>Google Fonts</strong> supplies the website&apos;s lettering, so your browser contacts Google
-            when a page loads.
-          </li>
-          <li>
             The rules themselves come from the free D&amp;D reference services listed on the{" "}
             <Link to="/attributions">sources page</Link>. None of your information is sent to them.
           </li>
