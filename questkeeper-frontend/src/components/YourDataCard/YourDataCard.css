@@ -1,0 +1,102 @@
+/* Settings > Your data: a card like the others on the Settings page. */
+.your-data {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--qk-border);
+  border-radius: var(--qk-radius-card);
+  background-color: var(--qk-surface);
+}
+
+.your-data__heading {
+  margin: 0;
+  color: var(--qk-text);
+  font-family: var(--qk-font-display);
+  font-size: 22px;
+}
+
+.your-data__subheading {
+  margin: 0;
+  color: var(--qk-text);
+  font-size: 17px;
+}
+
+.your-data__hint {
+  margin: 0;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.your-data__hint a {
+  color: var(--qk-terracotta-hover);
+  font-weight: 700;
+}
+
+.your-data__block {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.your-data__block + .your-data__block {
+  padding-top: 16px;
+  border-top: 1px solid var(--qk-border);
+}
+
+.your-data__confirm {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  width: 100%;
+}
+
+.your-data__warning {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--qk-warning);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-brass-soft);
+  color: var(--qk-text);
+  font-size: 14px;
+}
+
+.your-data__label {
+  color: var(--qk-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.your-data__input {
+  width: min(100%, 260px);
+  min-height: 40px;
+  padding: 0 12px;
+  border: 2px solid var(--qk-border);
+  border-radius: var(--qk-radius-control);
+  background-color: var(--qk-input-bg);
+  color: var(--qk-text);
+  font: inherit;
+  letter-spacing: 0.08em;
+}
+
+.your-data__input:focus-visible {
+  outline: 2px solid var(--qk-focus);
+  outline-offset: 2px;
+}
+
+.your-data__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.your-data__message {
+  margin: 0;
+  min-height: 1.2em;
+  color: var(--qk-text-muted);
+  font-size: 14px;
+}
+
+.your-data__message--error {
+  color: var(--qk-danger);
+}

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import SettingsPage from "./SettingsPage";
 import { updateDisplayName, updateEmail, updatePassword } from "../../utils/account";
 import { installFakeStorage } from "../../test/fakeStorage";
@@ -27,7 +28,7 @@ describe("SettingsPage", () => {
   });
 
   it("starts with the saved display name and saves a new one", async () => {
-    render(<SettingsPage />);
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>);
     const input = screen.getByLabelText("Display name");
     expect(input).toHaveValue("Sam");
 
@@ -40,7 +41,7 @@ describe("SettingsPage", () => {
   });
 
   it("lets you pick Dark, Light, or Match my device, and remembers it", async () => {
-    render(<SettingsPage />);
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>);
     expect(screen.getByLabelText("Match my device")).toBeChecked();
 
     await userEvent.click(screen.getByLabelText("Dark"));
@@ -60,7 +61,7 @@ describe("SettingsPage", () => {
       { file: "20261122_campaign_start_session.sql", what: "Start a new campaign at any session", status: "missing" },
       { file: "20261116_player_brb.sql", what: "Players can step away (brb)", status: "ok" },
     ]);
-    render(<SettingsPage />);
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>);
     await userEvent.click(screen.getByRole("button", { name: "Check the database" }));
 
     expect(await screen.findByText("1 SQL file needs running in the Supabase SQL editor.")).toBeInTheDocument();
@@ -69,13 +70,13 @@ describe("SettingsPage", () => {
 
   it("says when everything is up to date", async () => {
     runDbChecks.mockResolvedValue([{ file: "a.sql", what: "A", status: "ok" }]);
-    render(<SettingsPage />);
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>);
     await userEvent.click(screen.getByRole("button", { name: "Check the database" }));
     expect(await screen.findByText("✓ Everything is up to date.")).toBeInTheDocument();
   });
 
   it("makes text bigger and contrast higher, saved on this device", async () => {
-    render(<SettingsPage />);
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>);
     expect(screen.getByRole("radio", { name: "Normal" })).toBeChecked();
 
     await userEvent.click(screen.getByRole("radio", { name: "Largest" }));
@@ -92,7 +93,7 @@ describe("SettingsPage", () => {
   });
 
   it("lets an experienced player turn beginner tips off, and remembers it on this device", async () => {
-    render(<SettingsPage />);
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>);
     const box = screen.getByLabelText("Show beginner tips");
     expect(box).toBeChecked();
 
@@ -104,7 +105,7 @@ describe("SettingsPage", () => {
   });
 
   it("lets a player turn the turn heads-up off, and remembers it on this device", async () => {
-    render(<SettingsPage />);
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>);
     const box = screen.getByLabelText("Give me a heads-up");
     expect(box).toBeChecked();
 
@@ -117,14 +118,14 @@ describe("SettingsPage", () => {
   });
 
   it("turns Reduce Motion on for this device", async () => {
-    render(<SettingsPage />);
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>);
     await userEvent.click(screen.getByLabelText("Reduce motion"));
     expect(document.documentElement.dataset.motion).toBe("reduce");
     expect(window.localStorage.getItem("qk-motion")).toBe("reduce");
   });
 
   it("shows the current email and explains the confirmation link", async () => {
-    render(<SettingsPage />);
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>);
     expect(screen.getByText("sam@example.com")).toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText("New email"), "new@example.com");
@@ -135,7 +136,7 @@ describe("SettingsPage", () => {
   });
 
   it("won't change the password when the two don't match", async () => {
-    render(<SettingsPage />);
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>);
     await userEvent.type(screen.getByLabelText("New password"), "dragon-hoard");
     await userEvent.type(screen.getByLabelText("Type it again"), "dragon-hoarde");
     await userEvent.click(screen.getByRole("button", { name: "Change password" }));
@@ -146,7 +147,7 @@ describe("SettingsPage", () => {
 
   it("shows Supabase's problem in plain words", async () => {
     updatePassword.mockRejectedValueOnce(new Error("That's already your password. Pick a new one."));
-    render(<SettingsPage />);
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>);
     await userEvent.type(screen.getByLabelText("New password"), "dragon-hoard");
     await userEvent.type(screen.getByLabelText("Type it again"), "dragon-hoard");
     await userEvent.click(screen.getByRole("button", { name: "Change password" }));

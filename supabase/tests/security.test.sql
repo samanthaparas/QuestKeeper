@@ -174,3 +174,37 @@ do $$ begin
     raise exception 'FAILED: monster concentration is not in the DM-only table';
   end if;
 end $$;
+
+-- 10. Deleting your own account: only you, only yours, and it takes your
+-- things with it without touching anyone else's.
+reset role;
+insert into public.characters (id, user_id, data) values
+  ('00000000-0000-0000-0000-0000000000f2', :olive, '{"name": "Olive''s hero"}');
+
+set role anon;
+set test.uid = '';
+do $$ begin
+  begin
+    perform public.delete_my_account();
+    raise exception 'FAILED: a signed-out visitor deleted an account';
+  exception when others then
+    if sqlerrm like 'FAILED:%' then raise; end if;
+  end;
+end $$;
+
+set role authenticated;
+set test.uid = :olive;
+select public.delete_my_account();
+reset role;
+do $$ begin
+  if exists (select 1 from auth.users where id = '00000000-0000-0000-0000-00000000000f') then
+    raise exception 'FAILED: the account was not deleted';
+  end if;
+  if exists (select 1 from public.characters where user_id = '00000000-0000-0000-0000-00000000000f') then
+    raise exception 'FAILED: the deleted account''s characters were left behind';
+  end if;
+  if not exists (select 1 from auth.users where id = '00000000-0000-0000-0000-0000000000a1')
+     or not exists (select 1 from public.characters where id = '00000000-0000-0000-0000-0000000000a2') then
+    raise exception 'FAILED: deleting one account touched someone else''s';
+  end if;
+end $$;

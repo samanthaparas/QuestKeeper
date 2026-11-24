@@ -348,6 +348,13 @@ function AuthPage() {
           </>
         )}
 
+        {mode === "signup" && (
+          <p className="auth-page__hint">
+            What we keep and why is on the <Link to="/privacy">privacy page</Link>. You can delete your account
+            yourself any time.
+          </p>
+        )}
+
         {error && (
           <p className="auth-page__error" id={errorId} role="alert">
             {error}
