@@ -2877,6 +2877,10 @@ html:has(.character-sheet) {
   cursor: pointer;
 }
 
+a.character-sheet__edit-details {
+  text-decoration: none;
+}
+
 .character-sheet__edit-details:hover {
   text-decoration: underline;
 }

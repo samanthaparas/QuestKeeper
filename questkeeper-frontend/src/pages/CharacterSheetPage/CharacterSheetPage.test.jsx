@@ -103,6 +103,13 @@ function renderSheet(sheet) {
 }
 
 describe("CharacterSheetPage", () => {
+  it("links to the printable version of the sheet", async () => {
+    const sheet = makeSheet();
+    renderSheet(sheet);
+    const link = await screen.findByRole("link", { name: /Print or PDF/ });
+    expect(link).toHaveAttribute("href", `/characters/${sheet.id}/print`);
+  });
+
   it("loads the character and shows their name", async () => {
     renderSheet(makeSheet());
 
