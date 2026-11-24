@@ -19,11 +19,15 @@ import { useHoldRefresh } from "../utils/autoRefresh";
 // save(sheet) resolves to the saved sheet. onSaved(saved) hears about each
 // save. baseUpdatedAt() gives the server's "last updated" time for the
 // version being edited (kept with the copy on this device).
+// onConflict(sheet), optional: the save was refused because another device
+// saved first. It returns (a promise of) true once it has taken charge of
+// asking which version to keep; the queue then lets go of that edit instead of
+// retrying it. isIdle() says whether nothing is waiting or saving.
 
 const DELAY_MS = 600;
 const RETRY_MS = [4000, 8000, 16000, 30000, 60000];
 
-export function useSaveQueue({ characterId, save, onSaved, baseUpdatedAt }) {
+export function useSaveQueue({ characterId, save, onSaved, baseUpdatedAt, onConflict }) {
   const [status, setStatus] = useState("saved");
   const [error, setError] = useState("");
   const pending = useRef(null);
@@ -31,10 +35,10 @@ export function useSaveQueue({ characterId, save, onSaved, baseUpdatedAt }) {
   const timer = useRef(null);
   const failures = useRef(0);
   // The latest callbacks, without making the save loop depend on them.
-  const latest = useRef({ save, onSaved, baseUpdatedAt });
+  const latest = useRef({ save, onSaved, baseUpdatedAt, onConflict });
   const attemptRef = useRef(() => {});
   useEffect(() => {
-    latest.current = { save, onSaved, baseUpdatedAt };
+    latest.current = { save, onSaved, baseUpdatedAt, onConflict };
   });
 
   const attempt = useCallback(async () => {
@@ -58,6 +62,21 @@ export function useSaveQueue({ characterId, save, onSaved, baseUpdatedAt }) {
       }
       latest.current.onSaved?.(saved);
     } catch (failure) {
+      // Someone saved a newer version first: don't retry (it would only be
+      // refused again). Hand the edit to the page to ask which one to keep.
+      if (failure?.code === "version_conflict" && latest.current.onConflict) {
+        // The newest edit (which includes everything typed since) is "mine".
+        const mine = pending.current ?? sheet;
+        const handled = await Promise.resolve(latest.current.onConflict(mine)).catch(() => false);
+        if (handled) {
+          clearTimeout(timer.current);
+          pending.current = null;
+          failures.current = 0;
+          setError("");
+          setStatus("saved");
+          return;
+        }
+      }
       const signedOut = /signed out/i.test(failure?.message ?? "");
       // Refused rather than unreachable: the owner check, or the database's
       // row rules (Postgres code 42501).
@@ -134,5 +153,8 @@ export function useSaveQueue({ characterId, save, onSaved, baseUpdatedAt }) {
     [],
   );
 
-  return { status, error, queueSave, retryNow };
+  // Nothing waiting to save and nothing saving right now.
+  const isIdle = useCallback(() => !pending.current && !inFlight.current, []);
+
+  return { status, error, queueSave, retryNow, isIdle };
 }

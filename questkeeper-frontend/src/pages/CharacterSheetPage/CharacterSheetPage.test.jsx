@@ -1876,6 +1876,48 @@ describe("CharacterSheetPage on a weak signal", () => {
     await vi.waitFor(() => expect(screen.queryByText(/Not saved yet/)).not.toBeInTheDocument());
   });
 
+  it("when another device saved first, shows the newer sheet and asks which to keep, and Keep my changes saves on top of it", async () => {
+    installFakeStorage();
+    const user = userEvent.setup();
+    const mine = { ...makeSheet({ name: "Two Devices", gold: 0 }), updatedAt: "t1" };
+    const newer = { ...mine, gold: 7, updatedAt: "t2" };
+    getCharacter.mockReset().mockResolvedValueOnce(mine).mockResolvedValue(newer);
+    saveCharacter.mockReset().mockRejectedValueOnce(Object.assign(new Error("changed"), { code: "version_conflict" })).mockResolvedValue({ updatedAt: "t3" });
+    renderAt(mine.id);
+
+    const gold = await screen.findByLabelText("Gold");
+    await user.clear(gold);
+    await user.type(gold, "25");
+
+    // The newer version is shown, and nothing was overwritten.
+    expect(await screen.findByText(/changed on another device while your edits were waiting/, {}, { timeout: 3000 })).toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.getByLabelText("Gold")).toHaveValue(7), { timeout: 4000 });
+    expect(saveCharacter).toHaveBeenCalledTimes(1);
+    expect(saveCharacter.mock.calls[0][1]).toEqual({ baseUpdatedAt: "t1" });
+
+    // Keep my changes: saved over the newer version, from the newer base.
+    await user.click(screen.getByRole("button", { name: "Keep my changes" }));
+    await vi.waitFor(() => expect(saveCharacter).toHaveBeenCalledTimes(2), { timeout: 3000 });
+    expect(saveCharacter.mock.calls[1][0].gold).toBe(25);
+    expect(saveCharacter.mock.calls[1][1]).toEqual({ baseUpdatedAt: "t2" });
+  });
+
+  it("brings an idle sheet up to date when you come back to the tab after changing it elsewhere", async () => {
+    installFakeStorage();
+    const mine = { ...makeSheet({ name: "Stale Tab", gold: 1 }), updatedAt: "t1" };
+    const newer = { ...mine, gold: 40, updatedAt: "t2" };
+    getCharacter.mockReset().mockResolvedValueOnce(mine).mockResolvedValue(newer);
+    saveCharacter.mockReset().mockResolvedValue({});
+    renderAt(mine.id);
+
+    expect(await screen.findByLabelText("Gold")).toHaveValue(1);
+    document.dispatchEvent(new Event("visibilitychange"));
+
+    await vi.waitFor(() => expect(screen.getByLabelText("Gold")).toHaveValue(40), { timeout: 4000 });
+    expect(screen.getByText("Updated with changes you made on another device.")).toBeInTheDocument();
+    expect(saveCharacter).not.toHaveBeenCalled();
+  });
+
   it("brings back changes from a visit that ended before they saved", async () => {
     installFakeStorage();
     const server = makeSheet({ name: "Recovered Pippa", gold: 5 });

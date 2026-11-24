@@ -10,9 +10,11 @@ import "./SaveStatus.css";
 // QuestKeeper couldn't be reached. recovered: changes from an earlier visit
 // that hadn't saved were brought back. onRetry(): try saving now.
 // onReload(): try opening the real sheet again (offline copy).
+// refreshed: the sheet was brought up to date with changes made on another
+// device (nothing of yours was waiting, so nothing was lost).
 // conflict: the sheet changed on another device while edits were waiting;
 // onKeepMine() / onUseSaved() choose which version to keep.
-function SaveStatus({ status = "saved", isOfflineCopy = false, recovered = false, conflict = false, onRetry, onReload, onKeepMine, onUseSaved }) {
+function SaveStatus({ status = "saved", isOfflineCopy = false, recovered = false, conflict = false, refreshed = false, onRetry, onReload, onKeepMine, onUseSaved }) {
   if (conflict) {
     return (
       <div className="save-status save-status--warning" role="alert">
@@ -45,6 +47,8 @@ function SaveStatus({ status = "saved", isOfflineCopy = false, recovered = false
   } else if (status === "not-allowed") {
     lines.push("This change can't be saved: only the player who owns this character can change it.");
   }
+
+  if (refreshed) lines.push("Updated with changes you made on another device.");
 
   if (lines.length === 0 && !(status === "saving" && recovered)) return null;
 
