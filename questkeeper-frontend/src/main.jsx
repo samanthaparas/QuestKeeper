@@ -5,6 +5,9 @@ import { HashRouter } from "react-router-dom";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary/ErrorBoundary";
 import { AuthProvider } from "./context/AuthProvider";
+// The site's two typefaces, served from the site itself (not from Google).
+import "@fontsource-variable/fraunces/opsz.css";
+import "@fontsource-variable/nunito-sans/wght.css";
 import "./index.css";
 import { applyMotionPreference } from "./utils/motionPreference";
 import { applyThemePreference } from "./utils/themePreference";

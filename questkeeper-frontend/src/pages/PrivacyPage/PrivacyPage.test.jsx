@@ -19,9 +19,14 @@ describe("PrivacyPage", () => {
       expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
     }
     // The helpers it names are the ones the app really uses.
-    for (const name of ["Supabase", "Render", "Anthropic", "Google Fonts"]) {
+    for (const name of ["Supabase", "Render", "Anthropic"]) {
       expect(screen.getByText(name)).toBeInTheDocument();
     }
+  });
+
+  it("no longer says fonts come from Google, because they are served from the site itself", () => {
+    renderPage();
+    expect(screen.queryByText("Google Fonts")).not.toBeInTheDocument();
   });
 
   it("tells people they can download their data and delete their account in Settings", () => {
