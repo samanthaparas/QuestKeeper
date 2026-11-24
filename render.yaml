@@ -21,3 +21,26 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    # Safety headers sent with every page. The Content-Security-Policy lists
+    # every place the site may load things from (its own files, Google Fonts,
+    # the API, Supabase for accounts and pictures, and Sentry's error reports
+    # when switched on). It is set to "Report-Only" first: a browser notes
+    # anything the policy would block in its console, but still loads it. Once
+    # a week of normal use shows nothing blocked, change the name to
+    # Content-Security-Policy to enforce it. If the API address, the Supabase
+    # project or the site's address ever change, update them here too.
+    headers:
+      - path: /*
+        name: Content-Security-Policy-Report-Only
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://tqfucyefmmnseetkuutq.supabase.co; connect-src 'self' https://questkeeper-api.onrender.com https://tqfucyefmmnseetkuutq.supabase.co wss://tqfucyefmmnseetkuutq.supabase.co https://*.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+      # Nobody else may put QuestKeeper inside their own page (clickjacking).
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      # The site never uses the camera, microphone or location.
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=(), payment=()
