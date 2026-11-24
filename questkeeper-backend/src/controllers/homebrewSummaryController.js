@@ -7,6 +7,7 @@
 // it is never stored or logged.
 
 import Anthropic from "@anthropic-ai/sdk";
+import { aiAccess, fallbackOptions, modelFor } from "../utils/aiAccess.js";
 import { createRateLimiter } from "../utils/aiSearch.js";
 import {
   SUMMARY_INSTRUCTIONS,
@@ -17,7 +18,6 @@ import {
   summaryPrompt,
 } from "../utils/homebrewSummary.js";
 
-const MODEL = "claude-opus-5-5";
 
 let client = null;
 // Summaries cost more than searches, so the limit is lower.
@@ -42,18 +42,21 @@ export async function homebrewSummary(req, res) {
   const anthropic = getClient();
   if (!anthropic) return fail(res, 503, "Summaries aren't set up yet.");
 
-  if (!allowSummary(req.ip)) {
+  const access = await aiAccess.check(req, { requireLogin: true });
+  if (!access.ok) return fail(res, access.status, access.message);
+
+  if (!allowSummary(access.key)) {
     return fail(res, 429, "That's a lot of summaries. Try again in a few minutes.");
   }
 
+  const model = modelFor("summary");
   try {
     const response = await anthropic.beta.messages.create({
-      model: MODEL,
+      model,
       max_tokens: 4000,
-      // If the safety check ever declines a request, Anthropic retries it on
-      // its recommended fallback model instead of failing.
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
+      // If the safety check declines a request, Anthropic retries it on a
+      // safer model (only for models that support that).
+      ...fallbackOptions(model),
       output_config: {
         effort: "low",
         format: { type: "json_schema", schema: SUMMARY_SCHEMA },

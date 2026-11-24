@@ -364,6 +364,15 @@ ANTHROPIC_API_KEY=<your Anthropic API key>
 
 Everything else works without it; search by meaning just says it isn't set up.
 
+The AI features are protected so nobody can run up the bill. Recaps and summaries are for signed-in players only, and AI search gives visitors a small daily allowance. The server checks who is signed in by asking Supabase, so it also needs these two values (both are public, the same ones the website uses):
+
+```text
+SUPABASE_URL=<your Supabase project address, like https://abc.supabase.co>
+SUPABASE_PUBLISHABLE_KEY=<your Supabase publishable (anon) key>
+```
+
+Optional settings (all have safe defaults): `AI_ANON_DAILY` (visitor searches per day each, default 5), `AI_USER_DAILY` (per signed-in player per day, default 100), `AI_GLOBAL_DAILY` (the whole site per day, default 1500), and `AI_SEARCH_MODEL`, `AI_SUMMARY_MODEL`, `AI_RECAP_MODEL` to run a feature on a cheaper model. Counts live in the server's memory, so also set a monthly spend limit in the Anthropic console.
+
 The Supabase values are needed for accounts, characters and tables. Run the SQL files in `supabase/migrations/` (in date order) in the Supabase SQL editor to create the tables, security rules and functions. Restart Vite after changing an environment variable.
 
 ## Deployment

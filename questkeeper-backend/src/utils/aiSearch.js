@@ -112,6 +112,12 @@ export function createRateLimiter({ limit = 20, windowMs = 10 * 60 * 1000, now =
   const hits = new Map();
   return function allow(key) {
     const time = now();
+    // Forget visitors who haven't searched lately, so the list can't grow forever.
+    if (hits.size > 5000) {
+      for (const [who, times] of hits) {
+        if (times.every((at) => time - at >= windowMs)) hits.delete(who);
+      }
+    }
     const recent = (hits.get(key) ?? []).filter((at) => time - at < windowMs);
     if (recent.length >= limit) {
       hits.set(key, recent);
