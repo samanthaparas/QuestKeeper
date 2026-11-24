@@ -24,7 +24,30 @@ const app = express();
 // visitor's own address, which the AI search's per-visitor limit relies on.
 app.set("trust proxy", 1);
 
-app.use(cors());
+// Only QuestKeeper's own website (and a developer's own computer) may call
+// this API from a browser. Add more addresses, like a new domain, in the
+// ALLOWED_ORIGINS setting on the server, separated by commas. Requests with no
+// browser origin (a monitoring tool, curl) aren't affected.
+const SITE_ORIGINS = ["https://questkeeper-it0i.onrender.com"];
+const OWN_COMPUTER = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
+function isAllowedOrigin(origin) {
+  const extra = (process.env.ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((item) => item.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+  return !origin || OWN_COMPUTER.test(origin) || SITE_ORIGINS.includes(origin) || extra.includes(origin);
+}
+
+// Don't announce what the server runs on, and stop browsers guessing at what
+// kind of file an answer is.
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  next();
+});
+
+app.use(cors({ origin: (origin, callback) => callback(null, isAllowedOrigin(origin)) }));
 app.use(express.json());
 
 app.get("/", (req, res) => {
