@@ -1,5 +1,6 @@
 import { Component } from "react";
 import lantern from "../../assets/support/lantern.webp";
+import { reportError } from "../../utils/monitoring";
 import "./ErrorBoundary.css";
 
 // A safety net for the whole app: if drawing a page throws, a small card says
@@ -14,6 +15,12 @@ class ErrorBoundary extends Component {
 
   static getDerivedStateFromError() {
     return { failed: true };
+  }
+
+  // Tells the site's owner (when error reports are switched on) that this
+  // happened, so it can be fixed.
+  componentDidCatch(error, info) {
+    reportError(error, info?.componentStack);
   }
 
   goHome = () => {

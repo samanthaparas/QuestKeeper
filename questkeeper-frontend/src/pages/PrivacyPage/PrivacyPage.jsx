@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import PageBanner from "../../components/PageBanner/PageBanner";
-import { CONTACT_EMAIL, FEEDBACK_URL, PRIVACY_UPDATED, SITE_NAME } from "../../utils/siteInfo";
+import { CONTACT_EMAIL, ERROR_REPORTING_ON, FEEDBACK_URL, PRIVACY_UPDATED, SITE_NAME } from "../../utils/siteInfo";
 import "./PrivacyPage.css";
 
 // The privacy policy, in plain English. It describes what the app really does
@@ -100,6 +100,14 @@ function PrivacyPage() {
             </a>
             .
           </li>
+          {ERROR_REPORTING_ON && (
+            <li>
+              <strong>Sentry</strong> receives an error report when something breaks in your browser, so it can be
+              fixed. A report holds the error, the page (without any code in its address), your browser type and the
+              version of the site. It holds no passwords, notes or character details, and nothing is recorded about
+              how you use the site.
+            </li>
+          )}
           <li>
             <strong>Google Fonts</strong> supplies the website&apos;s lettering, so your browser contacts Google
             when a page loads.
