@@ -29,6 +29,10 @@ function Footer() {
         <Link className="footer__link" to="/privacy">
           Privacy
         </Link>
+        {" · "}
+        <Link className="footer__link" to="/terms">
+          Terms
+        </Link>
       </p>
 
       <p className="footer__copyright">© 2026 QuestKeeper</p>

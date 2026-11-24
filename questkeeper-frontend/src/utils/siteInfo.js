@@ -11,3 +11,6 @@ export const FEEDBACK_URL = "https://github.com/samanthaparas/QuestKeeper/issues
 
 // Change this whenever the privacy page's wording changes.
 export const PRIVACY_UPDATED = "November 23, 2026";
+
+// Change this whenever the terms page's wording changes.
+export const TERMS_UPDATED = "November 23, 2026";

@@ -5,6 +5,7 @@ import Home from "./pages/Home/Home";
 import About from "./pages/About/About";
 import AttributionsPage from "./pages/AttributionsPage/AttributionsPage";
 import PrivacyPage from "./pages/PrivacyPage/PrivacyPage";
+import TermsPage from "./pages/TermsPage/TermsPage";
 import SearchPage from "./pages/SearchPage/SearchPage";
 import RacesPage from "./pages/RacesPage";
 import ClassesPage from "./pages/ClassesPage";
@@ -285,6 +286,7 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="/attributions" element={<AttributionsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/guide" element={<Guide />} />
         <Route path="/quiz" element={<QuizPage />} />
