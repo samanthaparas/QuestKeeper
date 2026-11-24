@@ -9,6 +9,7 @@ import "./index.css";
 import { applyMotionPreference } from "./utils/motionPreference";
 import { applyThemePreference } from "./utils/themePreference";
 import { applyDisplayPreferences } from "./utils/displayPreference";
+import { initMonitoring } from "./utils/monitoring";
 
 // The Settings page's Reduce Motion choice, before anything draws.
 applyMotionPreference();
@@ -16,6 +17,8 @@ applyMotionPreference();
 applyThemePreference();
 // And Text size and High contrast.
 applyDisplayPreferences();
+// Error reports from real browsers, if switched on (see utils/monitoring.js).
+initMonitoring();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

@@ -373,6 +373,8 @@ SUPABASE_PUBLISHABLE_KEY=<your Supabase publishable (anon) key>
 
 Optional settings (all have safe defaults): `AI_ANON_DAILY` (visitor searches per day each, default 5), `AI_USER_DAILY` (per signed-in player per day, default 100), `AI_GLOBAL_DAILY` (the whole site per day, default 1500), and `AI_SEARCH_MODEL`, `AI_SUMMARY_MODEL`, `AI_RECAP_MODEL` to run a feature on a cheaper model. Counts live in the server's memory, so also set a monthly spend limit in the Anthropic console.
 
+Error reports from real browsers are optional and off by default. To switch them on, make a free project at sentry.io (platform: React) and set its address as `VITE_SENTRY_DSN` on the **website** (`questkeeper`) in Render, then redeploy it. Only the error, the page (without codes in its address), the browser type and the site's version are sent: no passwords, notes or character details, and no screen recordings or usage tracking. When it's on, the privacy page names Sentry by itself. In Sentry's project settings, also turn on **Prevent Storing of IP Addresses** and set an email alert for new issues.
+
 The Supabase values are needed for accounts, characters and tables. Run the SQL files in `supabase/migrations/` (in date order) in the Supabase SQL editor to create the tables, security rules and functions. Restart Vite after changing an environment variable.
 
 ## Deployment

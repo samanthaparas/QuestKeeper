@@ -3,6 +3,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ErrorBoundary from "./ErrorBoundary";
 import { installFakeStorage } from "../../test/fakeStorage";
+import { reportError } from "../../utils/monitoring";
+
+vi.mock("../../utils/monitoring", () => ({ reportError: vi.fn() }));
 
 function Boom() {
   throw new Error("secret stack detail: db password hunter2");
@@ -26,6 +29,17 @@ describe("ErrorBoundary", () => {
   afterEach(() => {
     Object.defineProperty(window, "location", { configurable: true, value: originalLocation });
     vi.restoreAllMocks();
+  });
+
+  it("reports the error (when reporting is on) and still shows the friendly card", () => {
+    render(
+      <ErrorBoundary>
+        <Boom />
+      </ErrorBoundary>,
+    );
+    expect(screen.getByRole("heading", { name: "Something went wrong" })).toBeInTheDocument();
+    expect(reportError).toHaveBeenCalledTimes(1);
+    expect(reportError.mock.calls[0][0]).toBeInstanceOf(Error);
   });
 
   it("shows its children untouched when nothing goes wrong", () => {
