@@ -174,6 +174,7 @@ describe("AuthPage", () => {
     expect(screen.queryByRole("link", { name: "privacy page" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Need an account/ }));
     expect(screen.getByRole("link", { name: "privacy page" })).toHaveAttribute("href", "/privacy");
+    expect(screen.getByRole("link", { name: "terms" })).toHaveAttribute("href", "/terms");
   });
 
   it("says why an account is needed, even with nowhere in particular to go", () => {
