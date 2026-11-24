@@ -28,6 +28,7 @@ import { refreshIfSafe } from "./utils/autoRefresh";
 const CharacterCreationPage = lazy(() => import("./pages/CharacterCreationPage/CharacterCreationPage"));
 const CharactersPage = lazy(() => import("./pages/CharactersPage/CharactersPage"));
 const CharacterSheetPage = lazy(() => import("./pages/CharacterSheetPage/CharacterSheetPage"));
+const CharacterPrintPage = lazy(() => import("./pages/CharacterPrintPage/CharacterPrintPage"));
 const TablesPage = lazy(() => import("./pages/TablesPage/TablesPage"));
 const TablePage = lazy(() => import("./pages/TablePage/TablePage"));
 const LibraryPage = lazy(() => import("./pages/LibraryPage/LibraryPage"));
@@ -210,6 +211,14 @@ function App() {
           element={
             <ProtectedRoute>
               <CharacterCreationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/characters/:id/print"
+          element={
+            <ProtectedRoute>
+              <CharacterPrintPage />
             </ProtectedRoute>
           }
         />

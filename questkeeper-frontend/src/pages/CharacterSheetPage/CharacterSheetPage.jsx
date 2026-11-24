@@ -2524,7 +2524,10 @@ function CharacterSheetPage() {
                         onClick={() => setIsEditingDetails(true)}
                       >
                         ✏️ Edit details
-                      </button>
+                      </button>{" "}
+                      <Link className="character-sheet__edit-details" to={`/characters/${sheet.id}/print`}>
+                        🖨 Print or PDF
+                      </Link>
                     </p>
                   </div>
 
