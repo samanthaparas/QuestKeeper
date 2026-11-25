@@ -104,7 +104,13 @@ export function PrintableSheet({ sheet, withSpells = true, withFeatureText = fal
             const hasExpertise = isProficient && Boolean(sheet.skillExpertise?.[skill.index]);
             return (
               <li key={skill.index}>
-                <span className="print-sheet__mark">{hasExpertise ? "◉" : isProficient ? "●" : "○"}</span>
+                <span
+                  className={`print-sheet__dot${isProficient ? " print-sheet__dot--on" : ""}${hasExpertise ? " print-sheet__dot--expert" : ""}`}
+                  aria-hidden="true"
+                />
+                <span className="print-sheet__sr-only">
+                  {hasExpertise ? "Expertise. " : isProficient ? "Proficient. " : ""}
+                </span>
                 <span className="print-sheet__skill-mod">{formatModifier(skillModifier(skill))}</span>
                 <span>
                   {skill.name} <small>({ABILITY_ABBREVIATIONS[skill.ability]})</small>
@@ -113,7 +119,13 @@ export function PrintableSheet({ sheet, withSpells = true, withFeatureText = fal
             );
           })}
         </ul>
-        <p className="print-sheet__fine">○ not proficient · ● proficient · ◉ expertise</p>
+        <p className="print-sheet__fine">
+          <span className="print-sheet__dot print-sheet__dot--inline" aria-hidden="true" /> not proficient
+          {"  ·  "}
+          <span className="print-sheet__dot print-sheet__dot--inline print-sheet__dot--on" aria-hidden="true" /> proficient
+          {"  ·  "}
+          <span className="print-sheet__dot print-sheet__dot--inline print-sheet__dot--on print-sheet__dot--expert" aria-hidden="true" /> expertise
+        </p>
       </section>
 
       <div className="print-sheet__side">
@@ -212,7 +224,7 @@ export function PrintableSheet({ sheet, withSpells = true, withFeatureText = fal
     )}
 
     {features.length > 0 && (
-      <section className="print-sheet__block" aria-labelledby="print-features">
+      <section className="print-sheet__block print-sheet__block--long" aria-labelledby="print-features">
         <h2 id="print-features" className="print-sheet__heading">Features and feats</h2>
         {withFeatureText ? (
           <dl className="print-sheet__definitions">
@@ -230,7 +242,7 @@ export function PrintableSheet({ sheet, withSpells = true, withFeatureText = fal
     )}
 
     {withNotes && (sheet.backstory || sheet.appearance || sheet.notes) && (
-      <section className="print-sheet__block" aria-labelledby="print-notes">
+      <section className="print-sheet__block print-sheet__block--long" aria-labelledby="print-notes">
         <h2 id="print-notes" className="print-sheet__heading">Backstory and notes</h2>
         {sheet.backstory && <p className="print-sheet__prose">{sheet.backstory}</p>}
         {sheet.appearance && <p className="print-sheet__prose">{sheet.appearance}</p>}
@@ -340,7 +352,10 @@ function CharacterPrintPage() {
         <button type="button" className="print-toolbar__button" onClick={() => window.print()}>
           Print or save as PDF
         </button>
-        <p className="print-toolbar__hint">In the print window, choose &ldquo;Save as PDF&rdquo; as the printer.</p>
+        <p className="print-toolbar__hint">
+          In the print window, choose &ldquo;Save as PDF&rdquo; as the printer. For a cleaner page, turn off
+          &ldquo;Headers and footers&rdquo; under More settings.
+        </p>
       </div>
 
       <PrintableSheet sheet={sheet} withSpells={withSpells} withFeatureText={withFeatureText} withNotes={withNotes} />

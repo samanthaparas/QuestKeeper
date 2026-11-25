@@ -199,7 +199,14 @@
   break-inside: avoid;
 }
 
+/* Long sections (features with their text, notes) may continue on the next
+   page, instead of leaving a big gap at the bottom of the one before. */
+.print-sheet__block--long {
+  break-inside: auto;
+}
+
 .print-sheet__heading {
+  break-after: avoid;
   margin: 0 0 6px;
   padding-bottom: 2px;
   border-bottom: 1px solid #111;
@@ -217,8 +224,9 @@
 }
 
 .print-sheet__skills .print-sheet__plain-list li {
+  position: relative;
   display: grid;
-  grid-template-columns: 16px 30px 1fr;
+  grid-template-columns: 18px 30px 1fr;
   align-items: baseline;
   gap: 4px;
 }
@@ -228,8 +236,45 @@
   text-align: right;
 }
 
-.print-sheet__mark {
-  font-size: 11px;
+/* Proficiency marks drawn with CSS, not text symbols (which some fonts draw at
+   different sizes and push the numbers out of line). Empty ring: not
+   proficient; filled: proficient; filled with an outer ring: expertise. */
+.print-sheet__dot {
+  box-sizing: border-box;
+  display: block;
+  width: 9px;
+  height: 9px;
+  margin-left: 3px;
+  border: 1.5px solid #111;
+  border-radius: 50%;
+  align-self: center;
+}
+
+.print-sheet__dot--on {
+  background-color: #111;
+}
+
+.print-sheet__dot--expert {
+  box-shadow: 0 0 0 1.5px #fff, 0 0 0 3px #111;
+}
+
+.print-sheet__dot--inline {
+  display: inline-block;
+  vertical-align: -1px;
+  margin: 0 4px 0 2px;
+}
+
+.print-sheet__dot--inline.print-sheet__dot--expert {
+  margin: 0 6px 0 4px;
+}
+
+.print-sheet__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .print-sheet__fine {
@@ -265,6 +310,11 @@
   display: grid;
   gap: 6px;
   margin: 0;
+}
+
+/* Each feature stays whole: a name is never left alone at the bottom of a page. */
+.print-sheet__definitions > div {
+  break-inside: avoid;
 }
 
 .print-sheet__definitions dt {
